@@ -1,0 +1,21 @@
+.DS_Store
+.kinetis-cache/
+.phpstan-cache/
+.phpunit.cache/
+.phpunit.result.cache
+/demo/backend/.env
+/demo/backend/vendor/
+composer.phar
+psalm.sarif
+node_modules/
+.nuxt/
+.output/
+.data/
+/demo/frontend/dist/
+.pnpm-store/
+/packages/vector/resources/dist/
+/demo/backend/public/vector/
+/demo/backend/infection.vector.log
+/demo/backend/infection.vector.summary.log
+# Claude Code runtime state
+.claude/scheduled_tasks.lock

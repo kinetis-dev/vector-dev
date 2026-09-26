@@ -1,0 +1,3 @@
+packages:
+  - packages/vector-ui
+  - demo/frontend

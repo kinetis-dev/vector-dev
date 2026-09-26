@@ -1,0 +1,36 @@
+import type { VectorField } from '#vector/app/types/vector'
+
+/** The value a fresh input holds: the field's default, or the type's empty value. */
+export function initialValue(field: VectorField): unknown {
+    if (field.hasDefault) return field.default
+    if (field.type === 'boolean') return false
+    if (field.type === 'manyToMany') return []
+    return null
+}
+
+/**
+ * Maps the framework's 422 document onto field names; returns the
+ * message that names no field, if any.
+ */
+export function applyViolations(error: unknown, values: Record<string, unknown>, serverErrors: Record<string, string[]>): string | null {
+    const failure = error as { status?: number, statusCode?: number, data?: { errors?: unknown } } | null
+    const violations = failure?.data?.errors
+
+    if ((failure?.status ?? failure?.statusCode) !== 422 || !Array.isArray(violations)) {
+        return vectorErrorMessage(error)
+    }
+
+    let general: string | null = null
+
+    for (const violation of violations as { path: (string | number)[], message: string }[]) {
+        const key = String(violation.path[0] ?? '')
+
+        if (key && key in values) {
+            (serverErrors[key] ??= []).push(`${violation.message.charAt(0).toUpperCase()}${violation.message.slice(1)}`)
+        } else {
+            general = violation.message
+        }
+    }
+
+    return general ?? (Object.keys(serverErrors).length === 0 ? vt('common.serverRejected') : null)
+}

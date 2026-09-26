@@ -1,0 +1,18 @@
+{
+    // Mutation testing over the two units the plan singles out: the
+    // registry compiler and the list grammar. Runs the tests that
+    // exercise them against the seeded MySQL, so it is slow by design:
+    //   docker compose exec app vendor/bin/infection --configuration=infection.vector.json5 --threads=4
+    // A killed mutant can leave the rows its test would have removed; clean the
+    // demo tables (or reseed with demo:seed --fresh) before the next plain run.
+    "$schema": "vendor/infection/infection/resources/schema.json",
+    "source": {
+        "directories": ["../../packages/vector/src/Registry", "../../packages/vector/src/Query"],
+        "excludes": ["ResourceDescriptor.php", "SettingsDescriptor.php", "VectorRegistry.php", "RowSerializer.php", "CsvWriter.php"]
+    },
+    "testFramework": "phpunit",
+    "testFrameworkOptions": "--filter 'VectorRegistryTest|ListGrammarTest|SchemaControllerTest|ResourceControllerTest|ActionsAndSettingsTest'",
+    "timeout": 60,
+    "logs": { "text": "infection.vector.log", "summary": "infection.vector.summary.log" },
+    "mutators": { "@default": true }
+}

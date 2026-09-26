@@ -1,0 +1,15 @@
+# Project-scoped MCP servers for Codex. No credentials are forwarded,
+# and nothing here approves a tool call in advance.
+[mcp_servers.orbitron]
+command = "./bin/orbitron-mcp"
+args = []
+
+[mcp_servers.nuxt]
+command = "npx"
+args = ["-y", "mcp-remote", "https://nuxt.com/mcp"]
+
+[mcp_servers.vuetify]
+url = "https://mcp.vuetifyjs.com/mcp"
+
+[mcp_servers.vue-docs]
+url = "https://mcp.vue-mcp.org/mcp"

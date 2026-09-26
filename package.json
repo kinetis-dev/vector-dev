@@ -1,0 +1,15 @@
+{
+    "name": "vector-monorepo",
+    "private": true,
+    "packageManager": "pnpm@10.17.1",
+    "engines": {
+        "node": ">=22"
+    },
+    "scripts": {
+        "dev": "pnpm --filter frontend dev",
+        "build": "pnpm --filter frontend build",
+        "generate": "pnpm --filter frontend generate",
+        "typecheck": "pnpm --filter @kinetis/vector-ui typecheck",
+        "test": "pnpm --filter @kinetis/vector-ui test"
+    }
+}

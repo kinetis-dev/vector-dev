@@ -1,0 +1,35 @@
+{
+    "name": "kinetis/vector",
+    "description": "A schema-driven admin platform for Kinetis applications: a compiled resource registry, a REST admin API and MCP tools over kinetis/orm entities.",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.4",
+        "kinetis/authorization": "^1.0.4",
+        "kinetis/database-bridge": "^1.4.0",
+        "kinetis/framework": "^1.21.1",
+        "kinetis/mcp": "^1.8.0",
+        "kinetis/orm": "^1.12.0",
+        "kinetis/persistence": "^1.4.3",
+        "kinetis/query-builder": "^1.8.0",
+        "kinetis/queue": "^1.7.0",
+        "psr/http-message": "^2.0",
+        "psr/http-server-handler": "^1.0.2",
+        "psr/http-server-middleware": "^1.0.2"
+    },
+    "suggest": {
+        "kinetis/storage": "Uploads for file and image fields (FILESYSTEM_DRIVER, or VECTOR_STORAGE_CONNECTION)"
+    },
+    "autoload": {
+        "psr-4": {
+            "Kinetis\\Vector\\": "src/"
+        }
+    },
+    "extra": {
+        "kinetis": {
+            "scan": "Kinetis\\Vector\\",
+            "discovery": "Kinetis\\Vector\\Registry\\VectorRegistry",
+            "bootstrap": "Kinetis\\Vector\\PackageBootstrap"
+        }
+    }
+}

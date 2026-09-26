@@ -1,0 +1,25 @@
+{
+    "name": "frontend",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "nuxt dev --host 0.0.0.0 --port 3000",
+        "build": "nuxt build",
+        "generate": "nuxt generate",
+        "preview": "nuxt preview",
+        "postinstall": "nuxt prepare",
+        "generate:hosted": "NUXT_APP_BASE_URL=/vector/ui/ nuxt generate && rm -rf ../../packages/vector/resources/dist && cp -R .output/public ../../packages/vector/resources/dist"
+    },
+    "dependencies": {
+        "@kinetis/vector-ui": "workspace:*",
+        "@mdi/font": "^7.4.47",
+        "nuxt": "^4.5.2",
+        "vue": "^3.5.0",
+        "vuetify": "^4.2.2",
+        "vuetify-nuxt-module": "^1.0.0-rc.6"
+    },
+    "devDependencies": {
+        "sass-embedded": "^1.90.0",
+        "typescript": "^5.8.0"
+    }
+}

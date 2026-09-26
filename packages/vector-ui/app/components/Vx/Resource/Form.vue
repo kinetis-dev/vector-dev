@@ -1,0 +1,203 @@
+<script setup lang="ts">
+import type { SubmitEventPromise } from 'vuetify'
+import type { VectorField, VectorFieldState, VectorRecord, VectorResource } from '#vector/app/types/vector'
+
+// A create or edit form generated from the descriptor: one input per
+// editable field, client rules mirroring the server's, and the server's
+// 422 mapped onto the field it names.
+const props = defineProps<{
+    resource: VectorResource
+    operation: 'create' | 'update'
+    record?: VectorRecord
+    /** Values fixed by the context (a parent a child is created under): pre-filled, not shown. */
+    preset?: Record<string, unknown>
+}>()
+
+const emit = defineEmits<{ saved: [record: VectorRecord], cancel: [] }>()
+
+const { t } = useVectorT()
+const { inputFor, editable } = useVectorInputs()
+const notifications = useVectorNotifications()
+const client = useVectorResource(() => props.resource.slug)
+
+const fields = computed<VectorField[]>(() => props.resource.fields.filter(f => editable(f, props.operation)))
+
+// The form's values, keyed by field name: relation values reduce to ids.
+const values = reactive<Record<string, unknown>>({})
+const initial: Record<string, unknown> = {}
+
+for (const field of fields.value) {
+    const current = props.preset?.[field.name] ?? props.record?.[field.name]
+    // a new record starts from each field's default, which the server would apply as well
+    let value: unknown = current !== undefined
+        ? current
+        : props.operation === 'create' && field.hasDefault ? JSON.parse(JSON.stringify(field.default ?? null)) : defaultFor(field)
+
+    if (field.type === 'belongsTo' && current && typeof current === 'object' && 'id' in current) {
+        value = (current as { id: unknown }).id
+    }
+
+    if (field.type === 'manyToMany' || field.type === 'hasMany') {
+        value = [] // the ids, or a repeater's rows, load from their endpoint below
+    }
+
+    values[field.name] = value
+    initial[field.name] = value
+}
+
+function defaultFor(field: VectorField): unknown {
+    if (field.type === 'boolean') return false
+    if (field.type === 'manyToMany' || field.type === 'hasMany') return []
+    return null
+}
+
+// A manyToMany field's current membership is not in the record (it lists
+// as a count), so an edit form fetches the ids it holds.
+if (props.operation === 'update' && props.record) {
+    for (const field of fields.value.filter(f => f.type === 'manyToMany')) {
+        client.related(props.record.id, field.name, { perPage: 200 }).then((page) => {
+            values[field.name] = page.data.map(r => r.id)
+            initial[field.name] = [...(values[field.name] as unknown[])]
+        })
+    }
+
+    // A repeater's rows: each child as a row of the fields it writes, its relations as ids.
+    for (const field of fields.value.filter(f => f.repeater)) {
+        client.rows(props.record.id, field.name).then((page) => {
+            const rows = page.data.map(record => Object.fromEntries([
+                ['id', record.id],
+                ...field.repeater!.fields.map((name) => {
+                    const value = record[name]
+                    return [name, value && typeof value === 'object' && 'id' in value ? (value as { id: unknown }).id : value]
+                }),
+            ]))
+            values[field.name] = rows
+            initial[field.name] = JSON.parse(JSON.stringify(rows))
+        })
+    }
+}
+
+const serverErrors = reactive<Record<string, string[]>>({})
+const submitting = ref(false)
+const formError = ref<string | null>(null)
+
+const wide = (field: VectorField) => ['markdown', 'text', 'json', 'keyValue'].includes(field.type) || !!field.repeater
+
+async function submit(event: SubmitEventPromise) {
+    const { valid } = await event
+
+    if (!valid) {
+        return
+    }
+
+    submitting.value = true
+    formError.value = null
+
+    for (const key of Object.keys(serverErrors)) {
+        delete serverErrors[key]
+    }
+
+    try {
+        let response
+
+        if (props.operation === 'create') {
+            response = await client.create(payload(false))
+        } else {
+            const version = props.record?._version as number | undefined
+            response = await client.update(props.record!.id, payload(true), version)
+        }
+
+        notifications.success(t('record.saved', { label: props.resource.labelSingular }))
+        emit('saved', response.data)
+    } catch (error) {
+        const failure = error as { status?: number, statusCode?: number, data?: { errors?: unknown } } | null
+        const violations = failure?.data?.errors
+
+        if ((failure?.status ?? failure?.statusCode) === 422 && Array.isArray(violations)) {
+            for (const violation of violations as { path: (string | number)[], message: string }[]) {
+                // a repeater row's own violation stays with its row: `lines.2.quantity`
+                const repeated = violation.path.length >= 3 && fields.value.some(f => f.name === violation.path[0] && f.repeater)
+                const key = repeated ? violation.path.slice(0, 3).join('.') : String(violation.path[0] ?? '')
+
+                if (key && (key in values || repeated)) {
+                    (serverErrors[key] ??= []).push(`${violation.message.charAt(0).toUpperCase()}${violation.message.slice(1)}`)
+                } else {
+                    formError.value = violation.message
+                }
+            }
+
+            if (!formError.value && Object.keys(serverErrors).length === 0) {
+                formError.value = t('common.serverRejected')
+            }
+        } else {
+            formError.value = vectorErrorMessage(error)
+        }
+    } finally {
+        submitting.value = false
+    }
+}
+
+/** Create sends every editable field; update sends only what changed. */
+function payload(onlyChanged: boolean): Record<string, unknown> {
+    const body: Record<string, unknown> = {}
+
+    for (const field of fields.value) {
+        const value = values[field.name]
+
+        if (onlyChanged && JSON.stringify(value) === JSON.stringify(initial[field.name])) {
+            continue
+        }
+
+        if (!onlyChanged && (value === null || value === '') && field.nullable !== true && field.type !== 'manyToMany') {
+            continue // let the server report the required field rather than sending an empty string
+        }
+
+        body[field.name] = value === '' ? null : value
+    }
+
+    return body
+}
+
+function clearServerError(name: string) {
+    delete serverErrors[name]
+}
+
+// Conditions (visibleWhen, requiredWhen, disabledWhen) follow the values as they are edited.
+// Like the server, they read the stored record overlaid with the values being edited.
+const states = computed<Record<string, VectorFieldState>>(() => {
+    const current = { ...(props.record ?? {}), ...values }
+    return Object.fromEntries(fields.value.map(f => [f.name, fieldState(f, current)]))
+})
+const shownFields = computed(() => fields.value.filter(f => states.value[f.name]?.visible !== false && !(props.preset && f.name in props.preset)))
+</script>
+
+<template>
+    <v-form validate-on="blur lazy" @submit.prevent="submit">
+        <v-card>
+            <v-card-text>
+                <v-alert v-if="formError" type="error" variant="tonal" class="mb-4" :text="formError" />
+                <v-row density="compact">
+                    <v-col v-for="field in shownFields" :key="field.name" cols="12" :md="wide(field) ? 12 : 6">
+                        <component
+                            :is="inputFor(field)"
+                            v-model="values[field.name]"
+                            :field="field"
+                            :disabled="states[field.name]?.disabled === true"
+                            :rules="rulesFor(field, operation, states[field.name])"
+                            :error-messages="serverErrors[field.name] ?? []"
+                            :record="values"
+                            :resource="resource.slug"
+                            v-bind="field.repeater ? { serverErrors } : {}"
+                            @update:model-value="clearServerError(field.name)"
+                        />
+                    </v-col>
+                </v-row>
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer />
+                <v-btn variant="text" @click="emit('cancel')">{{ t('common.cancel') }}</v-btn>
+                <v-btn type="submit" color="primary" :loading="submitting">{{ operation === 'create' ? t('common.create') : t('common.save') }}</v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-form>
+</template>

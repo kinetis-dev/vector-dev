@@ -1,0 +1,902 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://kinetis.dev/schemas/vector/descriptor.json",
+    "title": "Vector descriptor",
+    "description": "What GET /vector/schema publishes: the compiled resources, settings groups, dashboards, menu and branding, overlaid with the caller's permissions.",
+    "type": "object",
+    "required": [
+        "version",
+        "resources",
+        "menu",
+        "settings",
+        "dashboards",
+        "capabilities"
+    ],
+    "properties": {
+        "version": {
+            "type": "integer",
+            "const": 4
+        },
+        "resources": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/$defs/resource"
+            }
+        },
+        "menu": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "label",
+                    "resources"
+                ],
+                "properties": {
+                    "label": {
+                        "type": "string"
+                    },
+                    "resources": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "settings": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/named"
+            }
+        },
+        "dashboards": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/named"
+            }
+        },
+        "capabilities": {
+            "type": "object",
+            "required": [
+                "impersonation",
+                "queue"
+            ],
+            "properties": {
+                "impersonation": {
+                    "type": "boolean"
+                },
+                "queue": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "branding": {
+            "type": [
+                "object",
+                "null"
+            ]
+        },
+        "minorUnits": {
+            "description": "The ISO 4217 minor-unit exponent of every currency whose minor unit is not a hundredth; a money value is in its currency's minor units.",
+            "type": "object",
+            "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+            }
+        }
+    },
+    "$defs": {
+        "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "named": {
+            "type": "object",
+            "required": [
+                "name",
+                "label"
+            ],
+            "properties": {
+                "name": {
+                    "$ref": "#/$defs/slug"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            }
+        },
+        "sort": {
+            "type": "object",
+            "required": [
+                "field",
+                "order"
+            ],
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "order": {
+                    "enum": [
+                        "asc",
+                        "desc"
+                    ]
+                }
+            }
+        },
+        "rule": {
+            "type": "object",
+            "required": [
+                "constraint",
+                "args"
+            ],
+            "properties": {
+                "constraint": {
+                    "type": "string"
+                },
+                "args": {
+                    "type": "array"
+                }
+            }
+        },
+        "field": {
+            "type": "object",
+            "required": [
+                "name",
+                "type",
+                "label",
+                "sortable",
+                "searchable",
+                "filterable",
+                "readonly",
+                "views",
+                "rules",
+                "operators",
+                "summary",
+                "hasDefault"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "enum": [
+                        "id",
+                        "string",
+                        "text",
+                        "markdown",
+                        "number",
+                        "money",
+                        "boolean",
+                        "enum",
+                        "date",
+                        "datetime",
+                        "email",
+                        "url",
+                        "password",
+                        "slug",
+                        "color",
+                        "json",
+                        "keyValue",
+                        "currency",
+                        "file",
+                        "image",
+                        "belongsTo",
+                        "hasOne",
+                        "hasMany",
+                        "manyToMany"
+                    ]
+                },
+                "label": {
+                    "type": "string"
+                },
+                "sortable": {
+                    "type": "boolean"
+                },
+                "searchable": {
+                    "type": "boolean"
+                },
+                "filterable": {
+                    "type": "boolean"
+                },
+                "readonly": {
+                    "type": "boolean"
+                },
+                "repeater": {
+                    "description": "An owned hasMany edited in the parent's form: the child fields a row writes, and how many rows it holds. Sent as a list of rows; a row with an `id` updates that child, one without creates it, and a child left out is deleted.",
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "required": [
+                        "fields",
+                        "min",
+                        "max"
+                    ],
+                    "properties": {
+                        "fields": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "min": {
+                            "type": "integer"
+                        },
+                        "max": {
+                            "type": "integer"
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "inline": {
+                    "type": "boolean",
+                    "description": "Editable in the list's cell (inlineEditable()), saved through POST …/changes."
+                },
+                "help": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "component": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "views": {
+                    "type": "array",
+                    "items": {
+                        "enum": [
+                            "index",
+                            "show",
+                            "create",
+                            "update"
+                        ]
+                    }
+                },
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/rule"
+                    }
+                },
+                "props": {
+                    "type": [
+                        "object",
+                        "array"
+                    ]
+                },
+                "summary": {
+                    "enum": [
+                        "sum",
+                        "avg",
+                        "min",
+                        "max",
+                        "count",
+                        null
+                    ]
+                },
+                "hasDefault": {
+                    "type": "boolean"
+                },
+                "operators": {
+                    "type": "array",
+                    "items": {
+                        "enum": [
+                            "eq",
+                            "ne",
+                            "lt",
+                            "lte",
+                            "gt",
+                            "gte",
+                            "in",
+                            "nin",
+                            "like",
+                            "nlike",
+                            "between",
+                            "null",
+                            "nnull"
+                        ]
+                    }
+                },
+                "nullable": {
+                    "type": "boolean"
+                },
+                "valueType": {
+                    "enum": [
+                        "string",
+                        "int",
+                        "float",
+                        "bool",
+                        "timestamp",
+                        "date"
+                    ]
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "value",
+                            "label"
+                        ],
+                        "properties": {
+                            "value": {
+                                "type": [
+                                    "string",
+                                    "integer"
+                                ]
+                            },
+                            "label": {
+                                "type": "string"
+                            },
+                            "color": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "relation": {
+                    "type": "object",
+                    "required": [
+                        "kind",
+                        "resource"
+                    ],
+                    "properties": {
+                        "kind": {
+                            "enum": [
+                                "belongsTo",
+                                "hasOne",
+                                "hasMany",
+                                "manyToMany"
+                            ]
+                        },
+                        "resource": {
+                            "$ref": "#/$defs/slug"
+                        },
+                        "titleField": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "inverse": {
+                            "type": "string"
+                        },
+                        "dependsOn": {
+                            "description": "A dependent choice list: the options are the target records whose `on` equals this form's `field`.",
+                            "type": [
+                                "object",
+                                "null"
+                            ],
+                            "required": [
+                                "field",
+                                "on",
+                                "label"
+                            ],
+                            "properties": {
+                                "field": {
+                                    "type": "string"
+                                },
+                                "on": {
+                                    "type": "string"
+                                },
+                                "label": {
+                                    "type": "string"
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    }
+                },
+                "conditions": {
+                    "type": "object",
+                    "required": [
+                        "visible",
+                        "required",
+                        "disabled"
+                    ],
+                    "properties": {
+                        "visible": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/condition"
+                            }
+                        },
+                        "required": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/condition"
+                            }
+                        },
+                        "disabled": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/condition"
+                            }
+                        }
+                    }
+                }
+            },
+            "not": {
+                "anyOf": [
+                    {
+                        "required": [
+                            "column"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "enum"
+                        ]
+                    }
+                ]
+            }
+        },
+        "action": {
+            "type": "object",
+            "required": [
+                "name",
+                "label",
+                "destructive",
+                "standalone",
+                "queued",
+                "showOnIndex",
+                "showOnDetail",
+                "fields"
+            ],
+            "properties": {
+                "name": {
+                    "$ref": "#/$defs/slug"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "confirmation": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "destructive": {
+                    "type": "boolean"
+                },
+                "standalone": {
+                    "type": "boolean"
+                },
+                "queued": {
+                    "type": "boolean"
+                },
+                "chunkSize": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "showOnIndex": {
+                    "type": "boolean"
+                },
+                "showOnDetail": {
+                    "type": "boolean"
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/field"
+                    }
+                }
+            },
+            "not": {
+                "required": [
+                    "class"
+                ]
+            }
+        },
+        "widget": {
+            "type": "object",
+            "required": [
+                "name",
+                "label",
+                "type",
+                "ranges",
+                "width",
+                "cacheSeconds"
+            ],
+            "properties": {
+                "name": {
+                    "$ref": "#/$defs/slug"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "type": {
+                    "enum": [
+                        "stat",
+                        "trend",
+                        "partition",
+                        "progress",
+                        "table"
+                    ]
+                },
+                "icon": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "ranges": {
+                    "type": [
+                        "object",
+                        "array"
+                    ]
+                },
+                "width": {
+                    "enum": [
+                        3,
+                        4,
+                        6,
+                        12
+                    ]
+                },
+                "cacheSeconds": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            },
+            "not": {
+                "required": [
+                    "class"
+                ]
+            }
+        },
+        "resource": {
+            "type": "object",
+            "required": [
+                "slug",
+                "label",
+                "labelSingular",
+                "primaryKey",
+                "titleField",
+                "fields",
+                "table",
+                "show",
+                "creation",
+                "softDelete",
+                "actions",
+                "widgets",
+                "permissions"
+            ],
+            "properties": {
+                "slug": {
+                    "$ref": "#/$defs/slug"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "labelSingular": {
+                    "type": "string"
+                },
+                "group": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "icon": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "primaryKey": {
+                    "type": "object",
+                    "required": [
+                        "field",
+                        "type"
+                    ],
+                    "properties": {
+                        "field": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "enum": [
+                                "int",
+                                "string"
+                            ]
+                        }
+                    }
+                },
+                "titleField": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/field"
+                    }
+                },
+                "table": {
+                    "type": "object",
+                    "required": [
+                        "columns",
+                        "defaultSort",
+                        "perPage",
+                        "perPageOptions",
+                        "maxPerPage",
+                        "search",
+                        "groupable",
+                        "summaries",
+                        "exportLimit",
+                        "bulkLimit"
+                    ],
+                    "properties": {
+                        "columns": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "extra": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "defaultSort": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/sort"
+                            },
+                            "minItems": 1
+                        },
+                        "perPage": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "perPageOptions": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
+                        },
+                        "maxPerPage": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "search": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "groupable": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "summaries": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "exportLimit": {
+                            "type": "integer"
+                        },
+                        "exportQueueLimit": {
+                            "type": "integer"
+                        },
+                        "bulkLimit": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "show": {
+                    "type": "object",
+                    "required": [
+                        "fields"
+                    ],
+                    "properties": {
+                        "fields": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "creation": {
+                    "type": "object",
+                    "required": [
+                        "possible"
+                    ],
+                    "properties": {
+                        "possible": {
+                            "type": "boolean"
+                        },
+                        "reason": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        }
+                    }
+                },
+                "softDelete": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "properties": {
+                        "field": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "badge": {
+                    "description": "The count the menu shows beside the resource: its filter in the list grammar, a colour and what it counts.",
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "required": [
+                        "filter",
+                        "color",
+                        "label"
+                    ],
+                    "properties": {
+                        "filter": {
+                            "type": "object"
+                        },
+                        "color": {
+                            "type": "string"
+                        },
+                        "label": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "searchResult": {
+                    "description": "The fields a global search result shows besides its title.",
+                    "type": "object",
+                    "required": [
+                        "subtitle",
+                        "image"
+                    ],
+                    "properties": {
+                        "subtitle": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "image": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "actions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/action"
+                    }
+                },
+                "widgets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/widget"
+                    }
+                },
+                "permissions": {
+                    "type": "object",
+                    "required": [
+                        "viewAny",
+                        "create",
+                        "update",
+                        "delete",
+                        "export",
+                        "setDefaultView"
+                    ]
+                }
+            },
+            "not": {
+                "anyOf": [
+                    {
+                        "required": [
+                            "class"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "entity"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "columns"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "policy"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "entityProperties"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "searchColumns"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "summaryPlan"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "connection"
+                        ]
+                    }
+                ]
+            }
+        },
+        "condition": {
+            "type": "object",
+            "required": [
+                "field",
+                "op",
+                "value"
+            ],
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "op": {
+                    "enum": [
+                        "eq",
+                        "ne",
+                        "in",
+                        "nin",
+                        "null",
+                        "nnull"
+                    ]
+                },
+                "value": {}
+            }
+        }
+    }
+}

@@ -1,0 +1,137 @@
+# The demo stack: the Kinetis application in backend/, its Nuxt app in
+# frontend/, and the two packages they consume from ../packages. The
+# repository is mounted whole so Composer's path repository and pnpm's
+# workspace resolve inside the containers; each service works in its
+# own directory. The project name is fixed so the volumes stay the same
+# whatever directory this file lives in.
+name: vector
+
+x-php: &php
+  # One image for app and worker, so a rebuild can never leave one of
+  # them on the previous extensions.
+  image: vector-php
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  working_dir: /workspace/demo/backend
+  volumes:
+    - ..:/workspace
+    - vendor:/workspace/demo/backend/vendor
+    - storage:/var/lib/vector-storage
+  env_file: backend/.env
+  depends_on:
+    mysql:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  app:
+    <<: *php
+
+  # The application's queue worker: the same image and mounts as app,
+  # running `kinetis queue:work` instead of PHP-FPM. SIGTERM lets it
+  # finish the job in flight; the grace period must exceed the slowest job. It serves the application's jobs on
+  # "default" and Vector's on "vector" (VECTOR_QUEUE), in that priority.
+  worker:
+    <<: *php
+    command: ["php", "vendor/bin/kinetis", "queue:work", "--queue=default,vector"]
+    # A worker that fails at boot (a mapping error during development, a
+    # database not up yet) comes back instead of leaving jobs unrun.
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    stop_grace_period: 60s
+
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ..:/workspace
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8080:8080"
+    depends_on:
+      app:
+        condition: service_started
+
+  # The demo's PostgreSQL server, two databases: vector_admin holds
+  # Vector's own tables (the named connection "admin",
+  # VECTOR_DB_CONNECTION=admin), vector_support the support-desk domain
+  # (the named connection "support"). The shop domain stays on MySQL.
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_ADMIN_NAME:-vector_admin}
+      POSTGRES_USER: ${DB_ADMIN_USER:-vector}
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:-vector}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+      - ./docker/postgres:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_ADMIN_USER:-vector} -d ${DB_ADMIN_NAME:-vector_admin}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # The application's queue backend (the named queue connection "jobs":
+  # QUEUE_JOBS_CONNECTION=redis, REDIS_JOBS_HOST=redis). Append-only persistence,
+  # so queued jobs survive a restart of this container.
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-vector}
+      MYSQL_USER: ${DB_USER:-vector}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-vector}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-vector}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      - mysql:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${DB_PASSWORD:-vector}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  node:
+    image: node:22-alpine
+    working_dir: /workspace
+    command: sh -c "corepack enable && corepack prepare pnpm@10.17.1 --activate && pnpm install --frozen-lockfile=false && pnpm --filter frontend dev"
+    environment:
+      NUXT_PUBLIC_VECTOR_API_BASE: http://localhost:8080
+      NUXT_TELEMETRY_DISABLED: "1"
+      CI: "1"
+    volumes:
+      - ..:/workspace
+      - node_modules:/workspace/node_modules
+      - node_modules_ui:/workspace/packages/vector-ui/node_modules
+      - node_modules_admin:/workspace/demo/frontend/node_modules
+    ports:
+      - "3000:3000"
+
+volumes:
+  vendor:
+  storage:
+  mysql:
+  postgres:
+  redis:
+  node_modules:
+  node_modules_ui:
+  node_modules_admin:

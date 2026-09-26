@@ -1,0 +1,18 @@
+{
+    "mcpServers": {
+        "orbitron": {
+            "command": "./bin/orbitron-mcp",
+            "args": []
+        },
+        "nuxt": {
+            "command": "npx",
+            "args": ["-y", "mcp-remote", "https://nuxt.com/mcp"]
+        },
+        "vuetify": {
+            "httpUrl": "https://mcp.vuetifyjs.com/mcp"
+        },
+        "vue-docs": {
+            "httpUrl": "https://mcp.vue-mcp.org/mcp"
+        }
+    }
+}

@@ -1,0 +1,22 @@
+includes:
+    - vendor/kinetis/orm/extension.neon
+
+parameters:
+    level: 8
+    paths:
+        - src
+        - ../../packages/vector/src
+        - migrations
+        - bootstrap.php
+        - public/index.php
+        - tests
+
+services:
+    -
+        class: Kinetis\Linting\NoStaticPropertiesRule
+        tags:
+            - phpstan.rules.rule
+    -
+        class: Kinetis\Linting\NoBlockingIoRule
+        tags:
+            - phpstan.rules.rule

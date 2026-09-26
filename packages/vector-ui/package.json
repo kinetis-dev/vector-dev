@@ -1,0 +1,44 @@
+{
+    "name": "@kinetis/vector-ui",
+    "version": "0.1.0",
+    "description": "The Kinetis Vector admin UI, as a Nuxt layer on Vuetify.",
+    "license": "MIT",
+    "type": "module",
+    "main": "./nuxt.config.ts",
+    "files": [
+        "nuxt.config.ts",
+        "app",
+        "shared"
+    ],
+    "scripts": {
+        "postinstall": "nuxt prepare",
+        "typecheck": "nuxt prepare && vue-tsc --noEmit",
+        "test": "vitest run"
+    },
+    "dependencies": {
+        "@mdi/font": "^7.4.47",
+        "@pinia/nuxt": "^1.0.2",
+        "@vueuse/core": "^15.0.0",
+        "@vueuse/nuxt": "^15.0.0",
+        "pinia": "^4.0.3",
+        "vue-i18n": "^11.4.12"
+    },
+    "peerDependencies": {
+        "nuxt": "^4.5.0",
+        "vue": "^3.5.0",
+        "vuetify": "^4.2.0",
+        "vuetify-nuxt-module": "^1.0.0-rc.6"
+    },
+    "devDependencies": {
+        "@nuxt/test-utils": "^4.3.0",
+        "@types/node": "^22.0.0",
+        "nuxt": "^4.5.2",
+        "sass-embedded": "^1.90.0",
+        "typescript": "^5.8.0",
+        "vitest": "^4.0.2",
+        "vue": "^3.5.0",
+        "vue-tsc": "^3.0.0",
+        "vuetify": "^4.2.2",
+        "vuetify-nuxt-module": "^1.0.0-rc.6"
+    }
+}
