@@ -34,6 +34,7 @@ final readonly class WebLoginController
     public function __construct(
         private Session $session,
         private Credentials $credentials,
+        private LoginAttempts $attempts,
     ) {}
 
     #[Get('/login')]
@@ -49,10 +50,26 @@ final readonly class WebLoginController
     #[Post('/login')]
     public function attempt(#[Body] LoginRequest $data, ServerRequestInterface $request): ResponseInterface
     {
-        $user = $this->credentials->verify($data->email, $data->password);
+        $address = LoginController::address($request);
 
-        if ($user === null) {
-            return $this->page($request, 'Invalid credentials.');
+        try {
+            $wait = $this->attempts->lockedFor($data->email, $address);
+
+            if ($wait > 0) {
+                return $this->page($request, sprintf('Too many failed sign-ins. Try again in %d minutes.', (int) ceil($wait / 60)), 429, ['Retry-After' => (string) $wait]);
+            }
+
+            $user = $this->credentials->verify($data->email, $data->password);
+
+            if ($user === null) {
+                $this->attempts->failed($data->email, $address);
+
+                return $this->page($request, 'Invalid credentials.');
+            }
+
+            $this->attempts->succeeded($data->email, $address);
+        } catch (LoginUnavailableException $e) {
+            return $this->page($request, $e->getMessage(), 503);
         }
 
         $this->session->regenerate();
@@ -71,7 +88,8 @@ final readonly class WebLoginController
         return RedirectResponse::to('/login', 303);
     }
 
-    private function page(ServerRequestInterface $request, ?string $error): ResponseInterface
+    /** @param array<string, string> $headers */
+    private function page(ServerRequestInterface $request, ?string $error, int $status = 401, array $headers = []): ResponseInterface
     {
         $nonce = $request->getAttribute(SecurityHeadersMiddleware::NONCE_ATTRIBUTE);
         $nonceAttribute = is_string($nonce) ? ' nonce="' . htmlspecialchars($nonce, ENT_QUOTES, 'UTF-8') . '"' : '';
@@ -108,6 +126,6 @@ final readonly class WebLoginController
                 </form>
             </body>
             </html>
-            HTML, $error === null ? 200 : 401, ['Cache-Control' => 'no-store']);
+            HTML, $error === null ? 200 : $status, ['Cache-Control' => 'no-store', ...$headers]);
     }
 }

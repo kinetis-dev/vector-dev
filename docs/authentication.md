@@ -33,14 +33,44 @@ The standalone UI signs in with `POST {apiBase}/auth/login`, sending
 `{"email", "password"}`, and expects:
 
 ```json
-{ "accessToken": "…", "tokenType": "Bearer", "expiresIn": 3600,
+{ "accessToken": "…", "tokenType": "Bearer", "expiresIn": 900,
+  "refreshToken": "…", "refreshExpiresIn": 43200,
   "user": { "id": 1, "name": "Vector Admin", "email": "admin@example.com" } }
 ```
 
-It then sends `Authorization: Bearer <token>` on every request, keeps
-the token for the browser tab only (never in `localStorage`), and signs
-out when it expires or the API answers `401`. `kinetis/auth-jwt` issues
-and verifies such tokens.
+It then sends `Authorization: Bearer <token>` on every request and keeps
+the tokens for the browser tab only (never in `localStorage`).
+
+`refreshToken` is optional. When your login answers one, the UI renews
+the session itself: with under two minutes left on the access token, and
+once more when the API answers `401`, it calls `POST {apiBase}/auth/refresh`
+with `{"refreshToken"}` and expects the same answer as the login; **Sign
+out** calls `POST {apiBase}/auth/logout` with `{"refreshToken"}` to revoke
+it. When the renewal is refused, or there is no refresh token, the UI
+signs out when the access token expires. An impersonation token is never
+renewed. `kinetis/auth-jwt` issues and verifies access tokens, and its
+`RefreshTokenStore` keeps single-use refresh tokens in a Redis cache.
+
+## Protecting the sign-in
+
+Throttling failed sign-ins is your application's job — Vector never sees
+a password. The demo shows the shape with the framework's
+`AttemptThrottle` on a Redis cache: five failures in fifteen minutes lock
+one e-mail from one client address, twenty lock the address, a success
+clears both, and a locked attempt answers `429` with `Retry-After` (the
+HTML form shows a message).
+
+```{warning}
+Never lock an account by its e-mail alone: anyone who knows the address
+could then keep its owner out by typing wrong passwords. Count failures
+per e-mail *and* client address, so an attacker locks only themselves,
+plus per address, so one address cannot work through many accounts.
+```
+
+The demo's access tokens last fifteen minutes and its refresh tokens
+twelve hours, reloading the user at each renewal so a changed role
+applies. Without a cache it refuses to sign anyone in (`503`) rather than
+run unthrottled.
 
 The UI lives on another origin, so register `CorsMiddleware` for it,
 allowing the `Authorization`, `Content-Type`, `X-CSRF-Token` and

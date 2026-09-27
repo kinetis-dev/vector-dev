@@ -52,7 +52,7 @@ async function submit(event: SubmitEventPromise) {
         try {
             await useVectorSchema().load(true)
         } catch (refused) {
-            auth.clear()
+            await auth.logout()
             throw refused
         }
 

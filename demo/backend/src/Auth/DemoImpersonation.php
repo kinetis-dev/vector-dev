@@ -20,7 +20,8 @@ use Kinetis\Vector\Exception\ForbiddenOperationException;
  */
 final readonly class DemoImpersonation implements ImpersonationInterface
 {
-    private const int TTL = 3600;
+    // as short as a signed-in session's access token, and never renewed: impersonation has no refresh token
+    private const int TTL = LoginController::ACCESS_TTL_SECONDS;
 
     public function __construct(
         private JwtIssuer $issuer,

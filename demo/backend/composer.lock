@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9bf816b7ba6a2166891ed9e22303ce21",
+    "content-hash": "831386acfdc8b7fb2196d7a811d834a1",
     "packages": [
         {
             "name": "amphp/amp",
@@ -1332,6 +1332,60 @@
             "time": "2026-09-24T20:24:37+00:00"
         },
         {
+            "name": "kinetis/cache-redis",
+            "version": "v1.3.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/kinetis-dev/cache-redis.git",
+                "reference": "ff8fa715e284d1258c578e7de6593a5d8a3ca1cd"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/kinetis-dev/cache-redis/zipball/ff8fa715e284d1258c578e7de6593a5d8a3ca1cd",
+                "reference": "ff8fa715e284d1258c578e7de6593a5d8a3ca1cd",
+                "shasum": ""
+            },
+            "require": {
+                "amphp/amp": "^3.1.3",
+                "amphp/redis": "^2.0.4",
+                "amphp/serialization": "^1.1.0",
+                "amphp/socket": "^2.4.0",
+                "kinetis/framework": "^1.16.0",
+                "kinetis/redis": "^1.0.1",
+                "php": "^8.4"
+            },
+            "require-dev": {
+                "infection/infection": "^0.35.0",
+                "phpstan/phpstan": "^2.2.8",
+                "phpunit/phpunit": "^13.3.3",
+                "vimeo/psalm": "^6.17"
+            },
+            "type": "library",
+            "extra": {
+                "kinetis": []
+            },
+            "autoload": {
+                "psr-4": {
+                    "Kinetis\\SimpleCache\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Alon Noy"
+                }
+            ],
+            "description": "PSR-16 SimpleCache for Kinetis, backed by Redis (single-node or Cluster) over kinetis/redis — non-blocking, Revolt-native, with TLS support.",
+            "support": {
+                "issues": "https://github.com/kinetis-dev/cache-redis/issues",
+                "source": "https://github.com/kinetis-dev/cache-redis/tree/v1.3.0"
+            },
+            "time": "2026-09-23T09:16:03+00:00"
+        },
+        {
             "name": "kinetis/database-bridge",
             "version": "v1.4.0",
             "source": {
@@ -2129,7 +2183,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector",
-                "reference": "9656dfb0db0888254b73958c2311b6342dce30be"
+                "reference": "cc5278bad7e7f64a6e4889a96c451357cf447439"
             },
             "require": {
                 "kinetis/authorization": "^1.0.4",
@@ -2149,7 +2203,8 @@
             },
             "suggest": {
                 "kinetis/storage": "Uploads for file and image fields (FILESYSTEM_DRIVER, or VECTOR_STORAGE_CONNECTION)",
-                "league/flysystem": "The filesystem contract those uploads are written through; kinetis/storage brings it"
+                "league/flysystem": "The filesystem contract those uploads are written through; kinetis/storage brings it",
+                "openspout/openspout": "XLSX exports (MIT; needs ext-zip), written in the queue worker"
             },
             "type": "library",
             "extra": {

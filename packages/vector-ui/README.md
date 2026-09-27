@@ -197,9 +197,14 @@ injects. Present, the layer is in **cookie mode**: same-origin API,
 `credentials: same-origin`, `X-CSRF-Token` on every unsafe method, a
 401 sends the browser to the application's login URL. Absent, the layer
 is in **bearer mode**: `POST /auth/login` on `apiBase`, the token in
-memory (mirrored to `sessionStorage` for reloads), a 401 goes to
-`/login`. Impersonation swaps the token in bearer mode and reloads in
-cookie mode.
+memory (mirrored to `sessionStorage` for reloads). When the login answers
+a `refreshToken`, the store renews both tokens through
+`POST /auth/refresh` — once at a time, when the access token has under
+two minutes left and once on a 401, after which the request is repeated —
+and signs out when the renewal is refused; logout revokes it with
+`POST /auth/logout`. Without one, the session ends with its token and a
+401 goes to `/login`. Impersonation swaps the token in bearer mode (and
+is never renewed) and reloads in cookie mode.
 
 ## Testing
 

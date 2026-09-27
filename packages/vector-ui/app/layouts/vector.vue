@@ -92,7 +92,7 @@ async function logout() {
         return
     }
 
-    auth.clear()
+    await auth.logout() // revokes the refresh token where the application issued one
     clear()
     useVectorPreferences().clear()
     await navigateTo(`${appConfig.vector.basePath || ''}/login`)

@@ -489,11 +489,34 @@ is `403`.
 
 Two authentication modes reach the same routes. **Bearer mode** sends
 `Authorization: Bearer <jwt>` from `/auth/login` — what the standalone UI
-on `localhost:3000` does. **Cookie mode** rides the session the
+on `localhost:3000` does, renewing it through `/auth/refresh`. **Cookie mode** rides the session the
 application's `/login` page opened and must send the `X-CSRF-Token` the
 shell handed out on every unsafe method — what the hosted UI does. The
 demo's `App\Auth\VectorAuthMiddleware` accepts either and sits in the
 `vector` and `vector-shell` groups after `VectorSessionMiddleware`.
+
+Signing in — and protecting it — is the application's responsibility;
+Vector never sees a password. The demo is the worked example, on the
+application cache (`kinetis/cache-redis`, `REDIS_HOST` in `.env`, a
+database of its own on the stack's Redis):
+
+| Demo route | What it does |
+|---|---|
+| `POST /auth/login` | `{email, password}` → a 15-minute `accessToken` and a single-use `refreshToken` (12 hours), with `expiresIn`, `refreshExpiresIn` and `user`. |
+| `POST /auth/refresh` | `{refreshToken}` → a new pair in the same shape; the redeemed token is refused from then on, and the user is reloaded so a changed role applies. |
+| `POST /auth/logout` | `{refreshToken}` → `204`; the refresh token is revoked. |
+| `POST /login` | The hosted sign-in form, throttled the same way. |
+
+Failed attempts go through the framework's `AttemptThrottle`, counted
+per e-mail *from one client address* and per address — never per e-mail
+alone, which would let anyone lock a victim out by typing their address.
+Five failures in fifteen minutes lock that e-mail from that address (the
+owner still signs in from their own), twenty lock the address, a success
+clears both, and a locked attempt answers `429` with `Retry-After` (a
+message on the form). Without a configured cache both
+sign-ins answer `503` rather than run unthrottled; the rest of the
+application still works. Impersonation issues 15-minute access tokens and
+no refresh token.
 
 A resource is a class extending `Kinetis\Vector\VectorResource` carrying
 `#[Resource(entity: ...)]`; an empty class derives every field from the
@@ -574,7 +597,7 @@ packages/vector-ui/       @kinetis/vector-ui (Nuxt layer); its Vitest suite in t
 demo/docker-compose.yml   the stack: app, worker, nginx, mysql, postgres, redis, node (and e2e, run on demand)
 demo/docker/              the PHP image, nginx and php.ini
 demo/backend/             the demo Kinetis application, with kinetis/vector installed from ../../packages/vector
-  src/Auth/               JWT login (/auth/login, /auth/me), session login (/login, /logout), the vector and mcp group middleware, impersonation
+  src/Auth/               JWT login (/auth/login, /auth/refresh, /auth/logout, /auth/me), session login (/login, /logout), login throttling, the vector and mcp group middleware, impersonation
   src/Console/            demo:seed
   src/Domain/             the shop's entities and enums, on MySQL (kinetis/orm)
   src/Domain/Support/     the support desk's entities and enums, on PostgreSQL
