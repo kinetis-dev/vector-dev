@@ -108,7 +108,7 @@ async function allRelatedIds(id: string | number, field: VectorField): Promise<u
     }
 }
 
-const wide = (field: VectorField) => ['markdown', 'text', 'json', 'keyValue'].includes(field.type) || !!field.repeater
+const wide = (field: VectorField) => ['markdown', 'richtext', 'text', 'json', 'keyValue'].includes(field.type) || !!field.repeater
 
 /** Fields the browser's own rules refused on the last submit, by the input id each carries. */
 const clientErrors = ref<string[]>([])
@@ -206,6 +206,8 @@ const states = computed<Record<string, VectorFieldState>>(() => {
 })
 const shownFields = computed(() => fields.value.filter(f => states.value[f.name]?.visible !== false && !(props.preset && f.name in props.preset)))
 const fieldsByName = computed(() => new Map(fields.value.map(f => [f.name, f])))
+// what an input sees of the record: the values being edited, and the stored record's id (a rich-text image loads through it)
+const inputRecord = computed(() => ({ ...values, id: props.record?.id }))
 const shownNames = computed(() => new Set(shownFields.value.map(f => f.name)))
 
 // The declared layout, or every field in order; either way VxLayout draws it.
@@ -238,7 +240,7 @@ const errorNames = computed(() => [...new Set([
                             :disabled="states[name]?.disabled === true"
                             :rules="rulesFor(fieldsByName.get(name)!, operation, states[name])"
                             :error-messages="serverErrors[name] ?? []"
-                            :record="values"
+                            :record="inputRecord"
                             :resource="resource.slug"
                             v-bind="fieldsByName.get(name)!.repeater ? { serverErrors } : {}"
                             @update:model-value="clearServerError(name)"

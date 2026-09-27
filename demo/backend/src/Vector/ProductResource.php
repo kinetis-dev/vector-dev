@@ -24,7 +24,7 @@ use Kinetis\Vector\Fields\KeyValue;
 use Kinetis\Vector\Fields\Layout\Section;
 use Kinetis\Vector\Fields\Layout\Tabs;
 use Kinetis\Vector\Fields\ManyToMany;
-use Kinetis\Vector\Fields\Markdown;
+use Kinetis\Vector\Fields\RichText;
 use Kinetis\Vector\Fields\Money;
 use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\Fields\Slug;
@@ -65,7 +65,8 @@ final class ProductResource extends VectorResource
             Number::make('weightKg', 'Weight (kg)')->decimals(3)->hideFromIndex(),
             Boolean::make('isFeatured', 'Featured')->sortable()->filterable()->inlineEditable()
                 ->disabledWhen('status', 'eq', 'archived'),
-            Markdown::make('description')->hideFromIndex()->columnSpan('full'),
+            // a structured document: headings, lists, links, tables, and images uploaded through the image field
+            RichText::make('description')->imageField('imageKey')->hideFromIndex()->columnSpan('full'),
             KeyValue::make('attributes')->columns('Attribute', 'Value')->hideFromIndex()->columnSpan('full'),
             Image::make('imageKey', 'Image')->hideFromIndex(),
             ManyToMany::to('tags', TagResource::class),

@@ -474,7 +474,7 @@ is `403`.
 | `GET/PUT /vector/preferences` | Per-user UI preferences as JSON values by key (`columns.<resource>`, …); `PUT` merges, a `null` removes. |
 | `GET /vector/settings`, `GET/PUT /vector/settings/{group}` | Typed settings groups (`#[Settings]` classes extending `SettingsGroup`) with their values; `PUT` validates the body like a form and replaces the group's values. `branding` ships with Vector and is published with the descriptor. |
 | `POST /vector/r/{resource}/fields/{field}/upload` | Stores one file (multipart `file`) for a file or image field after detecting its format from the bytes; answers `{key, name, size, type}`, the key being the value to write. |
-| `GET /vector/r/{resource}/{id}/files/{field}` | The record's stored file: an image inline, anything else as an attachment. |
+| `GET /vector/r/{resource}/{id}/files/{field}` | The record's stored file: an image inline, anything else as an attachment. `?key=` serves an image one of the record's rich-text documents shows from that field's uploads. |
 | `GET /vector/r/{resource}/{id}/audit` | The record's audit trail: every event with the field-level changes the writer observed, the actor and, when impersonating, the impersonator. |
 | `POST /vector/r/{resource}/{id}/audit/{entry}/revert` | Puts back the `from` values of one `update` or `revert` entry, for the fields this user may see and edit, through the update path; audited as `revert`. `409` when one of those fields changed since. |
 | `GET /vector/r/{resource}/widgets/{widget}?range=` | A resource widget's data. |
@@ -537,6 +537,14 @@ the products' stock column with `->component('stock-level')`, and
 demo endpoint `GET /vector-demo/stock-overview`
 (`demo/backend/src/Http/StockOverviewController.php`, in the `vector`
 middleware group).
+
+The product description is a rich-text document (headings, lists, links,
+tables, images) and a ticket's body a rich-text field that stores HTML;
+ticket replies are Markdown. The shop's own product page,
+`GET /shop/products/{id}` (`demo/backend/src/Http/ProductPageController.php`,
+public, not part of the admin), renders the description through
+`Kinetis\Vector\RichText\Document::toHtml()`, and `demo:seed` writes
+the descriptions as documents.
 
 The demo sends one `Content-Security-Policy` for the whole application:
 the framework's `SECURITY_CSP`, `{nonce}` replaced per request. The

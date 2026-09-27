@@ -204,9 +204,12 @@ final readonly class ResourceController
 
     /** One record's stored file: an image inline, anything else as a download. */
     #[Get('/{resource}/{id}/files/{field}')]
-    public function file(string $resource, string $id, string $field): ResponseInterface
+    public function file(string $resource, string $id, string $field, ServerRequestInterface $request): ResponseInterface
     {
-        return $this->files->download($this->service->resource($resource), $id, $field);
+        // ?key= serves an image a rich-text document of the record shows from this field's uploads
+        $key = $request->getQueryParams()['key'] ?? null;
+
+        return $this->files->download($this->service->resource($resource), $id, $field, is_string($key) && $key !== '' ? $key : null);
     }
 
     /**

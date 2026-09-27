@@ -109,6 +109,27 @@ Vector's own routes. `window.Vector` also hands extensions `api`,
 `notify`, `navigate`, `t` (the admin's translator) and
 `defineMessages()`.
 
+## Rich text and Markdown
+
+`RichText` fields edit in a Tiptap editor (`@tiptap/*`, MIT) over exactly
+the field's `features`, with a toolbar built from them; the value is the
+document as JSON text. Images upload through the field's image field;
+`@` mentions search its `mentions` relation. `Markdown` fields edit the
+same way through `@tiptap/markdown`, with a source view.
+
+On the record page a value is shown as HTML — the layer's only `v-html`,
+in `Vx/Cell/RichText.vue` and `Vx/Cell/Markdown.vue` — and only after it
+was generated from the document through the schema (or rendered by
+markdown-it with HTML off) and passed through **DOMPurify** with an
+allow-list matching the schema. DOMPurify is dual-licensed MPL-2.0 OR
+Apache-2.0; the layer uses it **under Apache-2.0**. If the sanitizer
+fails its canary check in some environment, values show as text instead.
+
+A runtime extension adds a node or mark type with
+`window.Vector.defineRichTextExtension(name, extension)`, built from
+`window.Vector.tiptap` (`Node`, `Mark`, `Extension`, `mergeAttributes`);
+the server must register the same name (`Document::extend()`).
+
 ## Theming
 
 Vuetify `defaults` and the two themes are set in the layer's

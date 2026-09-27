@@ -191,7 +191,8 @@
                         "hasOne",
                         "hasMany",
                         "manyToMany",
-                        "computed"
+                        "computed",
+                        "richtext"
                     ]
                 },
                 "label": {
@@ -452,6 +453,72 @@
                             "type": "array",
                             "items": {
                                 "type": "string"
+                            }
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "richtext": {
+                    "description": "A rich-text field: the editor's JSON document, validated against this schema on write. `features` is the allow-list of node and mark types; images come from `imageField`'s uploads and are stored as storage keys; mentions from the `mentions` relation. `storesHtml` means the stored value (as read) is HTML rendered through the same schema.",
+                    "type": "object",
+                    "required": [
+                        "features",
+                        "imageField",
+                        "mentions",
+                        "storesHtml",
+                        "maxBytes"
+                    ],
+                    "properties": {
+                        "features": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "imageField": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "mentions": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "storesHtml": {
+                            "type": "boolean"
+                        },
+                        "maxBytes": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "markdown": {
+                    "description": "A Markdown field's editor toolbar. The stored value is Markdown source.",
+                    "type": "object",
+                    "required": [
+                        "toolbar"
+                    ],
+                    "properties": {
+                        "toolbar": {
+                            "type": "array",
+                            "items": {
+                                "enum": [
+                                    "bold",
+                                    "italic",
+                                    "strike",
+                                    "code",
+                                    "heading",
+                                    "list",
+                                    "blockquote",
+                                    "codeBlock",
+                                    "horizontalRule",
+                                    "link"
+                                ]
                             }
                         }
                     },

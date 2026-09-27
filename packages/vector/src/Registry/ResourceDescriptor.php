@@ -457,6 +457,10 @@ final readonly class ResourceDescriptor
             unset($field['computed']['method']);
         }
 
+        if (isset($field['richtext'])) {
+            unset($field['richtext']['textField'], $field['textColumn'], $field['searchColumn']);
+        }
+
         if (isset($field['relation'])) {
             unset($field['relation']['targetTable'], $field['relation']['targetKey'], $field['relation']['foreignKey'], $field['relation']['joinTable'], $field['relation']['joinColumn'], $field['relation']['inverseJoinColumn']);
 

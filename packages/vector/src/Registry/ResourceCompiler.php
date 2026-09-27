@@ -62,6 +62,8 @@ final class ResourceCompiler
         'enum' => ['eq', 'ne', 'in', 'nin'],
         'belongsTo' => ['eq', 'ne', 'in', 'nin'],
         'id' => ['eq', 'ne', 'lt', 'lte', 'gt', 'gte', 'between', 'in', 'nin'],
+        // a rich-text document is filtered by presence only (null/nnull on a nullable column)
+        'presence' => [],
     ];
 
     /** The field types a list cell may edit in place. */
@@ -83,6 +85,7 @@ final class ResourceCompiler
             'date', 'datetime' => 'datetime',
             'enum', 'currency' => 'enum',
             'belongsTo' => 'belongsTo',
+            'richtext' => 'presence',
             'hasOne', 'hasMany', 'manyToMany' => null,
             default => 'string',
         };
@@ -590,6 +593,10 @@ final class ResourceCompiler
                 }
             }
 
+            if ($field['type'] === 'richtext') {
+                $compiledFields[$name] = self::compileRichText($class, $field, $compiledFields, $properties);
+            }
+
             if ($field['type'] === 'keyValue') {
                 if (($field['valueType'] ?? null) !== 'string') {
                     throw ResourceCompileException::field($class, $name, 'is a key-value field, which stores its JSON in a string property');
@@ -656,7 +663,8 @@ final class ResourceCompiler
 
         foreach ($compiledFields as $name => $field) {
             if ($field['searchable'] === true && isset($field['column'])) {
-                $searchColumns[$name] = $field['column'];
+                // a rich-text field is searched through its plain-text column
+                $searchColumns[$name] = $field['searchColumn'] ?? $field['column'];
             }
         }
 
@@ -916,6 +924,54 @@ final class ResourceCompiler
     }
 
     /**
+     * A rich-text field: a string property holding the document; images
+     * from a file or image field of the resource, mentions from one of its
+     * relations; searchable only through a plain-text property it fills.
+     *
+     * @param array<string, mixed> $field
+     * @param array<string, array<string, mixed>> $fields
+     * @param array<string, PropertyMapping> $properties
+     * @return array<string, mixed>
+     */
+    private static function compileRichText(string $class, array $field, array $fields, array $properties): array
+    {
+        $name = $field['name'];
+        $rich = $field['richtext'];
+
+        if (($field['valueType'] ?? null) !== 'string') {
+            throw ResourceCompileException::field($class, $name, 'is a rich-text field, which stores its document in a string property');
+        }
+
+        if ($field['sortable'] || $field['summary'] !== null) {
+            throw ResourceCompileException::field($class, $name, 'is a rich-text field, which cannot be sorted or summarized');
+        }
+
+        if (in_array('image', $rich['features'], true) && ($rich['imageField'] === null || !in_array($fields[$rich['imageField']]['type'] ?? null, ['file', 'image'], true))) {
+            throw ResourceCompileException::field($class, $name, 'allows images, which need imageField() naming a file or image field of the resource');
+        }
+
+        if (in_array('mention', $rich['features'], true) && ($rich['mentions'] === null || !in_array($fields[$rich['mentions']]['type'] ?? null, ['belongsTo', 'manyToMany'], true))) {
+            throw ResourceCompileException::field($class, $name, 'allows mentions, which need mentions() naming a belongsTo or manyToMany field of the resource');
+        }
+
+        if ($rich['textField'] !== null) {
+            $text = $properties[$rich['textField']] ?? null;
+
+            if ($text === null || $text['type'] !== 'string' || $text['target'] !== null) {
+                throw ResourceCompileException::field($class, $name, "names textField \"{$rich['textField']}\", which is not a string property of the entity");
+            }
+
+            $field['textColumn'] = $text['column'];
+        }
+
+        if ($field['searchable'] === true) {
+            $field['searchColumn'] = $field['textColumn'] ?? throw ResourceCompileException::field($class, $name, 'is a rich-text field; searching it needs textField() naming a string property the writer fills with its plain text');
+        }
+
+        return $field;
+    }
+
+    /**
      * @param array<string, PropertyMapping> $properties
      * @param array<string, array<string, mixed>> $inverses
      * @param array<string, array<string, mixed>> $joins
@@ -1099,7 +1155,7 @@ final class ResourceCompiler
     private function firstStringField(array $fields): ?string
     {
         foreach ($fields as $name => $field) {
-            if (($field['valueType'] ?? null) === 'string' && ($field['enum'] ?? null) === null && !in_array($field['type'], ['password', 'json', 'keyValue', 'file', 'image', 'color'], true)) {
+            if (($field['valueType'] ?? null) === 'string' && ($field['enum'] ?? null) === null && !in_array($field['type'], ['password', 'json', 'keyValue', 'file', 'image', 'color', 'richtext', 'markdown', 'text'], true)) {
                 return $name;
             }
         }

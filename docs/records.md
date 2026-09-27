@@ -27,6 +27,10 @@ one input per field you may write.
   order's lines: add, change or remove them, and they save with the
   record.
 - **Files and images** upload as soon as you pick them.
+- **Formatted text** — a rich-text field has a toolbar: bold, headings,
+  lists, links, tables and, where allowed, images and `@` mentions. A
+  Markdown field adds **Source** to edit the text itself. Pasted content
+  keeps only the formatting the field allows.
 
 Editing sends only what you changed. If someone saved the record after
 you opened it, your save is refused rather than overwriting their

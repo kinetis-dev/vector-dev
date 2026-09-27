@@ -36,6 +36,9 @@ JSON scalars; ISO 8601 UTC strings for dates (`YYYY-MM-DD` for a date
 field); integers for money in its currency's minor units (ISO 4217: hundredths, except the codes the schema lists in `minorUnits`, such as `JPY: 0`, `BHD: 3`); ids as the entity types them;
 a `belongsTo` as `{id, label}` (or null), plus the related currency when a money field is priced in it (`currencyField('order.currency')`), a `hasOne` the same, a
 `hasMany`/`manyToMany` as `{count}` on a record and as ids on a write;
+a `richtext` field's value as the editor's JSON document in a string
+(or, where the field `storesHtml`, the stored HTML; a write always sends
+the document), a `markdown` field's as its source;
 a `computed` field's value typed by its `computed.as` (money as
 minor units, a date as `YYYY-MM-DD`, an instant as ISO 8601 UTC), always
 with the fields it is computed from;

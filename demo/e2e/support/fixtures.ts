@@ -59,6 +59,18 @@ export class Api {
         if (Object.keys(saved).length > 0) await this.preferences(Object.fromEntries(Object.keys(saved).map(key => [key, null])))
     }
 
+    async show(resource: string, id: unknown): Promise<Record<string, unknown>> {
+        const response = await this.request.get(`${API}/vector/r/${resource}/${id}`, { headers: this.headers })
+        expect(response.ok(), await response.text()).toBeTruthy()
+        return (await response.json()).data
+    }
+
+    async update(resource: string, id: unknown, values: Record<string, unknown>): Promise<Record<string, unknown>> {
+        const response = await this.request.patch(`${API}/vector/r/${resource}/${id}`, { headers: this.headers, data: values })
+        expect(response.ok(), await response.text()).toBeTruthy()
+        return (await response.json()).data
+    }
+
     async remove(resource: string, id: unknown): Promise<void> {
         const response = await this.request.delete(`${API}/vector/r/${resource}/${id}`, { headers: this.headers })
         expect([204, 200, 404]).toContain(response.status())

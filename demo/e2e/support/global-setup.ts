@@ -57,6 +57,11 @@ async function warmUp() {
         await page.goto('r/products')
         await page.getByRole('heading', { name: 'Products', level: 1 }).waitFor({ timeout: 180_000 })
         await page.getByText('SKU-', { exact: false }).first().waitFor({ timeout: 180_000 })
+        // a record page and an edit form: the cells, inputs and the rich-text editor compile on first use
+        await page.goto('r/products/1')
+        await page.locator('.vx-richtext-view').waitFor({ timeout: 180_000 })
+        await page.goto('r/products/1/edit')
+        await page.getByRole('button', { name: 'Save' }).waitFor({ timeout: 180_000 })
     } finally {
         await browser.close()
     }

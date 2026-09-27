@@ -7,7 +7,22 @@ export type VectorFieldType =
     | 'id' | 'string' | 'text' | 'markdown' | 'number' | 'money' | 'boolean'
     | 'enum' | 'date' | 'datetime' | 'email' | 'url' | 'password' | 'slug'
     | 'color' | 'json' | 'keyValue' | 'currency' | 'file' | 'image'
-    | 'belongsTo' | 'hasOne' | 'hasMany' | 'manyToMany' | 'computed'
+    | 'belongsTo' | 'hasOne' | 'hasMany' | 'manyToMany' | 'computed' | 'richtext'
+
+/** A rich-text feature: a node or mark type the field's schema allows (or one a runtime extension added). */
+export type VectorRichTextFeature = 'bold' | 'italic' | 'underline' | 'strike' | 'code' | 'heading' | 'list' | 'blockquote' | 'codeBlock' | 'horizontalRule' | 'link' | 'table' | 'image' | 'mention' | (string & {})
+
+/** A rich-text field's schema and sources. */
+export interface VectorRichText {
+    features: VectorRichTextFeature[]
+    /** The file or image field whose uploads images come from. */
+    imageField: string | null
+    /** The relation whose records `@` mentions. */
+    mentions: string | null
+    /** The stored value is HTML rendered through the schema, not the document. */
+    storesHtml: boolean
+    maxBytes: number
+}
 
 /** What a computed field is shown as. */
 export type VectorComputedAs = 'text' | 'number' | 'money' | 'boolean' | 'date' | 'datetime' | 'enum'
@@ -65,6 +80,10 @@ export interface VectorField {
     conditions?: VectorFieldConditions
     /** A computed field: shown as `as`, computed on the server from the `from` fields. */
     computed?: { as: VectorComputedAs, from: string[] }
+    /** A rich-text field's schema. */
+    richtext?: VectorRichText
+    /** A Markdown field's toolbar. */
+    markdown?: { toolbar: string[] }
 }
 
 /** One comparison against another field of the same form. */

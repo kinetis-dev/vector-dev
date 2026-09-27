@@ -11,7 +11,9 @@ from the name.
 |---|---|
 | `Id` | The identifier. Read-only, sortable, never on a form. |
 | `Text`, `Email`, `Url`, `Password`, `Slug`, `Color` | Strings. `Slug::from('name')` derives a slug. |
-| `Textarea`, `Markdown`, `Json` | Long text, edited in wide inputs. |
+| `Textarea`, `Json` | Long text, edited in wide inputs. |
+| `RichText` | Formatted content — headings, lists, links, tables, images — stored as a structured document; see below. |
+| `Markdown` | Markdown text for technical content, edited visually or as source; `toolbar([...])`. |
 | `Number` | Numbers; `decimals(n)`, `step()`. |
 | `Money` | An amount in the currency's minor units (cents, whole yen). The currency is fixed with `currency('EUR')`, read from the record with `currencyField('currency')`, or from a related record with `currencyField('order.currency')`. |
 | `Currency` | An ISO 4217 code, chosen from a searchable list; `allowed(['EUR', 'USD'])`. |
@@ -57,6 +59,36 @@ A filterable field offers the operators its value admits:
 
 A nullable column adds `null` and `nnull`. Collections are never
 filterable. The list grammar and "any of" groups are on {doc}`rest-api`.
+
+## Rich text
+
+`RichText` gives authors a word-processor-like editor and stores what
+they write as a **structured document**, not HTML. The server checks
+every save against the field's schema, so nothing unsafe can be stored:
+
+```php
+RichText::make('description')
+    ->features(['bold', 'italic', 'heading', 'list', 'link', 'table', 'image'])
+    ->imageField('imageKey')    // images upload through this field
+    ->mentions('assignee'),     // @ picks one of these records
+```
+
+- **Features** are what the editor offers and the server accepts:
+  `bold`, `italic`, `underline`, `strike`, `code`, `heading`, `list`,
+  `blockquote`, `codeBlock`, `horizontalRule`, `link`, `table`, `image`,
+  `mention` — all but images and mentions by default.
+- **Links** go only to web addresses, e-mail addresses or places in the
+  site.
+- **Images** are uploads, stored privately and shown only to people who
+  may see the record.
+- **Search** needs `textField('bodyText')`: a second text property Vector
+  fills with the plain text.
+- On your own pages, `Document::toHtml()` renders a value as safe HTML;
+  exports carry its plain text.
+- `storesHtml()` keeps an existing HTML column, at the cost of fidelity.
+
+`Markdown` remains for technical text: authors edit visually or switch
+to the source, and the page shows it formatted and sanitized.
 
 ## Computed fields
 

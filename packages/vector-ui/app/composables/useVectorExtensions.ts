@@ -1,4 +1,5 @@
 import type { Component } from 'vue'
+import type { AnyExtension } from '@tiptap/core'
 
 /** A custom page: a menu entry and a route, `/p/{name}`, rendering the component. */
 export interface VectorPageDefinition {
@@ -20,9 +21,11 @@ export function useVectorExtensions() {
     const inputs = useState<Map<string, Component>>('vector.ext.inputs', () => shallowReactive(new Map()))
     const widgets = useState<Map<string, Component>>('vector.ext.widgets', () => shallowReactive(new Map()))
     const pages = useState<Map<string, VectorPageDefinition>>('vector.ext.pages', () => shallowReactive(new Map()))
+    // rich-text node and mark types, by the feature name a field's `features` uses
+    const richText = useState<Map<string, AnyExtension>>('vector.ext.richText', () => shallowReactive(new Map()))
     const ready = useState<boolean>('vector.ext.ready', () => false)
 
-    return { cells: cells.value, inputs: inputs.value, widgets: widgets.value, pages: pages.value, ready }
+    return { cells: cells.value, inputs: inputs.value, widgets: widgets.value, pages: pages.value, richText: richText.value, ready }
 }
 
 /**

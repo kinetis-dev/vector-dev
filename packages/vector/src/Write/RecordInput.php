@@ -24,6 +24,7 @@ final readonly class RecordInput
         private \Kinetis\Vector\Files\FileService $files,
         private \Kinetis\Vector\Files\VectorStorage $storage,
         private \Kinetis\Vector\Query\ResourceService $service,
+        private \Kinetis\Vector\RichText\Document $document,
     ) {}
 
     /**
@@ -86,6 +87,12 @@ final readonly class RecordInput
             if (in_array($field['type'], ['file', 'image'], true) && is_string($raw) && $raw !== '' && $raw !== ($current[$name] ?? null)
                 && $this->storage->available() && !$this->files->issued($resource, $name, $raw)) {
                 $violations[] = new Violation([$name], 'invalid_file', 'is not a file uploaded for this field.');
+
+                continue;
+            }
+
+            if ($field['type'] === 'richtext') {
+                array_push($violations, ...$this->richText($resource, $field, $raw, $current, $values));
 
                 continue;
             }
@@ -192,6 +199,61 @@ final readonly class RecordInput
         }
 
         return is_int($value) || is_string($value) && $value !== '' ? $value : (is_bool($value) ? (int) $value : null);
+    }
+
+    /**
+     * A rich-text value: its JSON document checked against the field's
+     * schema, images only from keys issued for its image field (or
+     * already in the stored document), an empty document as no value.
+     * Stored as the document, or as HTML rendered through the schema when
+     * the field stores HTML; its plain text fills the text property.
+     *
+     * @param array<string, mixed> $field
+     * @param array<string, mixed> $current
+     * @param array<string, mixed> $values
+     * @param-out array<string, mixed> $values
+     * @return list<Violation>
+     */
+    private function richText(ResourceDescriptor $resource, array $field, mixed $raw, array $current, array &$values): array
+    {
+        $name = (string) $field['name'];
+        $rich = $field['richtext'];
+
+        if ($raw !== null && !is_string($raw)) {
+            return [new Violation([$name], 'invalid_document', 'must be the document as JSON text.')];
+        }
+
+        $raw = $raw === null || $raw === '' || $this->document->isEmpty($raw) ? null : $raw;
+
+        if ($raw !== null) {
+            $stored = $this->document->imageKeys(is_string($current[$name] ?? null) ? $current[$name] : null);
+            $imageField = $rich['imageField'];
+            $allowed = fn (string $key): bool => in_array($key, $stored, true)
+                || ($imageField !== null && ($this->storage->available()
+                    ? $this->files->issued($resource, $imageField, $key)
+                    : str_starts_with($key, "vector/{$resource->slug()}/{$imageField}/")));
+            $problems = $this->document->validate($raw, $rich['features'], $rich['maxBytes'], $allowed);
+
+            if ($problems !== []) {
+                return array_map(static fn (Violation $v): Violation => $v->under($name), $problems);
+            }
+        }
+
+        $violations = array_map(static fn (Violation $v): Violation => $v->under($name), $this->converter->violationsOfRules($field, $raw));
+
+        if ($violations !== []) {
+            return $violations;
+        }
+
+        $values[$name] = $raw === null ? null : ($rich['storesHtml'] ? $this->document->toHtml($raw, $rich['features']) : $raw);
+
+        $textField = $rich['textField'] ?? null;
+
+        if (is_string($textField)) {
+            $values[$textField] = $raw === null ? null : $this->document->toPlainText($raw);
+        }
+
+        return [];
     }
 
     /** @param array<string, mixed> $field */

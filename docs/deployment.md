@@ -55,6 +55,11 @@ nonce of each request:
 SECURITY_CSP="default-src 'self'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'nonce-{nonce}'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 ```
 
+The rich-text editor works under it too: its style element carries the
+nonce, and the admin shows images it fetches as `data:` URLs, which
+`img-src 'self' data:` admits (a `blob:` URL would need `blob:` in the
+policy).
+
 `VECTOR_SHELL_CSP` gives the shell a policy of its own instead, with the
 same `{nonce}` placeholder. `VECTOR_SHELL_HEAD` appends a raw fragment
 before `</head>` — the deployer's way, and the only way, to add script

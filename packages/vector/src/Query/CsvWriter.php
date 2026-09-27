@@ -30,8 +30,14 @@ final class CsvWriter
         fwrite($out, "\xEF\xBB\xBF");
         fputcsv($out, array_map(static fn (string $name): string => (string) ($resource->field($name)['label'] ?? $name), $fields), ',', '"', '\\', "\r\n");
 
+        // a rich-text value exports as its plain text, never its JSON or HTML
+        $document = new \Kinetis\Vector\RichText\Document();
+        $richText = array_filter($fields, static fn (string $name): bool => ($resource->field($name)['type'] ?? null) === 'richtext');
+
         foreach ($records as $record) {
-            fputcsv($out, array_map(static fn (string $name): string => self::cell($record[$name] ?? null), $fields), ',', '"', '\\', "\r\n");
+            fputcsv($out, array_map(static fn (string $name): string => self::cell(
+                in_array($name, $richText, true) && is_string($record[$name] ?? null) ? $document->toPlainText($record[$name]) : ($record[$name] ?? null),
+            ), $fields), ',', '"', '\\', "\r\n");
         }
 
         rewind($out);

@@ -191,7 +191,9 @@ identifier, a `softDeletes()` property that is not a nullable
 |---|---|---|
 | `Id` | `id` | Read-only, sortable, never on a form. |
 | `Text`, `Email`, `Url`, `Password`, `Slug`, `Color` | `string` … `color` | String columns; `searchable()` allowed. `Slug::from('name')`. |
-| `Textarea`, `Markdown`, `Json` | `text`, `markdown`, `json` | Wide inputs; JSON is a string column. |
+| `Textarea`, `Json` | `text`, `json` | Wide inputs; JSON is a string column. |
+| `RichText` | `richtext` | Long-form content edited in a word-processor-like editor and stored as its JSON document; see [Rich text](#rich-text). |
+| `Markdown` | `markdown` | Markdown source for technical content, edited WYSIWYG (with a source view) and shown rendered and sanitized; `toolbar([...])`. |
 | `Currency` | `currency` | An ISO 4217 code in a string column, chosen from a searchable list that names each code in the UI's language (`EUR · Euro`). The list holds every code, or `allowed(['EUR', 'USD'])`. Codes are stored upper-case, anything else is refused, and it filters like an enum. Its default is `default('EUR')`, else `VECTOR_CURRENCY`. |
 | `KeyValue` | `keyValue` | A JSON object of text values in a string column, edited as key/value rows. On the wire it is an object; a stored number or boolean reads back as text, and an empty object stores `null` where the column allows it. Keys are trimmed and at most 100 characters. `maxEntries(n)` (50 by default), `columns('Attribute', 'Value')`. A JSON column may reorder the keys. It cannot be sorted, filtered, searched or summarized. Imported as JSON text. |
 | `Number` | `number` | `decimals(n)`, `step()`; `summarize()`. |
@@ -357,6 +359,93 @@ that is not a field holding a value. Hiding one of its sources from a
 user (`viewField()`) hides the computed field too, so a derived value
 never shows what the user may not see. The descriptor publishes
 `computed: {as, from}`; the method's name stays on the server.
+
+### Rich text
+
+`RichText` is the long-form field: a Tiptap (ProseMirror) editor in the
+admin, **stored as the editor's JSON document** — a tree, not markup —
+in a string property on a `TEXT` or `JSON` column. The server validates
+every write against a fixed schema, so sanitizing becomes schema
+validation:
+
+- the value is valid JSON with a `{"type": "doc", "content": [...]}`
+  root;
+- every node and mark type is one of the field's `features()`, and every
+  attribute is one that type defines;
+- a link goes to `http(s):`, `mailto:` or a relative place;
+- the document is at most `maxBytes()` (256 KiB by default), 32 levels
+  deep and 20 000 nodes.
+
+A refusal is a 422 on the field, with the path into the document
+(`description/content/2/marks/0/attrs/href`). An empty document is no
+value, so `required()` works.
+
+```php
+RichText::make('description')
+    ->features(['bold', 'italic', 'heading', 'list', 'link', 'table'])  // default: all but image and mention
+    ->imageField('imageKey')        // images upload through this file/image field and store its key
+    ->mentions('assignee')          // @ offers the records of this relation
+    ->textField('descriptionText'), // search reads the plain text the writer fills here
+```
+
+The features are `bold`, `italic`, `underline`, `strike`, `code`,
+`heading`, `list`, `blockquote`, `codeBlock`, `horizontalRule`, `link`,
+`table`, `image` and `mention`. An image stores a **storage key, never a
+URL**: it must be a key the image field's upload endpoint issued (or one
+already in the stored document), and the admin fetches it with its
+credentials through `GET /vector/r/{resource}/{id}/files/{imageField}?key=…`,
+which serves only keys a document of that record shows. A rich-text
+field is never sorted or summarized, filtered only by `null`/`nnull`,
+and searched only through `textField()` — a second string property the
+writer fills with `Document::toPlainText()` on every write; the build
+refuses `searchable()` without one.
+
+**On the application's own pages** `Kinetis\Vector\RichText\Document`
+renders a stored value without knowing the editor:
+
+```php
+public function __construct(private Document $document) {}
+
+$html = $this->document->toHtml($product['description'], Document::DEFAULT_FEATURES,
+    static fn (string $key): ?string => "/media/{$key}");   // or null to leave an image out
+```
+
+`toHtml()` renders through [`ueberdosis/tiptap-php`](https://github.com/ueberdosis/tiptap-php)
+configured with exactly the given features (never its highlighting code
+blocks, which reach the filesystem or a process): what they do not cover
+is dropped, and text and attributes are escaped. `toPlainText()` is the
+projection CSV exports and search use. The demo's shop page,
+`GET /shop/products/{id}`, renders the product description this way.
+
+**An application node type** — a callout, an embed — is registered on
+both sides: `Document::extend(new NodeSpec('callout', ['tone'], renderer: CalloutNode::class))`
+on the server (bind the extended `Document` in `bootstrap.php`), and
+`window.Vector.defineRichTextExtension('callout', extension)` in the
+admin; a field then names `callout` in its features. The server accepts
+the node only once registered, so client and server agree on the schema.
+
+**HTML storage** is an opt-in for an existing HTML column,
+`RichText::make('body')->storesHtml()`: the admin still sends the
+document, and the server stores `toHtml()` of it; the admin reads the
+stored HTML back through the same schema, so anything outside it is
+dropped on the next save. Fidelity is only what HTML carries — prefer
+the document for new columns. The demo's ticket body is one.
+
+`Markdown` stays the field for technical text: the stored value is the
+Markdown source; the admin edits it WYSIWYG through `@tiptap/markdown`
+with a view of the source, and shows it through markdown-it (HTML in the
+source off, bare URLs linked) and the same sanitizer. The descriptor
+publishes `richtext: {features, imageField, mentions, storesHtml,
+maxBytes}` and `markdown: {toolbar}`.
+
+**In the browser** the admin renders HTML only from a document it
+generated itself through the field's schema, then DOMPurify with an
+allow-list matching it (no `style`, no event handlers, no `src`), and a
+sanitizer that fails its canary check is not trusted — values are then
+shown as text. Under the hosted shell's strict CSP the editor's own style
+element carries the response nonce, table resizing (which writes
+`style` attributes) is off, and images display as `data:` URLs: the
+editor and the record page run without a single violation.
 
 ### Filters
 

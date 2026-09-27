@@ -36,6 +36,7 @@ final readonly class FileService
         private ResourceService $reader,
         private Gate $gate,
         private CurrentUserInterface $user,
+        private \Kinetis\Vector\RichText\Document $document,
     ) {}
 
     /** @return array{key: string, name: string|null, size: int, type: string} */
@@ -71,12 +72,22 @@ final readonly class FileService
         return ['key' => $key, 'name' => $file->getClientFilename(), 'size' => strlen($contents), 'type' => $type];
     }
 
-    public function download(ResourceDescriptor $resource, string $id, string $fieldName): ResponseInterface
+    /**
+     * The record's file for $fieldName — or, with $key, an image one of the
+     * record's rich-text documents shows from that field's uploads.
+     */
+    public function download(ResourceDescriptor $resource, string $id, string $fieldName, ?string $key = null): ResponseInterface
     {
         $record = $this->reader->show($resource, $id); // exists and is viewable
         $this->uploadField($resource, $fieldName, forWrite: false);
-        $key = $record[$fieldName] ?? null;
         $filesystem = $this->storage->filesystem();
+
+        if ($key === null) {
+            $key = $record[$fieldName] ?? null;
+        } elseif (!$this->referenced($resource, $record, $fieldName, $key)) {
+            throw RecordNotFoundException::of("{$resource->slug()}.{$fieldName}", $id);
+        }
+
 
         if (!is_string($key) || $key === '' || !$filesystem->fileExists($key)) {
             throw RecordNotFoundException::of("{$resource->slug()}.{$fieldName}", $id);
@@ -96,6 +107,28 @@ final readonly class FileService
         }
 
         return FileResponse::fromContents($contents, $type, 200, basename($key), $headers);
+    }
+
+    /**
+     * Whether $key is an image a rich-text field of the record shows,
+     * uploaded through $fieldName.
+     *
+     * @param array<string, mixed> $record
+     */
+    private function referenced(ResourceDescriptor $resource, array $record, string $fieldName, string $key): bool
+    {
+        if (!str_starts_with($key, "vector/{$resource->slug()}/{$fieldName}/")) {
+            return false;
+        }
+
+        foreach ($resource->fields() as $name => $field) {
+            if (($field['richtext']['imageField'] ?? null) === $fieldName && is_string($record[$name] ?? null)
+                && in_array($key, $this->document->imageKeys($record[$name]), true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

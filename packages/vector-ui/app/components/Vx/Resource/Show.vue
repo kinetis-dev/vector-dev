@@ -8,7 +8,7 @@ const fields = computed<VectorField[]>(() => props.resource.show.fields
     .filter((f): f is VectorField => f !== undefined))
 const fieldsByName = computed(() => new Map(fields.value.map(f => [f.name, f])))
 
-const wide = (field: VectorField) => ['markdown', 'text', 'json'].includes(field.type)
+const wide = (field: VectorField) => ['markdown', 'richtext', 'text', 'json'].includes(field.type)
 
 // The declared layout, or every field in order; either way VxLayout draws it.
 const layout = computed<VectorLayoutNode[]>(() => props.resource.layout?.show

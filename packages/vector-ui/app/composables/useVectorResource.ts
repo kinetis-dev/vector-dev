@@ -128,9 +128,12 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
         return api<VectorUploaded>(`${base()}/fields/${encodeURIComponent(field)}/upload`, { method: 'POST', body })
     }
 
-    /** A record's stored file, fetched with the API's credentials (an <img src> could not send a bearer token). */
-    function fileBlob(id: string | number, field: string): Promise<Blob> {
-        return api<Blob>(`${base()}/${encodeURIComponent(String(id))}/files/${encodeURIComponent(field)}`, { responseType: 'blob' })
+    /**
+     * A record's stored file, fetched with the API's credentials (an <img src> could not send a bearer token);
+     * with `key`, an image one of its rich-text documents shows from that field's uploads.
+     */
+    function fileBlob(id: string | number, field: string, key?: string): Promise<Blob> {
+        return api<Blob>(`${base()}/${encodeURIComponent(String(id))}/files/${encodeURIComponent(field)}`, { responseType: 'blob', query: key ? { key } : undefined })
     }
 
     async function downloadFile(id: string | number, field: string, fallbackName: string): Promise<void> {

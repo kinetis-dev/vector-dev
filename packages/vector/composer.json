@@ -16,7 +16,8 @@
         "kinetis/queue": "^1.7.0",
         "psr/http-message": "^2.0",
         "psr/http-server-handler": "^1.0.2",
-        "psr/http-server-middleware": "^1.0.2"
+        "psr/http-server-middleware": "^1.0.2",
+        "ueberdosis/tiptap-php": "^2.2"
     },
     "suggest": {
         "kinetis/storage": "Uploads for file and image fields (FILESYSTEM_DRIVER, or VECTOR_STORAGE_CONNECTION)",

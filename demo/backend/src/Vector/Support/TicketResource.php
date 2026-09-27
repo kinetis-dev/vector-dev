@@ -28,7 +28,7 @@ use Kinetis\Vector\Fields\ManyToMany;
 use Kinetis\Vector\Fields\Money;
 use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\Fields\Text;
-use Kinetis\Vector\Fields\Textarea;
+use Kinetis\Vector\Fields\RichText;
 use Kinetis\Vector\VectorResource;
 
 /**
@@ -55,7 +55,8 @@ final class TicketResource extends VectorResource
                 ->tab('Details', ['metadata', 'replies']),
             Text::make('number')->required()->max(20)->sortable()->searchable()->filterable(),
             Text::make('subject')->required()->max(200)->sortable()->searchable()->filterable(),
-            Textarea::make('body')->required()->hideFromIndex()->columnSpan('full'),
+            // an existing HTML column: edited as rich text, stored as HTML rendered through the schema
+            RichText::make('body')->storesHtml()->features(['bold', 'italic', 'list', 'link', 'blockquote'])->required()->hideFromIndex()->columnSpan('full'),
             Enum::make('status')->of(TicketStatus::class)
                 ->colors(['open' => 'info', 'pending' => 'warning', 'resolved' => 'success', 'closed' => 'grey'])
                 ->sortable()->filterable(),
