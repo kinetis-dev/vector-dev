@@ -12,6 +12,9 @@ with this record: **Edit**, **Delete**, **Actions**, and, in the trash,
 **New *record*** on a list, or **Edit** on a record, opens a form with
 one input per field you may write.
 
+- **Sections and tabs** — a long form may be grouped. A folded section
+  opens, and a tab switches, when a field inside it needs attention; a
+  tab with a problem carries a red dot.
 - **Validation** — the form checks what it can as you go (a required
   field, a length, an e-mail address). What only the server can check,
   such as a duplicate name, comes back on the field it concerns.

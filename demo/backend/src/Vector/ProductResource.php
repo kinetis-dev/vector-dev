@@ -21,6 +21,8 @@ use Kinetis\Vector\Fields\Enum;
 use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Image;
 use Kinetis\Vector\Fields\KeyValue;
+use Kinetis\Vector\Fields\Layout\Section;
+use Kinetis\Vector\Fields\Layout\Tabs;
 use Kinetis\Vector\Fields\ManyToMany;
 use Kinetis\Vector\Fields\Markdown;
 use Kinetis\Vector\Fields\Money;
@@ -41,6 +43,15 @@ final class ProductResource extends VectorResource
     {
         return [
             Id::make(),
+            // the layout places fields by name; the fields themselves follow in their own order
+            Section::make('Details')->fields(['sku', 'name', 'slug', 'status', 'category']),
+            Section::make('Pricing and stock')
+                ->description('Prices are in the product\'s own currency.')
+                ->collapsible()
+                ->fields(['priceCents', 'currency', 'stock', 'weightKg']),
+            Tabs::make()
+                ->tab('Content', ['description', 'attributes', 'imageKey'])
+                ->tab('Publishing', ['isFeatured', 'releasedAt', 'tags']),
             Text::make('sku', 'SKU')->required()->max(40)->sortable()->searchable()->filterable(),
             Text::make('name')->required()->max(200)->sortable()->searchable()->filterable(),
             Slug::make('slug')->from('name')->required()->max(220)->hideFromIndex(),
@@ -54,8 +65,8 @@ final class ProductResource extends VectorResource
             Number::make('weightKg', 'Weight (kg)')->decimals(3)->hideFromIndex(),
             Boolean::make('isFeatured', 'Featured')->sortable()->filterable()->inlineEditable()
                 ->disabledWhen('status', 'eq', 'archived'),
-            Markdown::make('description')->hideFromIndex(),
-            KeyValue::make('attributes')->columns('Attribute', 'Value')->hideFromIndex(),
+            Markdown::make('description')->hideFromIndex()->columnSpan('full'),
+            KeyValue::make('attributes')->columns('Attribute', 'Value')->hideFromIndex()->columnSpan('full'),
             Image::make('imageKey', 'Image')->hideFromIndex(),
             ManyToMany::to('tags', TagResource::class),
             DateTime::make('releasedAt')->sortable()->filterable()

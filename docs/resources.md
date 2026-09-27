@@ -53,7 +53,7 @@ These run once, at compile time, and return plain data:
 
 | Method | Declares |
 |---|---|
-| `fields()` | The fields, in order. |
+| `fields()` | The fields, in order, with optional sections and tabs; see {doc}`forms`. |
 | `actions()` | Action classes; see {doc}`actions`. |
 | `widgets()` | Widget classes shown above the list; see {doc}`dashboards`. |
 | `policy()` | The policy class; see {doc}`authorization`. |

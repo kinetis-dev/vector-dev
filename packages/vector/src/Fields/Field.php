@@ -50,6 +50,9 @@ abstract class Field
 
     protected mixed $default = null;
 
+    /** How many columns of its section's grid the field takes in a layout: 1, 2 or 'full'. */
+    protected int|string|null $columnSpan = null;
+
     protected bool $hasDefault = false;
 
     /** The operators a condition may use. */
@@ -261,6 +264,28 @@ abstract class Field
         $this->summary = $function;
 
         return $this;
+    }
+
+    /**
+     * The width the field takes in a layout's grid: one column, two, or
+     * the whole row ('full'). Declaring it gives the resource a layout
+     * even without sections or tabs.
+     */
+    public function columnSpan(int|string $span): static
+    {
+        if (!in_array($span, [1, 2, 'full'], true)) {
+            throw new \InvalidArgumentException("\"{$this->name}\": columnSpan is 1, 2 or 'full'.");
+        }
+
+        $this->columnSpan = $span;
+
+        return $this;
+    }
+
+    /** The span columnSpan() declared, or null to let the UI size the field by its type. */
+    public function layoutSpan(): int|string|null
+    {
+        return $this->columnSpan;
     }
 
     /** The value a form, an action dialog or a settings page starts from. */

@@ -84,6 +84,15 @@ final readonly class ResourceDescriptor
         $data['table_view']['defaultSort'] = array_values(array_filter($data['table_view']['defaultSort'], static fn (array $sort): bool => !in_array($sort['field'], $hidden, true)));
         $data['show_view']['fields'] = $keep($data['show_view']['fields']);
         $data['show_view']['extra'] = $keep($data['show_view']['extra']);
+
+        // the layout loses the hidden fields, and a section or tab they leave empty
+        if (($data['layout'] ?? null) !== null) {
+            $visible = static fn (string $name): bool => !in_array($name, $hidden, true);
+            $data['layout'] = [
+                'form' => LayoutCompiler::prune($data['layout']['form'], $visible),
+                'show' => LayoutCompiler::prune($data['layout']['show'], $visible),
+            ];
+        }
         $data['globallySearchable'] = $data['globallySearchable'] && $data['searchColumns'] !== [];
         $data['searchResult'] = array_map(static fn (?string $field): ?string => in_array($field, $hidden, true) ? null : $field, $data['searchResult']);
 
@@ -216,6 +225,17 @@ final readonly class ResourceDescriptor
     public function bulkLimit(): int
     {
         return $this->data['table_view']['bulkLimit'];
+    }
+
+    /**
+     * How the form and the show page group the fields, or null when the
+     * resource declared no sections, tabs or spans.
+     *
+     * @return array{form: list<array<string, mixed>>, show: list<array<string, mixed>>}|null
+     */
+    public function layout(): ?array
+    {
+        return $this->data['layout'] ?? null;
     }
 
     /** @return list<array<string, mixed>> */
@@ -390,6 +410,7 @@ final readonly class ResourceDescriptor
         $public['show'] = $public['show_view'];
         unset($public['table_view'], $public['show_view']);
         $public['fields'] = array_map(self::publicField(...), $public['fields']);
+        $public['layout'] ??= null;
 
         return $public;
     }

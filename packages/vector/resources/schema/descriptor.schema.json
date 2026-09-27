@@ -579,7 +579,8 @@
                 "softDelete",
                 "actions",
                 "widgets",
-                "permissions"
+                "permissions",
+                "layout"
             ],
             "properties": {
                 "slug": {
@@ -827,6 +828,32 @@
                         "export",
                         "setDefaultView"
                     ]
+                },
+                "layout": {
+                    "description": "How the form and the show page group the fields: sections, tabs and column spans, per view. Null when the resource declared none. Layout never changes what is validated, serialized or written.",
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "required": [
+                        "form",
+                        "show"
+                    ],
+                    "properties": {
+                        "form": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/layoutNode"
+                            }
+                        },
+                        "show": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/layoutNode"
+                            }
+                        }
+                    },
+                    "additionalProperties": false
                 }
             },
             "not": {
@@ -897,6 +924,82 @@
                 },
                 "value": {}
             }
+        },
+        "layoutNode": {
+            "description": "One node of a resource's layout: a section, a group of tabs, a tab, or a field placed by name. Every key is present; the ones a kind does not use are null or false.",
+            "type": "object",
+            "required": [
+                "kind",
+                "label",
+                "description",
+                "collapsible",
+                "collapsed",
+                "columns",
+                "span",
+                "name",
+                "children"
+            ],
+            "properties": {
+                "kind": {
+                    "enum": [
+                        "section",
+                        "tabs",
+                        "tab",
+                        "field"
+                    ]
+                },
+                "label": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "collapsible": {
+                    "type": "boolean"
+                },
+                "collapsed": {
+                    "type": "boolean"
+                },
+                "columns": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ],
+                    "minimum": 1,
+                    "maximum": 4
+                },
+                "span": {
+                    "description": "A field's width in its section's grid: 1 or 2 columns, or the whole row. Null lets the UI size the field by its type.",
+                    "enum": [
+                        1,
+                        2,
+                        "full",
+                        null
+                    ]
+                },
+                "name": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "children": {
+                    "type": [
+                        "array",
+                        "null"
+                    ],
+                    "items": {
+                        "$ref": "#/$defs/layoutNode"
+                    }
+                }
+            },
+            "additionalProperties": false
         }
     }
 }

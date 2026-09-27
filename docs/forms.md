@@ -5,6 +5,43 @@ validates every write; the form mirrors its rules so most mistakes are
 caught before a request, and places every server violation on the field
 it names. Four features make forms depend on their own values.
 
+## Layout
+
+Group a long form into sections and tabs by returning them among the
+fields:
+
+```php
+use Kinetis\Vector\Fields\Layout\{Section, Tabs};
+
+public function fields(): array
+{
+    return [
+        Id::make(),
+        Section::make('Details')->fields(['sku', 'name', 'status']),
+        Section::make('Pricing')->description('In the product\'s currency.')->collapsible()
+            ->fields(['priceCents', 'currency']),
+        Tabs::make()
+            ->tab('Content', ['description', 'imageKey'])
+            ->tab('Publishing', ['isFeatured', 'releasedAt']),
+        Text::make('sku')->required(),
+        // … every field, in its own order
+    ];
+}
+```
+
+- A section or tab holds fields, or the **names** of fields declared
+  elsewhere in `fields()`. A tab may hold sections; a section holds only
+  fields. A field left at the top level keeps its place.
+- `columns(1..4)` sets a section's grid (two by default);
+  `->columnSpan(1|2|'full')` on a field sets its width.
+- `collapsible()` lets a section fold; `collapsed()` starts it folded.
+- The show page uses the same layout, with the fields it shows.
+
+Layout only groups: validation, lists and writes are unchanged. A field
+a user may not see leaves the layout, and a section or tab it empties
+disappears. When a save is refused, the form opens the section and
+switches to the tab holding the field in error, and marks the tab.
+
 ## Conditions
 
 A field can depend on another field of the same form — a resource's, an

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { SubmitEventPromise } from 'vuetify'
-import type { VectorField, VectorFieldState, VectorRecord, VectorResource } from '#vector/app/types/vector'
+import type { VectorField, VectorFieldState, VectorLayoutNode, VectorRecord, VectorResource } from '#vector/app/types/vector'
 
 // A create or edit form generated from the descriptor: one input per
 // editable field, client rules mirroring the server's, and the server's
@@ -110,8 +110,13 @@ async function allRelatedIds(id: string | number, field: VectorField): Promise<u
 
 const wide = (field: VectorField) => ['markdown', 'text', 'json', 'keyValue'].includes(field.type) || !!field.repeater
 
+/** Fields the browser's own rules refused on the last submit, by the input id each carries. */
+const clientErrors = ref<string[]>([])
+const inputId = (name: string) => `vx-field-${name}`
+
 async function submit(event: SubmitEventPromise) {
-    const { valid } = await event
+    const { valid, errors } = await event
+    clientErrors.value = errors.map(e => String(e.id)).filter(id => id.startsWith('vx-field-')).map(id => id.slice('vx-field-'.length))
 
     if (!valid) {
         return
@@ -200,6 +205,22 @@ const states = computed<Record<string, VectorFieldState>>(() => {
     return Object.fromEntries(fields.value.map(f => [f.name, fieldState(f, current)]))
 })
 const shownFields = computed(() => fields.value.filter(f => states.value[f.name]?.visible !== false && !(props.preset && f.name in props.preset)))
+const fieldsByName = computed(() => new Map(fields.value.map(f => [f.name, f])))
+const shownNames = computed(() => new Set(shownFields.value.map(f => f.name)))
+
+// The declared layout, or every field in order; either way VxLayout draws it.
+const layout = computed<VectorLayoutNode[]>(() => props.resource.layout?.form
+    ?? fields.value.map(f => ({ kind: 'field', label: null, description: null, collapsible: false, collapsed: false, columns: null, span: null, name: f.name, children: null })))
+const defaultSpan = (name: string) => {
+    const field = fieldsByName.value.get(name)
+    return field && wide(field) ? 'full' as const : 1 as const
+}
+
+/** Every field holding an error: the server's (a repeater row's under its field) and the browser's. */
+const errorNames = computed(() => [...new Set([
+    ...Object.entries(serverErrors).filter(([, messages]) => messages.length > 0).map(([key]) => key.split('.')[0]!),
+    ...clientErrors.value,
+])])
 </script>
 
 <template>
@@ -207,22 +228,23 @@ const shownFields = computed(() => fields.value.filter(f => states.value[f.name]
         <v-card>
             <v-card-text>
                 <v-alert v-if="formError" type="error" variant="tonal" class="mb-4" :text="formError" />
-                <v-row density="compact">
-                    <v-col v-for="field in shownFields" :key="field.name" cols="12" :md="wide(field) ? 12 : 6">
+                <VxLayout :nodes="layout" :shown="name => shownNames.has(name)" :errors="errorNames" :default-span="defaultSpan">
+                    <template #field="{ field: name }">
                         <component
-                            :is="inputFor(field)"
-                            v-model="values[field.name]"
-                            :field="field"
-                            :disabled="states[field.name]?.disabled === true"
-                            :rules="rulesFor(field, operation, states[field.name])"
-                            :error-messages="serverErrors[field.name] ?? []"
+                            :is="inputFor(fieldsByName.get(name)!)"
+                            :id="inputId(name)"
+                            v-model="values[name]"
+                            :field="fieldsByName.get(name)!"
+                            :disabled="states[name]?.disabled === true"
+                            :rules="rulesFor(fieldsByName.get(name)!, operation, states[name])"
+                            :error-messages="serverErrors[name] ?? []"
                             :record="values"
                             :resource="resource.slug"
-                            v-bind="field.repeater ? { serverErrors } : {}"
-                            @update:model-value="clearServerError(field.name)"
+                            v-bind="fieldsByName.get(name)!.repeater ? { serverErrors } : {}"
+                            @update:model-value="clearServerError(name)"
                         />
-                    </v-col>
-                </v-row>
+                    </template>
+                </VxLayout>
             </v-card-text>
             <v-card-actions>
                 <v-spacer />

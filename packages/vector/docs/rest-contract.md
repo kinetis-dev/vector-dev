@@ -20,6 +20,16 @@ descriptor on every run.
 - A job: `{id, kind, resource, name, actorId, status, total, processed,
   result, failure, hasFile, fileName, createdAt, updatedAt, finishedAt}`.
 
+## Layout
+
+A resource's `layout` is `null`, or `{form, show}`: each a list of nodes
+`{kind, label, description, collapsible, collapsed, columns, span, name,
+children}`, where `kind` is `section`, `tabs`, `tab` or `field`. A
+`field` node names a field of the resource; the others hold `children`.
+Every key is present on every node. The tree holds only the fields that
+view shows and this identity may see. Layout groups fields for display;
+it never changes a record, a write or the list grammar.
+
 ## Values on the wire
 
 JSON scalars; ISO 8601 UTC strings for dates (`YYYY-MM-DD` for a date

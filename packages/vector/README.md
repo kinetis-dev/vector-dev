@@ -275,6 +275,43 @@ BelongsTo::to('team', TeamResource::class),
 BelongsTo::to('assignee', AgentResource::class)->dependsOn('team'),
 ```
 
+**Layout.** `fields()` may return sections and tabs among the fields to
+group them on the form and the show page:
+
+```php
+use Kinetis\Vector\Fields\Layout\{Section, Tabs};
+
+return [
+    Id::make(),
+    Section::make('Details')->fields(['sku', 'name', 'status']),
+    Section::make('Pricing')->description('In the product\'s currency.')->collapsible()->columns(2)
+        ->fields(['priceCents', 'currency']),
+    Tabs::make()
+        ->tab('Content', ['description', Section::make('Media')->fields(['imageKey'])])
+        ->tab('Publishing', ['isFeatured', 'releasedAt']),
+    Text::make('sku'), Text::make('name'), // … every field, in its own order
+];
+```
+
+A section or tab holds fields, or the names of fields declared elsewhere
+in `fields()`, which it then places; a tab may also hold sections, and a
+section holds only fields. A top-level field keeps its place. A
+section's grid has `columns(1..4)` (2 by default), and a field takes
+`columnSpan(1|2|'full')` of it, or a width the UI picks by its type.
+`collapsible()` folds a section open and closed; `collapsed()` starts it
+closed. A field declaring `columnSpan()` gives the resource a layout even
+without sections.
+
+Layout never changes what is validated, serialized, filtered or
+written: the compiler flattens it to the same field list and publishes
+it apart, as the descriptor's `layout` — `{form, show}`, each a tree of
+nodes (`section`, `tabs`, `tab`, `field`), with the fields that view
+shows and without a section or tab left empty; `null` for a resource
+without one. A field `viewField()` hides leaves it the same way. A name
+the resource does not declare, or one placed twice, fails the build. The
+form opens the section and activates the tab holding a field with an
+error.
+
 **Inline editing.** `inlineEditable()` lets the list edit a field in its
 cell. Edits across rows collect into one changeset that is saved with
 `POST /vector/r/{resource}/changes`. Each record in it is authorized,

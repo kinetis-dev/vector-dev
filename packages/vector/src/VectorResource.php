@@ -23,7 +23,11 @@ abstract class VectorResource
      * The fields to administer. An empty list means "derive every field
      * from the entity's metadata"; a non-empty list replaces derivation.
      *
-     * @return list<Field>
+     * Sections and tabs (Fields\Layout\Section, Fields\Layout\Tabs) may
+     * sit among the fields to group them on the form and the show page;
+     * see the descriptor's `layout`.
+     *
+     * @return list<Field|\Kinetis\Vector\Fields\Layout\Layout>
      */
     public function fields(): array
     {

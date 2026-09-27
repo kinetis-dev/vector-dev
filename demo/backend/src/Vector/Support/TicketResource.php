@@ -22,6 +22,8 @@ use Kinetis\Vector\Fields\Enum;
 use Kinetis\Vector\Fields\HasMany;
 use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Json;
+use Kinetis\Vector\Fields\Layout\Section;
+use Kinetis\Vector\Fields\Layout\Tabs;
 use Kinetis\Vector\Fields\ManyToMany;
 use Kinetis\Vector\Fields\Money;
 use Kinetis\Vector\Fields\Number;
@@ -42,9 +44,18 @@ final class TicketResource extends VectorResource
     {
         return [
             Id::make(),
+            Tabs::make()
+                ->tab('Ticket', ['number', 'subject', 'status', 'priority', 'channel', 'body'])
+                ->tab('Customer', ['customerEmail', 'customerRef', 'satisfaction'])
+                ->tab('Handling', [
+                    Section::make('Assignment')->fields(['team', 'assignee', 'labels']),
+                    Section::make('Schedule')->fields(['dueAt', 'resolvedAt', 'isEscalated']),
+                    Section::make('Compensation')->collapsed()->fields(['compensationCents', 'currency']),
+                ])
+                ->tab('Details', ['metadata', 'replies']),
             Text::make('number')->required()->max(20)->sortable()->searchable()->filterable(),
             Text::make('subject')->required()->max(200)->sortable()->searchable()->filterable(),
-            Textarea::make('body')->required()->hideFromIndex(),
+            Textarea::make('body')->required()->hideFromIndex()->columnSpan('full'),
             Enum::make('status')->of(TicketStatus::class)
                 ->colors(['open' => 'info', 'pending' => 'warning', 'resolved' => 'success', 'closed' => 'grey'])
                 ->sortable()->filterable(),
@@ -62,7 +73,7 @@ final class TicketResource extends VectorResource
             Currency::make('currency')->hideFromIndex(),
             Number::make('satisfaction')->rule(GreaterThanOrEqual::class, 1)->rule(LessThanOrEqual::class, 5)->sortable()->filterable()->summarize('avg'), // the column's CHECK (1..5)
             Boolean::make('isEscalated', 'Escalated')->sortable()->filterable(),
-            Json::make('metadata')->hideFromIndex(),
+            Json::make('metadata')->hideFromIndex()->columnSpan('full'),
             DateTime::make('dueAt', 'Due')->sortable()->filterable(),
             DateTime::make('resolvedAt')->hideFromIndex()->filterable(),
             DateTime::make('createdAt')->readonly()->sortable()->hideFromForms(),

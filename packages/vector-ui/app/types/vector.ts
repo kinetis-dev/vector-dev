@@ -259,6 +259,31 @@ export interface VectorSort {
     order: 'asc' | 'desc'
 }
 
+/**
+ * One node of a resource's layout. Every key is present; the ones a kind
+ * does not use are null or false. A `field` node names a field of the
+ * resource; the others hold `children`.
+ */
+export interface VectorLayoutNode {
+    kind: 'section' | 'tabs' | 'tab' | 'field'
+    label: string | null
+    description: string | null
+    collapsible: boolean
+    collapsed: boolean
+    /** A section's or tab's grid columns (1 to 4). */
+    columns: number | null
+    /** A field's width: 1 or 2 columns, or the whole row; null sizes it by its type. */
+    span: 1 | 2 | 'full' | null
+    name: string | null
+    children: VectorLayoutNode[] | null
+}
+
+/** How the form and the show page group the fields, per view. */
+export interface VectorLayout {
+    form: VectorLayoutNode[]
+    show: VectorLayoutNode[]
+}
+
 export interface VectorResource {
     slug: string
     label: string
@@ -282,6 +307,8 @@ export interface VectorResource {
         bulkLimit: number
     }
     show: { fields: string[] }
+    /** Sections, tabs and spans; null when the resource declares none. Optional for a descriptor from before layout existed. */
+    layout?: VectorLayout | null
     softDelete: { field: string } | null
     /** what a global search result shows besides its title */
     searchResult?: { subtitle: string | null, image: string | null }

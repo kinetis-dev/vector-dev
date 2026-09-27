@@ -382,7 +382,8 @@ final class ResourceCompiler
     {
         $entity = $this->entities[$attribute->entity];
         $instance = new $class();
-        $explicit = $instance->fields();
+        // fields() may mix sections and tabs among the fields: the layout is kept apart
+        ['fields' => $explicit, 'tree' => $layoutTree] = LayoutCompiler::split($instance->fields(), $class);
         $fields = $explicit === [] ? $this->derive($entity) : $explicit;
         $properties = [];
 
@@ -394,9 +395,11 @@ final class ResourceCompiler
         $joins = array_column($entity['joins'], null, 'name');
         $compiledFields = [];
         $columns = [];
+        $spans = [];
 
         foreach ($fields as $field) {
             $name = $field->name();
+            $spans[$name] = $field->layoutSpan();
 
             if (isset($compiledFields[$name])) {
                 throw ResourceCompileException::field($class, $name, 'is declared twice');
@@ -721,6 +724,7 @@ final class ResourceCompiler
             'version' => $entity['version'],
             'versionColumn' => $entity['version'] === null ? null : $this->columnOf($entity, $entity['version']),
             'fields' => array_values($compiledFields),
+            'layout' => LayoutCompiler::compile($layoutTree, $compiledFields, $spans, $class),
             'columns' => $columns,
             'table_view' => [
                 'columns' => $indexFields,
