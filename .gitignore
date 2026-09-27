@@ -14,6 +14,7 @@ node_modules/
 /demo/frontend/dist
 /demo/e2e/test-results/
 /demo/e2e/playwright-report/
+/docs/_build/
 .pnpm-store/
 /packages/vector/resources/dist/
 /demo/backend/public/vector/
