@@ -123,8 +123,37 @@ services:
       - node_modules:/workspace/node_modules
       - node_modules_ui:/workspace/packages/vector-ui/node_modules
       - node_modules_admin:/workspace/demo/frontend/node_modules
+      - node_modules_e2e:/workspace/demo/e2e/node_modules
     ports:
       - "3000:3000"
+
+  # The end-to-end suite (demo/e2e): Playwright and its browsers, driving
+  # both the standalone UI (node) and the hosted one (nginx). Not started
+  # by `up`; run it with `docker compose run --rm e2e`, and pass
+  # Playwright's own arguments after the service name. Its packages are
+  # the workspace's, installed by the node service. The image tag and
+  # @playwright/test in e2e/package.json must name the same version.
+  e2e:
+    image: mcr.microsoft.com/playwright:v1.63.0-noble
+    profiles: [e2e]
+    working_dir: /workspace/demo/e2e
+    entrypoint: ["./node_modules/.bin/playwright"]
+    command: ["test"]
+    environment:
+      # the browser runs here, not on the host: localhost:3000 and :8080 are forwarded to node and nginx
+      E2E_FORWARD: "node:3000,nginx:8080"
+      CI: "1"
+    init: true
+    ipc: host
+    volumes:
+      - ..:/workspace
+      - node_modules:/workspace/node_modules
+      - node_modules_e2e:/workspace/demo/e2e/node_modules
+    depends_on:
+      nginx:
+        condition: service_started
+      node:
+        condition: service_started
 
 volumes:
   vendor:
@@ -135,3 +164,4 @@ volumes:
   node_modules:
   node_modules_ui:
   node_modules_admin:
+  node_modules_e2e:

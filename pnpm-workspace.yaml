@@ -1,3 +1,4 @@
 packages:
   - packages/vector-ui
   - demo/frontend
+  - demo/e2e

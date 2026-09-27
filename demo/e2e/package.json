@@ -1,0 +1,16 @@
+{
+    "name": "e2e",
+    "private": true,
+    "type": "module",
+    "description": "End-to-end tests of the demo admin, standalone and hosted, against the running stack.",
+    "scripts": {
+        "test": "playwright test",
+        "report": "playwright show-report --host 0.0.0.0",
+        "typecheck": "tsc -p ."
+    },
+    "devDependencies": {
+        "@playwright/test": "1.63.0",
+        "@types/node": "^22.0.0",
+        "typescript": "^5.8.0"
+    }
+}

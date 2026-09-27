@@ -112,6 +112,23 @@ the seed stores in Vector's storage as an upload would. Run the seed as
 `www-data`, the user the application runs as; files stored as root are
 not the application's to read.
 
+## Testing it
+
+Every command runs from `demo/`, with the stack up and seeded.
+
+```sh
+docker compose exec app vendor/bin/phpunit      # the API and the PHP package (see above for MySQL)
+docker compose exec node pnpm test              # the admin UI layer: Vitest, no server needed
+docker compose exec node pnpm typecheck         # vue-tsc over the layer and its tests
+docker compose run --rm e2e                     # the admin in a browser, standalone and hosted
+```
+
+The end-to-end suite (`demo/e2e`, Playwright) needs the hosted bundle
+published (above) and writes to the demo databases. Run it on its own,
+not alongside PHPUnit. It clears the admin account's saved UI
+preferences before each test. See
+[demo/e2e/README.md](demo/e2e/README.md).
+
 ## Deploying it
 
 The development stack above is not a deployment. Build the release or
@@ -523,8 +540,8 @@ escaped.
 
 ```text
 packages/vector/          kinetis/vector (PHP): registry, API, jobs, MCP tools, migration stubs, docs
-packages/vector-ui/       @kinetis/vector-ui (Nuxt layer)
-demo/docker-compose.yml   the stack: app, worker, nginx, mysql, postgres, redis, node
+packages/vector-ui/       @kinetis/vector-ui (Nuxt layer); its Vitest suite in test/nuxt/
+demo/docker-compose.yml   the stack: app, worker, nginx, mysql, postgres, redis, node (and e2e, run on demand)
 demo/docker/              the PHP image, nginx and php.ini
 demo/backend/             the demo Kinetis application, with kinetis/vector installed from ../../packages/vector
   src/Auth/               JWT login (/auth/login, /auth/me), session login (/login, /logout), the vector and mcp group middleware, impersonation
@@ -541,6 +558,7 @@ demo/backend/             the demo Kinetis application, with kinetis/vector inst
   public/vector-extensions/  the demo's runtime UI extension
   tests/                  PHPUnit (App\Tests\)
 demo/frontend/            the demo Nuxt app: extends @kinetis/vector-ui, points at the demo API
+demo/e2e/                 the end-to-end suite: Playwright, both deployment modes, against the running stack
 bin/orbitron-mcp          launches the Orbitron server for demo/backend
 ```
 
