@@ -77,13 +77,9 @@ describe('useVectorAuthStore', () => {
         expect(auth.token).toBeNull()
     })
 
-    // Known bug: `isAuthenticated` is a Pinia getter (a cached computed) over
-    // Date.now(), which is not reactive, so once read it stays true past the
-    // expiry until some store state changes. The route guard then admits an
-    // expired session, which only ends at the next API call's 401. When the
-    // getter is fixed this test starts passing and `it.fails` reports it:
-    // turn it back into `it`.
-    it.fails('stops counting as signed in once the token expires', () => {
+    // `isAuthenticated` is a cached getter and the clock is not state: once
+    // read true, only the session's own expiry timer can turn it false.
+    it('stops counting as signed in once the token expires', () => {
         vi.useFakeTimers()
         const auth = useVectorAuthStore()
         auth.adopt('jwt', 60, { id: 1, name: 'Vector Admin' })
@@ -92,6 +88,45 @@ describe('useVectorAuthStore', () => {
         vi.advanceTimersByTime(61_000)
 
         expect(auth.isAuthenticated).toBe(false)
+        expect(auth.token).toBeNull()
+        expect(sessionStorage.getItem(KEY)).toBeNull()
+    })
+
+    it('expires a restored session at its own time', () => {
+        vi.useFakeTimers()
+        sessionStorage.setItem(KEY, JSON.stringify({ token: 'jwt', expiresAt: Date.now() + 30_000, user: { id: 1, name: 'Vector Admin' } }))
+        const auth = useVectorAuthStore()
+        auth.restore()
+        expect(auth.isAuthenticated).toBe(true)
+
+        vi.advanceTimersByTime(31_000)
+
+        expect(auth.isAuthenticated).toBe(false)
+    })
+
+    it('keeps a newer token past the older one\'s expiry', () => {
+        vi.useFakeTimers()
+        const auth = useVectorAuthStore()
+        auth.adopt('first', 60, { id: 1, name: 'Vector Admin' })
+        vi.advanceTimersByTime(30_000)
+        auth.adopt('second', 3600, { id: 2, name: 'Demo Editor' }) // impersonation
+
+        vi.advanceTimersByTime(60_000)
+
+        expect(auth.isAuthenticated).toBe(true)
+        expect(auth.token).toBe('second')
+    })
+
+    it('does not clear a later session when an ended one would have expired', () => {
+        vi.useFakeTimers()
+        const auth = useVectorAuthStore()
+        auth.adopt('first', 60, { id: 1, name: 'Vector Admin' })
+        auth.clear()
+        auth.adopt('second', 3600, { id: 1, name: 'Vector Admin' })
+
+        vi.advanceTimersByTime(120_000)
+
+        expect(auth.token).toBe('second')
     })
 
     it('clears the token, the user and the mirror', () => {

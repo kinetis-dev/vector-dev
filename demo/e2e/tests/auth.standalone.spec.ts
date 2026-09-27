@@ -70,17 +70,21 @@ test.describe('signing in (standalone)', () => {
         await expect(page).toHaveURL(/\/login\?redirect=/)
     })
 
-    // Known bug: the API refuses the account (403 "This account has no
-    // access to the admin.") but the sign-in page shows "Welcome back, Demo
-    // Editor." and stays on the form, with no word of why, and keeps the
-    // token. When the page reports the refusal this test passes and
-    // `test.fail` reports it: turn it back into `test`.
-    test.fail('an account without admin access is told so, not shown the admin', async ({ page }) => {
+    // The credentials are right, but the admin refuses the account (403):
+    // the page says why, welcomes no one, and keeps no token.
+    test('an account without admin access is told so, not shown the admin', async ({ page }) => {
         await page.goto('login')
 
         await fillSignIn(page, EDITOR.email, EDITOR.password)
 
-        await expect(page.getByText('This account has no access to the admin.')).toBeVisible()
+        await expect(page.getByRole('alert').filter({ hasText: 'This account has no access to the admin.' })).toBeVisible()
+        await expect(page).toHaveURL(/\/login$/)
+        await expect(page.getByText(`Welcome back, ${EDITOR.name}.`)).toHaveCount(0)
         await expect(page.getByRole('navigation', { name: 'Main' })).toHaveCount(0)
+        expect(await page.evaluate(() => sessionStorage.getItem('vector.session'))).toBeNull()
+
+        // and the admin can still sign in from the same page
+        await fillSignIn(page, ADMIN.email, ADMIN.password)
+        await expect(page).toHaveTitle(/^Dashboard · /)
     })
 })

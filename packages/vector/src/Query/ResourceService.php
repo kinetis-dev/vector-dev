@@ -390,7 +390,9 @@ final readonly class ResourceService
 
     /**
      * The fields a list serializes: the requested subset of the index
-     * fields, or all of them, plus the ones their display depends on.
+     * fields, or all of them, plus the ones their display depends on —
+     * and always the primary key, the row's identity, which a client
+     * links, selects and edits by whether or not it shows it.
      *
      * @return list<string>
      */
@@ -401,6 +403,10 @@ final readonly class ResourceService
         }
 
         $fields = $request->columns;
+
+        if (!in_array($resource->primaryKeyField(), $fields, true)) {
+            array_unshift($fields, $resource->primaryKeyField());
+        }
 
         foreach ($request->columns as $name) {
             $currency = $resource->field($name)['props']['currencyField'] ?? null;

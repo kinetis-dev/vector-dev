@@ -44,6 +44,18 @@ async function submit(event: SubmitEventPromise) {
 
     try {
         await auth.login(email.value, password.value)
+
+        // The credentials can be right for an account the admin refuses (no
+        // access, 403): the descriptor is the first thing the admin needs, so
+        // it is loaded here, for this identity, and a refusal ends the sign-in
+        // with the server's reason instead of a welcome.
+        try {
+            await useVectorSchema().load(true)
+        } catch (refused) {
+            auth.clear()
+            throw refused
+        }
+
         notifications.success(t('shell.login.welcome', { name: auth.user?.name ?? email.value }))
 
         // only a path of this app: `//host`, `/\host` and anything with a scheme are not places to go back to

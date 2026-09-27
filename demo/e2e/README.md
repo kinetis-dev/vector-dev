@@ -68,10 +68,11 @@ current source: publish it again after changing the UI.
 
 ## Known bugs
 
-Tests marked `test.fail` describe what the admin should do and does not
-yet. Each says why in a comment above it. It passes while the bug is
-there, and fails once the bug is fixed, as the reminder to turn it back
-into a plain `test`.
+A test that pins a known bug is marked `test.fail`, with a comment above
+it saying what is wrong. It describes what the admin should do. It
+passes while the bug is there, and fails once the bug is fixed, as the
+reminder to turn it back into a plain `test`. The layer's Vitest suite
+uses `it.fails` the same way.
 
 ## Layout
 

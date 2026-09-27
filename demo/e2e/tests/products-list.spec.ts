@@ -66,12 +66,9 @@ test.describe('the products list', () => {
         await expect(page.getByRole('button', { name: 'Edit' }).or(page.getByRole('link', { name: 'Edit' }))).toBeVisible()
     })
 
-    // Known bug: the list asks the API for the visible columns only, so with
-    // the ID column hidden (the column manager, or a saved preference) the
-    // rows carry no id and a click opens /r/products/undefined. When the
-    // list always asks for the key this test passes and `test.fail`
-    // reports it: turn it back into `test`.
-    test.fail('opens a product from its row with the ID column hidden', async ({ admin: page, api }) => {
+    // The list asks the API for the visible columns only; the API returns
+    // each row's key whatever they are, so the row still opens its record.
+    test('opens a product from its row with the ID column hidden', async ({ admin: page, api }) => {
         await api.preferences({ 'columns.products': ['sku', 'name'] })
         await page.goto('r/products')
         await search(page).fill('SKU-00042')
@@ -80,6 +77,7 @@ test.describe('the products list', () => {
         // on the SKU: the row's middle is the category cell, a link to the category
         await rows(page).first().getByText('SKU-00042').click()
 
-        await expect(page).toHaveURL(/\/r\/products\/\d+$/, { timeout: 5_000 })
+        await expect(page).toHaveURL(/\/r\/products\/\d+$/)
+        await expect(page.getByRole('main').getByText('SKU-00042')).toBeVisible()
     })
 })
