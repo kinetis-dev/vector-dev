@@ -214,8 +214,18 @@ Every field takes `label()`, `help()`, `sortable()`, `searchable()`,
 `filterable()`, `readonly()`, `hideFromIndex()/Show()/Forms()`,
 `onlyOn*()`, `rule(Constraint::class, ...args)` (any framework
 constraint), `required()`, `max()`, `min()`, `default()`, `props()`,
-`component('name')` (a UI cell/input by name), `summarize('sum'|'avg'|'min'|'max'|'count')`
-and `inlineEditable()`.
+`component('name')` (a UI cell/input by name), `summarize('sum'|'avg'|'min'|'max'|'count')`,
+`inlineEditable()` and `unique()`.
+
+**Duplicate.** A record's page offers **Duplicate** when the user may
+create and the resource is `replicable()` (true unless it returns
+false): a create form filled from the record. It copies every value the
+create form writes — a many-to-many's membership, a repeater's rows as
+new rows — except a field marked `unique()` (the column's unique index
+would refuse it; the ORM's metadata does not carry indexes, so the field
+says so) and file or image keys (a stored key belongs to its record). The
+copy is saved through the ordinary create. The descriptor publishes
+`unique` on every field and `replicable` on the resource.
 
 **Conditions.** `visibleWhen($field, $op, $value)`, `requiredWhen(...)`
 and `disabledWhen(...)` make a field depend on another field of the same

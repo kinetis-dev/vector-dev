@@ -7,6 +7,8 @@ export default {
     createNotAllowed: 'This resource does not allow creating records here.',
     editNotAllowed: 'You may not edit this record.',
     saved: '{label} saved.',
+    duplicate: 'Duplicate',
+    copyOf: 'A copy of “{title}”. Values that must be unique, and files, start empty.',
     variants: {
         menu: 'More ways to save',
         saveContinue: 'Save and continue editing',

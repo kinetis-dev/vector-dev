@@ -523,6 +523,10 @@
                         }
                     },
                     "additionalProperties": false
+                },
+                "unique": {
+                    "description": "The value is unique among the resource's records (unique()): a duplicated record's form starts without it, and a CSV import may match rows by it.",
+                    "type": "boolean"
                 }
             },
             "not": {
@@ -950,6 +954,10 @@
                         }
                     },
                     "additionalProperties": false
+                },
+                "replicable": {
+                    "description": "Whether a record may be duplicated into a new one's form; true unless the resource opts out (replicable()).",
+                    "type": "boolean"
                 }
             },
             "not": {

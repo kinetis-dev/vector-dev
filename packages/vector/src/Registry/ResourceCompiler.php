@@ -768,6 +768,7 @@ final class ResourceCompiler
             'softDelete' => $softDelete,
             'searchColumns' => $searchColumns,
             'summaryPlan' => $summaries,
+            'replicable' => $instance->replicable(),
             'globallySearchable' => $instance->globallySearchable() && $searchColumns !== [],
             'searchResult' => self::searchResult($instance, $compiledFields, $class),
             'badge' => self::badge($instance, $compiledFields, $class),

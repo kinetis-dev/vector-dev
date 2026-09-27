@@ -32,6 +32,9 @@ abstract class Field
     protected bool $readonly = false;
     protected bool $inline = false;
 
+    /** The column holds a unique value: a copy of a record starts without it, and an import may match rows by it. */
+    protected bool $unique = false;
+
     protected ?string $help = null;
 
     protected ?string $component = null;
@@ -134,6 +137,20 @@ abstract class Field
     public function inlineEditable(bool $inline = true): static
     {
         $this->inline = $inline;
+
+        return $this;
+    }
+
+    /**
+     * Marks the value as unique among the resource's records — what the
+     * column's unique index already enforces. A duplicated record's form
+     * starts without it, and a CSV import may use it as the key that
+     * matches rows to records. The ORM's metadata does not carry indexes,
+     * so the field says it.
+     */
+    public function unique(bool $unique = true): static
+    {
+        $this->unique = $unique;
 
         return $this;
     }
@@ -314,6 +331,7 @@ abstract class Field
             'filterable' => $this->filterable,
             'readonly' => $this->readonly,
             'inline' => $this->inline,
+            'unique' => $this->unique,
             'help' => $this->help,
             'component' => $this->component,
             'views' => $this->views,

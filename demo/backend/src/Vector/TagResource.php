@@ -19,7 +19,7 @@ final class TagResource extends VectorResource
     {
         return [
             Id::make(),
-            Text::make('name')->required()->max(60)->sortable()->searchable()->filterable(),
+            Text::make('name')->required()->max(60)->unique()->sortable()->searchable()->filterable(),
             Color::make('color')->required(),
             ManyToMany::to('products', ProductResource::class)->hideFromForms(),
         ];

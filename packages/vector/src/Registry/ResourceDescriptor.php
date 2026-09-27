@@ -245,6 +245,11 @@ final readonly class ResourceDescriptor
         return $this->data['layout'] ?? null;
     }
 
+    public function replicable(): bool
+    {
+        return $this->data['replicable'] ?? true;
+    }
+
     /** @return list<array<string, mixed>> */
     public function actions(): array
     {
@@ -439,6 +444,7 @@ final readonly class ResourceDescriptor
         unset($public['table_view'], $public['show_view']);
         $public['fields'] = array_map(self::publicField(...), $public['fields']);
         $public['layout'] ??= null;
+        $public['replicable'] ??= true;
 
         return $public;
     }

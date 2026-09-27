@@ -53,7 +53,7 @@ final class TicketResource extends VectorResource
                     Section::make('Compensation')->collapsed()->fields(['compensationCents', 'currency']),
                 ])
                 ->tab('Details', ['metadata', 'replies']),
-            Text::make('number')->required()->max(20)->sortable()->searchable()->filterable(),
+            Text::make('number')->required()->max(20)->unique()->sortable()->searchable()->filterable(),
             Text::make('subject')->required()->max(200)->sortable()->searchable()->filterable(),
             // an existing HTML column: edited as rich text, stored as HTML rendered through the schema
             RichText::make('body')->storesHtml()->features(['bold', 'italic', 'list', 'link', 'blockquote'])->required()->hideFromIndex()->columnSpan('full'),

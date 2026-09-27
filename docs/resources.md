@@ -63,6 +63,7 @@ These run once, at compile time, and return plain data:
 | `timestamps()` | The properties Vector stamps on create and on every update; `createdAt` and `updatedAt` by default. |
 | `exportLimit()`, `exportQueueLimit()`, `bulkLimit()` | Per-resource limits; see {doc}`limits`. |
 | `badge()` | A count beside the resource in the menu. |
+| `replicable()` | Whether records can be duplicated; true by default. |
 | `searchSubtitle()`, `searchImage()` | What global search shows under the title. |
 
 ## Request-time hooks

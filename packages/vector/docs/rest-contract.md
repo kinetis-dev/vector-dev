@@ -20,6 +20,12 @@ descriptor on every run.
 - A job: `{id, kind, resource, name, actorId, status, total, processed,
   result, failure, hasFile, fileName, createdAt, updatedAt, finishedAt}`.
 
+## Duplicate
+
+A resource's `replicable` says whether the admin offers Duplicate; a
+field's `unique` whether a copy starts without its value (and, for an
+import, whether it can match rows). A copy is an ordinary create.
+
 ## Layout
 
 A resource's `layout` is `null`, or `{form, show}`: each a list of nodes

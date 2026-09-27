@@ -52,9 +52,9 @@ final class ProductResource extends VectorResource
             Tabs::make()
                 ->tab('Content', ['description', 'attributes', 'imageKey'])
                 ->tab('Publishing', ['isFeatured', 'releasedAt', 'tags']),
-            Text::make('sku', 'SKU')->required()->max(40)->sortable()->searchable()->filterable(),
+            Text::make('sku', 'SKU')->required()->max(40)->unique()->sortable()->searchable()->filterable(),
             Text::make('name')->required()->max(200)->sortable()->searchable()->filterable(),
-            Slug::make('slug')->from('name')->required()->max(220)->hideFromIndex(),
+            Slug::make('slug')->from('name')->required()->max(220)->unique()->hideFromIndex(),
             Enum::make('status')->of(\App\Domain\ProductStatus::class)
                 ->colors(['draft' => 'warning', 'active' => 'success', 'archived' => 'grey'])
                 ->sortable()->filterable()->inlineEditable(),

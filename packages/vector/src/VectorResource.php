@@ -35,6 +35,15 @@ abstract class VectorResource
     }
 
     /**
+     * Whether a record may be duplicated into a new one's form (the
+     * admin's Duplicate button). True unless a resource opts out.
+     */
+    public function replicable(): bool
+    {
+        return true;
+    }
+
+    /**
      * The policy answering viewAny/view/create/update/delete for this
      * resource, or null for the default that admits every user the
      * access policy admitted.

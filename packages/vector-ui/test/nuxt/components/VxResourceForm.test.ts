@@ -250,3 +250,51 @@ describe('VxResourceForm: unsaved changes and save variants', () => {
         expect(form.find('button[type="submit"]').text()).toBe('Create')
     })
 })
+
+describe('VxResourceForm: a copy of a record', () => {
+    const products = resource({
+        slug: 'products',
+        label: 'Products',
+        labelSingular: 'Product',
+        fields: [
+            field({ name: 'sku', label: 'SKU', nullable: false, unique: true }),
+            field({ name: 'name', nullable: false }),
+            field({ name: 'status', type: 'enum', options: [{ value: 'draft', label: 'Draft', color: null }, { value: 'active', label: 'Active', color: null }] }),
+            field({ name: 'category', type: 'belongsTo', relation: { kind: 'belongsTo', resource: 'categories', titleField: 'name' } }),
+            field({ name: 'photo', type: 'image', props: { accept: { 'image/png': 'png' }, maxBytes: 1000 } }),
+            field({ name: 'tags', type: 'manyToMany', relation: { kind: 'manyToMany', resource: 'tags', titleField: 'name' } }),
+        ],
+    })
+    const source = { id: 5, sku: 'SKU-5', name: 'Mug', status: 'active', category: { id: 3, label: 'Kitchen' }, photo: 'vector/products/photo/abc.png', tags: { count: 2 } }
+
+    // the relation inputs resolve their choices' labels
+    beforeEach(() => {
+        mock('/vector/r/products/fields/category/options', { body: { data: [{ id: 3, label: 'Kitchen' }] } })
+        mock('/vector/r/products/fields/tags/options', { body: { data: [{ id: 1, label: 'Sale' }, { id: 4, label: 'New' }] } })
+    })
+
+    it('starts from the record, without its unique values, files or id', async () => {
+        const tags = mock('/vector/r/products/5/tags', { body: { data: [{ id: 1 }, { id: 4 }], currentPage: 1, perPage: 100, total: 2, lastPage: 1 } })
+        const form = await mountForm({ resource: products, operation: 'create', copyOf: source })
+        await vi.waitFor(() => expect(tags.requests).toHaveLength(1))
+        await flushPromises()
+
+        expect(input(form, 'SKU').find('input').element.value).toBe('')
+        expect(input(form, 'Name').find('input').element.value).toBe('Mug')
+        expect((form.vm as unknown as { dirty: boolean }).dirty).toBe(false)
+    })
+
+    it('saves as a new record with the copied values and memberships', async () => {
+        mock('/vector/r/products/5/tags', { body: { data: [{ id: 1 }, { id: 4 }], currentPage: 1, perPage: 100, total: 2, lastPage: 1 } })
+        const create = mock('/vector/r/products', { status: 201, body: { data: { id: 6 }, permissions: {} } }, 'POST')
+        const form = await mountForm({ resource: products, operation: 'create', copyOf: source })
+        await flushPromises()
+        await input(form, 'SKU').find('input').setValue('SKU-6')
+
+        await submit(form)
+
+        await vi.waitFor(() => expect(create.requests).toHaveLength(1))
+        expect(create.requests[0]!.body).toEqual({ sku: 'SKU-6', name: 'Mug', status: 'active', category: 3, photo: null, tags: [1, 4] })
+    })
+})
+

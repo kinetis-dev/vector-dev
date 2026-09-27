@@ -71,8 +71,9 @@ export class Api {
         return (await response.json()).data
     }
 
-    async remove(resource: string, id: unknown): Promise<void> {
-        const response = await this.request.delete(`${API}/vector/r/${resource}/${id}`, { headers: this.headers })
+    /** Deletes a record; `force` removes a soft-deleting resource's record for good. */
+    async remove(resource: string, id: unknown, force = false): Promise<void> {
+        const response = await this.request.delete(`${API}/vector/r/${resource}/${id}`, { headers: this.headers, params: force ? { force: '1' } : {} })
         expect([204, 200, 404]).toContain(response.status())
     }
 }
@@ -105,16 +106,16 @@ export async function signIn(page: Page, mode: Mode, account: Account = ADMIN): 
 
 /** Records a test created, removed after it whatever its outcome. */
 export class Cleanup {
-    private readonly pending: { resource: string, name: string }[] = []
+    private readonly pending: { resource: string, name: string, force: boolean }[] = []
 
-    /** Removes every `resource` record whose search matches `name` once the test ends. */
-    byName(resource: string, name: string) {
-        this.pending.push({ resource, name })
+    /** Removes every `resource` record whose search matches `name` once the test ends — for good with `force`. */
+    byName(resource: string, name: string, force = false) {
+        this.pending.push({ resource, name, force })
     }
 
     async run(api: Api) {
-        for (const { resource, name } of this.pending.splice(0)) {
-            for (const record of await api.search(resource, name)) await api.remove(resource, record.id)
+        for (const { resource, name, force } of this.pending.splice(0)) {
+            for (const record of await api.search(resource, name)) await api.remove(resource, record.id, force)
         }
     }
 }

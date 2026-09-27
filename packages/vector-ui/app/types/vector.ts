@@ -62,6 +62,8 @@ export interface VectorField {
     readonly: boolean
     /** Editable in place in the list (inlineEditable()). */
     inline?: boolean
+    /** Unique among the resource's records: a duplicate starts without it; an import may match by it. */
+    unique?: boolean
     /** hasMany: the owned rows edited inside the parent's form */
     repeater?: { fields: string[], min: number, max: number } | null
     help: string | null
@@ -331,6 +333,8 @@ export interface VectorResource {
         bulkLimit: number
     }
     show: { fields: string[] }
+    /** Whether a record may be duplicated into a new one's form. */
+    replicable?: boolean
     /** Sections, tabs and spans; null when the resource declares none. Optional for a descriptor from before layout existed. */
     layout?: VectorLayout | null
     softDelete: { field: string } | null

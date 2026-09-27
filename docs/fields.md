@@ -39,6 +39,7 @@ Every field takes:
 | `hideFromIndex()`, `hideFromShow()`, `hideFromForms()`, `onlyOn*()` | Where the field appears. |
 | `summarize('sum'\|'avg'\|'min'\|'max'\|'count')` | A totals row under the list. |
 | `inlineEditable()` | Editable in its list cell; see {doc}`forms`. |
+| `unique()` | The value is unique (as its column's index enforces): a duplicated record starts without it, and an import can match rows by it. |
 | `component('name')` | Rendered by a custom cell or input; see {doc}`customizing-the-ui`. |
 | `props([...])` | Extra settings passed to the UI. |
 

@@ -47,6 +47,13 @@ change; reload and edit again.
   reload — asks first. Nothing is lost by accident; once saved, you
   leave without a question.
 
+## Duplicating
+
+**Duplicate** on a record's page opens a new form filled with its
+values, so a similar record takes seconds. Values that must be unique
+(a SKU, a slug) and files start empty; related tags and similar
+memberships are copied. Nothing exists until you save.
+
 ## Related records
 
 A collection on the record page lists its related records.

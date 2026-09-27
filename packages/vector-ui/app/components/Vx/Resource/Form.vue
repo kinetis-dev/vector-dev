@@ -16,6 +16,8 @@ const props = defineProps<{
     preset?: Record<string, unknown>
     /** Offer the save variants and Ctrl/Cmd+S: the create and edit pages do, a dialog does not. */
     variants?: boolean
+    /** Creating a copy: the record whose values the form starts from (Duplicate). */
+    copyOf?: VectorRecord
 }>()
 
 /** What happens after a save: back to the record, keep editing it, or start another. */
@@ -43,10 +45,18 @@ const values = reactive<Record<string, unknown>>({})
 const initial = reactive<Record<string, unknown>>({})
 const clone = (value: unknown) => value === undefined ? undefined : JSON.parse(JSON.stringify(value)) as unknown
 
-/** Fills the values from the record, the preset, or each field's default. */
+/**
+ * What a copy takes from the record it duplicates: every value the create
+ * form writes, but never a unique one (it would clash) nor a file or image
+ * (a stored key belongs to its record). Collections load below.
+ */
+const copies = (field: VectorField) => props.operation === 'create' && props.copyOf !== undefined
+    && field.unique !== true && !['file', 'image', 'manyToMany', 'hasMany'].includes(field.type)
+
+/** Fills the values from the record, the preset, the record being copied, or each field's default. */
 function start() {
     for (const field of fields.value) {
-        const current = props.preset?.[field.name] ?? props.record?.[field.name]
+        const current = props.preset?.[field.name] ?? props.record?.[field.name] ?? (copies(field) ? props.copyOf![field.name] : undefined)
         // a new record starts from each field's default, which the server would apply as well
         let value: unknown = current !== undefined
             ? current
@@ -75,9 +85,12 @@ function defaultFor(field: VectorField): unknown {
 // A manyToMany field's current membership is not in the record (it lists
 // as a count), so an edit form fetches every id it holds: the server
 // syncs the whole list, so a partial one would detach what it left out.
-if (props.operation === 'update' && props.record) {
+// A copy takes the same collections: every membership, every repeater row (as a new row, without its id).
+const loadFrom = props.operation === 'update' ? props.record : props.copyOf
+
+if (loadFrom) {
     for (const field of fields.value.filter(f => f.type === 'manyToMany')) {
-        allRelatedIds(props.record.id, field).then((ids) => {
+        allRelatedIds(loadFrom.id, field).then((ids) => {
             values[field.name] = ids
             initial[field.name] = [...ids]
         }).catch((error) => {
@@ -88,7 +101,7 @@ if (props.operation === 'update' && props.record) {
 
     // A repeater's rows: each child as a row of the fields it writes, its relations as ids.
     for (const field of fields.value.filter(f => f.repeater)) {
-        client.rows(props.record.id, field.name).catch((error) => {
+        client.rows(loadFrom.id, field.name).catch((error) => {
             unloaded.add(field.name)
             formError.value = vectorErrorMessage(error)
 
@@ -97,7 +110,7 @@ if (props.operation === 'update' && props.record) {
             if (page === null) return
 
             const rows = page.data.map(record => Object.fromEntries([
-                ['id', record.id],
+                ...(props.operation === 'update' ? [['id', record.id]] : []),
                 ...field.repeater!.fields.map((name) => {
                     const value = record[name]
                     return [name, value && typeof value === 'object' && 'id' in value ? (value as { id: unknown }).id : value]

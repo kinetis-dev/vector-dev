@@ -105,6 +105,7 @@ async function restore() {
                     </v-list>
                 </v-menu>
                 <v-btn v-if="canImpersonate" prepend-icon="mdi-account-switch-outline" variant="tonal" @click="impersonate">{{ t('record.impersonate.action') }}</v-btn>
+                <v-btn v-if="resource.permissions.create && resource.replicable !== false && !trashed" :to="`${base}/create?from=${encodeURIComponent(id)}`" prepend-icon="mdi-content-copy" variant="tonal">{{ t('record.duplicate') }}</v-btn>
                 <v-btn v-if="response.permissions.update" :to="`${base}/${id}/edit`" prepend-icon="mdi-pencil-outline" color="primary">{{ t('common.edit') }}</v-btn>
                 <v-btn v-if="response.permissions.restore" prepend-icon="mdi-restore" color="primary" variant="tonal" @click="restore">{{ t('common.restore') }}</v-btn>
                 <v-btn v-if="response.permissions.forceDelete" prepend-icon="mdi-delete-forever-outline" color="error" variant="tonal" @click="remove(true)">{{ t('common.deleteForever') }}</v-btn>
