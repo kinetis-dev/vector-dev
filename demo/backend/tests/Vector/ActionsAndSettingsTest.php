@@ -57,11 +57,18 @@ final class ActionsAndSettingsTest extends VectorTestCase
         $this->client->post('/vector/r/products/actions/adjust-stock', body: ['ids' => [$id], 'fields' => []], headers: $this->adminHeaders())
             ->assertValidationError('delta');
 
-        // "all matching": every draft product with this sku prefix
-        $this->client->post('/vector/r/products/actions/adjust-stock', body: ['all' => ['filter' => ['status' => 'draft'], 'q' => 'SKU-000'], 'fields' => ['delta' => 1]], headers: $this->adminHeaders())
-            ->assertOk()
-            ->assertJsonPath('type', 'message');
-        (new Query($link))->table('products')->where('id', '=', $id)->update(['stock' => (int) $draft['stock']]);
+        // "all matching": every draft product with this sku prefix — put every one of them back afterwards
+        $touched = (new Query($link))->table('products')->select('id', 'stock')->where('status', '=', 'draft')->get(); // a superset of what q matches
+
+        try {
+            $this->client->post('/vector/r/products/actions/adjust-stock', body: ['all' => ['filter' => ['status' => 'draft'], 'q' => 'SKU-000'], 'fields' => ['delta' => 1]], headers: $this->adminHeaders())
+                ->assertOk()
+                ->assertJsonPath('type', 'message');
+        } finally {
+            foreach ($touched as $row) {
+                (new Query($link))->table('products')->where('id', '=', $row['id'])->update(['stock' => (int) $row['stock']]);
+            }
+        }
 
         // a standalone download
         $response = $this->client->post('/vector/r/products/actions/catalog-summary', body: [], headers: $this->adminHeaders())->assertOk();

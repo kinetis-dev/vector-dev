@@ -70,6 +70,21 @@ final class AuditImpersonationMcpTest extends VectorTestCase
 
         // an admin impersonating another admin keeps access, and the impersonator rides on every write
         $second = (int) (new Query($link))->table('users')->insertGetId(['email' => 'second-admin-' . bin2hex(random_bytes(3)) . '@vector.local', 'name' => 'Second Admin', 'password_hash' => 'x', 'is_admin' => 1, 'created_at' => '2026-09-25 00:00:00']);
+
+        try {
+            $this->impersonatesASecondAdmin($link, $second, $admin, $editor, $adminHeaders);
+        } finally {
+            (new Query($link))->table('users')->where('id', '=', $second)->delete();
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $admin
+     * @param array<string, mixed> $editor
+     * @param array<string, string> $adminHeaders
+     */
+    private function impersonatesASecondAdmin(MysqlLink $link, int $second, array $admin, array $editor, array $adminHeaders): void
+    {
         $started = $this->client->post("/vector/impersonate/{$second}", headers: $adminHeaders)->assertOk()->json();
         self::assertIsArray($started);
         $asSecond = ['Authorization' => 'Bearer ' . $started['accessToken']];
@@ -89,7 +104,6 @@ final class AuditImpersonationMcpTest extends VectorTestCase
         $this->client->delete('/vector/impersonate', headers: $adminHeaders)->assertStatus(403);
 
         $this->client->delete("/vector/r/tags/{$tag['data']['id']}", headers: $adminHeaders)->assertStatus(204);
-        (new Query($link))->table('users')->where('id', '=', $second)->delete();
     }
 
     public function testTheMcpToolsAnswerWithTheSamePoliciesAsTheRoutes(): void
