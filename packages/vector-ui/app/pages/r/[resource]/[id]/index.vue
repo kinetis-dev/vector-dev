@@ -47,7 +47,7 @@ const collections = computed(() => (resource.value?.fields ?? []).filter(f => (f
 const actions = computed<VectorAction[]>(() => (resource.value?.actions ?? []).filter(a => a.showOnDetail && !a.standalone && (response.value?.permissions.actions ?? []).includes(a.name)))
 const dialogAction = ref<VectorAction | null>(null)
 
-useHead({ title: () => resource.value ? `${title.value} · ${resource.value.label}` : 'Vector' })
+useHead({ title: () => resource.value ? `${title.value} · ${resource.value.label}` : '' })
 
 async function remove(force = false) {
     if (!resource.value) return

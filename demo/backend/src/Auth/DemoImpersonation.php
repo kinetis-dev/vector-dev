@@ -51,6 +51,7 @@ final readonly class DemoImpersonation implements ImpersonationInterface
         $session = $this->session();
 
         if ($session !== null) {
+            $session->regenerate(); // a privilege change, like login: new id, new CSRF token
             $session->set('userId', $target->id());
             $session->set('userName', $target->displayName());
             $session->set('isAdmin', $target->isAdmin);
@@ -75,6 +76,7 @@ final readonly class DemoImpersonation implements ImpersonationInterface
         $session = $this->session();
 
         if ($session !== null) {
+            $session->regenerate();
             $session->set('userId', $impersonator->id());
             $session->set('userName', $impersonator->displayName());
             $session->set('isAdmin', $impersonator->isAdmin);

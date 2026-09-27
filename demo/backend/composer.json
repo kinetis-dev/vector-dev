@@ -1,6 +1,6 @@
 {
-    "name": "kinetis/skeleton",
-    "description": "The smallest possible runnable Kinetis application: nginx + PHP-FPM, one controller, one route, a welcome page.",
+    "name": "kinetis/vector-demo",
+    "description": "The Vector demo: a Kinetis application with a shop on MySQL and a support desk on PostgreSQL, administered by kinetis/vector.",
     "type": "project",
     "license": "MIT",
     "authors": [
@@ -12,6 +12,8 @@
         "php": "^8.4",
         "ext-mysqli": "*",
         "ext-pdo_mysql": "*",
+        "ext-pdo_pgsql": "*",
+        "ext-pgsql": "*",
         "kinetis/auth-jwt": "^1.5.0",
         "kinetis/authorization": "^1.0.4",
         "kinetis/database-bridge": "^1.4.0",

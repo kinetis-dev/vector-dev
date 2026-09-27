@@ -15,6 +15,7 @@ use Kinetis\Queue\QueueInterface;
 use Kinetis\Queue\Exception\QueueUnavailableException;
 use Kinetis\Vector\Auth\ActorResolverInterface;
 use Kinetis\Vector\Exception\ForbiddenOperationException;
+use Kinetis\Vector\Store\JobStore;
 
 /**
  * Where Vector's background jobs go: the queue name `VECTOR_QUEUE`
@@ -95,7 +96,14 @@ final class VectorQueue
         return $this->unavailableReason() === null;
     }
 
-    /** Pushes a Vector job onto Vector's queue name, on Vector's backend. */
+    /**
+     * Pushes a Vector job onto Vector's queue name, on Vector's backend,
+     * for exactly one attempt: an import re-run would create every row
+     * again, an export or action re-run would repeat work a failed row
+     * already reported, so a failure is final whatever the worker's own
+     * default. The job body must still tolerate a redelivery a backend
+     * makes on its own (a connection drop), which JobContext refuses.
+     */
     public function push(Job $job): void
     {
         $reason = $this->unavailableReason();
@@ -104,7 +112,24 @@ final class VectorQueue
             throw new ForbiddenOperationException($reason);
         }
 
-        $this->backend()->push($job, queue: $this->queue);
+        $this->backend()->push($job, queue: $this->queue, maxAttempts: 1);
+    }
+
+    /**
+     * Pushes the job a row was created for; a push that fails — a backend
+     * the queue package refuses to build, a connection it cannot open —
+     * marks the row failed rather than leaving it queued forever, then
+     * rethrows so the request answers with the reason.
+     */
+    public function enqueue(JobStore $jobs, int $jobId, Job $job): void
+    {
+        try {
+            $this->push($job);
+        } catch (\Throwable $e) {
+            $jobs->fail($jobId, $e->getMessage());
+
+            throw $e;
+        }
     }
 
     /** The backend type of a named connection, for display: `sql`, `redis`, …; null on the application's queue. */

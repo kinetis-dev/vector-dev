@@ -87,8 +87,10 @@ function add() {
         v = String(Math.round(Number.parseFloat(v.replace(',', '.')) * 10 ** moneyDigits(field.value)))
     }
 
-    if (operator.value === 'between') v = `${value.value.trim()},${valueTo.value.trim()}`
-    if (field.value.type === 'datetime' && v !== '' && !list.value && operator.value !== 'between' && v.includes('T')) v = new Date(v).toISOString()
+    // a datetime typed in the browser's zone goes over as UTC, each bound of a `between` alike
+    const utc = (typed: string) => field.value?.type === 'datetime' && typed.includes('T') ? new Date(typed).toISOString() : typed
+    if (operator.value === 'between') v = `${utc(value.value.trim())},${utc(valueTo.value.trim())}`
+    else if (field.value.type === 'datetime' && v !== '' && !list.value) v = utc(v)
     if (needsValue.value && v === '') return
 
     const name = field.value.name

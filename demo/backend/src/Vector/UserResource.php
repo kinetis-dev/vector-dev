@@ -10,10 +10,17 @@ use Kinetis\Vector\Fields\Boolean;
 use Kinetis\Vector\Fields\DateTime;
 use Kinetis\Vector\Fields\Email;
 use Kinetis\Vector\Fields\Id;
+use Kinetis\Vector\Exception\ForbiddenOperationException;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\VectorResource;
+use Kinetis\Vector\Write\WriteContext;
 
-/** Explicit so the password hash never appears anywhere. */
+/**
+ * Explicit so the password hash never appears anywhere. The hooks keep
+ * the admin reachable: nobody demotes themself, and the last admin is
+ * neither demoted nor deleted — both would lock everyone out until
+ * someone reaches the database.
+ */
 #[Resource(entity: User::class, group: 'Access', icon: 'mdi-shield-account-outline', title: 'name')]
 final class UserResource extends VectorResource
 {
@@ -36,5 +43,33 @@ final class UserResource extends VectorResource
     public function searchSubtitle(): string
     {
         return 'email';
+    }
+
+    public function beforeUpdate(object $entity, WriteContext $context): void
+    {
+        if (!$entity instanceof User || $entity->isAdmin()) {
+            return;
+        }
+
+        if ($entity->id() === $context->user->id()) {
+            throw new ForbiddenOperationException('You cannot remove your own admin access.');
+        }
+
+        if ($this->otherAdmins($entity, $context) === 0) {
+            throw new ForbiddenOperationException('This is the last admin; make someone else an admin first.');
+        }
+    }
+
+    public function beforeDelete(object $entity, WriteContext $context): void
+    {
+        if ($entity instanceof User && $entity->isAdmin() && $this->otherAdmins($entity, $context) === 0) {
+            throw new ForbiddenOperationException('This is the last admin; make someone else an admin first.');
+        }
+    }
+
+    /** How many admins the table holds besides this one, as stored now. */
+    private function otherAdmins(User $user, WriteContext $context): int
+    {
+        return $context->entities->builder()->table('users')->where('is_admin', '=', 1)->where('id', '!=', $user->id())->count();
     }
 }

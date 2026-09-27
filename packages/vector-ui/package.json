@@ -7,13 +7,12 @@
     "main": "./nuxt.config.ts",
     "files": [
         "nuxt.config.ts",
-        "app",
-        "shared"
+        "app"
     ],
     "scripts": {
-        "postinstall": "nuxt prepare",
+        "prepare": "nuxt prepare",
         "typecheck": "nuxt prepare && vue-tsc --noEmit",
-        "test": "vitest run"
+        "test": "vitest run --passWithNoTests"
     },
     "dependencies": {
         "@mdi/font": "^7.4.47",

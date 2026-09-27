@@ -23,6 +23,10 @@ final class HostedModeTest extends VectorTestCase
     {
         [$cookie, $csrf] = $this->signIn();
 
+        // a session-authenticated write without the CSRF token is refused, bundle or no bundle
+        $this->client->post('/vector/r/tags', body: ['name' => 'hosted-test', 'color' => '#123456'], headers: ['Cookie' => $cookie])
+            ->assertStatus(403);
+
         $shell = $this->client->get('/vector/ui', headers: ['Cookie' => $cookie]);
 
         if ($shell->getStatusCode() === 503) {
@@ -57,9 +61,7 @@ final class HostedModeTest extends VectorTestCase
         self::assertIsArray($admin);
         $this->client->get('/vector/me', headers: ['Cookie' => $cookie])->assertOk()->assertJsonPath('id', (int) $admin['id']);
 
-        // a write needs the token the shell handed out
-        $this->client->post('/vector/r/tags', body: ['name' => 'hosted-test', 'color' => '#123456'], headers: ['Cookie' => $cookie])
-            ->assertStatus(403);
+        // a write with the token the shell handed out goes through
         $created = $this->client->post('/vector/r/tags', body: ['name' => 'hosted-test', 'color' => '#123456'], headers: ['Cookie' => $cookie, 'X-CSRF-Token' => $csrf])
             ->assertCreated()
             ->json();

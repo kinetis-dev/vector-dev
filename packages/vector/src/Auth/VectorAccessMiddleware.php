@@ -30,6 +30,12 @@ final readonly class VectorAccessMiddleware implements MiddlewareInterface
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
+        // every answer of the admin API — a refusal included — is about one account; a shared browser or proxy keeps none of it
+        return self::noStore($this->answer($request, $handler));
+    }
+
+    private function answer(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+    {
         if (!$this->scope->isRegistered(CurrentUserInterface::class)) {
             return ErrorResponse::create(401, 'Unauthenticated.');
         }
@@ -45,6 +51,11 @@ final readonly class VectorAccessMiddleware implements MiddlewareInterface
         }
 
         return $handler->handle($request);
+    }
+
+    private static function noStore(ResponseInterface $response): ResponseInterface
+    {
+        return $response->hasHeader('Cache-Control') ? $response : $response->withHeader('Cache-Control', 'no-store');
     }
 
     /**

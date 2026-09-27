@@ -67,6 +67,18 @@ abstract class VectorWidget
         return 0;
     }
 
+    /**
+     * Whether one cached result serves every admitted account. False, the
+     * default, memoizes per account: a widget that reads `$request->user`,
+     * or a query the resource's `scope()` narrows, then never shows one
+     * admin another's numbers. Declare true only for a result that is the
+     * same whoever asks, so the memo is shared.
+     */
+    public function cacheShared(): bool
+    {
+        return false;
+    }
+
     /** Request-time visibility, on top of the dashboard's or resource's own. */
     public function canView(CurrentUserInterface $user): bool
     {

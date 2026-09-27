@@ -50,10 +50,17 @@ final readonly class JobContext
         return is_object($service) ? $service : throw new \LogicException("{$class} did not resolve to an object.");
     }
 
-    /** Runs a job body against its row: running → done, or failed with the message, and a notification either way. */
+    /**
+     * Runs a job body against its row: running → done, or failed with the
+     * message, and a notification either way. A row that is not queued —
+     * a redelivery of a job that already ran, or was already marked
+     * failed — is left alone: every Vector job runs at most once.
+     */
     public function run(int $jobId, string $actorId, string $title, \Closure $body): void
     {
-        $this->jobs->start($jobId);
+        if (!$this->jobs->start($jobId)) {
+            return;
+        }
 
         try {
             $user = $this->actAs($actorId);

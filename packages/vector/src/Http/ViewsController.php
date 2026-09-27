@@ -45,7 +45,7 @@ final readonly class ViewsController
     public function index(string $resource): array
     {
         $descriptor = $this->service->resource($resource);
-        $this->service->list($descriptor, ListRequest::fromQueryParams(['perPage' => 1], $descriptor, $this->converter)); // viewAny
+        $this->service->authorizeViewAny($descriptor);
 
         return ['data' => $this->views->forResource($descriptor->slug(), (string) $this->user->id())];
     }

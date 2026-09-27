@@ -22,7 +22,7 @@ const title = computed(() => {
     return value === undefined || value === null ? `#${id.value}` : String(value)
 })
 
-useHead({ title: () => resource.value ? `${t('record.editTitle', { title: title.value })} · ${resource.value.label}` : 'Vector' })
+useHead({ title: () => resource.value ? `${t('record.editTitle', { title: title.value })} · ${resource.value.label}` : '' })
 
 function saved(record: VectorRecord) {
     navigateTo(`${base.value}/${encodeURIComponent(String(record.id))}`)

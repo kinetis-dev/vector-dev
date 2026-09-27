@@ -6,6 +6,8 @@ export default {
     noGrouping: 'No grouping',
     groupBy: 'Group by',
     groupHeader: '{label}:',
+    expandGroup: 'Expand group',
+    collapseGroup: 'Collapse group',
     trash: {
         label: 'Trash',
         active: 'Active',

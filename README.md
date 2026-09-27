@@ -18,12 +18,11 @@ is delivered as, and the demo application they are developed against:
 
 | Path | What it is |
 |---|---|
-| `packages/vector` | `kinetis/vector` — the PHP package: the compiled resource registry, the REST admin API, the background jobs, and the MCP tools. Required by the root application as a Composer `path` repository. |
+| `packages/vector` | `kinetis/vector` — the PHP package: the compiled resource registry, the REST admin API, the background jobs, and the MCP tools. Required by the demo application as a Composer `path` repository. |
 | `packages/vector-ui` | `@kinetis/vector-ui` — the admin UI as a Nuxt 4 layer on Vuetify 4, published to npm. |
 | `demo/` | The demo: everything that consumes the two packages the way an adopter would, plus the Docker stack that runs it. |
 | `demo/backend` | The demo Kinetis application (`App\`), with `kinetis/vector` installed as a Composer path repository, JWT and session logins, and a `demo:seed` command. Two business domains on two databases: a shop (customers, orders, products, categories, tags) on MySQL, and a support desk (teams, agents, tickets, replies, labels) on PostgreSQL, each built to exercise every field type and relation shape Vector administers. |
 | `demo/frontend` | The demo Nuxt application: it extends the layer and points at the demo API. |
-| `src/`, `tests/`, `migrations/` | The demo application (`App\`): a small commerce domain — customers, orders, products, categories, tags — built to exercise every field type and relation shape Vector administers, plus JWT login and a `demo:seed` command. |
 
 The architecture, the decisions behind it and the phase plan are in
 `~/Documents/Kinetis/Vector/KINETIS_VECTOR_MASTER_PLAN_2026-09-24.md`.
@@ -205,7 +204,7 @@ and vendor mounts but not its process lifecycle, so restarting,
 recreating or rebuilding `app` does not disconnect an established
 session. `--entrypoint php` skips the entrypoint's `composer install`,
 and `--no-deps` keeps the launcher from starting MySQL or Node, which it
-does not need. The container sees every checkout as `/app`, so
+does not need. The container sees every checkout as `/workspace/demo/backend`, so
 `<checkout>` is this checkout's physical host path, which
 `orbitron_inspect` reports back as `checkoutRoot`. The server still
 lives next to the code it reports on, so your host still needs no PHP
@@ -256,7 +255,7 @@ so discovery and Orbitron see the change.
 
 ### Verifying a change
 
-The PHP tools run inside the `app` container, over the project at `/app`;
+The PHP tools run inside the `app` container, over the project at `/workspace/demo/backend`;
 the frontend tools inside `node`:
 
 ```sh
@@ -331,7 +330,7 @@ docker compose exec app vendor/bin/kinetis orbitron:scaffold
 
 `orbitron:scaffold` previews; `orbitron:scaffold --apply` is the only
 one of them that writes anything, and what it writes is two fixed files.
-Inside the container, `orbitron:inspect` reports `/app` as both
+Inside the container, `orbitron:inspect` reports `/workspace/demo/backend` as both
 `projectRoot` and `checkoutRoot`: it names the container's view, not
 the host checkout.
 See [Appendix: Orbitron](https://kinetis.dev/docs/appendix-orbitron.html)
@@ -413,7 +412,7 @@ lists every code.
 
 Every Vector route sits under `/vector` behind the `vector` middleware
 group — the application's authentication middleware (here
-`App\Auth\VectorJwtAuthMiddleware`) followed by Vector's own
+`App\Auth\VectorAuthMiddleware`) followed by Vector's own
 `VectorAccessMiddleware`, which asks the application-bound
 `VectorAccessInterface` whether the authenticated user may enter. A
 request without an identity is `401`; one the application does not admit
@@ -469,7 +468,7 @@ A resource is a class extending `Kinetis\Vector\VectorResource` carrying
 `#[Resource(entity: ...)]`; an empty class derives every field from the
 entity's ORM metadata, and `fields()` replaces derivation (see
 `demo/backend/src/Vector/ProductResource.php`, which also declares `softDeletes()`,
-two `summarize()` columns and four actions). An action is a class
+two `summarize()` columns and five actions). An action is a class
 extending `Kinetis\Vector\Actions\VectorAction` — its `fields()` become a
 dialog, `canRun()` decides per-record visibility, `handle()` receives the
 loaded entities and answers an `ActionResponse` (see

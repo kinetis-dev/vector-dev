@@ -11,12 +11,12 @@ use Kinetis\Queue\QueueInterface;
 /** Stands in for the application's own queue: records every push, runs nothing. */
 final class RecordingQueue implements QueueInterface
 {
-    /** @var list<array{job: class-string, queue: string}> */
+    /** @var list<array{job: class-string, queue: string, maxAttempts: int|null}> */
     public array $pushed = [];
 
     public function push(Job $job, int $delaySeconds = 0, string $queue = 'default', ?int $maxAttempts = null): void
     {
-        $this->pushed[] = ['job' => $job::class, 'queue' => $queue];
+        $this->pushed[] = ['job' => $job::class, 'queue' => $queue, 'maxAttempts' => $maxAttempts];
     }
 
     public function pop(int $timeoutSeconds = 0, array $queues = ['default']): ?QueuedJob

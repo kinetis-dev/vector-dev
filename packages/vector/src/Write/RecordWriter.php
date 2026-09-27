@@ -138,7 +138,7 @@ final readonly class RecordWriter
                 continue;
             }
 
-            if (json_encode($current[$name] ?? null, JSON_THROW_ON_ERROR) !== json_encode($change['to'] ?? null, JSON_THROW_ON_ERROR)) {
+            if (self::comparable($current[$name] ?? null) !== self::comparable($change['to'] ?? null)) {
                 $changedSince[] = $field['label'];
 
                 continue;
@@ -1056,6 +1056,16 @@ final readonly class RecordWriter
         $id = $this->user instanceof ImpersonatedUserInterface ? $this->user->impersonatorId() : null;
 
         return $id === null ? null : (string) $id;
+    }
+
+    /**
+     * A serialized value as the audit trail stored it: the trail keeps
+     * JSON decoded to arrays, while a record carries an empty key-value
+     * map as an object, and `{}` and `[]` must compare equal.
+     */
+    private static function comparable(mixed $value): string
+    {
+        return json_encode(json_decode(json_encode($value, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR), JSON_THROW_ON_ERROR);
     }
 
     /**

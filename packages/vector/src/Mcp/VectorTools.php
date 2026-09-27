@@ -170,6 +170,10 @@ final readonly class VectorTools
 
             $page = $this->registry->dashboard($dashboard === '' ? 'main' : $dashboard);
 
+            if (!$this->widgets->dashboardVisible($page)) {
+                throw new AuthorizationException('This dashboard is not available to this account.');
+            }
+
             foreach ($page['widgets'] as $compiled) {
                 if ($compiled['name'] === $widget) {
                     return ['data' => $this->widgets->run($compiled, $range === '' ? null : $range, "dashboards/{$page['name']}")];

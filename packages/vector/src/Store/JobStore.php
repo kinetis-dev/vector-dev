@@ -24,6 +24,9 @@ final readonly class JobStore
     public const string DONE = 'done';
     public const string FAILED = 'failed';
 
+    /** The most a job's file may hold: 12 MiB of file is 16 MiB of base64, MySQL's `MEDIUMBLOB`. */
+    public const int MAX_FILE_BYTES = 12 * 1024 * 1024;
+
     public function __construct(private VectorDatabase $db) {}
 
     /** @param 'action'|'export'|'import' $kind */
@@ -41,7 +44,7 @@ final readonly class JobStore
             'processed' => 0,
             'result' => null,
             'failure' => null,
-            'file' => $file === null ? null : base64_encode($file),
+            'file' => $file === null ? null : self::encoded($file),
             'file_name' => $fileName,
             'file_type' => $fileType,
             'created_at' => $now,
@@ -94,7 +97,13 @@ final readonly class JobStore
         return ['contents' => $contents, 'name' => (string) ($row['file_name'] ?? 'download'), 'type' => (string) ($row['file_type'] ?? 'application/octet-stream')];
     }
 
-    public function start(int $id, ?int $total = null): void
+    /**
+     * Marks a queued job running: true when this call made the
+     * transition, false when the row was not queued — already running,
+     * done or failed — which is how a redelivered job knows not to run
+     * again. One conditional update, so two workers cannot both win.
+     */
+    public function start(int $id, ?int $total = null): bool
     {
         $values = ['status' => self::RUNNING, 'updated_at' => self::now()];
 
@@ -102,7 +111,7 @@ final readonly class JobStore
             $values['total'] = $total;
         }
 
-        $this->query()->table('vector_jobs')->where('id', '=', $id)->update($values);
+        return $this->query()->table('vector_jobs')->where('id', '=', $id)->where('status', '=', self::QUEUED)->update($values) === 1;
     }
 
     public function progress(int $id, int $processed, ?int $total = null): void
@@ -127,7 +136,7 @@ final readonly class JobStore
         }
 
         if ($file !== null) {
-            $values['file'] = base64_encode($file);
+            $values['file'] = self::encoded($file);
             $values['file_name'] = $fileName;
             $values['file_type'] = $fileType;
         }
@@ -172,6 +181,16 @@ final readonly class JobStore
             'updatedAt' => self::iso((string) $row['updated_at']),
             'finishedAt' => $row['finished_at'] === null ? null : self::iso((string) $row['finished_at']),
         ];
+    }
+
+    /** @throws \LengthException when the file is larger than the column holds */
+    private static function encoded(string $file): string
+    {
+        if (strlen($file) > self::MAX_FILE_BYTES) {
+            throw new \LengthException(sprintf('The file is %.1f MiB; a job file holds at most %d MiB. Narrow the selection.', strlen($file) / 1048576, self::MAX_FILE_BYTES / 1048576));
+        }
+
+        return base64_encode($file);
     }
 
     public static function now(): string

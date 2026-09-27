@@ -1,7 +1,10 @@
 #!/bin/sh
 set -e
 
-composer install --no-interaction --no-progress
+# app and worker start together on one vendor volume; the lock makes the
+# second install wait for the first instead of writing the same tree.
+mkdir -p vendor
+flock vendor/.install.lock composer install --no-interaction --no-progress
 
 # The file session store keeps its directory at 0700 and PHP-FPM runs as
 # www-data, so create it for that user before anything running as root

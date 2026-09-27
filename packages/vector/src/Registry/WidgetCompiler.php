@@ -48,6 +48,7 @@ final class WidgetCompiler
                 'ranges' => $widget->ranges(),
                 'width' => in_array($widget->width(), [3, 4, 6, 12], true) ? $widget->width() : 4,
                 'cacheSeconds' => max(0, $widget->cacheSeconds()),
+                'cacheShared' => $widget->cacheShared(),
             ];
         }
 

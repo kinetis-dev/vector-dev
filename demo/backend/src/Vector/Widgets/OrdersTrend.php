@@ -37,6 +37,12 @@ final class OrdersTrend extends VectorWidget
         return 60;
     }
 
+    /** The same series for every admin: no user, no scope in the query. */
+    public function cacheShared(): bool
+    {
+        return true;
+    }
+
     public function calculate(WidgetRequest $request): WidgetResult
     {
         $rows = (new Query($this->db instanceof MysqlLink || $this->db instanceof PostgresLink ? $this->db : throw new \LogicException('Unsupported link.')))

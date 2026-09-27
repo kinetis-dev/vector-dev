@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Vector\Support;
 
+use Kinetis\Validation\Constraints\GreaterThanOrEqual;
+use Kinetis\Validation\Constraints\LessThanOrEqual;
 use App\Domain\Support\Ticket;
 use App\Domain\Support\TicketPriority;
 use App\Domain\Support\TicketStatus;
@@ -58,7 +60,7 @@ final class TicketResource extends VectorResource
             HasMany::to('replies', TicketReplyResource::class),
             Money::make('compensationCents', 'Compensation')->currencyField('currency')->sortable()->filterable()->summarize('sum'),
             Currency::make('currency')->hideFromIndex(),
-            Number::make('satisfaction')->sortable()->filterable()->summarize('avg'),
+            Number::make('satisfaction')->rule(GreaterThanOrEqual::class, 1)->rule(LessThanOrEqual::class, 5)->sortable()->filterable()->summarize('avg'), // the column's CHECK (1..5)
             Boolean::make('isEscalated', 'Escalated')->sortable()->filterable(),
             Json::make('metadata')->hideFromIndex(),
             DateTime::make('dueAt', 'Due')->sortable()->filterable(),

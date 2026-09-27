@@ -18,6 +18,8 @@ export function useConfirm() {
     const pending = useState<PendingConfirm | null>('vector.confirm', () => null)
 
     function confirm(options: ConfirmOptions): Promise<boolean> {
+        pending.value?.resolve(false) // whoever asked first is answered, not left waiting
+
         return new Promise((resolve) => {
             pending.value = { ...options, resolve }
         })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Phase 2 renders Markdown as text; a sanitising renderer arrives with the form work.
+// Markdown is shown as its source text, never rendered: nothing a record holds becomes HTML.
 const props = defineProps<{ value: unknown, context: 'index' | 'show' }>()
 const text = computed(() => typeof props.value === 'string' ? props.value : '')
 const { t } = useVectorT()

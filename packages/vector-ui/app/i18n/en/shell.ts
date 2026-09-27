@@ -23,6 +23,7 @@ export default {
         anotherUser: 'another user',
         stop: 'Stop impersonating',
         noAccess: '{name} has no access to the admin, so there is nothing to see as them. Impersonation was stopped.',
+        noToken: 'The application answered without a token or a reload, so nothing changed.',
     },
     palette: {
         placeholder: 'Search records and resources…',

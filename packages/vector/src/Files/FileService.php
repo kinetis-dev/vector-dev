@@ -88,7 +88,7 @@ final readonly class FileService
         $headers = [
             'X-Content-Type-Options' => 'nosniff',
             'Content-Security-Policy' => "default-src 'none'; sandbox",
-            'Cache-Control' => 'private, max-age=300',
+            'Cache-Control' => 'no-store',
         ];
 
         if (in_array($type, self::INLINE, true)) {

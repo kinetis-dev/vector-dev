@@ -85,20 +85,22 @@ final readonly class ResourceController
             throw ValidationException::fromViolations([new Violation(['format'], 'invalid_choice', 'must be csv.')]);
         }
 
+        $this->service->authorizeExport($descriptor); // before any counting or queueing
         $listRequest = ListRequest::fromQueryParams($params, $descriptor, $this->converter)->unpaged();
         $fields = $listRequest->columns ?? $descriptor->toArray()['table']['columns'];
+        $total = $this->service->exportCount($descriptor, $listRequest);
 
         // above the inline limit the export becomes a job, when the application queues
-        if ($this->queue->available() && $this->service->exportCount($descriptor, $listRequest) > $descriptor->exportLimit()) {
-            $jobId = $this->jobs->create('export', $descriptor->slug(), 'export', (string) $this->user->id());
+        if ($this->queue->available() && $total > $descriptor->exportLimit()) {
             /** @var array<string, mixed> $stored */
             $stored = array_intersect_key($params, array_flip(['filter', 'q', 'sort', 'columns']));
-            $this->queue->push(new ExportJob($jobId, $descriptor->slug(), $stored, (string) $this->user->id()));
+            $jobId = $this->jobs->create('export', $descriptor->slug(), 'export', (string) $this->user->id());
+            $this->queue->enqueue($this->jobs, $jobId, new ExportJob($jobId, $descriptor->slug(), $stored, (string) $this->user->id()));
 
             return JsonResponse::create(['type' => 'job', 'jobId' => $jobId, 'message' => 'The export was queued.'], 202);
         }
 
-        $csv = CsvWriter::document($descriptor, $fields, $this->service->stream($descriptor, $listRequest));
+        $csv = CsvWriter::document($descriptor, $fields, $this->service->stream($descriptor, $listRequest, total: $total));
 
         return FileResponse::fromContents($csv, 'text/csv; charset=utf-8', 200, $descriptor->slug() . '-' . gmdate('Ymd-His') . '.csv', ['Cache-Control' => 'no-store']);
     }
@@ -157,8 +159,9 @@ final readonly class ResourceController
 
         $contents = (string) $upload->file->getStream();
         $reader = CsvReader::fromString($contents); // refuses a file without a header or over the row cap
-        $jobId = $this->jobs->create('import', $descriptor->slug(), 'import', (string) $this->user->id(), $reader->rowCount(), $contents, $upload->file->getClientFilename() ?? 'import.csv', 'text/csv');
-        $this->queue->push(new ImportJob($jobId, $descriptor->slug(), $mapping, (string) $this->user->id()));
+        $fileName = mb_substr($upload->file->getClientFilename() ?? 'import.csv', 0, 255); // the column's width
+        $jobId = $this->jobs->create('import', $descriptor->slug(), 'import', (string) $this->user->id(), $reader->rowCount(), $contents, $fileName, 'text/csv');
+        $this->queue->enqueue($this->jobs, $jobId, new ImportJob($jobId, $descriptor->slug(), $mapping, (string) $this->user->id()));
 
         return JsonResponse::create(['type' => 'job', 'jobId' => $jobId, 'rows' => $reader->rowCount()], 202);
     }
@@ -376,12 +379,13 @@ final readonly class ResourceController
         return ['data' => $record, 'permissions' => $this->service->recordPermissions($descriptor, $record)];
     }
 
-    /** Deletes — into the trash on a soft-deleting resource unless `?force=1`. */
+    /** Deletes — into the trash on a soft-deleting resource unless `?force=1`; a hard-deleting resource removes the row either way. */
     #[Delete('/{resource}/{id}', status: 204)]
     public function delete(string $resource, string $id, ServerRequestInterface $request): ResponseInterface
     {
-        $force = in_array($request->getQueryParams()['force'] ?? null, ['1', 'true'], true);
-        $this->writer->delete($this->service->resource($resource), $id, $force);
+        $descriptor = $this->service->resource($resource);
+        $force = $descriptor->softDelete() !== null && in_array($request->getQueryParams()['force'] ?? null, ['1', 'true'], true);
+        $this->writer->delete($descriptor, $id, $force);
 
         return PlainTextResponse::create('', 204);
     }

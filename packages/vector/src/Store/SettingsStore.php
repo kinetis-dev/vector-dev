@@ -30,7 +30,11 @@ final readonly class SettingsStore
 
         foreach ($this->query()->table('vector_settings')->select('key', 'value')->where('group', '=', $group->name())->get() as $row) {
             if (array_key_exists($row['key'], $values)) {
-                $values[$row['key']] = json_decode((string) $row['value'], true, 8, JSON_THROW_ON_ERROR);
+                try {
+                    $values[$row['key']] = json_decode((string) $row['value'], true, 32, JSON_THROW_ON_ERROR);
+                } catch (\JsonException) {
+                    // a value this reader cannot decode keeps the group's default rather than failing every page
+                }
             }
         }
 

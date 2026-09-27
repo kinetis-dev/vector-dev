@@ -85,6 +85,11 @@ final readonly class ListRequest
             if ($sort !== []) {
                 throw new InvalidListRequestException('cursor pagination orders by the identifier; do not pass sort with cursor.');
             }
+
+            // the cursor is the last key of the page before; '' asks for the first page
+            if ($cursor !== '' && $resource->primaryKeyType() === 'int' && preg_match('/^-?[0-9]{1,18}$/', $cursor) !== 1) {
+                throw new InvalidListRequestException('cursor must be an identifier of this resource.');
+            }
         }
 
         $search = $params['q'] ?? null;

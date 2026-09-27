@@ -53,6 +53,9 @@ final class CsvWriter
             default => '',
         };
 
-        return $text !== '' && str_contains('=+-@\t\r', $text[0]) ? "'" . $text : $text;
+        // a signed number is not a formula: `-5` must import back as -5
+        $signedNumber = ($text[0] ?? '') !== '' && str_contains('+-', $text[0]) && is_numeric($text);
+
+        return $text !== '' && str_contains('=+-@\t\r', $text[0]) && !$signedNumber ? "'" . $text : $text;
     }
 }

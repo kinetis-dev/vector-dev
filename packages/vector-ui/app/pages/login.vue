@@ -46,7 +46,9 @@ async function submit(event: SubmitEventPromise) {
         await auth.login(email.value, password.value)
         notifications.success(t('shell.login.welcome', { name: auth.user?.name ?? email.value }))
 
-        const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : (appConfig.vector.basePath || '/')
+        // only a path of this app: `//host`, `/\host` and anything with a scheme are not places to go back to
+        const wanted = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+        const redirect = /^\/(?![/\\])/.test(wanted) ? wanted : (appConfig.vector.basePath || '/')
         await navigateTo(redirect, { replace: true })
     } catch (caught) {
         error.value = vectorErrorMessage(caught)

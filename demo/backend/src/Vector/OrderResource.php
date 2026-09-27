@@ -30,7 +30,7 @@ final class OrderResource extends VectorResource
     {
         return [
             Id::make(),
-            Text::make('number')->required()->max(40)->sortable()->searchable()->filterable(),
+            Text::make('number')->required()->max(30)->sortable()->searchable()->filterable(), // orders.number is VARCHAR(30)
             BelongsTo::to('customer', CustomerResource::class)->sortable()->filterable(),
             Enum::make('status')->of(OrderStatus::class)
                 ->colors(['pending' => 'warning', 'paid' => 'info', 'shipped' => 'success', 'cancelled' => 'grey'])
