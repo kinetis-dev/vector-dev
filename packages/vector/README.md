@@ -699,6 +699,29 @@ reported on the row. A queued action must still tolerate a chunk running
 twice, because a chunk's flush and the progress written after it are two
 statements.
 
+### XLSX exports
+
+`format=xlsx` on `GET /vector/r/{resource}/export` writes an Excel
+workbook with typed cells: numbers and money as numbers (money in major
+units, its currency in the header when the field has one, else from the
+row's currency), booleans as booleans, dates and date-times as real date
+cells (in UTC), and everything else as text under the same formula guard
+as CSV. It needs `openspout/openspout` (MIT) and PHP's `zip` extension:
+
+```sh
+composer require openspout/openspout
+```
+
+Without them the descriptor's `capabilities.exportFormats` is `["csv"]`
+and the UI offers CSV alone. **An XLSX export is always a job.** The
+decision, checked against openspout 5.12's own source: its XLSX writer
+builds the sheet in a temporary folder and zips it with `ZipArchive` on
+a real file path, and has no memory-only path. That is blocking file I/O,
+which a persistent request worker must not do; the queue worker may. So
+XLSX is offered only when a queue runs Vector's jobs, the request answers
+202 with the job, and the same field selection and limits apply
+(`exportQueueLimit()`).
+
 An import creates each row, or — with `mode: update` or `upsert` and
 a `key` column (the primary key or a `unique()` field, mapped) —
 updates the record the key finds, creating the rest in `upsert` and
@@ -777,6 +800,7 @@ with `X-CSRF-Token` on writes under the hosted shell — see
 | `VECTOR_UI_EXTENSIONS` | Comma-separated ES-module URLs the UI imports after boot. |
 | `VECTOR_UI_LOCALE` | The hosted UI's language (`de`, `pt-BR`, …); unset, the bundle's own default (English). |
 | `VECTOR_CURRENCY` | The ISO 4217 code a `Currency` field starts from when it sets no `default()` of its own (and allows the code). An invalid code stops the boot. |
+| `VECTOR_EXPORT_FORMATS` | The export formats offered, `csv,xlsx` by default. CSV is always offered; XLSX only where `openspout/openspout` and `ext-zip` are installed and a queue runs Vector's jobs. An unknown format stops the boot. |
 | `VECTOR_DB_CONNECTION` | The connection Vector's own tables live on (`default` when unset). |
 | `VECTOR_QUEUE` | The queue name Vector's jobs are pushed to (`default` when unset). |
 | `VECTOR_QUEUE_CONNECTION` | A named queue connection for Vector's jobs; its backend is `QUEUE_<NAME>_CONNECTION`. |

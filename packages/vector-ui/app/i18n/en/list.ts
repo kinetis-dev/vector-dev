@@ -17,6 +17,12 @@ export default {
     exportCsv: 'Export CSV',
     importCsv: 'Import CSV',
     exportQueued: 'The export is large and was queued; you are notified when it is ready.',
+    exportPrepared: 'The export is being prepared; you are notified when it is ready.',
+    export: 'Export',
+    exportFormats: {
+        csv: 'CSV',
+        xlsx: 'Excel (XLSX)',
+    },
     nothingMatches: 'Nothing matches',
     empty: 'No {label} yet',
     summary: {

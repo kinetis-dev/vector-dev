@@ -68,6 +68,17 @@
                 },
                 "queue": {
                     "type": "boolean"
+                },
+                "uploads": {
+                    "type": "boolean"
+                },
+                "exportFormats": {
+                    "description": "The export formats offered: csv always; xlsx where openspout/openspout and ext-zip are installed, VECTOR_EXPORT_FORMATS lists it, and a queue runs it.",
+                    "type": "array",
+                    "items": {
+                        "enum": ["csv", "xlsx"]
+                    },
+                    "uniqueItems": true
                 }
             }
         },

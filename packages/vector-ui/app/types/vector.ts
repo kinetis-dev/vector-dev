@@ -201,6 +201,8 @@ export interface VectorAuditEntry {
     createdAt: string
 }
 
+export type VectorExportFormat = 'csv' | 'xlsx'
+
 /** create adds every row; update changes the records a key column finds; upsert does either. */
 export type VectorImportMode = 'create' | 'update' | 'upsert'
 
@@ -367,7 +369,8 @@ export interface VectorSchema {
     menu: VectorMenuGroup[]
     settings: { name: string, label: string, icon: string | null }[]
     dashboards: { name: string, label: string, icon: string | null }[]
-    capabilities: { impersonation: boolean, queue: boolean, uploads?: boolean }
+    /** `exportFormats`: what the export menu offers — csv always, xlsx where the server can write it (in the queue). */
+    capabilities: { impersonation: boolean, queue: boolean, uploads?: boolean, exportFormats?: VectorExportFormat[] }
     branding: VectorBranding | null
     /** ISO 4217 exponents of the currencies whose minor unit is not a hundredth */
     minorUnits?: Record<string, number>

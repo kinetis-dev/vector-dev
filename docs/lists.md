@@ -79,9 +79,11 @@ edits asks first.
 
 ## Export and import
 
-- **Export CSV** downloads the list as it is filtered, sorted and
-  columned. A large export runs as a background job; you are notified
-  when the file is ready.
+- **Export** downloads the list as it is filtered, sorted and columned,
+  as CSV or — where the server offers it — as an Excel workbook (XLSX)
+  whose numbers, amounts, yes/no values and dates are real spreadsheet
+  values. A large CSV export, and every Excel export, runs as a
+  background job; you are notified when the file is ready.
 - **Import CSV** reads a file, suggests which column goes to which
   field, and lets you correct the mapping or skip a column. Choose
   whether rows **create new records**, **update existing records**, or

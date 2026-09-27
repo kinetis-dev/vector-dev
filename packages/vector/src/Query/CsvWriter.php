@@ -59,7 +59,16 @@ final class CsvWriter
             default => '',
         };
 
-        // a signed number is not a formula: `-5` must import back as -5
+        return self::guarded($text);
+    }
+
+    /**
+     * Text a spreadsheet shows as text: one starting with a formula
+     * trigger gets an apostrophe in front. A signed number is not a
+     * formula: `-5` must import back as -5.
+     */
+    public static function guarded(string $text): string
+    {
         $signedNumber = ($text[0] ?? '') !== '' && str_contains('+-', $text[0]) && is_numeric($text);
 
         return $text !== '' && str_contains('=+-@\t\r', $text[0]) && !$signedNumber ? "'" . $text : $text;

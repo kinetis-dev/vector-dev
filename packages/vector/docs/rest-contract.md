@@ -36,6 +36,15 @@ A resource's `replicable` says whether the admin offers Duplicate; a
 field's `unique` whether a copy starts without its value (and, for an
 import, whether it can match rows). A copy is an ordinary create.
 
+## Export
+
+`GET /vector/r/{resource}/export` takes the list grammar and `format`:
+`csv` (the default) or `xlsx` when `capabilities.exportFormats` offers
+it, else 422 on `format`. A CSV up to `exportLimit()` answers the file;
+a larger one, and every XLSX, answers `202 {type: "job", jobId}` and the
+file is the job's download (`text/csv; charset=utf-8` or
+`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`).
+
 ## Import
 
 `POST /vector/r/{resource}/import` takes a multipart `file`, `mapping`

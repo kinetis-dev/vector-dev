@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { fieldProps, type VectorAction, type VectorField, type VectorFilterGroup, type VectorFilterQuery, type VectorFilters, type VectorListState, type VectorPage, type VectorRecord, type VectorResource, type VectorSelection, type VectorSort, type VectorSavedView } from '#vector/app/types/vector'
+import { fieldProps, type VectorAction, type VectorExportFormat, type VectorField, type VectorFilterGroup, type VectorFilterQuery, type VectorFilters, type VectorListState, type VectorPage, type VectorRecord, type VectorResource, type VectorSelection, type VectorSort, type VectorSavedView } from '#vector/app/types/vector'
 
 // The list view: a server-driven table whose every option — page, size,
 // sort, filters, search, grouping, columns — becomes one list request,
@@ -210,12 +210,16 @@ async function operation(op: 'delete' | 'restore' | 'forceDelete') {
     }
 }
 
-async function exportCsv() {
+// one format is a button; more are a menu
+const exportFormats = computed<VectorExportFormat[]>(() => schema.value?.capabilities.exportFormats ?? ['csv'])
+
+async function exportAs(format: VectorExportFormat) {
     try {
-        const queued = await client.exportCsv({ sort: sortBy.value.map(s => ({ field: s.key, order: s.order === 'desc' ? 'desc' : 'asc' })), filter: rawFilters(), q: term.value || undefined, columns: columns.value })
+        const queued = await client.exportFile({ sort: sortBy.value.map(s => ({ field: s.key, order: s.order === 'desc' ? 'desc' : 'asc' })), filter: rawFilters(), q: term.value || undefined, columns: columns.value }, format)
 
         if (queued) {
-            notifications.success(t('list.exportQueued'))
+            // an XLSX is always prepared in the background; a CSV only when it is large
+            notifications.success(t(format === 'xlsx' ? 'list.exportPrepared' : 'list.exportQueued'))
             await navigateTo(`${appConfig.vector.basePath}/jobs/${queued.jobId}`)
         }
     } catch (error) {
@@ -362,7 +366,17 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
             <v-select v-if="resource.softDelete" v-model="trashed" :items="[{ title: t('list.trash.active'), value: 'without' }, { title: t('list.trash.only'), value: 'only' }, { title: t('list.trash.with'), value: 'with' }]" density="compact" hide-details :aria-label="t('list.trash.label')" style="max-width: 180px" prepend-inner-icon="mdi-delete-clock-outline" />
             <v-spacer />
             <v-btn v-for="action in standaloneActions" :key="action.name" size="small" variant="tonal" :prepend-icon="action.icon ?? undefined" @click="dialogAction = action">{{ action.label }}</v-btn>
-            <v-btn v-if="resource.permissions.export" size="small" variant="text" icon="mdi-download-outline" :aria-label="t('list.exportCsv')" @click="exportCsv" />
+            <template v-if="resource.permissions.export">
+                <v-btn v-if="exportFormats.length === 1" size="small" variant="text" icon="mdi-download-outline" :aria-label="t('list.exportCsv')" @click="exportAs('csv')" />
+                <v-menu v-else>
+                    <template #activator="{ props: menu }">
+                        <v-btn v-bind="menu" size="small" variant="text" icon="mdi-download-outline" :aria-label="t('list.export')" />
+                    </template>
+                    <v-list density="compact">
+                        <v-list-item v-for="format in exportFormats" :key="format" :prepend-icon="format === 'xlsx' ? 'mdi-file-excel-outline' : 'mdi-file-delimited-outline'" :title="t(`list.exportFormats.${format}`)" @click="exportAs(format)" />
+                    </v-list>
+                </v-menu>
+            </template>
             <v-btn v-if="(resource.permissions.create || resource.permissions.update) && schema?.capabilities.queue" size="small" variant="text" icon="mdi-upload-outline" :aria-label="t('list.importCsv')" @click="importing = true" />
             <VxListColumnManager v-model="columns" :resource="resource" />
         </div>

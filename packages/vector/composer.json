@@ -21,6 +21,7 @@
     },
     "suggest": {
         "kinetis/storage": "Uploads for file and image fields (FILESYSTEM_DRIVER, or VECTOR_STORAGE_CONNECTION)",
+        "openspout/openspout": "XLSX exports (MIT; needs ext-zip), written in the queue worker",
         "league/flysystem": "The filesystem contract those uploads are written through; kinetis/storage brings it"
     },
     "autoload": {

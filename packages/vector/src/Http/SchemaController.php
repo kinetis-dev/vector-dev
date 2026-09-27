@@ -39,6 +39,7 @@ final readonly class SchemaController
         private PreferenceStore $preferences,
         private RequestScope $scope,
         private NotificationStore $notifications,
+        private \Kinetis\Vector\VectorDefaults $defaults,
     ) {}
 
     #[Get('/schema')]
@@ -94,6 +95,8 @@ final readonly class SchemaController
             'capabilities' => [
                 'impersonation' => $this->scope->has(ImpersonationInterface::class) && $this->impersonation()?->canImpersonate($this->user) === true,
                 'queue' => $this->vectorQueue()->available(),
+                // XLSX is written in the queue worker only
+                'exportFormats' => array_values(array_filter($this->defaults->exportFormats, fn (string $format): bool => $format === 'csv' || $this->vectorQueue()->available())),
                 'uploads' => $this->scope->get(\Kinetis\Vector\Files\VectorStorage::class) instanceof \Kinetis\Vector\Files\VectorStorage
                     && $this->scope->get(\Kinetis\Vector\Files\VectorStorage::class)->available(),
             ],

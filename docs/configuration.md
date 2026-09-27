@@ -9,6 +9,7 @@
 | `VECTOR_QUEUE_CONNECTION` | A named queue connection for Vector's jobs; its backend is `QUEUE_<NAME>_CONNECTION`. Unset, the application's queue. |
 | `VECTOR_STORAGE_CONNECTION` | A named storage connection (`FILESYSTEM_<NAME>_*`) for uploads. Unset, the application's filesystem. |
 | `VECTOR_CURRENCY` | The code a `Currency` field starts from when it declares no `default()`. An invalid code stops the boot. |
+| `VECTOR_EXPORT_FORMATS` | The export formats offered, `csv,xlsx` by default. XLSX also needs `openspout/openspout`, PHP's `zip` extension and a queue. |
 | `VECTOR_UI_DIR` | Where the hosted bundle lives; `public/vector/ui` by default. |
 | `VECTOR_LOGIN_URL`, `VECTOR_LOGOUT_URL` | The application's pages the hosted admin redirects to and posts to. |
 | `VECTOR_UI_LOCALE` | The hosted admin's language; English when unset. |

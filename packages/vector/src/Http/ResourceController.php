@@ -59,6 +59,7 @@ final readonly class ResourceController
         private \Kinetis\Vector\Files\FileService $files,
         private WidgetRunner $widgets,
         private RowMapper $mapper,
+        private \Kinetis\Vector\VectorDefaults $defaults,
     ) {}
 
     /** @return array<string, mixed> */
@@ -73,7 +74,9 @@ final readonly class ResourceController
     /**
      * The list under the same grammar as a CSV file, inline up to the
      * resource's export limit. `columns` picks the columns; without it
-     * every index column is exported.
+     * every index column is exported. `format=xlsx`, where offered, is
+     * always a job: openspout writes through temporary files, which only
+     * the queue worker may block on.
      */
     #[Get('/{resource}/export')]
     public function export(string $resource, ServerRequestInterface $request): ResponseInterface
@@ -81,8 +84,13 @@ final readonly class ResourceController
         $descriptor = $this->service->resource($resource);
         $params = $request->getQueryParams();
 
-        if (($params['format'] ?? 'csv') !== 'csv') {
-            throw ValidationException::fromViolations([new Violation(['format'], 'invalid_choice', 'must be csv.')]);
+        $format = $params['format'] ?? 'csv';
+        $formats = $this->queue->available() ? $this->defaults->exportFormats : ['csv'];
+
+        if (!in_array($format, $formats, true)) {
+            $hint = $format === 'xlsx' && in_array('xlsx', $this->defaults->exportFormats, true) ? ' An XLSX export runs in the queue, which is not configured.' : '';
+
+            throw ValidationException::fromViolations([new Violation(['format'], 'invalid_choice', 'must be ' . implode(' or ', $formats) . '.' . $hint)]);
         }
 
         $this->service->authorizeExport($descriptor); // before any counting or queueing
@@ -90,12 +98,12 @@ final readonly class ResourceController
         $fields = $listRequest->columns ?? $descriptor->toArray()['table']['columns'];
         $total = $this->service->exportCount($descriptor, $listRequest);
 
-        // above the inline limit the export becomes a job, when the application queues
-        if ($this->queue->available() && $total > $descriptor->exportLimit()) {
+        // above the inline limit, or as XLSX, the export becomes a job
+        if ($this->queue->available() && ($total > $descriptor->exportLimit() || $format === 'xlsx')) {
             /** @var array<string, mixed> $stored */
             $stored = array_intersect_key($params, array_flip(['filter', 'q', 'sort', 'columns']));
             $jobId = $this->jobs->create('export', $descriptor->slug(), 'export', (string) $this->user->id());
-            $this->queue->enqueue($this->jobs, $jobId, new ExportJob($jobId, $descriptor->slug(), $stored, (string) $this->user->id()));
+            $this->queue->enqueue($this->jobs, $jobId, new ExportJob($jobId, $descriptor->slug(), $stored, (string) $this->user->id(), $format));
 
             return JsonResponse::create(['type' => 'job', 'jobId' => $jobId, 'message' => 'The export was queued.'], 202);
         }

@@ -130,6 +130,6 @@ final class ListGrammarTest extends VectorTestCase
         self::assertGreaterThan(1, count($lines));
         self::assertMatchesRegularExpression('/^SKU-\d{5},/', $lines[1]);
 
-        $this->client->get('/vector/r/products/export', query: ['format' => 'xlsx'], headers: $this->adminHeaders())->assertStatus(422);
+        $this->client->get('/vector/r/products/export', query: ['format' => 'ods'], headers: $this->adminHeaders())->assertValidationError('format');
     }
 }

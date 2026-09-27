@@ -1,8 +1,9 @@
 FROM php:8.4-fpm-alpine
 
 # unzip is needed by Composer to extract downloaded packages. libuv backs
-# ext-uv below.
-RUN apk add --no-cache unzip libpq libuv
+# ext-uv below; libzip backs ext-zip, which openspout/openspout writes
+# XLSX exports through.
+RUN apk add --no-cache unzip libpq libuv libzip
 
 # pdo_mysql and pdo_pgsql serve PHP-FPM, the CLI and migrations; mysqli,
 # and pgsql with sockets, are the
@@ -13,8 +14,8 @@ RUN apk add --no-cache unzip libpq libuv
 # collection is off, which is the default. uv is kinetis/storage's
 # OS-native file driver: without it every filesystem call is a round
 # trip to a pool of helper processes.
-RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS postgresql-dev linux-headers libuv-dev \
-    && docker-php-ext-install pdo_mysql mysqli pdo_pgsql pgsql sockets pcntl \
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS postgresql-dev linux-headers libuv-dev libzip-dev \
+    && docker-php-ext-install pdo_mysql mysqli pdo_pgsql pgsql sockets pcntl zip \
     && pecl install pcov \
     && printf '\n' | pecl install uv-beta \
     && docker-php-ext-enable pcov uv \

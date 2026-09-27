@@ -6,7 +6,7 @@ application's queue:
 - **queued actions** — an action that declares `queued()`, run in chunks
   of `chunkSize()`;
 - **large exports** — above the resource's `exportLimit()`, up to
-  `exportQueueLimit()`;
+  `exportQueueLimit()`, and every Excel (XLSX) export;
 - **imports** — every CSV import.
 
 Each job runs as the admin who started it, reports its progress to

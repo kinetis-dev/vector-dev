@@ -1,4 +1,4 @@
-import type { VectorActionResponse, VectorAuditEntry, VectorFilterQuery, VectorImportMode, VectorImportPreview, VectorPage, VectorRecord, VectorRecordPermissions, VectorRelationValue, VectorSelection, VectorSort, VectorUploaded, VectorWidgetData } from '#vector/app/types/vector'
+import type { VectorActionResponse, VectorAuditEntry, VectorExportFormat, VectorFilterQuery, VectorImportMode, VectorImportPreview, VectorPage, VectorRecord, VectorRecordPermissions, VectorRelationValue, VectorSelection, VectorSort, VectorUploaded, VectorWidgetData } from '#vector/app/types/vector'
 
 export interface VectorListOptions {
     page?: number
@@ -194,8 +194,9 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
     }
 
     /** Downloads the CSV, or answers the job the server queued for a large one. */
-    async function exportCsv(options: VectorListOptions = {}): Promise<{ jobId: number } | null> {
-        const response = await asFile(() => api.raw(`${base()}/export`, { query: { ...listQuery({ ...options, page: undefined, perPage: undefined }), format: 'csv' }, responseType: 'blob' }))
+    /** A CSV above the inline limit, and every XLSX, comes back as a queued job instead of a file. */
+    async function exportFile(options: VectorListOptions = {}, format: VectorExportFormat = 'csv'): Promise<{ jobId: number } | null> {
+        const response = await asFile(() => api.raw(`${base()}/export`, { query: { ...listQuery({ ...options, page: undefined, perPage: undefined }), format }, responseType: 'blob' }))
 
         if (response.status === 202) {
             const queued = JSON.parse(await (response._data as Blob).text()) as { jobId: number }
@@ -203,10 +204,12 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
             return { jobId: queued.jobId }
         }
 
-        saveBlob(response._data as Blob, filenameOf(response.headers.get('content-disposition')) ?? `${toValue(slug)}.csv`)
+        saveBlob(response._data as Blob, filenameOf(response.headers.get('content-disposition')) ?? `${toValue(slug)}.${format}`)
 
         return null
     }
+
+    const exportCsv = (options: VectorListOptions = {}) => exportFile(options, 'csv')
 
     function audit(id: string | number): Promise<{ data: VectorAuditEntry[] }> {
         return api<{ data: VectorAuditEntry[] }>(`${base()}/${encodeURIComponent(String(id))}/audit`)
@@ -253,7 +256,7 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
         })
     }
 
-    return { list, related, show, create, update, remove, removeMany, batch, changes, attach, detach, upload, fileBlob, downloadFile, forceRemove, restore, runAction, exportCsv, audit, revert, rows, widget, importPreview, importCsv, options }
+    return { list, related, show, create, update, remove, removeMany, batch, changes, attach, detach, upload, fileBlob, downloadFile, forceRemove, restore, runAction, exportCsv, exportFile, audit, revert, rows, widget, importPreview, importCsv, options }
 }
 
 /**
