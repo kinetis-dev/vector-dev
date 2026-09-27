@@ -43,6 +43,48 @@ final class SchemaControllerTest extends VectorTestCase
         self::assertTrue($result->isValid(), $result->error() === null ? '' : (new \Opis\JsonSchema\Errors\ErrorFormatter())->formatOutput($result->error(), 'basic')['errors'][0]['error'] ?? 'invalid');
     }
 
+    /**
+     * Validity alone lets a key the schema never names slip through: every
+     * key the demo's descriptor publishes — at the top, on each resource,
+     * field, action and widget, and in the capabilities — is declared.
+     */
+    public function testTheJsonSchemaNamesEveryKeyTheDescriptorPublishes(): void
+    {
+        $document = $this->client->get('/vector/schema', headers: $this->headersIn('he'))->assertOk()->json();
+        self::assertIsArray($document);
+        $schema = json_decode((string) file_get_contents(dirname(__DIR__, 4) . '/packages/vector/resources/schema/descriptor.schema.json'), true, 64, JSON_THROW_ON_ERROR);
+        $declared = static fn (array $definition): array => array_keys($definition['properties'] ?? []);
+        $undeclared = [];
+
+        $check = static function (string $where, array $published, array $known) use (&$undeclared): void {
+            foreach (array_diff(array_keys($published), $known) as $key) {
+                $undeclared["{$where}.{$key}"] = true;
+            }
+        };
+
+        $check('descriptor', $document, $declared($schema));
+        $check('capabilities', $document['capabilities'], $declared($schema['properties']['capabilities']));
+        $check('i18n', $document['i18n'], $declared($schema['properties']['i18n']));
+
+        foreach ($document['resources'] as $slug => $resource) {
+            $check("resources.{$slug}", $resource, $declared($schema['$defs']['resource']));
+
+            foreach ($resource['fields'] as $field) {
+                $check("resources.{$slug}.fields", $field, $declared($schema['$defs']['field']));
+            }
+
+            foreach ($resource['actions'] as $action) {
+                $check("resources.{$slug}.actions", $action, $declared($schema['$defs']['action']));
+            }
+
+            foreach ($resource['widgets'] as $widget) {
+                $check("resources.{$slug}.widgets", $widget, $declared($schema['$defs']['widget']));
+            }
+        }
+
+        self::assertSame([], array_keys($undeclared));
+    }
+
     public function testTheDescriptorIsCachedPerIdentity(): void
     {
         $etag = $this->client->get('/vector/schema', headers: $this->adminHeaders())

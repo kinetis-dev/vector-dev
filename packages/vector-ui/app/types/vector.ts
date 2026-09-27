@@ -138,6 +138,8 @@ export interface VectorWidget {
     ranges: Record<string, string>
     width: 3 | 4 | 6 | 12
     cacheSeconds: number
+    /** Whether the cached result is shared by every user, or kept per user. */
+    cacheShared?: boolean
 }
 
 export interface VectorWidgetData {
@@ -357,6 +359,8 @@ export interface VectorResource {
     softDelete: { field: string } | null
     /** what a global search result shows besides its title */
     searchResult?: { subtitle: string | null, image: string | null }
+    /** Whether global search covers this resource. */
+    globallySearchable?: boolean
     actions: VectorAction[]
     widgets: VectorWidget[]
     permissions: { viewAny: boolean, create: boolean, update: boolean, delete: boolean, export: boolean, setDefaultView?: boolean }

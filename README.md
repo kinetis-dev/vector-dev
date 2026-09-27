@@ -49,7 +49,9 @@ Every `docker compose` command in this file runs from `demo/`.
   domain, and the SQL queue table the test suite uses for a named
   connection of Vector's own.
 - Redis 7 is on `localhost:6379`: the application's queue
-  (the named queue connection `jobs`, `QUEUE_JOBS_CONNECTION=redis`).
+  (the named queue connection `jobs`, `QUEUE_JOBS_CONNECTION=redis`) and,
+  in database 1, the application cache (`REDIS_HOST`,
+  `kinetis/cache-redis`) that holds login throttling and refresh tokens.
 - Uploaded files live on the private `storage` volume
   (`FILESYSTEM_DRIVER=local`, `FILESYSTEM_ROOT=/var/lib/vector-storage`),
   shared by `app` and `worker` and never served by nginx. Request bodies
@@ -106,8 +108,10 @@ docker compose logs -f app
 docker compose logs -f node
 ```
 
-`demo:seed --fresh` empties the demo tables and fills them again;
-`--scale=N` multiplies the row counts. Most products get an image, which
+`demo:seed --fresh` empties the demo tables and fills them again — the
+shop's identifiers restarting at 1 — and clears Vector's audit trail and
+action log, whose rows name those identifiers; `--scale=N` multiplies the row
+counts. Most products get an image, which
 the seed stores in Vector's storage as an upload would. Run the seed as
 `www-data`, the user the application runs as; files stored as root are
 not the application's to read.
@@ -471,7 +475,7 @@ is `403`.
 | `GET /vector/badges` | The menu's badges: for every resource with a `badge()` this user may list, `{count, color, label}` by slug, the count of its filter as the user's list counts it. |
 | `GET /vector/search?q=` | Global search: the first matches of every globally searchable resource this user may list, each with its `title`, the resource's `searchSubtitle()` value as `subtitle`, and, when the record holds one, the `searchImage()` field to fetch its thumbnail from as `image`. |
 | `GET/POST /vector/views/{resource}`, `PUT/DELETE /vector/views/{resource}/{id}` | Saved list views — a name, a validated list state, `shared`, `isDefault`, and `resourceDefault` (a shared view everyone without a default of their own opens with; one per resource; the policy's `setDefaultView` decides it); the owner alone changes one. |
-| `GET/PUT /vector/preferences` | Per-user UI preferences as JSON values by key (`columns.<resource>`, …); `PUT` merges, a `null` removes. |
+| `GET/PUT /vector/preferences` | Per-user UI preferences as JSON values by key (`columns.<resource>`, `locale` — the language the admin is shown in, …); `PUT` merges, a `null` removes. |
 | `GET /vector/settings`, `GET/PUT /vector/settings/{group}` | Typed settings groups (`#[Settings]` classes extending `SettingsGroup`) with their values; `PUT` validates the body like a form and replaces the group's values. `branding` and `languages` ship with Vector; `branding` is published with the descriptor. |
 | `POST /vector/r/{resource}/fields/{field}/upload` | Stores one file (multipart `file`) for a file or image field after detecting its format from the bytes; answers `{key, name, size, type}`, the key being the value to write. |
 | `GET /vector/r/{resource}/{id}/files/{field}` | The record's stored file: an image inline, anything else as an attachment. `?key=` serves an image one of the record's rich-text documents shows from that field's uploads. |

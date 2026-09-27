@@ -76,7 +76,10 @@
                     "description": "The export formats offered: csv always; xlsx where openspout/openspout and ext-zip are installed, VECTOR_EXPORT_FORMATS lists it, and a queue runs it.",
                     "type": "array",
                     "items": {
-                        "enum": ["csv", "xlsx"]
+                        "enum": [
+                            "csv",
+                            "xlsx"
+                        ]
                     },
                     "uniqueItems": true
                 }
@@ -85,7 +88,10 @@
         "i18n": {
             "description": "The language this descriptor's labels are in, and the languages this user may switch to: the ones the administrator enabled in the Languages settings group.",
             "type": "object",
-            "required": ["locale", "locales"],
+            "required": [
+                "locale",
+                "locales"
+            ],
             "properties": {
                 "locale": {
                     "type": "string"
@@ -94,11 +100,25 @@
                     "type": "array",
                     "items": {
                         "type": "object",
-                        "required": ["code", "name", "dir"],
+                        "required": [
+                            "code",
+                            "name",
+                            "dir"
+                        ],
                         "properties": {
-                            "code": { "type": "string" },
-                            "name": { "description": "The language's name in itself.", "type": "string" },
-                            "dir": { "enum": ["ltr", "rtl"] }
+                            "code": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "description": "The language's name in itself.",
+                                "type": "string"
+                            },
+                            "dir": {
+                                "enum": [
+                                    "ltr",
+                                    "rtl"
+                                ]
+                            }
                         }
                     }
                 }
@@ -560,6 +580,9 @@
                 "unique": {
                     "description": "The value is unique among the resource's records (unique()): a duplicated record's form starts without it, and a CSV import may match rows by it.",
                     "type": "boolean"
+                },
+                "default": {
+                    "description": "The value a create form starts with (hasDefault says whether there is one); for a Currency field without its own, VECTOR_CURRENCY."
                 }
             },
             "not": {
@@ -689,6 +712,10 @@
                 "cacheSeconds": {
                     "type": "integer",
                     "minimum": 0
+                },
+                "cacheShared": {
+                    "description": "Whether the widget's cached result is shared by every user (true) or kept per user.",
+                    "type": "boolean"
                 }
             },
             "not": {
@@ -990,6 +1017,10 @@
                 },
                 "replicable": {
                     "description": "Whether a record may be duplicated into a new one's form; true unless the resource opts out (replicable()).",
+                    "type": "boolean"
+                },
+                "globallySearchable": {
+                    "description": "Whether GET /vector/search covers this resource.",
                     "type": "boolean"
                 }
             },
