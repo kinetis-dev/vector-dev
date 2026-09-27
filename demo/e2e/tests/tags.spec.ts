@@ -18,7 +18,7 @@ test.describe('tags', () => {
         await expect(page.getByRole('heading', { name: 'New tag', level: 1 })).toBeVisible()
         await form(page).getByLabel('Name').fill(name)
         await form(page).getByLabel('Color').fill('#1f5f8b')
-        await form(page).getByRole('button', { name: 'Create' }).click()
+        await form(page).getByRole('button', { name: 'Create', exact: true }).click()
 
         // read: the new record's page
         await expect(page.getByText('Tag saved.')).toBeVisible()
@@ -31,7 +31,7 @@ test.describe('tags', () => {
         await expect(page.getByRole('heading', { name: `Edit ${name}`, level: 1 })).toBeVisible()
         await expect(form(page).getByLabel('Name')).toHaveValue(name)
         await form(page).getByLabel('Name').fill(renamed)
-        await form(page).getByRole('button', { name: 'Save' }).click()
+        await form(page).getByRole('button', { name: 'Save', exact: true }).click()
         await expect(page).toHaveURL(/\/r\/tags\/\d+$/)
         await expect(page.getByRole('heading', { name: renamed, level: 1 })).toBeVisible()
 
@@ -71,24 +71,26 @@ test.describe('tags', () => {
     test('the form checks what it can before saving', async ({ admin: page, api }) => {
         await page.goto('r/tags/create')
 
-        await form(page).getByRole('button', { name: 'Create' }).click()
+        await form(page).getByRole('button', { name: 'Create', exact: true }).click()
         await expect(form(page).getByText('Required')).toHaveCount(2)
 
         await form(page).getByLabel('Name').fill('x'.repeat(61))
         await form(page).getByLabel('Color').fill('#000000')
-        await form(page).getByRole('button', { name: 'Create' }).click()
+        await form(page).getByRole('button', { name: 'Create', exact: true }).click()
         await expect(form(page).getByText('At most 60 characters')).toBeVisible()
         await expect(page).toHaveURL(/\/r\/tags\/create$/)
 
         expect(await api.search('tags', 'x'.repeat(61))).toHaveLength(0)
     })
 
-    test('cancel leaves the form without saving', async ({ admin: page }) => {
+    test('cancel leaves the form without saving, once the changes are discarded', async ({ admin: page, api }) => {
         await page.goto('r/tags/create')
         await form(page).getByLabel('Name').fill('never saved')
 
         await form(page).getByRole('button', { name: 'Cancel' }).click()
+        await page.getByRole('dialog').getByRole('button', { name: 'Discard' }).click()
 
         await expect(page).toHaveURL(/\/r\/tags$/)
+        expect(await api.search('tags', 'never saved')).toHaveLength(0)
     })
 })

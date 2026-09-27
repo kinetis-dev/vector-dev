@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { VectorRecord } from '#vector/app/types/vector'
+import type { SaveVariant } from '#vector/app/components/Vx/Resource/Form.vue'
 
 definePageMeta({ layout: 'vector', middleware: 'vector-auth', key: route => route.fullPath })
 
@@ -15,8 +16,18 @@ const base = computed(() => `${appConfig.vector.basePath}/r/${slug.value}`)
 
 useHead({ title: () => resource.value ? `${t('record.newTitle', { label: resource.value.labelSingular.toLowerCase() })} · ${resource.value.label}` : '' })
 
-function saved(record: VectorRecord) {
-    navigateTo(`${base.value}/${encodeURIComponent(String(record.id))}`)
+const form = ref<{ dirty: boolean, reset: () => void } | null>(null)
+useLeaveGuard(() => form.value?.dirty === true)
+
+function saved(record: VectorRecord, variant: SaveVariant) {
+    if (variant === 'another') {
+        form.value?.reset()
+        window.scrollTo({ top: 0 })
+        return
+    }
+
+    const at = `${base.value}/${encodeURIComponent(String(record.id))}`
+    navigateTo(variant === 'continue' ? `${at}/edit` : at)
 }
 </script>
 
@@ -25,7 +36,7 @@ function saved(record: VectorRecord) {
         <v-breadcrumbs class="pa-0 mb-2" :items="[{ title: resource.label, to: base }, { title: t('record.new') }]" />
         <h1 class="text-h4 mb-4">{{ t('record.newTitle', { label: resource.labelSingular.toLowerCase() }) }}</h1>
         <v-alert v-if="!resource.permissions.create" type="warning" variant="tonal" :text="t('record.createNotAllowed')" />
-        <VxResourceForm v-else :resource="resource" operation="create" @saved="saved" @cancel="navigateTo(base)" />
+        <VxResourceForm v-else ref="form" :resource="resource" operation="create" variants @saved="saved" @cancel="navigateTo(base)" />
     </div>
     <v-empty-state v-else icon="mdi-help-circle-outline" :title="t('record.unknownResource')" />
 </template>

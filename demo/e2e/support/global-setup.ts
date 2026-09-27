@@ -61,7 +61,7 @@ async function warmUp() {
         await page.goto('r/products/1')
         await page.locator('.vx-richtext-view').waitFor({ timeout: 180_000 })
         await page.goto('r/products/1/edit')
-        await page.getByRole('button', { name: 'Save' }).waitFor({ timeout: 180_000 })
+        await page.getByRole('button', { name: 'Save', exact: true }).waitFor({ timeout: 180_000 })
     } finally {
         await browser.close()
     }

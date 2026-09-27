@@ -53,7 +53,7 @@ test.describe('rich text', () => {
             await page.keyboard.type('Fresh copy ')
             await page.getByRole('button', { name: 'Bold' }).click()
             await page.keyboard.type('with bold')
-            await page.getByRole('button', { name: 'Save' }).click()
+            await page.getByRole('button', { name: 'Save', exact: true }).click()
 
             await expect(page).toHaveURL(new RegExp(`/r/products/${id}$`))
             await expect(page.locator('.vx-richtext-view strong')).toHaveText('with bold')

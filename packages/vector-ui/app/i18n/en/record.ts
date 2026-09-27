@@ -7,6 +7,17 @@ export default {
     createNotAllowed: 'This resource does not allow creating records here.',
     editNotAllowed: 'You may not edit this record.',
     saved: '{label} saved.',
+    variants: {
+        menu: 'More ways to save',
+        saveContinue: 'Save and continue editing',
+        createContinue: 'Create and continue editing',
+        createAnother: 'Create and add another',
+    },
+    leave: {
+        title: 'Discard your changes?',
+        text: 'Leaving this page drops the changes you have not saved.',
+        discard: 'Discard',
+    },
     inTrash: 'In the trash',
     deleteTitle: 'Delete {noun} “{title}”?',
     deleteForeverTitle: 'Delete forever {noun} “{title}”?',

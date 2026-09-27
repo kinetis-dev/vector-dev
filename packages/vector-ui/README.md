@@ -109,6 +109,17 @@ Vector's own routes. `window.Vector` also hands extensions `api`,
 `notify`, `navigate`, `t` (the admin's translator) and
 `defineMessages()`.
 
+## Forms
+
+`VxResourceForm` tracks unsaved changes (`dirty`, exposed with
+`reset()`), and with `variants` — as the create and edit pages use it —
+offers the save variants (back to the record, continue editing, add
+another), remembers the last one as the user preference
+`form.saveVariant`, and saves with Ctrl/Cmd+S. The pages guard leaving a
+changed form through `useLeaveGuard()`, the same confirm dialog the
+list's unsaved inline edits use. `saved` emits the record and the
+variant.
+
 ## Rich text and Markdown
 
 `RichText` fields edit in a Tiptap editor (`@tiptap/*`, MIT) over exactly

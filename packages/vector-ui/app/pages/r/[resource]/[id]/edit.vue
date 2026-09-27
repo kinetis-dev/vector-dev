@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { VectorRecord } from '#vector/app/types/vector'
+import type { SaveVariant } from '#vector/app/components/Vx/Resource/Form.vue'
 
 definePageMeta({ layout: 'vector', middleware: 'vector-auth', key: route => route.fullPath })
 
@@ -15,7 +16,7 @@ const resource = computed(() => find(slug.value))
 const client = useVectorResource(slug)
 const base = computed(() => `${appConfig.vector.basePath}/r/${slug.value}`)
 
-const { data: response, status, error } = await useAsyncData(() => `vector.${slug.value}.${id.value}.edit`, () => client.show(id.value))
+const { data: response, status, error, refresh } = await useAsyncData(() => `vector.${slug.value}.${id.value}.edit`, () => client.show(id.value))
 
 const title = computed(() => {
     const value = response.value?.data?.[resource.value?.titleField ?? 'id']
@@ -24,7 +25,18 @@ const title = computed(() => {
 
 useHead({ title: () => resource.value ? `${t('record.editTitle', { title: title.value })} · ${resource.value.label}` : '' })
 
-function saved(record: VectorRecord) {
+const form = ref<{ dirty: boolean, reset: () => void } | null>(null)
+useLeaveGuard(() => form.value?.dirty === true)
+// a new form after "save and continue": the record, and its version, as saved
+const generation = ref(0)
+
+async function saved(record: VectorRecord, variant: SaveVariant) {
+    if (variant === 'continue') {
+        await refresh()
+        generation.value++
+        return
+    }
+
     navigateTo(`${base.value}/${encodeURIComponent(String(record.id))}`)
 }
 </script>
@@ -36,7 +48,7 @@ function saved(record: VectorRecord) {
         <v-skeleton-loader v-if="status === 'pending'" type="article" />
         <v-alert v-else-if="error" type="error" variant="tonal" :text="vectorErrorMessage(error)" />
         <v-alert v-else-if="response && !response.permissions.update" type="warning" variant="tonal" :text="t('record.editNotAllowed')" />
-        <VxResourceForm v-else-if="response" :resource="resource" operation="update" :record="response.data" @saved="saved" @cancel="navigateTo(`${base}/${id}`)" />
+        <VxResourceForm v-else-if="response" :key="generation" ref="form" :resource="resource" operation="update" :record="response.data" variants @saved="saved" @cancel="navigateTo(`${base}/${id}`)" />
     </div>
     <v-empty-state v-else icon="mdi-help-circle-outline" :title="t('record.unknownResource')" />
 </template>

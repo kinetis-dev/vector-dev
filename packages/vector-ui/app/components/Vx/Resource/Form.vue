@@ -4,16 +4,24 @@ import type { VectorField, VectorFieldState, VectorLayoutNode, VectorRecord, Vec
 
 // A create or edit form generated from the descriptor: one input per
 // editable field, client rules mirroring the server's, and the server's
-// 422 mapped onto the field it names.
+// 422 mapped onto the field it names. It knows whether it holds unsaved
+// changes (`dirty`), and on a page offers save variants: back to the
+// record, keep editing, or (creating) start another — the last one chosen
+// remembered per user, Ctrl/Cmd+S running it.
 const props = defineProps<{
     resource: VectorResource
     operation: 'create' | 'update'
     record?: VectorRecord
     /** Values fixed by the context (a parent a child is created under): pre-filled, not shown. */
     preset?: Record<string, unknown>
+    /** Offer the save variants and Ctrl/Cmd+S: the create and edit pages do, a dialog does not. */
+    variants?: boolean
 }>()
 
-const emit = defineEmits<{ saved: [record: VectorRecord], cancel: [] }>()
+/** What happens after a save: back to the record, keep editing it, or start another. */
+export type SaveVariant = 'close' | 'continue' | 'another'
+
+const emit = defineEmits<{ saved: [record: VectorRecord, variant: SaveVariant], cancel: [] }>()
 
 const { t } = useVectorT()
 const { inputFor, editable } = useVectorInputs()
@@ -29,28 +37,34 @@ const unloaded = reactive(new Set<string>())
 
 const fields = computed<VectorField[]>(() => props.resource.fields.filter(f => editable(f, props.operation)))
 
-// The form's values, keyed by field name: relation values reduce to ids.
+// The form's values, keyed by field name: relation values reduce to ids;
+// `initial` is what they were loaded as, which `dirty` and an update compare against.
 const values = reactive<Record<string, unknown>>({})
-const initial: Record<string, unknown> = {}
+const initial = reactive<Record<string, unknown>>({})
+const clone = (value: unknown) => value === undefined ? undefined : JSON.parse(JSON.stringify(value)) as unknown
 
-for (const field of fields.value) {
-    const current = props.preset?.[field.name] ?? props.record?.[field.name]
-    // a new record starts from each field's default, which the server would apply as well
-    let value: unknown = current !== undefined
-        ? current
-        : props.operation === 'create' && field.hasDefault ? JSON.parse(JSON.stringify(field.default ?? null)) : defaultFor(field)
+/** Fills the values from the record, the preset, or each field's default. */
+function start() {
+    for (const field of fields.value) {
+        const current = props.preset?.[field.name] ?? props.record?.[field.name]
+        // a new record starts from each field's default, which the server would apply as well
+        let value: unknown = current !== undefined
+            ? current
+            : props.operation === 'create' && field.hasDefault ? JSON.parse(JSON.stringify(field.default ?? null)) : defaultFor(field)
 
-    if (field.type === 'belongsTo' && current && typeof current === 'object' && 'id' in current) {
-        value = (current as { id: unknown }).id
+        if (field.type === 'belongsTo' && current && typeof current === 'object' && 'id' in current) {
+            value = (current as { id: unknown }).id
+        }
+
+        if (field.type === 'manyToMany' || field.type === 'hasMany') {
+            value = [] // the ids, or a repeater's rows, load from their endpoint below
+        }
+
+        values[field.name] = value
+        initial[field.name] = clone(value)
     }
-
-    if (field.type === 'manyToMany' || field.type === 'hasMany') {
-        value = [] // the ids, or a repeater's rows, load from their endpoint below
-    }
-
-    values[field.name] = value
-    initial[field.name] = value
 }
+start()
 
 function defaultFor(field: VectorField): unknown {
     if (field.type === 'boolean') return false
@@ -114,8 +128,50 @@ const wide = (field: VectorField) => ['markdown', 'richtext', 'text', 'json', 'k
 const clientErrors = ref<string[]>([])
 const inputId = (name: string) => `vx-field-${name}`
 
+/** Whether a value differs from what the form loaded: what leaving would lose. */
+const dirty = computed(() => fields.value.some(f => !unloaded.has(f.name) && JSON.stringify(values[f.name] ?? null) !== JSON.stringify(initial[f.name] ?? null)))
+
+// The save variant: the user's last choice, where this form offers it.
+const preferences = useVectorPreferences()
+preferences.load().catch(() => undefined)
+const offered = computed<SaveVariant[]>(() => props.operation === 'create' ? ['close', 'continue', 'another'] : ['close', 'continue'])
+const chosen = computed<SaveVariant>(() => {
+    const stored = preferences.get<SaveVariant>('form.saveVariant')
+    return stored && offered.value.includes(stored) ? stored : 'close'
+})
+const variantLabel = (variant: SaveVariant) => {
+    const verb = props.operation === 'create' ? 'create' : 'save'
+    return variant === 'close' ? t(`common.${verb}`) : t(`record.variants.${verb}${variant === 'continue' ? 'Continue' : 'Another'}`)
+}
+
+const formRef = ref<{ validate: () => Promise<{ valid: boolean, errors: { id: string | number }[] }>, resetValidation: () => void } | null>(null)
+let pendingVariant: SaveVariant | null = null
+
+/** Saves as $variant, remembering it as this user's default. */
+async function saveAs(variant: SaveVariant) {
+    if (variant !== chosen.value) preferences.put({ 'form.saveVariant': variant }).catch(() => undefined)
+    pendingVariant = variant
+    const result = await formRef.value?.validate()
+    if (result) await save(result)
+}
+
+// Ctrl/Cmd+S saves with the default variant, on a page form
+if (import.meta.client) {
+    useEventListener(window, 'keydown', (event: KeyboardEvent) => {
+        if (props.variants && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+            event.preventDefault()
+            if (!submitting.value) saveAs(chosen.value)
+        }
+    })
+}
+
 async function submit(event: SubmitEventPromise) {
-    const { valid, errors } = await event
+    await save(await event)
+}
+
+async function save({ valid, errors }: { valid: boolean, errors: { id: string | number }[] }) {
+    const variant = pendingVariant ?? chosen.value
+    pendingVariant = null
     clientErrors.value = errors.map(e => String(e.id)).filter(id => id.startsWith('vx-field-')).map(id => id.slice('vx-field-'.length))
 
     if (!valid) {
@@ -140,7 +196,9 @@ async function submit(event: SubmitEventPromise) {
         }
 
         notifications.success(t('record.saved', { label: props.resource.labelSingular }))
-        emit('saved', response.data)
+        // what is saved is no longer a change: leaving now asks nothing
+        for (const field of fields.value) initial[field.name] = clone(values[field.name])
+        emit('saved', response.data, variant)
     } catch (error) {
         const failure = error as { status?: number, statusCode?: number, data?: { errors?: unknown } } | null
         const violations = failure?.data?.errors
@@ -198,6 +256,17 @@ function clearServerError(name: string) {
     delete serverErrors[name]
 }
 
+/** Back to a fresh form: the defaults a new record starts from, no errors. */
+function reset() {
+    for (const key of Object.keys(serverErrors)) delete serverErrors[key]
+    formError.value = null
+    clientErrors.value = []
+    start()
+    formRef.value?.resetValidation()
+}
+
+defineExpose({ dirty, reset })
+
 // Conditions (visibleWhen, requiredWhen, disabledWhen) follow the values as they are edited.
 // Like the server, they read the stored record overlaid with the values being edited.
 const states = computed<Record<string, VectorFieldState>>(() => {
@@ -226,7 +295,7 @@ const errorNames = computed(() => [...new Set([
 </script>
 
 <template>
-    <v-form validate-on="blur lazy" @submit.prevent="submit">
+    <v-form ref="formRef" validate-on="blur lazy" @submit.prevent="submit">
         <v-card>
             <v-card-text>
                 <v-alert v-if="formError" type="error" variant="tonal" class="mb-4" :text="formError" />
@@ -251,7 +320,18 @@ const errorNames = computed(() => [...new Set([
             <v-card-actions>
                 <v-spacer />
                 <v-btn variant="text" @click="emit('cancel')">{{ t('common.cancel') }}</v-btn>
-                <v-btn type="submit" color="primary" :loading="submitting">{{ operation === 'create' ? t('common.create') : t('common.save') }}</v-btn>
+                <v-btn v-if="!variants" type="submit" color="primary" :loading="submitting">{{ operation === 'create' ? t('common.create') : t('common.save') }}</v-btn>
+                <v-btn-group v-else color="primary" density="comfortable" divided>
+                    <v-btn type="submit" :loading="submitting">{{ variantLabel(chosen) }}</v-btn>
+                    <v-menu location="top end">
+                        <template #activator="{ props: activator }">
+                            <v-btn v-bind="activator" icon="mdi-menu-down" :aria-label="t('record.variants.menu')" :disabled="submitting" />
+                        </template>
+                        <v-list density="compact">
+                            <v-list-item v-for="variant in offered" :key="variant" :title="variantLabel(variant)" :active="variant === chosen" @click="saveAs(variant)" />
+                        </v-list>
+                    </v-menu>
+                </v-btn-group>
             </v-card-actions>
         </v-card>
     </v-form>
