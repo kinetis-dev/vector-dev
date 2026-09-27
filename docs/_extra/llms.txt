@@ -1,0 +1,60 @@
+# Kinetis Vector
+
+> A schema-driven admin platform for Kinetis applications. Resources
+> declared over kinetis/orm entities compile into one descriptor that
+> serves a REST admin API, a Nuxt/Vuetify admin UI (standalone or hosted
+> by the PHP application) and Model Context Protocol tools, all under the
+> application's own authentication and per-resource policies.
+
+Vector ships as `kinetis/vector` (the PHP package) and
+`@kinetis/vector-ui` (the admin UI, a Nuxt layer). The pages are ordered
+from first install to the reference.
+
+## Start here
+
+- [Getting started](https://kinetis.dev/vector/docs/getting-started.html): Install the package, wire authentication, declare a first resource and open the admin.
+- [Core concepts](https://kinetis.dev/vector/docs/core-concepts.html): The compiled descriptor, the API as the authority, and how the UI and MCP tools follow from it.
+
+## Using the admin
+
+- [Using the admin](https://kinetis.dev/vector/docs/using-the-admin.html): Signing in, navigation, badges, the dashboard, global search, notifications, jobs, settings and impersonation.
+- [Lists](https://kinetis.dev/vector/docs/lists.html): Search, sort, filters and "any of" groups, grouping, summaries, columns, saved views, bulk operations, inline edits, export and import.
+- [Records](https://kinetis.dev/vector/docs/records.html): The record page, forms, related records, history and revert, the trash and actions.
+
+## Building the admin
+
+- [Resources](https://kinetis.dev/vector/docs/resources.html): The resource class: attribute, derived or declared fields, definition methods, request-time hooks, badges and global search.
+- [Fields](https://kinetis.dev/vector/docs/fields.html): The field catalogue, common modifiers, filter operators, relations and money.
+- [Forms](https://kinetis.dev/vector/docs/forms.html): Conditions, dependent choices, repeaters, inline editing and optimistic locking.
+- [Actions](https://kinetis.dev/vector/docs/actions.html): Operations with dialogs, run on records, selections or everything a filter matches, directly or queued.
+- [Dashboards and widgets](https://kinetis.dev/vector/docs/dashboards.html): Stat, trend, partition, progress and table widgets; dashboards; caching.
+- [Files and images](https://kinetis.dev/vector/docs/files.html): Uploads checked by content, private storage and serving.
+- [Settings](https://kinetis.dev/vector/docs/settings.html): Settings groups edited in the admin, and Branding.
+
+## Access
+
+- [Authentication](https://kinetis.dev/vector/docs/authentication.html): The vector middleware group, bearer and session modes, and the actor resolver for jobs.
+- [Authorization](https://kinetis.dev/vector/docs/authorization.html): Resource policies, row scope, field visibility and per-record permissions.
+- [Audit trail and impersonation](https://kinetis.dev/vector/docs/audit.html): The field-level history, revert, and acting as another user.
+
+## Background work
+
+- [Background jobs](https://kinetis.dev/vector/docs/jobs.html): Queued actions, large exports and imports on the application's queue.
+
+## Deployment and customization
+
+- [Deployment](https://kinetis.dev/vector/docs/deployment.html): Standalone and hosted modes, the Content Security Policy, and production builds.
+- [Customizing the UI](https://kinetis.dev/vector/docs/customizing-the-ui.html): Application config, custom cells, inputs and widgets, runtime extensions, custom pages and theming.
+- [Languages](https://kinetis.dev/vector/docs/languages.html): The UI's locale and message overrides.
+- [Databases](https://kinetis.dev/vector/docs/databases.html): Entities on several connections, Vector's tables on their own, and dialect notes.
+
+## Integrations
+
+- [MCP tools](https://kinetis.dev/vector/docs/mcp.html): The admin's services as Model Context Protocol tools for AI agents.
+- [Testing your admin](https://kinetis.dev/vector/docs/testing.html): Driving the REST API from the application's own test suite.
+
+## Reference
+
+- [REST API](https://kinetis.dev/vector/docs/rest-api.html): Every route, envelope, wire value, the list grammar and errors.
+- [Configuration](https://kinetis.dev/vector/docs/configuration.html): Every environment key and UI setting.
+- [Limits and guarantees](https://kinetis.dev/vector/docs/limits.html): Bounds, guarantees and known limits.

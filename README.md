@@ -129,6 +129,20 @@ not alongside PHPUnit. It clears the admin account's saved UI
 preferences before each test. See
 [demo/e2e/README.md](demo/e2e/README.md).
 
+## Documentation
+
+The user manual is in `docs/`: Markdown pages built by Sphinx into the
+same site style as the Kinetis documentation. Docker is enough to build
+it:
+
+```sh
+docker run --rm -v "$PWD/docs":/docs -w /docs python:3.12-slim \
+    sh -c 'pip install -q -r requirements.txt && sphinx-build -W -b html . _build/html'
+```
+
+With Python installed, `make html` in `docs/` does the same. Open
+`docs/_build/html/index.html`.
+
 ## Deploying it
 
 The development stack above is not a deployment. Build the release or
@@ -559,6 +573,7 @@ demo/backend/             the demo Kinetis application, with kinetis/vector inst
   tests/                  PHPUnit (App\Tests\)
 demo/frontend/            the demo Nuxt app: extends @kinetis/vector-ui, points at the demo API
 demo/e2e/                 the end-to-end suite: Playwright, both deployment modes, against the running stack
+docs/                     the user manual (Sphinx, MyST Markdown)
 bin/orbitron-mcp          launches the Orbitron server for demo/backend
 ```
 
