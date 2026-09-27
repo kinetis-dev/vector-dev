@@ -1,5 +1,5 @@
 import { createI18n } from 'vue-i18n'
-import { bundledMessages, isRtl, rtlLanguages, vuetifyLocale } from '#vector/app/i18n'
+import { bundledMessages, isRtl, pluralRule, rtlLanguages, vuetifyLocale } from '#vector/app/i18n'
 
 /**
  * The admin's own strings, translated through vue-i18n, in the language
@@ -29,11 +29,15 @@ export default defineNuxtPlugin({
         }
         const locale = hosted || remembered || appConfig.vector.locale || 'en'
 
+        // each language's own plural forms (pluralCategories): one, few, many for Russian; one form for Japanese
+        const locales = [...new Set([...Object.keys(bundledMessages), ...Object.keys(appConfig.vector.messages ?? {}), locale])]
+
         const i18n = createI18n({
             legacy: false,
             locale,
             fallbackLocale: 'en',
             messages: { ...bundledMessages },
+            pluralRules: Object.fromEntries(locales.map(code => [code, pluralRule(code)])),
             missingWarn: false,
             fallbackWarn: false,
         })

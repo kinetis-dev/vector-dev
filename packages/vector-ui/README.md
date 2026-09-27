@@ -189,9 +189,15 @@ export default defineAppConfig({
 A runtime extension adds them without a build:
 `window.Vector.defineMessages('de', { common: { save: 'Sichern' } })`.
 The English catalog in `app/i18n/en/` names every key, and a test holds
-every shipped locale to the same keys, placeholders and plural forms.
-Messages use `{name}` placeholders and `a | b | c` plural forms, and are
-never rendered as HTML.
+every shipped locale to the same keys and placeholders. Messages use
+`{name}` placeholders and are never rendered as HTML. A plural message
+lists its language's own forms, `a | b | …`, in CLDR order — zero, one,
+two, few, many, other — keeping the ones whole counts reach there
+(`pluralCategories()`): one form in Japanese, two in English (one,
+other), three in Hebrew (one, two, other) and Russian (one, few, many),
+six in Arabic. `pluralRule()` picks the form by the browser's
+`Intl.PluralRules`; a two-form message an application adds is read the
+English way in any language.
 
 ## Authentication modes
 

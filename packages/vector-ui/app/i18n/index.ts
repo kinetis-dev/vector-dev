@@ -42,3 +42,59 @@ export function languageName(code: string, inLanguage: string, name?: string): s
         return null
     }
 }
+
+/** CLDR's plural categories, in the order a message lists its forms. */
+const pluralOrder = ['zero', 'one', 'two', 'few', 'many', 'other'] as const
+
+/** Whole counts the admin shows: every category they reach decides a form. */
+const pluralSample = [...Array.from({ length: 1001 }, (_, n) => n), 10_000, 100_000]
+const categoriesOf = new Map<string, string[]>()
+
+/**
+ * The plural forms a message has in `locale`, in order: the CLDR categories
+ * whole counts reach there. English and German: one, other. Hebrew: one,
+ * two, other. Russian, Polish, Ukrainian: one, few, many. Arabic: zero,
+ * one, two, few, many, other. Chinese, Japanese, Korean: other — a single
+ * form. A category only fractions or exact millions reach (French `many`
+ * at 1 000 000) is not a form of its own; such a count takes `other`.
+ */
+export function pluralCategories(locale: string): string[] {
+    let categories = categoriesOf.get(locale)
+    if (!categories) {
+        let rules: Intl.PluralRules
+        try {
+            rules = new Intl.PluralRules(locale)
+        } catch {
+            rules = new Intl.PluralRules('en')
+        }
+        const reached = new Set(pluralSample.map(n => rules.select(n)))
+        categories = pluralOrder.filter(c => reached.has(c))
+        categoriesOf.set(locale, categories)
+    }
+    return categories
+}
+
+/**
+ * vue-i18n's plural rule for `locale`: which of a message's `a | b | …`
+ * forms a count takes. A message with the locale's own forms is chosen by
+ * the count's CLDR category; one with two forms, as an application's own
+ * English-style message may have, is singular for 1 and plural otherwise;
+ * one with a single form always takes it.
+ */
+export function pluralRule(locale: string): (choice: number, choicesLength: number) => number {
+    return (choice, choicesLength) => {
+        const forms = pluralCategories(locale)
+        if (choicesLength === forms.length) {
+            let category: string
+            try {
+                category = new Intl.PluralRules(locale).select(choice)
+            } catch {
+                category = 'other'
+            }
+            const index = forms.indexOf(category)
+            return index >= 0 ? index : forms.includes('other') ? forms.indexOf('other') : choicesLength - 1
+        }
+        if (choicesLength === 2) return Math.abs(choice) === 1 ? 0 : 1
+        return Math.min(Math.max(choicesLength - 1, 0), Math.abs(choice) === 1 ? 0 : choicesLength - 1)
+    }
+}

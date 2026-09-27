@@ -100,8 +100,13 @@ window.Vector.defineMessages('de', { common: { save: 'Sichern' } })
 
 The English catalog in the layer's `app/i18n/en/` names every key; every
 shipped locale mirrors it, and a key a locale lacks falls back to
-English. Messages use `{name}` placeholders and `a | b | c` plural forms,
-and are never rendered as HTML.
+English. Messages use `{name}` placeholders and are never rendered as
+HTML. A message that depends on a count lists its language's own forms,
+separated by `|`, in the order zero, one, two, few, many, other — only
+the ones that language has for whole numbers: two in English and German
+(`1 change | {count} changes`), three in Hebrew and in Russian, one in
+Japanese. A two-form override you add is read the English way in any
+language.
 
 ## See also
 

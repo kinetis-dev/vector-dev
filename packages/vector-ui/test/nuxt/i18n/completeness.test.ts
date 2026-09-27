@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { bundledMessages } from '#vector/app/i18n'
+import { bundledMessages, pluralCategories } from '#vector/app/i18n'
 
 // Every shipped locale mirrors English: the same keys, the same
-// placeholders in each message, the same number of plural forms. This is
-// a completeness test, not a translation check — the translations are
-// machine translations.
+// placeholders in each message, and every plural message with the forms
+// its own language has (pluralCategories: two for German, three for
+// Russian, one for Japanese). This is a completeness test, not a
+// translation check — the translations are machine translations.
 
 type Messages = { [key: string]: string | Messages }
 
@@ -17,7 +18,8 @@ function flatten(messages: Messages, prefix = ''): Map<string, string> {
     return flat
 }
 
-const placeholders = (message: string) => [...message.matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort()
+// a set: a singular form may leave the count out ("One record saved.")
+const placeholders = (message: string) => [...new Set([...message.matchAll(/\{(\w+)\}/g)].map(m => m[1]))].sort()
 const forms = (message: string) => message.split('|').length
 
 const english = flatten(bundledMessages.en as unknown as Messages)
@@ -36,12 +38,13 @@ describe('shipped locales', () => {
             expect([...english.keys()].filter(key => !translated.has(key))).toEqual([])
         })
 
-        it('keeps each message\'s placeholders and plural forms', () => {
+        it('keeps each message\'s placeholders, and gives each plural message its language\'s forms', () => {
+            const expected = pluralCategories(code).length
             const mismatched = [...english].filter(([key, source]) => {
                 const target = translated.get(key)
                 return target === undefined
                     || JSON.stringify(placeholders(source)) !== JSON.stringify(placeholders(target))
-                    || forms(source) !== forms(target)
+                    || forms(target) !== (forms(source) > 1 ? expected : 1)
             }).map(([key]) => key)
 
             expect(mismatched).toEqual([])
