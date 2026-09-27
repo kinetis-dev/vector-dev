@@ -121,7 +121,7 @@ final class VectorQueueTest extends VectorTestCase
         $queue->push(new RunActionJob(0, 'products', 'reprice-products', [], [], '1'));
         $appQueue = $this->app->get(QueueInterface::class);
         self::assertInstanceOf(RecordingQueue::class, $appQueue);
-        self::assertSame([['job' => RunActionJob::class, 'queue' => self::QUEUE]], $appQueue->pushed);
+        self::assertSame([['job' => RunActionJob::class, 'queue' => self::QUEUE, 'maxAttempts' => 1]], $appQueue->pushed);
     }
 
     /** A builder on the default database, where the SQL backend keeps its table. */

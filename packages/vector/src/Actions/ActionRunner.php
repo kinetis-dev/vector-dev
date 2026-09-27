@@ -73,7 +73,7 @@ final readonly class ActionRunner
             $selection = $compiled['standalone'] ? [] : $this->selectionBody($resource, $body);
             $jobId = $this->jobs->create('action', $resource->slug(), $name, (string) $this->user->id());
             /** @var array<string, mixed> $rawFields */
-            $this->queue->push(new RunActionJob($jobId, $resource->slug(), $name, $selection, $rawFields, (string) $this->user->id()));
+            $this->queue->enqueue($this->jobs, $jobId, new RunActionJob($jobId, $resource->slug(), $name, $selection, $rawFields, (string) $this->user->id()));
 
             return ActionResponse::queued($jobId, "{$compiled['label']} was queued.");
         }

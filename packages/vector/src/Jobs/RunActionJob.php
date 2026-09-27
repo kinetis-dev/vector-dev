@@ -51,12 +51,17 @@ final readonly class RunActionJob implements Job
             $descriptor = $service->visible($descriptor);
 
             $ids = $runner->resolveSelection($descriptor, $this->selection, $compiled['standalone']);
+
+            if ($ids === [] && !$compiled['standalone']) {
+                throw new \RuntimeException('The selection matches no records any more.');
+            }
+
             $context->jobs->progress($this->jobId, 0, count($ids));
             $processed = 0;
             $affected = 0;
             $last = null;
 
-            foreach ($ids === [] ? [[]] : array_chunk($ids, $compiled['chunkSize']) as $chunk) {
+            foreach ($compiled['standalone'] ? [[]] : array_chunk($ids, $compiled['chunkSize']) as $chunk) {
                 $response = $runner->runNow($descriptor, $this->action, $chunk, $this->fields);
 
                 if ($response->type === 'danger') {

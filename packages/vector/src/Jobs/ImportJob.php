@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Kinetis\Vector\Jobs;
 
+use Kinetis\Orm\EntityManagerRegistry;
 use Kinetis\Queue\Job;
 use Kinetis\Validation\Exception\ValidationException;
+use Kinetis\Vector\Exception\VectorException;
 use Kinetis\Vector\Import\CsvReader;
 use Kinetis\Vector\Import\RowMapper;
 use Kinetis\Vector\Registry\VectorRegistry;
@@ -17,6 +19,8 @@ use Kinetis\Vector\Write\RecordWriter;
  * refuses lands in the failed-rows file with the reason; the rest are
  * created. Rows are processed one by one — a failure never rolls back
  * the rows before it — so a re-run must start from the failed-rows file.
+ * A failure that is not about the row — the connection, the worker —
+ * fails the job instead, at the row it reached.
  */
 final readonly class ImportJob implements Job
 {
@@ -45,6 +49,12 @@ final readonly class ImportJob implements Job
                 throw new \LogicException('ResourceService did not resolve.');
             }
 
+            $managers = $context->get(EntityManagerRegistry::class);
+
+            if (!$managers instanceof EntityManagerRegistry) {
+                throw new \LogicException('EntityManagerRegistry did not resolve.');
+            }
+
             // the resource as the admin who started the job sees it
             $descriptor = $service->visible($descriptor);
 
@@ -63,12 +73,14 @@ final readonly class ImportJob implements Job
                     $created++;
                 } catch (ValidationException $e) {
                     $failed[] = [...$row, 'error' => implode('; ', array_map(static fn (\Kinetis\Validation\Violation $v): string => implode('.', array_map('strval', $v->path)) . ' ' . $v->message, $e->violations))];
-                } catch (\Throwable $e) {
-                    $failed[] = [...$row, 'error' => $e->getMessage()];
+                } catch (VectorException $e) {
+                    $failed[] = [...$row, 'error' => $e->getMessage()]; // refused by a policy or a rule: this row's failure
                 }
 
                 if ($processed % 100 === 0) {
                     $context->jobs->progress($this->jobId, $processed);
+                    // every row so far is flushed; the identity map need not hold them for the rows to come
+                    $managers->managerFor($descriptor->entityClass())->clear();
                 }
             }
 
