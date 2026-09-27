@@ -6,8 +6,13 @@ export { expect }
 export const API = 'http://localhost:8080'
 export const UI = 'http://localhost:3000/'
 
-/** The seeded accounts (demo:seed). */
-export const ADMIN = { email: 'admin@vector.local', password: 'password', name: 'Vector Admin' }
+/**
+ * The seeded accounts (demo:seed). The suite's admin is its own, not the
+ * admin a person signs in as: every test resets this account's saved
+ * preferences, and some change them (its language), which would otherwise
+ * reach — and be reached by — whoever uses the demo at the same time.
+ */
+export const ADMIN = { email: 'e2e@vector.local', password: 'password', name: 'E2E Admin' }
 export const EDITOR = { email: 'editor@vector.local', password: 'password', name: 'Demo Editor' }
 export type Account = typeof ADMIN
 

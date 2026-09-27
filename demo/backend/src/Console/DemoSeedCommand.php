@@ -63,6 +63,19 @@ final readonly class DemoSeedCommand
         private VectorDatabase $vector,
     ) {}
 
+    /**
+     * The end-to-end suite's own admin: the suite resets its preferences
+     * before every test and changes them during it (its language, its
+     * columns), so it never signs in as the admin a person uses at the
+     * same time.
+     */
+    public const string E2E_EMAIL = 'e2e@vector.local';
+
+    private static function e2eAccount(): User
+    {
+        return new User(self::E2E_EMAIL, 'E2E Admin', 'password', true);
+    }
+
     #[Command('demo:seed', description: 'Fills the demo domain with sample data (--fresh, --scale=N)')]
     public function seed(CommandArguments $arguments): int
     {
@@ -83,6 +96,15 @@ final readonly class DemoSeedCommand
                 $this->storage->filesystem()->deleteDirectory('vector/products');
             }
         } elseif ($this->entities->repository(User::class)->query()->exists()) {
+            if (!$this->entities->repository(User::class)->query()->where('email', '=', self::E2E_EMAIL)->exists()) {
+                // a database seeded before the end-to-end suite had an account of its own: add just that
+                $this->entities->persist(self::e2eAccount());
+                $this->entities->flush();
+                echo 'Added the end-to-end suite\'s account, ' . self::E2E_EMAIL . ".\n";
+
+                return 0;
+            }
+
             if ($this->support->isEmpty()) {
                 // the shop is seeded and the support desk (PostgreSQL) is new: seed only that
                 mt_srand(20260925);
@@ -100,6 +122,7 @@ final readonly class DemoSeedCommand
 
         $this->entities->persist(new User('admin@vector.local', 'Vector Admin', 'password', true));
         $this->entities->persist(new User('editor@vector.local', 'Demo Editor', 'password', false));
+        $this->entities->persist(self::e2eAccount());
 
         $categories = [];
         $position = 0;
@@ -230,7 +253,7 @@ final readonly class DemoSeedCommand
 
         $this->entities->flush();
 
-        echo "Seeded 2 users, " . count($categories) . " leaf categories, " . count($tags) . " tags, {$productCount} products, {$customerCount} customers and {$orderCount} orders.\n";
+        echo "Seeded 3 users, " . count($categories) . " leaf categories, " . count($tags) . " tags, {$productCount} products, {$customerCount} customers and {$orderCount} orders.\n";
         $this->seedSupport($scale);
         echo "Log in with admin@vector.local / password.\n";
 

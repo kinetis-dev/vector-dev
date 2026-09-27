@@ -1,4 +1,4 @@
-import { expect, test } from '../support/fixtures'
+import { ADMIN, expect, test } from '../support/fixtures'
 
 test.describe('the shell', () => {
     test('opens on the dashboard, with every resource group', async ({ admin: page }) => {
@@ -6,7 +6,7 @@ test.describe('the shell', () => {
 
         // the brand is the application's branding setting, so only the page part is fixed
         await expect(page).toHaveTitle(/^Dashboard · /)
-        await expect(page.getByRole('banner').getByText('Vector Admin')).toBeVisible()
+        await expect(page.getByRole('banner').getByText(ADMIN.name)).toBeVisible()
         for (const group of ['Access', 'Catalog', 'Sales', 'Support']) {
             await expect(page.getByRole('main').getByRole('heading', { name: group, level: 2 })).toBeVisible()
         }

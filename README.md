@@ -129,8 +129,11 @@ docker compose run --rm e2e                     # the admin in a browser, standa
 
 The end-to-end suite (`demo/e2e`, Playwright) needs the hosted bundle
 published (above) and writes to the demo databases. Run it on its own,
-not alongside PHPUnit. It clears the admin account's saved UI
-preferences before each test. See
+not alongside PHPUnit. It signs in as its own admin, `e2e@vector.local`,
+whose saved UI preferences it clears before each test, so it and a
+person using the demo as `admin@vector.local` do not disturb each other;
+on a database seeded before that account existed, `demo:seed` (without
+`--fresh`) adds it. See
 [demo/e2e/README.md](demo/e2e/README.md).
 
 ## Documentation
