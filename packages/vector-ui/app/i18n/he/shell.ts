@@ -49,6 +49,5 @@ export default {
     },
     home: {
         title: 'לוח בקרה',
-        fieldCount: 'שדה {count} | {count} שדות',
     },
 }

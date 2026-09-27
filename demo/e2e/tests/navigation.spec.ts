@@ -1,25 +1,20 @@
 import { ADMIN, expect, test } from '../support/fixtures'
 
 test.describe('the shell', () => {
-    test('opens on the dashboard, with every resource group', async ({ admin: page }) => {
+    test('opens on the dashboard, with every resource group in the drawer', async ({ admin: page }) => {
         await page.goto('')
 
         // the brand is the application's branding setting, so only the page part is fixed
         await expect(page).toHaveTitle(/^Dashboard · /)
         await expect(page.getByRole('banner').getByText(ADMIN.name)).toBeVisible()
+        await expect(page.getByRole('main').getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible()
+        const drawer = page.getByRole('navigation', { name: 'Main' })
         for (const group of ['Access', 'Catalog', 'Sales', 'Support']) {
-            await expect(page.getByRole('main').getByRole('heading', { name: group, level: 2 })).toBeVisible()
+            // .first(): an extension's page may add its own section of the same name (the demo's Stock overview is under Catalog)
+            await expect(drawer.getByText(group, { exact: true }).first()).toBeVisible()
         }
-    })
-
-    test('goes to a resource from its dashboard card', async ({ admin: page }) => {
-        await page.goto('')
-
-        await page.getByRole('main').getByRole('link', { name: /^Products/ }).click()
-
-        await expect(page).toHaveURL(/\/r\/products$/)
-        await expect(page.getByRole('heading', { name: 'Products', level: 1 })).toBeVisible()
-        await expect(page).toHaveTitle(/^Products · /)
+        // the home page is the dashboard alone: the drawer lists the resources
+        await expect(page.getByRole('main').getByRole('heading', { level: 2 })).toHaveCount(0)
     })
 
     test('goes to a resource from the navigation drawer', async ({ admin: page }) => {

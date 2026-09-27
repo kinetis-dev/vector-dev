@@ -14,8 +14,8 @@ describe('vt', () => {
     })
 
     it('pluralizes on the count passed last', () => {
-        expect(vt('shell.home.fieldCount', { count: 1 }, 1)).toBe('1 field')
-        expect(vt('shell.home.fieldCount', { count: 4 }, 4)).toBe('4 fields')
+        expect(vt('list.inline.pending', { count: 1 }, 1)).toBe('1 unsaved change')
+        expect(vt('list.inline.pending', { count: 4 }, 4)).toBe('4 unsaved changes')
         expect(vt('list.inline.saved', { count: 3 }, 3)).toBe('3 records saved.')
     })
 

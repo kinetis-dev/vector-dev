@@ -49,6 +49,5 @@ export default {
     },
     home: {
         title: 'Painel',
-        fieldCount: '{count} campo | {count} campos',
     },
 }

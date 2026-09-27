@@ -49,6 +49,5 @@ export default {
     },
     home: {
         title: 'Dashboard',
-        fieldCount: '{count} campo | {count} campi',
     },
 }

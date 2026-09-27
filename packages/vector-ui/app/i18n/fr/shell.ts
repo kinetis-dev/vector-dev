@@ -49,6 +49,5 @@ export default {
     },
     home: {
         title: 'Tableau de bord',
-        fieldCount: '{count} champ | {count} champs',
     },
 }
