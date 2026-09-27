@@ -102,6 +102,23 @@ final class ListGrammarTest extends VectorTestCase
         $this->client->get('/vector/search', query: ['q' => ''], headers: $this->adminHeaders())->assertOk()->assertJsonPath('results', []);
     }
 
+    public function testColumnsAlwaysKeepTheRowsIdentity(): void
+    {
+        // the list shows SKU and name only, but still links each row to its record
+        $page = $this->client->get('/vector/r/products', query: ['columns' => 'sku,name', 'q' => 'SKU-00042'], headers: $this->adminHeaders())
+            ->assertOk()->json();
+        self::assertIsArray($page);
+        self::assertSame(1, $page['total']);
+        self::assertSame(['id', 'sku', 'name', '_trashed', '_version'], array_keys($page['data'][0]));
+        self::assertIsInt($page['data'][0]['id']);
+
+        // asked for, the key is not repeated and stays where it was asked
+        $withId = $this->client->get('/vector/r/products', query: ['columns' => 'sku,id', 'q' => 'SKU-00042'], headers: $this->adminHeaders())
+            ->assertOk()->json();
+        self::assertIsArray($withId);
+        self::assertSame(['sku', 'id', '_trashed', '_version'], array_keys($withId['data'][0]));
+    }
+
     public function testExportIsCsvUnderTheSameGrammar(): void
     {
         $response = $this->client->get('/vector/r/products/export', query: ['filter' => ['status' => 'archived'], 'columns' => 'sku,name,category,priceCents'], headers: $this->adminHeaders())

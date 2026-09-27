@@ -160,8 +160,17 @@ cookie mode.
 
 ## Testing
 
-`pnpm typecheck` runs `vue-tsc --strict` over the layer. Browser flows
-run against the reference application with Playwright; the reference
-repository's scripts cover login, lists with filters, views, columns,
-bulk actions, forms with 422 mapping, hosted mode under a strict CSP,
-dashboards, jobs, import, the inbox, audit and impersonation.
+`pnpm typecheck` runs `vue-tsc --strict` over the layer, its tests
+included.
+
+`pnpm test` runs the layer's Vitest suite in `test/nuxt/`: each file
+runs inside a Nuxt app built from this layer (`@nuxt/test-utils`,
+happy-dom), so auto-imports, app config, the i18n plugin, Vuetify and
+Pinia behave as they do in the admin. It covers the formatters and
+client rules, the API client in both authentication modes, the auth
+store, the schema and resource clients, and the generated form
+(`VxResourceForm`) with its 422 mapping. API calls go to endpoints
+the test registers (`test/nuxt/endpoints.ts`); nothing needs a server.
+
+Browser flows are the demo's end-to-end suite, `demo/e2e`: Playwright
+against the running stack, in both deployment modes. See its README.

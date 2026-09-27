@@ -37,6 +37,11 @@ records of an entity with a `#[Version]` column, the token a `PATCH`
 `q`, `group=f`, `summaries=1`, `columns=a,b`, `cursor`. Anything outside
 the descriptor's allow-lists is `422` with the reason.
 
+`columns` narrows the fields a list record carries to those index
+fields, plus what their display needs (a money field's currency). The
+primary key is always there, since it is the record's identity, whether
+or not the columns name it. An export writes exactly the columns named.
+
 A filter object's conditions must all hold. `filter[or][i]` holds
 alternatives, and any one of them may hold. `filter[and][i]` combines
 filter objects. Each alternative or combined object is itself a filter
