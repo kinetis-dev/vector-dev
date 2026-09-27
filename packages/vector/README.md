@@ -87,7 +87,7 @@ digits starting with a letter; `app` and `default` are reserved.
 Both dialects are supported on every connection — Vector's own, the
 default, and every named one an entity uses. On PostgreSQL the
 two view flags are `SMALLINT` 0/1 as on MySQL, a job's file is stored
-as base64 text (at most 12 MiB of file on MySQL's `MEDIUMBLOB`), , and
+as base64 text (at most 12 MiB of file, MySQL's `MEDIUMBLOB`), and
 search, the `contains` filter and relation option search use `ILIKE`,
 so they ignore case on both dialects. A unique violation is mapped to
 its field from PostgreSQL's `Key (column)=` detail or MySQL's index
@@ -199,7 +199,7 @@ identifier, a `softDeletes()` property that is not a nullable
 | `Boolean` | `boolean` | |
 | `Date`, `DateTime` | `date`, `datetime` | ISO 8601 on the wire, UTC. |
 | `Enum` | `enum` | `of(BackedEnum::class)`, `labels()`, `colors()`; options published. |
-| `File`, `Image` | `file`, `image` | Stored keys; upload handling is the application's. |
+| `File`, `Image` | `file`, `image` | Storage keys of uploaded files; see [Files and images](#files-and-images) for the upload and download endpoints. |
 | `BelongsTo::to()`, `HasOne::to()`, `HasMany::to()`, `ManyToMany::to()` | relation | `titleField()` overrides the target's title; `BelongsTo::dependsOn()` narrows its choices by another field; `HasMany::repeater()` edits an owned relation's rows in the parent's form. |
 
 A field's `default()` is where a new record starts: the create form shows
@@ -392,9 +392,10 @@ final class MainDashboard extends VectorDashboard
 Types are `stat`, `trend`, `partition`, `progress` and `table`;
 `ranges()` (default `7d`, `30d`, `90d`, `1y`), `width()` (3, 4, 6, 12)
 and `canView()` shape the card. A `cacheSeconds()` above zero memoizes
-the result in a bounded per-worker cache keyed by widget and range —
-never by user — so declare 0 for a user-dependent widget. The dashboard
-named `main` is the home page.
+the result in a bounded per-worker cache keyed by widget, range and the
+account it was computed for; a widget whose numbers are the same for
+everyone declares `cacheShared()` true so one computation serves every
+admitted admin. The dashboard named `main` is the home page.
 
 ### Files and images
 
@@ -515,8 +516,12 @@ Queued actions, exports above `exportLimit()` (up to
 `exportQueueLimit()`) and every import become jobs. Each reports into
 `vector_jobs`, which the UI polls, and notifies the admin who started
 it; that admin is rebuilt in the worker through the application's
-`ActorResolverInterface`. Delivery is at least once: a queued action
-must tolerate a chunk running twice.
+`ActorResolverInterface`. Every Vector job is pushed for one attempt and
+claims its row with one conditional write before it starts, so a job the
+backend redelivers on its own does not run again; a failure is final and
+reported on the row. A queued action must still tolerate a chunk running
+twice, because a chunk's flush and the progress written after it are two
+statements.
 
 Vector has no queue of its own. Two settings decide where its jobs go:
 
@@ -634,7 +639,8 @@ answers a `VectorResponse` with chaining assertions (`assertRecord`,
 - `perPage` ≤ `maxPerPage()` (200), a bulk selection ≤ `bulkLimit()`
   (1000), an inline export ≤ `exportLimit()` (10 000), a queued export ≤
   `exportQueueLimit()` (250 000), an import ≤ 50 000 rows and 8 MB, a
-  saved view or preference value ≤ 16 KiB, a job file ≤ 16 MiB.
+  saved view or preference value ≤ 16 KiB, a job file ≤ 12 MiB (16 MiB
+  as base64).
 - Timestamps and soft deletes are resource conventions the writer
   applies; the ORM's optimistic lock and unique indexes map to 409 and
   422.

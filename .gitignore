@@ -11,7 +11,7 @@ node_modules/
 .nuxt/
 .output/
 .data/
-/demo/frontend/dist/
+/demo/frontend/dist
 .pnpm-store/
 /packages/vector/resources/dist/
 /demo/backend/public/vector/
