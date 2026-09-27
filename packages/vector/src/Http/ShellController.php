@@ -74,7 +74,7 @@ final readonly class ShellController
 
         if ($this->ui->indexHtml === null) {
             return PlainTextResponse::create(
-                "The admin UI is not published. Run `vendor/bin/kinetis vector:install` to place it under {$this->ui->publishedDir}.",
+                "The admin UI is not published: no index.html under {$this->ui->publishedDir}. Run `vendor/bin/kinetis vector:install` to publish it under public/vector/ui, or point VECTOR_UI_DIR at a published bundle.",
                 503,
                 ['Cache-Control' => 'no-store'],
             );
@@ -110,9 +110,9 @@ final readonly class ShellController
         $script = "<script nonce=\"{$attribute}\">window.__VECTOR__ = {$config};</script>";
         $head = str_replace('{nonce}', $attribute, $this->ui->shellHead);
         $html = self::nonceInlineScripts($this->ui->indexHtml, $attribute);
-        $html = str_contains($html, '</head>')
-            ? preg_replace('~</head>~', $script . $head . '</head>', $html, 1) ?? $script . $head . $html
-            : $script . $head . $html;
+        // inserted by position, never as a regex replacement: a display name such as `$0` stays text
+        $at = strpos($html, '</head>');
+        $html = $at === false ? $script . $head . $html : substr_replace($html, $script . $head, $at, 0);
 
         $headers = ['Cache-Control' => 'no-store'];
 

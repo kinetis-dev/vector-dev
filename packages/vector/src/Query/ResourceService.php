@@ -135,6 +135,19 @@ final readonly class ResourceService
         $this->gate->authorize($this->user, $this->policy($resource)->setDefaultView(...));
     }
 
+    /** Refuses unless the user may list the resource at all. */
+    public function authorizeViewAny(ResourceDescriptor $resource): void
+    {
+        $this->gate->authorize($this->user, $this->policy($resource)->viewAny(...));
+    }
+
+    /** Refuses unless the user may list the resource and download it as a file. */
+    public function authorizeExport(ResourceDescriptor $resource): void
+    {
+        $this->authorizeViewAny($resource);
+        $this->gate->authorize($this->user, $this->policy($resource)->export(...));
+    }
+
     /**
      * One page of the resource under the request's grammar: the bounded
      * plan of §4.6 — scope, soft-delete predicate, filters, search,
@@ -208,16 +221,20 @@ final readonly class ResourceService
     {
         $this->gate->authorize($this->user, $this->policy($resource)->viewAny(...));
         $limit ??= $resource->bulkLimit();
-        $query = $this->constrained($resource, null, $request, null)->select($resource->primaryKeyColumn());
-        $count = $query->count();
+        // one row past the limit tells a too-large match from a full one, in the one statement that reads the ids
+        $rows = $this->constrained($resource, null, $request, null)
+            ->select($resource->primaryKeyColumn())
+            ->orderBy($resource->primaryKeyColumn(), 'ASC')
+            ->limit($limit + 1)
+            ->get();
 
-        if ($count > $limit) {
-            throw new ForbiddenOperationException("The selection matches {$count} records; at most {$limit} can be handled at once. Narrow the filter.");
+        if (count($rows) > $limit) {
+            throw new ForbiddenOperationException("The selection matches more than {$limit} records; at most {$limit} can be handled at once. Narrow the filter.");
         }
 
         $ids = [];
 
-        foreach ($query->orderBy($resource->primaryKeyColumn(), 'ASC')->get() as $row) {
+        foreach ($rows as $row) {
             $ids[] = $this->serializer->key($row, $resource);
         }
 
@@ -230,17 +247,16 @@ final readonly class ResourceService
      *
      * @return \Generator<int, array<string, mixed>>
      */
-    public function stream(ResourceDescriptor $resource, ListRequest $request, ?int $limit = null): \Generator
+    public function stream(ResourceDescriptor $resource, ListRequest $request, ?int $limit = null, ?int $total = null): \Generator
     {
-        $this->gate->authorize($this->user, $this->policy($resource)->viewAny(...));
-        $this->gate->authorize($this->user, $this->policy($resource)->export(...));
+        $this->authorizeExport($resource);
 
         $fields = $this->listFields($resource, $request);
-        $total = $this->exportCount($resource, $request);
+        $total ??= $this->exportCount($resource, $request);
         $limit ??= $resource->exportLimit();
 
         if ($total > $limit) {
-            throw new ForbiddenOperationException("The selection matches {$total} records; this export serializes at most {$limit}. Narrow the filter.");
+            throw new InvalidListRequestException("The selection matches {$total} records; this export serializes at most {$limit}. Narrow the filter.");
         }
 
         $cursor = null;
@@ -674,17 +690,24 @@ final readonly class ResourceService
         $target = $this->resource($relation['resource']);
         $this->gate->authorize($this->user, $this->policy($target)->viewAny(...));
 
-        $query = $this->query($target)->table($target->table())
+        // the target as this user may list it: its scope() applies, and a
+        // trashed record is not offered, though one already chosen keeps its label
+        $query = $this->baseQuery($target, null)
             ->select($target->primaryKeyColumn(), $target->titleColumn())
             ->orderBy($target->titleColumn(), 'ASC')
             ->limit(min($limit, 100));
+        $this->applySoftDelete($target, $query, $ids === [] ? ListRequest::TRASHED_WITHOUT : ListRequest::TRASHED_WITH);
 
         $dependsOn = $relation['dependsOn'] ?? null;
         $raw = $dependsOn === null ? '' : $depends[$dependsOn['field']] ?? '';
 
         if ($dependsOn !== null && $raw !== '' && $ids === []) {
+            // the field it depends on, as this user sees it: hidden by viewField, it cannot narrow
+            $dependency = $resource->field($dependsOn['field'])
+                ?? throw new InvalidListRequestException("\"{$dependsOn['field']}\" is not a field this account may filter by.");
+
             try {
-                $query->where($dependsOn['column'], '=', $this->converter->fromQuery($resource->fields()[$dependsOn['field']], $raw));
+                $query->where($dependsOn['column'], '=', $this->converter->fromQuery($dependency, $raw));
             } catch (InputViolation $e) {
                 throw new InvalidListRequestException("\"{$dependsOn['field']}\" {$e->violation->message}");
             }
@@ -746,7 +769,7 @@ final readonly class ResourceService
         $this->show($resource, $id); // exists and is viewable
         $child = $this->resource($field['relation']['resource']);
         $this->gate->authorize($this->user, $this->policy($child)->viewAny(...));
-        $keys = array_column($this->query($child)->table($child->table())
+        $keys = array_column($this->baseQuery($child, null)
             ->select($child->primaryKeyColumn())
             ->where($field['relation']['foreignKey'], '=', $this->identifier($resource, $id))
             ->orderBy($child->primaryKeyColumn(), 'ASC')
