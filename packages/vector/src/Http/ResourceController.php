@@ -60,6 +60,8 @@ final readonly class ResourceController
         private WidgetRunner $widgets,
         private RowMapper $mapper,
         private \Kinetis\Vector\VectorDefaults $defaults,
+        private \Kinetis\Vector\Translation\LocaleResolver $locales,
+        private \Kinetis\Vector\Translation\Labels $labels,
     ) {}
 
     /** @return array<string, mixed> */
@@ -319,7 +321,9 @@ final readonly class ResourceController
         $compiled = $descriptor->widget($widget) ?? throw WidgetRunner::notFound($widget);
         $range = $request->getQueryParams()['range'] ?? null;
 
-        return ['data' => $this->widgets->run($compiled, is_string($range) && $range !== '' ? $range : null, "resources/{$resource}")];
+        $locale = $this->locales->resolve((string) $this->user->id())['locale'];
+
+        return ['data' => $this->labels->document($this->widgets->run($compiled, is_string($range) && $range !== '' ? $range : null, "resources/{$resource}"), $locale)];
     }
 
 

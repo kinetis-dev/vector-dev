@@ -203,6 +203,18 @@ export interface VectorAuditEntry {
 
 export type VectorExportFormat = 'csv' | 'xlsx'
 
+/** A language the admin can be shown in: its tag, its name in itself, and its direction. */
+export interface VectorLocale {
+    code: string
+    name: string
+    dir: 'ltr' | 'rtl'
+}
+
+export interface VectorSchemaI18n {
+    locale: string
+    locales: VectorLocale[]
+}
+
 /** create adds every row; update changes the records a key column finds; upsert does either. */
 export type VectorImportMode = 'create' | 'update' | 'upsert'
 
@@ -372,6 +384,8 @@ export interface VectorSchema {
     /** `exportFormats`: what the export menu offers — csv always, xlsx where the server can write it (in the queue). */
     capabilities: { impersonation: boolean, queue: boolean, uploads?: boolean, exportFormats?: VectorExportFormat[] }
     branding: VectorBranding | null
+    /** The language this descriptor is in, and the ones this user may switch to. */
+    i18n?: VectorSchemaI18n
     /** ISO 4217 exponents of the currencies whose minor unit is not a hundredth */
     minorUnits?: Record<string, number>
 }

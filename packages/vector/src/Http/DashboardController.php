@@ -20,6 +20,9 @@ final readonly class DashboardController
     public function __construct(
         private VectorRegistry $registry,
         private WidgetRunner $widgets,
+        private \Kinetis\Http\CurrentUserInterface $user,
+        private \Kinetis\Vector\Translation\LocaleResolver $locales,
+        private \Kinetis\Vector\Translation\Labels $labels,
     ) {}
 
     /** @return array{data: array<string, mixed>} */
@@ -28,7 +31,7 @@ final readonly class DashboardController
     {
         $dashboard = $this->admitted($name);
 
-        return ['data' => ['name' => $name, 'label' => $dashboard['label'], 'icon' => $dashboard['icon'], 'widgets' => $this->widgets->visible($dashboard['widgets'])]];
+        return ['data' => $this->labels->document(['name' => $name, 'label' => $dashboard['label'], 'icon' => $dashboard['icon'], 'widgets' => $this->widgets->visible($dashboard['widgets'])], $this->locale())];
     }
 
     /** @return array{data: array<string, mixed>} */
@@ -47,7 +50,13 @@ final readonly class DashboardController
         $compiled ??= throw WidgetRunner::notFound($widget);
         $range = $request->getQueryParams()['range'] ?? null;
 
-        return ['data' => $this->widgets->run($compiled, is_string($range) && $range !== '' ? $range : null, "dashboards/{$name}")];
+        // a result's slice, column and caption labels; its rows and points are data
+        return ['data' => $this->labels->document($this->widgets->run($compiled, is_string($range) && $range !== '' ? $range : null, "dashboards/{$name}"), $this->locale())];
+    }
+
+    private function locale(): string
+    {
+        return $this->locales->resolve((string) $this->user->id())['locale'];
     }
 
     /** @return array<string, mixed> */

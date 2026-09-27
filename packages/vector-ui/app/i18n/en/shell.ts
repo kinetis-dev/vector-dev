@@ -6,6 +6,8 @@ export default {
     signOut: 'Sign out',
     toggleNavigation: 'Toggle navigation',
     toggleTheme: 'Toggle theme',
+    language: 'Language: {name}',
+    languageFailed: 'The language could not be saved: {error}',
     nav: {
         main: 'Main',
         dashboard: 'Dashboard',

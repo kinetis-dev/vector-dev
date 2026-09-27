@@ -39,7 +39,7 @@ final class HostedModeTest extends VectorTestCase
         self::assertStringContainsString('window.__VECTOR__ = {', $html);
         self::assertStringContainsString('"authMode":"cookie"', $html);
         self::assertStringContainsString('"loginUrl":"/login"', $html);
-        self::assertStringContainsString('"locale":null', $html, 'no VECTOR_UI_LOCALE: the bundle keeps its default');
+        self::assertStringContainsString('"locale":"en"', $html, 'no preference and no choice by the administrator: English');
         self::assertStringContainsString('"csrfToken":"', $html);
         self::assertStringContainsString('"name":"Vector Admin"', $html);
         self::assertStringContainsString('src="/vector/ui/_nuxt/', $html, 'the bundle is built for the hosted base URL');

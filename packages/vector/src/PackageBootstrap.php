@@ -13,6 +13,8 @@ use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\Vector\Files\VectorStorage;
 use Kinetis\Vector\Write\EntityWriter;
 use Kinetis\Vector\Jobs\VectorQueue;
+use Kinetis\Vector\Translation\MessagesTranslator;
+use Kinetis\Vector\Translation\TranslatorInterface;
 use Kinetis\Vector\Ui\VectorUi;
 use Kinetis\Vector\Widgets\WidgetCache;
 
@@ -44,5 +46,16 @@ final readonly class PackageBootstrap implements PackageBootstrapInterface
         $app->instance(VectorQueue::class, VectorQueue::fromConfig($app, $config));
         // Uploaded files for file and image fields: the application's filesystem, or VECTOR_STORAGE_CONNECTION's.
         $app->instance(VectorStorage::class, VectorStorage::fromConfig($app, $config));
+        // The labels' translations: read once, request-neutral.
+        if (!$app->has(TranslatorInterface::class)) {
+            $directory = trim($config->string('VECTOR_TRANSLATIONS_DIR', ''));
+            $directories = [dirname(__DIR__) . '/translations'];
+
+            if ($directory !== '') {
+                $directories[] = str_starts_with($directory, '/') ? $directory : $root->path . '/' . $directory;
+            }
+
+            $app->instance(TranslatorInterface::class, MessagesTranslator::fromDirectories($directories));
+        }
     }
 }

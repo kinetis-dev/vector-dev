@@ -1,5 +1,9 @@
 import type { VectorResource, VectorSchema } from '#vector/app/types/vector'
 
+// The latest descriptor request: an older answer arriving after it (the
+// language switched twice, say) must not replace it. One app per page.
+let latestLoad = 0
+
 /**
  * The descriptor, loaded once per session and shared by every page. The
  * server's ETag makes a reload cheap; the layer reloads it after login
@@ -17,14 +21,19 @@ export function useVectorSchema() {
         }
 
         loading.value = true
+        const request = ++latestLoad
 
         try {
-            schema.value = await api<VectorSchema>('/vector/schema')
-            adoptMinorUnits(schema.value.minorUnits ?? {})
+            const answer = await api<VectorSchema>('/vector/schema')
 
-            return schema.value
+            if (request === latestLoad) {
+                schema.value = answer
+                adoptMinorUnits(answer.minorUnits ?? {})
+            }
+
+            return answer
         } finally {
-            loading.value = false
+            if (request === latestLoad) loading.value = false
         }
     }
 

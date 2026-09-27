@@ -609,9 +609,42 @@ limit. Without a filesystem, uploads are unavailable
 ### Settings groups
 
 A `#[Settings]` class extending `SettingsGroup` declares `fields()` and
-`canManage()`; values are stored in `vector_settings` and edited on the
-UI's settings page through the same registry as a form. `Branding`
-ships with Vector. A setting is a value, never markup.
+`canManage()`, and may override `validate(array $values)` for a rule
+across its fields — a request-time check, like `canManage()`, whose
+violations refuse the save; values are stored in `vector_settings` and
+edited on the UI's settings page through the same registry as a form. `Branding` and
+`Languages` ship with Vector. A setting is a value, never markup.
+
+### Languages and translated labels
+
+The admin is shown in each user's own language. The descriptor, settings
+groups, dashboards and widget results are translated at response time —
+the compiled registry stays in the labels' own words — for the request's
+language: the user's `locale` preference, else the administrator's
+default (English unless changed) — the browser's languages play no part —
+among the languages on offer: the ones the
+administrator enabled in the built-in **Languages** settings group, all
+eight the UI ships at first. Every list of languages — the menu, the
+switches, the default's options — follows `Locales::SHIPPED`, which is
+kept in the Unicode root collation of the languages' own names (Latin
+script alphabetically, then each other script as a group), the same in
+every language; a test fails when a language is added out of place. The schema carries
+`i18n: {locale, locales: [{code, name, dir}]}`, its ETag covers the
+language, and the MCP schema resource is translated for the user's
+preference.
+
+Every label a resource, field, enum, action, widget, dashboard or
+settings group declares is looked up as a key and shown as declared when
+there is no translation, so English labels need no file. Vector binds a
+`MessagesTranslator` over its own `translations/` (its built-in settings
+groups) and the application's `VECTOR_TRANSLATIONS_DIR`, each
+`{locale}.php` returning `['Products' => 'Produkte', …]`; an application
+binds `Kinetis\Vector\Translation\TranslatorInterface` itself to use
+another translator. The UI ships German, French, Dutch, Italian, Spanish,
+Portuguese and Hebrew (right to left) beside English; those catalogs, and
+Vector's own label translations, are machine translations. Validation
+messages are not translated yet: the framework's and Vector's own arrive
+in English.
 
 ### Policies
 
@@ -798,7 +831,7 @@ with `X-CSRF-Token` on writes under the hosted shell — see
 | `VECTOR_SHELL_HEAD` | A raw fragment appended before `</head>` of the shell; `{nonce}` is replaced. Deployment configuration only. |
 | `VECTOR_SHELL_CSP` | A `Content-Security-Policy` for the shell alone, sent instead of the application's `SECURITY_CSP`, `{nonce}` replaced per response. Unset, the application's policy applies, and the shell uses the nonce it put on the request. |
 | `VECTOR_UI_EXTENSIONS` | Comma-separated ES-module URLs the UI imports after boot. |
-| `VECTOR_UI_LOCALE` | The hosted UI's language (`de`, `pt-BR`, …); unset, the bundle's own default (English). |
+| `VECTOR_TRANSLATIONS_DIR` | A directory of `{locale}.php` files translating the application's labels, relative to the project root. Read once at boot. |
 | `VECTOR_CURRENCY` | The ISO 4217 code a `Currency` field starts from when it sets no `default()` of its own (and allows the code). An invalid code stops the boot. |
 | `VECTOR_EXPORT_FORMATS` | The export formats offered, `csv,xlsx` by default. CSV is always offered; XLSX only where `openspout/openspout` and `ext-zip` are installed and a queue runs Vector's jobs. An unknown format stops the boot. |
 | `VECTOR_DB_CONNECTION` | The connection Vector's own tables live on (`default` when unset). |

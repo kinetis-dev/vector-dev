@@ -150,34 +150,45 @@ footer) applies over them, rendered escaped.
 
 ## Languages
 
-The admin's own strings — buttons, menus, dialogs, validation and
-notification texts — come from a message catalog through `vue-i18n`;
-labels the descriptor carries (resources, fields, actions, enum options)
-are the application's and arrive in its own language. English ships
-with the layer and is the fallback, string by string, for every other
-locale. Vuetify's component strings (pagination, empty tables) follow the
-same locale from Vuetify's own translations.
+Each user sees the admin in their own language. The layer ships English
+(the base and the fallback, key by key) and German, French, Dutch,
+Italian, Spanish, Portuguese and Hebrew — **machine translations**, which
+an application can override. Labels the descriptor carries (resources,
+fields, actions, enum options, widgets, settings) arrive translated by
+the server for the same language.
 
-The locale is the hosted shell's `VECTOR_UI_LOCALE` when set, otherwise
-`app.config` `vector.locale`. Add or override messages per locale and
-area in `app.config`:
+The descriptor's `i18n` names the user's language and the languages on
+offer (the ones the administrator enabled in the Languages settings).
+The language menu in the app bar lists them in the server's order — the
+languages' own names by Unicode root collation, the same in every
+language — each named in itself with its name in the current language
+beneath (`languageName()`, from `Intl.DisplayNames`), and switches it: `useVectorLocale().choose(code)` stores the user's `locale`
+preference and reloads the descriptor. Before the descriptor loads, the
+UI starts in the hosted shell's language, else the one this browser last
+used, else `app.config` `vector.locale`. Applying a language switches the
+catalog, Vuetify's component strings, the `Intl` formatting of dates,
+numbers and money, and `<html lang dir>`: Hebrew renders right to left,
+and the layer's own components use logical spacing (`ms-`/`me-`) so they
+mirror.
+
+Add or override messages per locale and area in `app.config`:
 
 ```ts
 export default defineAppConfig({
     vector: {
-        locale: 'de',
         messages: {
-            de: { common: { save: 'Speichern', cancel: 'Abbrechen' }, list: { exportCsv: 'CSV exportieren', filter: { add: 'Filter hinzufügen' } } },
+            de: { common: { save: 'Sichern' }, list: { filter: { add: 'Filter hinzufügen' } } },
         },
     },
 })
 ```
 
 A runtime extension adds them without a build:
-`window.Vector.defineMessages('de', { common: { save: 'Speichern' } })`.
-The English catalog in `app/i18n/en/` names every key. Messages use
-`{name}` placeholders and `a | b | c` plural forms, and are never
-rendered as HTML.
+`window.Vector.defineMessages('de', { common: { save: 'Sichern' } })`.
+The English catalog in `app/i18n/en/` names every key, and a test holds
+every shipped locale to the same keys, placeholders and plural forms.
+Messages use `{name}` placeholders and `a | b | c` plural forms, and are
+never rendered as HTML.
 
 ## Authentication modes
 

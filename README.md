@@ -451,7 +451,7 @@ is `403`.
 
 | Route | Answers |
 |---|---|
-| `GET /vector/schema` | The descriptor: every resource this user may list, its fields, table and show views, permissions, and the menu. Carries an `ETag`; `If-None-Match` answers `304`. |
+| `GET /vector/schema` | The descriptor: every resource this user may list, its fields, table and show views, permissions, and the menu, with labels translated into the user's language (their `locale` preference, else the administrator's default) and `i18n` naming it and the languages on offer. Carries an `ETag` per user and language; `If-None-Match` answers `304`. |
 | `GET /vector/schema/{resource}` | One resource of it. |
 | `GET /vector/me` | The authenticated identity. |
 | `GET /vector/r/{resource}` | A page of records under the list grammar: `page`, `perPage` (bounded by the resource), `sort=-createdAt,name` over sortable fields, `filter[field][op]=value` over filterable fields with the operators the descriptor publishes (`eq ne lt lte gt gte in nin like nlike between null nnull`; `filter[field]=value` is `eq`, `in`/`nin`/`between` take `a,b`), `filter[or][i]…` alternatives and `filter[and][i]…` combined filter objects (four deep, 50 conditions), `filter[trashed]=only|with` on a soft-deleting resource, `q` over searchable fields, `group=field`, `summaries=1`, `columns=a,b`, or `cursor` for keyset pages by the identifier. The Kinetis `Paginator` envelope (or `{data, nextCursor, hasMore}` under a cursor), `belongsTo` values as `{id, label}`, `hasMany`/`manyToMany` as `{count}`, `summaries` when asked, `_trashed` on a soft-deleting resource. |
@@ -472,7 +472,7 @@ is `403`.
 | `GET /vector/search?q=` | Global search: the first matches of every globally searchable resource this user may list, each with its `title`, the resource's `searchSubtitle()` value as `subtitle`, and, when the record holds one, the `searchImage()` field to fetch its thumbnail from as `image`. |
 | `GET/POST /vector/views/{resource}`, `PUT/DELETE /vector/views/{resource}/{id}` | Saved list views — a name, a validated list state, `shared`, `isDefault`, and `resourceDefault` (a shared view everyone without a default of their own opens with; one per resource; the policy's `setDefaultView` decides it); the owner alone changes one. |
 | `GET/PUT /vector/preferences` | Per-user UI preferences as JSON values by key (`columns.<resource>`, …); `PUT` merges, a `null` removes. |
-| `GET /vector/settings`, `GET/PUT /vector/settings/{group}` | Typed settings groups (`#[Settings]` classes extending `SettingsGroup`) with their values; `PUT` validates the body like a form and replaces the group's values. `branding` ships with Vector and is published with the descriptor. |
+| `GET /vector/settings`, `GET/PUT /vector/settings/{group}` | Typed settings groups (`#[Settings]` classes extending `SettingsGroup`) with their values; `PUT` validates the body like a form and replaces the group's values. `branding` and `languages` ship with Vector; `branding` is published with the descriptor. |
 | `POST /vector/r/{resource}/fields/{field}/upload` | Stores one file (multipart `file`) for a file or image field after detecting its format from the bytes; answers `{key, name, size, type}`, the key being the value to write. |
 | `GET /vector/r/{resource}/{id}/files/{field}` | The record's stored file: an image inline, anything else as an attachment. `?key=` serves an image one of the record's rich-text documents shows from that field's uploads. |
 | `GET /vector/r/{resource}/{id}/audit` | The record's audit trail: every event with the field-level changes the writer observed, the actor and, when impersonating, the impersonator. |
@@ -558,6 +558,14 @@ Branding — title, logo URL, theme colours, footer line — is a settings
 group an admin edits at `/settings`, stored as values and rendered
 escaped.
 
+Each user picks the admin's language from the app bar: English, German,
+French, Dutch, Italian, Spanish, Portuguese or Hebrew (right to left) —
+the non-English ones machine translations. The choice is the user's
+preference; an administrator decides which languages are on offer under
+**Settings → Languages**, and the default, English unless changed.
+The demo's labels are translated in `demo/backend/translations/`
+(`VECTOR_TRANSLATIONS_DIR=translations`), also by machine.
+
 ## Layout
 
 ```text
@@ -578,6 +586,7 @@ demo/backend/             the demo Kinetis application, with kinetis/vector inst
   bootstrap.php           JWT keys, CORS for the standalone UI origin, the Vector bindings
   public/vector/ui/       the published hosted bundle (generated; not committed)
   public/vector-extensions/  the demo's runtime UI extension
+  translations/           the demo's labels in seven more languages (machine translations)
   tests/                  PHPUnit (App\Tests\)
 demo/frontend/            the demo Nuxt app: extends @kinetis/vector-ui, points at the demo API
 demo/e2e/                 the end-to-end suite: Playwright, both deployment modes, against the running stack

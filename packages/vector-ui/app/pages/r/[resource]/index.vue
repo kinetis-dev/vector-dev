@@ -16,7 +16,7 @@ useHead({ title: () => resource.value?.label ?? '' })
 <template>
     <div v-if="resource">
         <div class="d-flex align-center mb-4">
-            <v-icon v-if="resource.icon" :icon="resource.icon" class="mr-2" />
+            <v-icon v-if="resource.icon" :icon="resource.icon" class="me-2" />
             <h1 class="text-h4">{{ resource.label }}</h1>
             <v-spacer />
             <v-btn v-if="resource.permissions.create" :to="`${appConfig.vector.basePath}/r/${resource.slug}/create`" prepend-icon="mdi-plus" color="primary">

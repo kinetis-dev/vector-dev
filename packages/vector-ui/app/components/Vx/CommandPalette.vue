@@ -97,7 +97,7 @@ defineExpose({ open })
                         <v-list-subheader>{{ t('shell.palette.records') }}</v-list-subheader>
                         <v-list-item v-for="r in results" :key="keyOf(r)" :title="r.title" :subtitle="subtitleOf(r)" @click="go(`/r/${r.resource}/${encodeURIComponent(String(r.id))}`)">
                             <template #prepend>
-                                <v-avatar v-if="thumbs[keyOf(r)]" rounded size="32" class="mr-4">
+                                <v-avatar v-if="thumbs[keyOf(r)]" rounded size="32" class="me-4">
                                     <v-img :src="thumbs[keyOf(r)]" alt="" cover />
                                 </v-avatar>
                                 <v-icon v-else icon="mdi-file-document-outline" />

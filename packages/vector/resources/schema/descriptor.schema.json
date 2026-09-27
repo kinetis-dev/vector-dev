@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://kinetis.dev/schemas/vector/descriptor.json",
     "title": "Vector descriptor",
-    "description": "What GET /vector/schema publishes: the compiled resources, settings groups, dashboards, menu and branding, overlaid with the caller's permissions.",
+    "description": "What GET /vector/schema publishes: the compiled resources, settings groups, dashboards, menu and branding, overlaid with the caller's permissions and translated into the caller's language.",
     "type": "object",
     "required": [
         "version",
@@ -79,6 +79,28 @@
                         "enum": ["csv", "xlsx"]
                     },
                     "uniqueItems": true
+                }
+            }
+        },
+        "i18n": {
+            "description": "The language this descriptor's labels are in, and the languages this user may switch to: the ones the administrator enabled in the Languages settings group.",
+            "type": "object",
+            "required": ["locale", "locales"],
+            "properties": {
+                "locale": {
+                    "type": "string"
+                },
+                "locales": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["code", "name", "dir"],
+                        "properties": {
+                            "code": { "type": "string" },
+                            "name": { "description": "The language's name in itself.", "type": "string" },
+                            "dir": { "enum": ["ltr", "rtl"] }
+                        }
+                    }
                 }
             }
         },

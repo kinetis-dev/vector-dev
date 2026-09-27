@@ -29,12 +29,26 @@ conditions. `name()`, `label()` and `icon()` override how the group is
 named and shown. Saving validates the group like a form and replaces its
 values, in Vector's `vector_settings` table.
 
-## Branding
+A rule that spans several fields goes in `validate()`, which runs when
+the group is saved, after each field passed its own rules; any violation
+it returns refuses the save:
 
-Vector ships one group, **Branding**: the admin's title, logo URL,
+```php
+public function validate(array $values): array
+{
+    return $values['maintenanceMode'] && $values['storeName'] === ''
+        ? [new Violation(['storeName'], 'required', 'is needed while the store is in maintenance.')]
+        : [];
+}
+```
+
+## Branding and Languages
+
+Vector ships two groups. **Branding**: the admin's title, logo URL,
 primary colours for the light and dark themes, default theme and footer
 line. It applies at runtime, over the UI's built-in theme, without a
-rebuild.
+rebuild. **Languages**: which languages users may pick, and the default
+({doc}`languages`).
 
 A setting is always a value, rendered escaped; it is never markup or
 script. Adding script to the admin is a deployment decision, made with

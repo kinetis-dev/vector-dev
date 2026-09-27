@@ -1,0 +1,23 @@
+// Words every area shares. Keep a key here only when two areas or more use it.
+export default {
+    save: 'Speichern',
+    cancel: 'Abbrechen',
+    create: 'Anlegen',
+    edit: 'Bearbeiten',
+    delete: 'Löschen',
+    deleteForever: 'Endgültig löschen',
+    restore: 'Wiederherstellen',
+    close: 'Schließen',
+    apply: 'Anwenden',
+    remove: 'Entfernen',
+    search: 'Suchen',
+    loading: 'Wird geladen…',
+    required: 'Erforderlich',
+    none: '—',
+    yes: 'Ja',
+    no: 'Nein',
+    download: 'Herunterladen',
+    actions: 'Aktionen',
+    confirm: 'Bestätigen',
+    serverRejected: 'Der Server hat die Anfrage abgelehnt.',
+}

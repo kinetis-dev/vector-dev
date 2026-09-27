@@ -52,6 +52,7 @@ final readonly class ShellController
         private RequestScope $scope,
         private VectorRegistry $registry,
         private SettingsStore $settings,
+        private \Kinetis\Vector\Translation\LocaleResolver $locales,
     ) {}
 
     #[Get('/vector/ui')]
@@ -103,7 +104,8 @@ final readonly class ShellController
             'user' => $user instanceof CurrentUserInterface ? ['id' => $user->id(), 'name' => $name] : null,
             'branding' => $branding,
             'extensions' => $this->ui->extensions,
-            'locale' => $this->ui->locale,
+            // the language the shell starts in, before the descriptor confirms it
+            'locale' => $this->locales->resolve($user instanceof CurrentUserInterface ? (string) $user->id() : null)['locale'],
         ], JSON_THROW_ON_ERROR | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES);
 
         $attribute = htmlspecialchars($nonce, ENT_QUOTES, 'UTF-8');

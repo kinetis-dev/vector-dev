@@ -20,6 +20,17 @@ descriptor on every run.
 - A job: `{id, kind, resource, name, actorId, status, total, processed,
   result, failure, hasFile, fileName, createdAt, updatedAt, finishedAt}`.
 
+## Language
+
+Labels in `GET /vector/schema`, `/schema/{resource}`, `/settings`,
+`/dashboards/{name}` and widget results are translated for the request's
+language: the user's `locale` preference (`PUT /vector/preferences`,
+which refuses a language not on offer with `422`), else the
+administrator's default — among the languages on offer; `Accept-Language`
+is not consulted. The schema's `i18n` is `{locale, locales: [{code,
+name, dir}]}`; its ETag covers the language.
+Values and records are never translated.
+
 ## Relation options
 
 `GET /vector/r/{resource}/fields/{field}/options` answers `{data:

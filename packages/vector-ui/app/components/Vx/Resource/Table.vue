@@ -465,9 +465,9 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
                 <tr class="bg-surface-light">
                     <td :colspan="cols.length" class="font-weight-medium">
                         <v-btn size="small" variant="text" :icon="isGroupOpen(item) ? 'mdi-chevron-down' : 'mdi-chevron-right'" :aria-label="isGroupOpen(item) ? t('list.collapseGroup') : t('list.expandGroup')" :aria-expanded="isGroupOpen(item)" @click="toggleGroup(item)" />
-                        <span class="text-medium-emphasis mr-2">{{ t('list.groupHeader', { label: groupField?.label ?? '' }) }}</span>
+                        <span class="text-medium-emphasis me-2">{{ t('list.groupHeader', { label: groupField?.label ?? '' }) }}</span>
                         <VxCell v-if="groupField" :field="groupField" :value="item.value" :record="{}" :resource="resource" context="index" />
-                        <v-chip size="x-small" class="ml-2" variant="tonal">{{ item.items.length }}</v-chip>
+                        <v-chip size="x-small" class="ms-2" variant="tonal">{{ item.items.length }}</v-chip>
                     </td>
                 </tr>
             </template>
@@ -478,7 +478,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
                     <td v-if="group" />
                     <td v-for="field in fields" :key="field.name" :class="numeric(field) ? 'text-end' : ''">
                         <template v-if="field.summary && field.name in summaryValues">
-                            <span class="text-caption text-medium-emphasis mr-1">{{ t(`list.summary.${field.summary}`) }}</span>{{ formatSummary(field, summaryValues[field.name] ?? null) }}
+                            <span class="text-caption text-medium-emphasis me-1">{{ t(`list.summary.${field.summary}`) }}</span>{{ formatSummary(field, summaryValues[field.name] ?? null) }}
                         </template>
                     </td>
                 </tr>

@@ -119,9 +119,9 @@ onMounted(async () => {
             <v-chip v-bind="chipProps" :prepend-avatar="thumbs[String((item as VectorRelationValue).id)]" :title="(item as VectorRelationValue).subtitle ?? undefined" />
         </template>
         <template v-else #selection="{ item }">
-            <v-avatar v-if="thumbs[String((item as VectorRelationValue).id)]" rounded size="24" class="mr-2"><v-img :src="thumbs[String((item as VectorRelationValue).id)]" alt="" cover /></v-avatar>
+            <v-avatar v-if="thumbs[String((item as VectorRelationValue).id)]" rounded size="24" class="me-2"><v-img :src="thumbs[String((item as VectorRelationValue).id)]" alt="" cover /></v-avatar>
             <span>{{ (item as VectorRelationValue).label }}</span>
-            <span v-if="(item as VectorRelationValue).subtitle" class="text-medium-emphasis ml-2 vx-relation-subtitle">{{ (item as VectorRelationValue).subtitle }}</span>
+            <span v-if="(item as VectorRelationValue).subtitle" class="text-medium-emphasis ms-2 vx-relation-subtitle">{{ (item as VectorRelationValue).subtitle }}</span>
         </template>
     </v-autocomplete>
 </template>

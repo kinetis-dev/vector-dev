@@ -12,7 +12,7 @@
 | `VECTOR_EXPORT_FORMATS` | The export formats offered, `csv,xlsx` by default. XLSX also needs `openspout/openspout`, PHP's `zip` extension and a queue. |
 | `VECTOR_UI_DIR` | Where the hosted bundle lives; `public/vector/ui` by default. |
 | `VECTOR_LOGIN_URL`, `VECTOR_LOGOUT_URL` | The application's pages the hosted admin redirects to and posts to. |
-| `VECTOR_UI_LOCALE` | The hosted admin's language; English when unset. |
+| `VECTOR_TRANSLATIONS_DIR` | A directory of `{locale}.php` files translating your labels. See {doc}`languages`. |
 | `VECTOR_UI_EXTENSIONS` | Comma-separated ES-module URLs the hosted admin loads at startup. |
 | `VECTOR_SHELL_HEAD` | A raw fragment added before `</head>` of the hosted page; `{nonce}` is replaced. |
 | `VECTOR_SHELL_CSP` | A Content Security Policy for the hosted page alone, instead of `SECURITY_CSP`; `{nonce}` is replaced. |

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { registerEndpoint } from '@nuxt/test-utils/runtime'
 import { adoptMinorUnits, minorDigits } from '#vector/app/utils/format'
 import { endpoint, standaloneApi } from '../endpoints'
 import { resource, schema } from '../fixtures'
@@ -27,6 +28,24 @@ afterEach(() => {
 })
 
 describe('useVectorSchema', () => {
+    it('keeps the latest answer when an older request answers after it', async () => {
+        // the first request (the language picked first) answers last
+        let calls = 0
+        cleanup = registerEndpoint('/vector/schema', async () => {
+            const call = ++calls
+            if (call === 1) await new Promise(resolve => setTimeout(resolve, 60))
+            return { ...descriptor, i18n: { locale: call === 1 ? 'he' : 'en', locales: [] } }
+        })
+
+        const { schema: loaded, load } = useVectorSchema()
+        const first = load(true)
+        const second = load(true)
+        await Promise.all([first, second])
+
+        expect((await first).i18n?.locale).toBe('he')
+        expect(loaded.value?.i18n?.locale).toBe('en')
+    })
+
     it('loads the descriptor once and shares it', async () => {
         const get = endpoint('/vector/schema', { body: descriptor })
         cleanup = get.unregister

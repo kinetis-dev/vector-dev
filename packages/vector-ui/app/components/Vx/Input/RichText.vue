@@ -168,13 +168,13 @@ const inTable = computed(() => active('table'))
 .vx-richtext-frame { border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); border-radius: 4px; width: 100%; }
 .vx-richtext-frame--error { border-color: rgb(var(--v-theme-error)); }
 .vx-richtext-editor .vx-richtext-content { min-height: 8rem; padding: 0.75rem 1rem; outline: none; }
-.vx-richtext-content p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; height: 0; pointer-events: none; opacity: 0.5; }
+.vx-richtext-content p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: inline-start; height: 0; pointer-events: none; opacity: 0.5; }
 .vx-richtext-content table, .vx-richtext-view table { border-collapse: collapse; margin: 0.5rem 0; }
 .vx-richtext-content td, .vx-richtext-content th, .vx-richtext-view td, .vx-richtext-view th { border: 1px solid rgba(var(--v-border-color), 0.3); padding: 0.25rem 0.5rem; min-width: 4rem; vertical-align: top; }
 .vx-richtext-content img, .vx-richtext-view img { max-width: 100%; height: auto; }
-.vx-richtext-content blockquote, .vx-richtext-view blockquote { border-left: 3px solid rgba(var(--v-border-color), 0.4); padding-left: 0.75rem; margin: 0.5rem 0; }
+.vx-richtext-content blockquote, .vx-richtext-view blockquote { border-inline-start: 3px solid rgba(var(--v-border-color), 0.4); padding-inline-start: 0.75rem; margin: 0.5rem 0; }
 .vx-richtext-content pre, .vx-richtext-view pre { background: rgba(var(--v-theme-on-surface), 0.06); padding: 0.5rem 0.75rem; border-radius: 4px; overflow-x: auto; }
-.vx-richtext-content ul, .vx-richtext-content ol, .vx-richtext-view ul, .vx-richtext-view ol { padding-left: 1.5rem; }
+.vx-richtext-content ul, .vx-richtext-content ol, .vx-richtext-view ul, .vx-richtext-view ol { padding-inline-start: 1.5rem; }
 .vx-mention { color: rgb(var(--v-theme-primary)); font-weight: 500; }
 .vx-mention-menu { position: absolute; z-index: 3000; background: rgb(var(--v-theme-surface)); border: 1px solid rgba(var(--v-border-color), 0.3); border-radius: 4px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); display: flex; flex-direction: column; min-width: 12rem; }
 .vx-mention-choice { text-align: start; padding: 0.35rem 0.75rem; background: none; border: 0; cursor: pointer; }

@@ -68,7 +68,7 @@ watch(() => props.errors, () => {
                     <v-expansion-panel :value="0">
                         <v-expansion-panel-title>
                             <span class="font-weight-medium">{{ node.label }}</span>
-                            <v-icon v-if="hasError(node)" icon="mdi-alert-circle" color="error" size="small" class="ml-2" />
+                            <v-icon v-if="hasError(node)" icon="mdi-alert-circle" color="error" size="small" class="ms-2" />
                         </v-expansion-panel-title>
                         <v-expansion-panel-text eager>
                             <p v-if="node.description" class="text-body-2 text-medium-emphasis mb-4">{{ node.description }}</p>
@@ -92,7 +92,7 @@ watch(() => props.errors, () => {
                 <v-tabs :model-value="active[key] ?? tabsOf(node)[0]?.label ?? undefined" density="compact" color="primary" @update:model-value="(v: unknown) => active[key] = String(v)">
                     <v-tab v-for="tab in tabsOf(node)" :key="tab.label ?? ''" :value="tab.label" :data-layout-tab="tab.label">
                         {{ tab.label }}
-                        <v-badge v-if="hasError(tab)" dot inline color="error" class="ml-1" />
+                        <v-badge v-if="hasError(tab)" dot inline color="error" class="ms-1" />
                     </v-tab>
                 </v-tabs>
                 <v-divider class="mb-2" />

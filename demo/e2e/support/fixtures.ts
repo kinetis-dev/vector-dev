@@ -59,6 +59,19 @@ export class Api {
         if (Object.keys(saved).length > 0) await this.preferences(Object.fromEntries(Object.keys(saved).map(key => [key, null])))
     }
 
+    /** A settings group's current values. */
+    async settingsValues(group: string): Promise<Record<string, unknown>> {
+        const response = await this.request.get(`${API}/vector/settings/${group}`, { headers: this.headers })
+        expect(response.ok(), await response.text()).toBeTruthy()
+        return (await response.json()).data.values
+    }
+
+    /** Replaces a settings group's values; `{}` puts every field back to its default. */
+    async settings(group: string, values: Record<string, unknown>): Promise<void> {
+        const response = await this.request.put(`${API}/vector/settings/${group}`, { headers: this.headers, data: values })
+        expect(response.ok(), await response.text()).toBeTruthy()
+    }
+
     async show(resource: string, id: unknown): Promise<Record<string, unknown>> {
         const response = await this.request.get(`${API}/vector/r/${resource}/${id}`, { headers: this.headers })
         expect(response.ok(), await response.text()).toBeTruthy()
@@ -130,8 +143,13 @@ export const test = base.extend<{ admin: Page, api: Api, cleanup: Cleanup }, Opt
      */
     admin: async ({ page, mode, api }, use) => {
         await api.resetPreferences()
+        // the Languages settings are global: whatever a person set in the demo, a test starts from all
+        // languages on and English, and the person's settings come back afterwards
+        const languages = await api.settingsValues('languages')
+        await api.settings('languages', {})
         await signIn(page, mode)
         await use(page)
+        await api.settings('languages', languages)
     },
 
     api: async ({ playwright }, use) => {

@@ -22,6 +22,7 @@ final readonly class PreferencesController
     public function __construct(
         private PreferenceStore $preferences,
         private CurrentUserInterface $user,
+        private \Kinetis\Vector\Translation\LocaleResolver $locales,
     ) {}
 
     /** @return array{data: array<string, mixed>} */
@@ -58,6 +59,9 @@ final readonly class PreferencesController
                 $violations[] = new Violation([(string) $key], 'invalid_key', 'is not a preference key.');
             } elseif (strlen(json_encode($value, JSON_THROW_ON_ERROR)) > PreferenceStore::MAX_VALUE_BYTES) {
                 $violations[] = new Violation([$key], 'too_large', 'must be at most 16 KiB.');
+            } elseif ($key === 'locale' && $value !== null && (!is_string($value) || \Kinetis\Vector\Translation\Locales::match($value, $this->locales->languages()) === null)) {
+                // only a language the administrator has switched on: one switched off is not chosen, not even through the API
+                $violations[] = new Violation([$key], 'invalid_choice', 'is not a language on offer.', ['choices' => $this->locales->languages()]);
             }
         }
 
