@@ -64,7 +64,7 @@ These run once, at compile time, and return plain data:
 | `exportLimit()`, `exportQueueLimit()`, `bulkLimit()` | Per-resource limits; see {doc}`limits`. |
 | `badge()` | A count beside the resource in the menu. |
 | `replicable()` | Whether records can be duplicated; true by default. |
-| `searchSubtitle()`, `searchImage()` | What global search shows under the title. |
+| `searchSubtitle()`, `searchImage()` | What global search and a relation's choice list show under the title and as a thumbnail. |
 
 ## Request-time hooks
 
@@ -100,7 +100,10 @@ who may not list the resource, or see a filtered field, gets no badge.
 Every resource is globally searchable unless `globallySearchable()`
 returns false. A match is listed by its title, with
 `searchSubtitle()`'s field beneath (such as a SKU) and
-`searchImage()`'s image as a thumbnail.
+`searchImage()`'s image as a thumbnail. A relation's choice list in a
+form shows the same, so a customer is picked by name and e-mail and a
+product by name, SKU and image. Either is left out for a user who may
+not see its field.
 
 ## Checked at build
 

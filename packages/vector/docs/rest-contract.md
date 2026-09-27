@@ -20,6 +20,16 @@ descriptor on every run.
 - A job: `{id, kind, resource, name, actorId, status, total, processed,
   result, failure, hasFile, fileName, createdAt, updatedAt, finishedAt}`.
 
+## Relation options
+
+`GET /vector/r/{resource}/fields/{field}/options` answers `{data:
+[{id, label, subtitle?, image?}]}`. `subtitle` (a string or null) is
+present when the target declares `searchSubtitle()` and the user may see
+that field; `image` likewise for `searchImage()`, and is the image field
+to fetch from `GET /vector/r/{target}/{id}/files/{image}`, or null when
+the record has none. Both are read in the options' one statement.
+Relation values inside records stay `{id, label}`.
+
 ## Duplicate
 
 A resource's `replicable` says whether the admin offers Duplicate; a

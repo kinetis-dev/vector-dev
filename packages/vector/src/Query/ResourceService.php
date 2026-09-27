@@ -714,9 +714,14 @@ final readonly class ResourceService
      * list filter has no form) it searches them all. Resolving identifiers
      * is never narrowed, so a stored choice keeps its label.
      *
+     * An option carries the target's search subtitle and, when the record
+     * has one, the name of its search image field (fetched through the
+     * file endpoint like any image) — each only when the field is declared
+     * and visible to this user. Both come from the same statement.
+     *
      * @param list<string> $ids
      * @param array<string, string> $depends field name => the form's current value, as query text
-     * @return list<array{id: int|string, label: string}>
+     * @return list<array{id: int|string, label: string, subtitle?: string|null, image?: string|null}>
      */
     public function options(ResourceDescriptor $resource, string $fieldName, string $search, array $ids, int $limit = 20, array $depends = []): array
     {
@@ -730,10 +735,15 @@ final readonly class ResourceService
         $target = $this->resource($relation['resource']);
         $this->gate->authorize($this->user, $this->policy($target)->viewAny(...));
 
+        // what tells two choices apart, from fields this user may see (resource() hid the rest)
+        ['subtitle' => $subtitle, 'image' => $image] = $target->searchResult();
+        $subtitleColumn = $subtitle === null || $target->field($subtitle) === null ? null : $target->columns()[$subtitle] ?? null;
+        $imageColumn = $image === null || $target->field($image) === null ? null : $target->columns()[$image] ?? null;
+
         // the target as this user may list it: its scope() applies, and a
         // trashed record is not offered, though one already chosen keeps its label
         $query = $this->baseQuery($target, null)
-            ->select($target->primaryKeyColumn(), $target->titleColumn())
+            ->select(...array_values(array_unique(array_filter([$target->primaryKeyColumn(), $target->titleColumn(), $subtitleColumn, $imageColumn]))))
             ->orderBy($target->titleColumn(), 'ASC')
             ->limit(min($limit, 100));
         $this->applySoftDelete($target, $query, $ids === [] ? ListRequest::TRASHED_WITHOUT : ListRequest::TRASHED_WITH);
@@ -765,10 +775,20 @@ final readonly class ResourceService
         $options = [];
 
         foreach ($query->get() as $row) {
-            $options[] = [
+            $option = [
                 'id' => $target->primaryKeyType() === 'int' ? (int) $row[$target->primaryKeyColumn()] : (string) $row[$target->primaryKeyColumn()],
                 'label' => (string) $row[$target->titleColumn()],
             ];
+
+            if ($subtitleColumn !== null) {
+                $option['subtitle'] = $row[$subtitleColumn] === null ? null : (string) $row[$subtitleColumn];
+            }
+
+            if ($imageColumn !== null) {
+                $option['image'] = is_string($row[$imageColumn]) && $row[$imageColumn] !== '' ? $image : null;
+            }
+
+            $options[] = $option;
         }
 
         return $options;

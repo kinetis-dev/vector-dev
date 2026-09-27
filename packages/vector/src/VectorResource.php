@@ -134,15 +134,16 @@ abstract class VectorResource
     }
 
     /**
-     * The field a global search result shows under its title — a text,
-     * number or enum field, such as a SKU or an e-mail — or null for none.
+     * The field a global search result and a relation's choice list show
+     * under the title — a text, number or enum field, such as a SKU or an
+     * e-mail — or null for none.
      */
     public function searchSubtitle(): ?string
     {
         return null;
     }
 
-    /** The image field a global search result shows as its thumbnail, or null for none. */
+    /** The image field a global search result and a relation's choice list show as a thumbnail, or null for none. */
     public function searchImage(): ?string
     {
         return null;

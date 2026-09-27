@@ -62,6 +62,14 @@ evaluates them again on the stored record overlaid with the request. A
 hidden or disabled field's submitted value is ignored; a field whose
 `requiredWhen` holds must end up non-empty.
 
+## Relation choices
+
+A relation input searches the target's title. When the target declares
+`searchSubtitle()` or `searchImage()` (see
+[Resources](resources.md#global-search)), each choice shows that value
+under its title and the image as a thumbnail — the same as global
+search — so records with the same title can be told apart.
+
 ## Dependent choices
 
 A belongs-to can offer only the records that match another field:

@@ -23,7 +23,7 @@ API; anything they do, a script can do.
 | `GET /vector/r/{resource}/{id}/{relation}` | A page of a collection's records. |
 | `GET /vector/r/{resource}/{id}/{relation}/rows` | A repeater's current rows. |
 | `POST /vector/r/{resource}/{id}/{relation}/attach`, `…/detach` | `{"ids": [...]}` on a many-to-many. |
-| `GET /vector/r/{resource}/fields/{field}/options?q=` | Choices for a relation input; `ids=` resolves known ones, `depends[field]=` narrows a dependent choice. |
+| `GET /vector/r/{resource}/fields/{field}/options?q=` | Choices for a relation input, each `{id, label}` plus the target's `subtitle` and `image` field when it declares them; `ids=` resolves known ones, `depends[field]=` narrows a dependent choice. |
 | `POST /vector/r/{resource}/fields/{field}/upload` | Stores one file (multipart `file`); answers `{key, name, size, type}`. |
 | `GET /vector/r/{resource}/{id}/files/{field}` | The record's stored file. |
 | `GET /vector/r/{resource}/{id}/audit` | The record's history. |

@@ -147,7 +147,11 @@ Global search (`globallySearchable()`, on by default) lists a record by
 its title. `searchSubtitle()` names a text, number or enum field to show
 under the title, such as a SKU. `searchImage()` names an image field to
 show as a thumbnail. Both are checked at compile time, and both drop out
-for a user who may not see the field.
+for a user who may not see the field. A relation input's choice list
+shows them too: each option is `{id, label, subtitle?, image?}`, read in
+the options' one statement, and the UI fetches the thumbnail through the
+target's authenticated file endpoint, so two customers with the same
+name are told apart by their e-mail.
 
 `badge()` puts a count beside the resource in the menu. It returns the
 records matching a filter in the list grammar, counted as the user's own

@@ -384,6 +384,10 @@ export interface VectorMe {
 export interface VectorRelationValue {
     id: number | string
     label: string
+    /** A choice list's option only: the target's search subtitle, when declared and visible. */
+    subtitle?: string | null
+    /** A choice list's option only: the image field to fetch its thumbnail from, when the record has one. */
+    image?: string | null
 }
 
 export interface VectorUploaded {
