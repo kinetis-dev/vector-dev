@@ -47,30 +47,36 @@ final readonly class VectorTools
     ) {}
 
     /** @return array<string, mixed>|ToolResult */
-    #[McpTool(name: 'vector_resources', description: 'List the admin resources this caller may see, with their fields, filters and actions')]
+    #[McpTool(name: 'vector_resources', description: 'List the admin resources this caller may see: slug, label and group. Call vector_describe with a slug for its fields, filters and actions')]
     public function resources(): array|ToolResult
     {
         return $this->guarded(function (): array {
+            $locale = $this->locales->resolve((string) $this->user->id())['locale'];
             $resources = [];
 
             foreach ($this->reader->resources() as $slug => $descriptor) {
-                $permissions = $this->reader->permissions($descriptor);
-
-                if ($permissions['viewAny']) {
+                if ($this->reader->permissions($descriptor)['viewAny']) {
                     $public = $descriptor->toArray();
-                    $resources[$slug] = [
-                        'slug' => $slug,
-                        'label' => $public['label'],
-                        'titleField' => $public['titleField'],
-                        'fields' => array_map(static fn (array $f): array => ['name' => $f['name'], 'type' => $f['type'], 'label' => $f['label'], 'sortable' => $f['sortable'], 'operators' => $f['operators'], 'views' => $f['views'], 'options' => $f['options'] ?? null, 'repeater' => $f['repeater'] ?? null], $public['fields']),
-                        'search' => $public['table']['search'],
-                        'actions' => array_column($public['actions'], 'name'),
-                        'permissions' => $permissions,
-                    ];
+                    $resources[] = ['slug' => $slug, 'label' => $public['label'], 'group' => $public['group'] ?? null];
                 }
             }
 
-            return ['resources' => $resources];
+            // an index to pick from: one resource's detail is vector_describe's
+            return ['resources' => $this->labels->document($resources, $locale)];
+        });
+    }
+
+    /** @return array<string, mixed>|ToolResult */
+    #[McpTool(name: 'vector_describe', description: 'Describe one resource for reading and writing its records: each field with its type, whether a create must send it (required), whether create or update may write it (writable), its rules, choices, relation and the filter operators vector_query accepts; the actions with their dialog fields; and what this caller may do')]
+    public function describe(string $resource): array|ToolResult
+    {
+        return $this->guarded(function () use ($resource): array {
+            $descriptor = $this->reader->resource($resource);
+            $permissions = $this->reader->permissions($descriptor);
+            $permissions['viewAny'] || throw new AuthorizationException('This account may not view this resource.');
+
+            // in the language this user chose in the admin, like the schema resource
+            return $this->labels->document(ResourceDescription::of($descriptor, $permissions), $this->locales->resolve((string) $this->user->id())['locale']);
         });
     }
 

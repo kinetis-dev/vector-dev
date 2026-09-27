@@ -136,6 +136,17 @@ final class FieldVisibilityTest extends VectorTestCase
         self::assertSame(['id', 'label'], array_keys($options[0]));
     }
 
+    public function testAHiddenFieldIsNotDescribedToAnAgent(): void
+    {
+        $body = json_encode(['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/call', 'params' => ['name' => 'vector_describe', 'arguments' => ['resource' => 'customers']]], JSON_THROW_ON_ERROR);
+        $result = $this->client->raw('POST', '/mcp', $body, [...$this->adminHeaders(), 'MCP-Protocol-Version' => '2025-06-18', 'Content-Type' => 'application/json'])->assertOk()->json()['result'];
+        $names = array_column(json_decode($result['content'][0]['text'], true, 64, JSON_THROW_ON_ERROR)['fields'], 'name');
+
+        self::assertContains('name', $names);
+        self::assertNotContains('email', $names);
+        self::assertNotContains('phone', $names);
+    }
+
     private function shop(): Query
     {
         $link = $this->app->get(MysqlLink::class);

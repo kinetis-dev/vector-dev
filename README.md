@@ -491,7 +491,7 @@ is `403`.
 | `GET /vector/dashboards/{name}`, `GET /vector/dashboards/{name}/widgets/{widget}?range=` | A dashboard's cards, and one card's data for a range (`7d`, `30d`, `90d`, `1y`, … as the widget declares). |
 | `GET /vector/notifications`, `POST /vector/notifications/{id}/read`, `POST /vector/notifications/read-all` | The inbox: what jobs and actions left for this admin. |
 | `POST /vector/impersonate/{userId}`, `DELETE /vector/impersonate` | Act as another user through the application's `ImpersonationInterface`: a re-issued token in bearer mode, a swapped session in cookie mode; both logged. |
-| `POST /mcp` | The same services as MCP tools (`vector_resources`, `vector_query`, `vector_get`, `vector_create`, `vector_update`, `vector_delete`, `vector_run_action`, `vector_widget`) and the `vector://schema` resource, under the application's `mcp`-group authentication and Vector's access policy; `kinetis mcp:serve` serves them over stdio and fails closed without an identity. |
+| `POST /mcp` | The same services as MCP tools (`vector_resources`, `vector_describe`, `vector_query`, `vector_get`, `vector_create`, `vector_update`, `vector_delete`, `vector_run_action`, `vector_widget`) and the `vector://schema` resource, under the application's `mcp`-group authentication and Vector's access policy; `kinetis mcp:serve` serves them over stdio and fails closed without an identity. |
 | `GET /vector/ui`, `GET /vector/ui/{path}` | Hosted mode: the shell page for every deep link, with `window.__VECTOR__` (configuration, the CSRF token, branding, the response's script nonce) injected; `302` to `VECTOR_LOGIN_URL` for an anonymous visitor, `503` until `vector:install` published the bundle. |
 
 Two authentication modes reach the same routes. **Bearer mode** sends
