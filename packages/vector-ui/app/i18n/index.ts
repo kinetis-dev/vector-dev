@@ -1,18 +1,29 @@
+import ar from './ar'
 import de from './de'
 import en from './en'
 import es from './es'
 import fr from './fr'
 import he from './he'
 import it from './it'
+import ja from './ja'
+import ko from './ko'
 import nl from './nl'
+import pl from './pl'
 import pt from './pt'
+import ptBR from './pt-BR'
+import ru from './ru'
+import tr from './tr'
+import uk from './uk'
+import zhHans from './zh-Hans'
 
 /**
  * Every language the UI ships. English is the base: each other locale
  * mirrors its keys (a test holds them to it), and a key a locale lacks
  * falls back to English. All but English are machine translations.
  */
-export const bundledMessages: Record<string, typeof en> = { en, de, fr, nl, it, es, pt, he }
+export const bundledMessages: Record<string, typeof en> = {
+    en, de, fr, nl, it, es, pt, 'pt-BR': ptBR, pl, tr, ru, uk, he, ar, ko, ja, 'zh-Hans': zhHans,
+}
 
 /** Languages written right to left: the page's direction follows the language. */
 export const rtlLanguages = ['ar', 'fa', 'he', 'ur', 'yi']

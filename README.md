@@ -589,8 +589,10 @@ group an admin edits at `/settings`, stored as values and rendered
 escaped.
 
 Each user picks the admin's language from the app bar: English, German,
-French, Dutch, Italian, Spanish, Portuguese or Hebrew (right to left) —
-the non-English ones machine translations. The choice is the user's
+French, Dutch, Italian, Spanish, Portuguese (Portugal and Brazil),
+Polish, Turkish, Russian, Ukrainian, Hebrew and Arabic (right to left),
+Korean, Japanese or Simplified Chinese — the non-English ones machine
+translations. The choice is the user's
 preference; an administrator decides which languages are on offer under
 **Settings → Languages**, and the default, English unless changed.
 The demo's labels are translated in `demo/backend/translations/`

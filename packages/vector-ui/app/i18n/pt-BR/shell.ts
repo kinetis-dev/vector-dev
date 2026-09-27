@@ -1,0 +1,53 @@
+// The shell area's strings; see common.ts for words every area shares.
+export default {
+    titleTemplate: '{title} · {brand}',
+    brandSubtitle: 'Administração',
+    account: 'Conta',
+    signOut: 'Sair',
+    toggleNavigation: 'Alternar navegação',
+    toggleTheme: 'Alternar tema',
+    language: 'Idioma: {name}',
+    languageFailed: 'Não foi possível salvar o idioma: {error}',
+    nav: {
+        main: 'Principal',
+        dashboard: 'Painel',
+        jobs: 'Tarefas',
+        settings: 'Configurações',
+        pages: 'Páginas',
+        badge: '{count} {label}',
+    },
+    page: {
+        unknown: 'Página desconhecida',
+        loading: 'Carregando a página',
+    },
+    impersonation: {
+        actingAs: 'Você está agindo como {name}.',
+        anotherUser: 'outro usuário',
+        stop: 'Parar de personificar',
+        noAccess: '{name} não tem acesso à administração, então não há nada para ver como essa pessoa. A personificação foi interrompida.',
+        noToken: 'O aplicativo respondeu sem um token nem um recarregamento, então nada mudou.',
+    },
+    palette: {
+        placeholder: 'Pesquisar registros e recursos…',
+        records: 'Registros',
+        resources: 'Recursos',
+        noMatch: 'Nenhum registro corresponde',
+    },
+    inbox: {
+        title: 'Notificações',
+        markAllRead: 'Marcar tudo como lido',
+        empty: 'Nada ainda',
+    },
+    login: {
+        pageTitle: 'Entrar · {brand}',
+        subtitle: 'Entre na administração',
+        email: 'E-mail',
+        password: 'Senha',
+        submit: 'Entrar',
+        invalidEmail: 'Digite um endereço de e-mail válido',
+        welcome: 'Bem-vindo de volta, {name}.',
+    },
+    home: {
+        title: 'Painel',
+    },
+}

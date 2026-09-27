@@ -26,8 +26,8 @@ const english = flatten(bundledMessages.en as unknown as Messages)
 const locales = Object.keys(bundledMessages).filter(code => code !== 'en')
 
 describe('shipped locales', () => {
-    it('ship German, French, Dutch, Italian, Spanish, Portuguese and Hebrew besides English', () => {
-        expect(locales.sort()).toEqual(['de', 'es', 'fr', 'he', 'it', 'nl', 'pt'])
+    it('ship sixteen languages besides English', () => {
+        expect(locales.sort()).toEqual(['ar', 'de', 'es', 'fr', 'he', 'it', 'ja', 'ko', 'nl', 'pl', 'pt', 'pt-BR', 'ru', 'tr', 'uk', 'zh-Hans'])
     })
 
     describe.each(locales)('%s', (code) => {

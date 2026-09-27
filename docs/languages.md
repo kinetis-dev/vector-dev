@@ -1,16 +1,18 @@
 # Languages
 
 Each user sees the admin in their own language. Vector's UI ships in
-English, German, French, Dutch, Italian, Spanish, Portuguese and Hebrew,
-and your application's labels — resources, fields, enum options,
-actions, widgets, dashboards, settings — are translated with it.
+English and sixteen more: German, French, Dutch, Italian, Spanish,
+Portuguese (Portugal and Brazil), Polish, Turkish, Russian, Ukrainian,
+Hebrew, Arabic, Korean, Japanese and Simplified Chinese. Your
+application's labels — resources, fields, enum options, actions,
+widgets, dashboards, settings — are translated with it.
 
 ```{note}
-English is the base language everywhere. The German, French, Dutch,
-Italian, Spanish, Portuguese and Hebrew catalogs, and the demo's label
-translations, are **machine translations**. Review them before relying
-on them, and override any message you want worded differently (below).
-The Portuguese leans European (*guardar*, *ficheiro*, *utilizador*).
+English is the base language everywhere. Every other catalog, and the
+demo's label translations, are **machine translations**. Review them
+before relying on them — the Chinese, Japanese, Korean and Arabic ones
+especially, with a native speaker — and override any message you want
+worded differently (below).
 ```
 
 ## Switching language
@@ -25,8 +27,8 @@ then each other script as a group (Greek, Cyrillic, Hebrew, Arabic, the
 Indic scripts, Thai, Korean, then Chinese and Japanese). The settings
 page lists them the same way. Choosing one switches the whole
 admin at once — menus, labels, dates and numbers — and is remembered as
-your preference, on every device you sign in from. Hebrew turns the
-layout right to left.
+your preference, on every device you sign in from. Hebrew and Arabic
+turn the layout right to left.
 
 Until you choose, the admin is in the default language the administrator
 set; your browser's language plays no part.

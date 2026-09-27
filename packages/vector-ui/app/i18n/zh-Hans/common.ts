@@ -1,0 +1,23 @@
+// Words every area shares. Keep a key here only when two areas or more use it.
+export default {
+    save: '保存',
+    cancel: '取消',
+    create: '创建',
+    edit: '编辑',
+    delete: '删除',
+    deleteForever: '永久删除',
+    restore: '恢复',
+    close: '关闭',
+    apply: '应用',
+    remove: '移除',
+    search: '搜索',
+    loading: '加载中…',
+    required: '必填',
+    none: '—',
+    yes: '是',
+    no: '否',
+    download: '下载',
+    actions: '操作',
+    confirm: '确认',
+    serverRejected: '服务器拒绝了该请求。',
+}

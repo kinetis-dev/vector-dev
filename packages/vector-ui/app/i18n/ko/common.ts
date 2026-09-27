@@ -1,0 +1,23 @@
+// Words every area shares. Keep a key here only when two areas or more use it.
+export default {
+    save: '저장',
+    cancel: '취소',
+    create: '생성',
+    edit: '편집',
+    delete: '삭제',
+    deleteForever: '영구 삭제',
+    restore: '복원',
+    close: '닫기',
+    apply: '적용',
+    remove: '제거',
+    search: '검색',
+    loading: '불러오는 중…',
+    required: '필수',
+    none: '—',
+    yes: '예',
+    no: '아니요',
+    download: '다운로드',
+    actions: '액션',
+    confirm: '확인',
+    serverRejected: '서버가 요청을 거부했습니다.',
+}

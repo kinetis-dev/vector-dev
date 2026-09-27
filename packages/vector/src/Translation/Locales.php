@@ -6,7 +6,7 @@ namespace Kinetis\Vector\Translation;
 
 /**
  * The languages Vector's UI ships — English, the base and every other
- * locale's fallback, and seven more — with their names in themselves and
+ * locale's fallback, and sixteen more — with their names in themselves and
  * their direction. Which of them users may pick, and the default, is the
  * administrator's choice in the Languages settings group.
  */
@@ -31,8 +31,17 @@ final class Locales
         'fr' => 'Français',
         'it' => 'Italiano',
         'nl' => 'Nederlands',
-        'pt' => 'Português',
+        'pl' => 'Polski',
+        'pt-BR' => 'Português (Brasil)',
+        'pt' => 'Português (Portugal)',
+        'tr' => 'Türkçe',
+        'ru' => 'Русский',
+        'uk' => 'Українська',
         'he' => 'עברית',
+        'ar' => 'العربية',
+        'ko' => '한국어',
+        'ja' => '日本語',
+        'zh-Hans' => '简体中文',
     ];
 
     /** Languages written right to left. */

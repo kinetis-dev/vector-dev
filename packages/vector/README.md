@@ -641,7 +641,9 @@ groups) and the application's `VECTOR_TRANSLATIONS_DIR`, each
 `{locale}.php` returning `['Products' => 'Produkte', …]`; an application
 binds `Kinetis\Vector\Translation\TranslatorInterface` itself to use
 another translator. The UI ships German, French, Dutch, Italian, Spanish,
-Portuguese and Hebrew (right to left) beside English; those catalogs, and
+Portuguese (Portugal and Brazil), Polish, Turkish, Russian, Ukrainian,
+Hebrew and Arabic (right to left), Korean, Japanese and Simplified
+Chinese beside English; those catalogs, and
 Vector's own label translations, are machine translations. Validation
 messages are not translated yet: the framework's and Vector's own arrive
 in English.

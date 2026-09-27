@@ -44,7 +44,7 @@ final class LanguageOrderTest extends VectorTestCase
         foreach (['en', 'he', 'de'] as $shownIn) {
             $locales = $this->client->get('/vector/schema', headers: $this->headersIn($shownIn))->assertOk()->json()['i18n']['locales'];
 
-            self::assertSame(['Deutsch', 'English', 'Español', 'Français', 'Italiano', 'Nederlands', 'Português', 'עברית'], array_column($locales, 'name'), "shown in {$shownIn}");
+            self::assertSame(array_values(Locales::SHIPPED), array_column($locales, 'name'), "shown in {$shownIn}");
         }
     }
 }

@@ -6,6 +6,7 @@ namespace App\Tests\Vector;
 
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Translation\Labels;
+use Kinetis\Vector\Translation\Locales;
 use Kinetis\Vector\Translation\MessagesTranslator;
 
 /**
@@ -36,9 +37,11 @@ final class TranslationTest extends VectorTestCase
     {
         $locales = array_column($this->schema($this->headersIn('he'))['i18n']['locales'], null, 'code');
 
-        self::assertSame(['de', 'en', 'es', 'fr', 'it', 'nl', 'pt', 'he'], array_keys($locales));
+        self::assertSame(array_keys(Locales::SHIPPED), array_keys($locales));
         self::assertSame(['code' => 'he', 'name' => 'עברית', 'dir' => 'rtl'], $locales['he']);
-        self::assertSame('ltr', $locales['nl']['dir']);
+        self::assertSame(['code' => 'ar', 'name' => 'العربية', 'dir' => 'rtl'], $locales['ar']);
+        self::assertSame(['code' => 'pt-BR', 'name' => 'Português (Brasil)', 'dir' => 'ltr'], $locales['pt-BR']);
+        self::assertSame('ltr', $locales['zh-Hans']['dir']);
     }
 
     public function testWithoutAChoiceTheDefaultAppliesWhateverTheBrowserAsksFor(): void
@@ -82,7 +85,7 @@ final class TranslationTest extends VectorTestCase
 
         self::assertSame('en', $group['values']['default'], 'the settings page shows English, not an empty choice');
         self::assertTrue($fields['default']['hasDefault']);
-        self::assertSame(['de', 'en', 'es', 'fr', 'it', 'nl', 'pt', 'he'], array_keys(array_filter($group['values'], static fn (mixed $on): bool => $on === true)));
+        self::assertSame(array_keys(Locales::SHIPPED), array_keys(array_filter($group['values'], static fn (mixed $on): bool => $on === true)));
 
         // the default is always a language that is switched on — so at least one is
         $this->client->put('/vector/settings/languages', body: ['en' => false], headers: $this->realAdminHeaders())
@@ -104,7 +107,7 @@ final class TranslationTest extends VectorTestCase
     {
         $viewer = $this->headersIn(null);
 
-        $this->client->put('/vector/preferences', body: ['locale' => 'ja'], headers: $viewer)->assertValidationError('locale');
+        $this->client->put('/vector/preferences', body: ['locale' => 'sv'], headers: $viewer)->assertValidationError('locale'); // Swedish: not a language Vector ships
         $this->client->put('/vector/preferences', body: ['locale' => 42], headers: $viewer)->assertValidationError('locale');
         $this->client->put('/vector/preferences', body: ['locale' => 'de'], headers: $viewer)->assertOk();
     }

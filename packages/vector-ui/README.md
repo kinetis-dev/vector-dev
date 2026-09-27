@@ -155,8 +155,10 @@ footer) applies over them, rendered escaped.
 
 Each user sees the admin in their own language. The layer ships English
 (the base and the fallback, key by key) and German, French, Dutch,
-Italian, Spanish, Portuguese and Hebrew — **machine translations**, which
-an application can override. Labels the descriptor carries (resources,
+Italian, Spanish, Portuguese (`pt`, European, and `pt-BR`), Polish,
+Turkish, Russian, Ukrainian, Hebrew, Arabic, Korean, Japanese and
+Simplified Chinese (`zh-Hans`) — **machine translations**, which an
+application can override. Labels the descriptor carries (resources,
 fields, actions, enum options, widgets, settings) arrive translated by
 the server for the same language.
 
@@ -170,7 +172,7 @@ preference and reloads the descriptor. Before the descriptor loads, the
 UI starts in the hosted shell's language, else the one this browser last
 used, else `app.config` `vector.locale`. Applying a language switches the
 catalog, Vuetify's component strings, the `Intl` formatting of dates,
-numbers and money, and `<html lang dir>`: Hebrew renders right to left,
+numbers and money, and `<html lang dir>`: Hebrew and Arabic render right to left,
 and the layer's own components use logical spacing (`ms-`/`me-`) so they
 mirror.
 
