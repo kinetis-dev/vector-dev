@@ -5,7 +5,7 @@ const route = useRoute()
 const { load, resource: find } = useVectorSchema()
 await load()
 
-const { t } = useVectorT()
+const { t, noun } = useVectorT()
 const appConfig = useAppConfig()
 const slug = computed(() => String(route.params.resource))
 const resource = computed(() => find(slug.value))
@@ -20,7 +20,7 @@ useHead({ title: () => resource.value?.label ?? '' })
             <h1 class="text-h4">{{ resource.label }}</h1>
             <v-spacer />
             <v-btn v-if="resource.permissions.create" :to="`${appConfig.vector.basePath}/r/${resource.slug}/create`" prepend-icon="mdi-plus" color="primary">
-                {{ t('list.page.create', { noun: resource.labelSingular.toLowerCase() }) }}
+                {{ t('list.page.create', { noun: noun(resource.labelSingular) }) }}
             </v-btn>
         </div>
         <VxResourceTable :key="resource.slug" :resource="resource" />

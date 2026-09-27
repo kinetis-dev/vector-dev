@@ -23,7 +23,7 @@ export default {
     impersonation: {
         actingAs: 'Działasz jako {name}.',
         anotherUser: 'inny użytkownik',
-        stop: 'Zakończ działanie jako',
+        stop: 'Wróć do swojego konta',
         noAccess: '{name} nie ma dostępu do panelu administracyjnego, więc nie ma nic do wyświetlenia w jego imieniu. Działanie jako ten użytkownik zostało zakończone.',
         noToken: 'Aplikacja odpowiedziała bez tokenu i bez przeładowania, więc nic się nie zmieniło.',
     },

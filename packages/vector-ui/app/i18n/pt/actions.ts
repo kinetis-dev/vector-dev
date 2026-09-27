@@ -6,6 +6,6 @@ export default {
     subjectCount: '{count} {label}',
     done: '{label}: concluído.',
     declined: 'A ação foi recusada.',
-    downloadStarted: 'Download iniciado.',
+    downloadStarted: 'Transferência iniciada.',
     queued: '{label}: colocado na fila.',
 }

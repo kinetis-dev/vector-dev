@@ -29,15 +29,15 @@ export default {
     deleted: '{label} verwijderd.',
     restored: '{label} hersteld.',
     impersonate: {
-        action: 'Imiteren',
+        action: 'Inloggen als',
         title: 'Handelen als “{title}”?',
-        text: 'U ziet en doet wat deze gebruiker kan, en elke wijziging wordt op diens naam vastgelegd, met u als imitator.',
+        text: 'U ziet en doet wat deze gebruiker kan, en elke wijziging wordt op diens naam vastgelegd, met de vermelding dat u namens deze gebruiker handelde.',
         started: 'U handelt nu als {title}.',
     },
     audit: {
         title: 'Geschiedenis',
         byUser: 'door gebruiker {actor}',
-        impersonatedBy: '(geïmiteerd door {impersonator})',
+        impersonatedBy: '(uitgevoerd door {impersonator})',
         empty: 'Geen vastgelegde wijzigingen.',
         revert: 'Terugdraaien',
         revertLabel: 'Deze wijziging terugdraaien',

@@ -4,7 +4,7 @@ import type { SaveVariant } from '#vector/app/components/Vx/Resource/Form.vue'
 
 definePageMeta({ layout: 'vector', middleware: 'vector-auth', key: route => route.fullPath })
 
-const { t } = useVectorT()
+const { t, noun } = useVectorT()
 const route = useRoute()
 const appConfig = useAppConfig()
 const { load, resource: find } = useVectorSchema()
@@ -19,7 +19,7 @@ const client = useVectorResource(slug)
 const { data: source, error: sourceError } = await useAsyncData(() => `vector.${slug.value}.copy.${from.value}`, () => from.value ? client.show(from.value) : Promise.resolve(null))
 const base = computed(() => `${appConfig.vector.basePath}/r/${slug.value}`)
 
-useHead({ title: () => resource.value ? `${t('record.newTitle', { label: resource.value.labelSingular.toLowerCase() })} · ${resource.value.label}` : '' })
+useHead({ title: () => resource.value ? `${t('record.newTitle', { label: noun(resource.value.labelSingular) })} · ${resource.value.label}` : '' })
 
 const form = ref<{ dirty: boolean, reset: () => void } | null>(null)
 useLeaveGuard(() => form.value?.dirty === true)
@@ -41,7 +41,7 @@ function saved(record: VectorRecord, variant: SaveVariant) {
 <template>
     <div v-if="resource">
         <v-breadcrumbs class="pa-0 mb-2" :items="[{ title: resource.label, to: base }, { title: t('record.new') }]" />
-        <h1 class="text-h4 mb-4">{{ t('record.newTitle', { label: resource.labelSingular.toLowerCase() }) }}</h1>
+        <h1 class="text-h4 mb-4">{{ t('record.newTitle', { label: noun(resource.labelSingular) }) }}</h1>
         <v-alert v-if="!resource.permissions.create" type="warning" variant="tonal" :text="t('record.createNotAllowed')" />
         <v-alert v-else-if="sourceError" type="error" variant="tonal" :text="vectorErrorMessage(sourceError)" />
         <template v-else>

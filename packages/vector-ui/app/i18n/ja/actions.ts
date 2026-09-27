@@ -5,7 +5,7 @@ export default {
     subjectAll: '条件に一致するすべての{label}（{count}）',
     subjectCount: '{count} 件の{label}',
     done: '{label} が完了しました。',
-    declined: 'アクションは実行されませんでした。',
+    declined: 'アクションは拒否されました。',
     downloadStarted: 'ダウンロードを開始しました。',
     queued: '{label} をキューに追加しました。',
 }

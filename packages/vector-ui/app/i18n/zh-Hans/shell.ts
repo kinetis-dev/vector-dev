@@ -23,8 +23,8 @@ export default {
     impersonation: {
         actingAs: '你正在以 {name} 的身份操作。',
         anotherUser: '其他用户',
-        stop: '停止模拟',
-        noAccess: '{name} 无权访问管理后台，因此无法以其身份查看任何内容。模拟已停止。',
+        stop: '停止模拟登录',
+        noAccess: '{name} 无权访问管理后台，因此无法以其身份查看任何内容。模拟登录已停止。',
         noToken: '应用返回的响应中既没有令牌也没有重新加载，因此未做任何更改。',
     },
     palette: {

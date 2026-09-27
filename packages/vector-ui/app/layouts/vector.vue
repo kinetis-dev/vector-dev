@@ -9,7 +9,7 @@ const drawer = ref<boolean | null>(null)
 const { schema, menu, load, clear } = useVectorSchema()
 const { branding, apply } = useVectorBranding()
 const palette = ref<{ open: boolean } | null>(null)
-const { t } = useVectorT()
+const { t, noun } = useVectorT()
 
 apply() // hosted: branding is known before the descriptor loads
 await load()
@@ -137,7 +137,7 @@ const pageGroups = computed(() => {
                                 variant="flat"
                                 label
                                 :color="badgeOf(resource.slug)!.color"
-                                :aria-label="t('shell.nav.badge', { count: badgeOf(resource.slug)!.count, label: badgeOf(resource.slug)!.label ?? resource.label.toLowerCase() })"
+                                :aria-label="t('shell.nav.badge', { count: badgeOf(resource.slug)!.count, label: badgeOf(resource.slug)!.label ?? noun(resource.label) })"
                             >{{ formatNumber(badgeOf(resource.slug)!.count) }}</v-chip>
                         </template>
                     </v-list-item>

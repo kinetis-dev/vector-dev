@@ -10,9 +10,9 @@ export default {
     collapseGroup: '折叠分组',
     trash: {
         label: '回收站',
-        active: '有效',
+        active: '正常',
         only: '回收站',
-        with: '有效和回收站',
+        with: '正常和回收站',
     },
     exportCsv: '导出 CSV',
     importCsv: '导入 CSV',

@@ -23,8 +23,8 @@ export default {
     impersonation: {
         actingAs: 'Vous agissez en tant que {name}.',
         anotherUser: 'un autre utilisateur',
-        stop: 'Arrêter l’usurpation',
-        noAccess: '{name} n’a pas accès à l’administration, il n’y a donc rien à voir en son nom. L’usurpation a été arrêtée.',
+        stop: 'Reprendre votre identité',
+        noAccess: '{name} n’a pas accès à l’administration, il n’y a donc rien à voir en son nom. L’action en son nom a été arrêtée.',
         noToken: 'L’application a répondu sans jeton ni rechargement, rien n’a donc changé.',
     },
     palette: {
@@ -45,7 +45,7 @@ export default {
         password: 'Mot de passe',
         submit: 'Se connecter',
         invalidEmail: 'Saisissez une adresse e-mail valide',
-        welcome: 'Bon retour, {name}.',
+        welcome: 'Ravi de vous revoir, {name}.',
     },
     home: {
         title: 'Tableau de bord',

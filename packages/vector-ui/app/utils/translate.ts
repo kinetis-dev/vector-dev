@@ -19,3 +19,13 @@ export function vt(key: string, params: Record<string, unknown> = {}, plural?: n
     if (!instance) return key
     return plural === undefined ? instance.global.t(key, params) : instance.global.t(key, params, plural)
 }
+
+/**
+ * A resource label as it reads inside a sentence (`Create product`,
+ * `Delete 3 products?`): lower-cased in the current language, except
+ * where nouns keep their capital — German writes every noun with one.
+ */
+export function vnoun(label: string): string {
+    const locale = instance ? String(instance.global.locale.value) : 'en'
+    return locale === 'de' || locale.startsWith('de-') ? label : label.toLocaleLowerCase(locale)
+}

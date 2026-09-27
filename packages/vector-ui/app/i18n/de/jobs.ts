@@ -18,7 +18,7 @@ export default {
     status: {
         queued: 'in Warteschlange',
         running: 'läuft',
-        done: 'erledigt',
+        done: 'abgeschlossen',
         failed: 'fehlgeschlagen',
     },
     detail: {

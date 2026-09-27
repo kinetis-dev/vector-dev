@@ -18,7 +18,7 @@ const props = defineProps<{
 }>()
 const model = defineModel<Record<string, unknown>[] | null>()
 
-const { t } = useVectorT()
+const { t, noun } = useVectorT()
 const { resource: resourceOf } = useVectorSchema()
 const { inputFor } = useVectorInputs()
 
@@ -120,12 +120,12 @@ onMounted(() => {
                     size="small"
                     class="mt-2"
                     :disabled="disabled || rows.length <= min"
-                    :aria-label="t('fields.repeater.remove', { label: child.labelSingular.toLowerCase(), n: index + 1 })"
+                    :aria-label="t('fields.repeater.remove', { label: noun(child.labelSingular), n: index + 1 })"
                     @click="remove(index)"
                 />
             </div>
             <v-btn variant="tonal" size="small" prepend-icon="mdi-plus" :disabled="disabled || rows.length >= max" @click="add">
-                {{ t('fields.repeater.add', { label: child.labelSingular.toLowerCase() }) }}
+                {{ t('fields.repeater.add', { label: noun(child.labelSingular) }) }}
             </v-btn>
         </template>
     </v-card>

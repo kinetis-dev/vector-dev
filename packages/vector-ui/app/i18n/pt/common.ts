@@ -16,7 +16,7 @@ export default {
     none: '—',
     yes: 'Sim',
     no: 'Não',
-    download: 'Download',
+    download: 'Transferir',
     actions: 'Ações',
     confirm: 'Confirmar',
     serverRejected: 'O servidor rejeitou o pedido.',

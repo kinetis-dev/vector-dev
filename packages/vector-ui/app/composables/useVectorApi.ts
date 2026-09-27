@@ -15,6 +15,7 @@ export function useVectorApi(): $Fetch {
     const appConfig = useAppConfig()
     const runtime = useVectorRuntime()
     const auth = useVectorAuthStore()
+    const router = useRouter()
 
     return $fetch.create({
         baseURL: runtime.hosted ? (runtime.apiBase ?? '') : config.public.vector.apiBase,
@@ -51,7 +52,9 @@ export function useVectorApi(): $Fetch {
                 }
 
                 auth.clear()
-                await navigateTo(`${appConfig.vector.basePath || ''}/login`)
+                // back to this page after signing in again, as the route middleware would send a visitor
+                const current = router.currentRoute.value.fullPath
+                await navigateTo({ path: `${appConfig.vector.basePath || ''}/login`, query: current.startsWith(`${appConfig.vector.basePath || ''}/login`) ? {} : { redirect: current } })
             }
         },
     }) as $Fetch

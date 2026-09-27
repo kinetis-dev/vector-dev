@@ -8,7 +8,7 @@ import { fieldProps, type VectorAction, type VectorExportFormat, type VectorFiel
 const props = defineProps<{ resource: VectorResource }>()
 
 const appConfig = useAppConfig()
-const { t } = useVectorT()
+const { t, noun } = useVectorT()
 const notifications = useVectorNotifications()
 const { schema } = useVectorSchema()
 const { confirm } = useConfirm()
@@ -194,14 +194,14 @@ const bulkEditing = ref(false)
 
 async function operation(op: 'delete' | 'restore' | 'forceDelete') {
     const n = selectionCount.value
-    const noun = (n === 1 ? props.resource.labelSingular : props.resource.label).toLowerCase()
-    const titles = { delete: t('list.operation.deleteTitle', { count: n, noun }), restore: t('list.operation.restoreTitle', { count: n, noun }), forceDelete: t('list.operation.forceDeleteTitle', { count: n, noun }) }
+    const subject = noun(n === 1 ? props.resource.labelSingular : props.resource.label)
+    const titles = { delete: t('list.operation.deleteTitle', { count: n, noun: subject }), restore: t('list.operation.restoreTitle', { count: n, noun: subject }), forceDelete: t('list.operation.forceDeleteTitle', { count: n, noun: subject }) }
 
     if (!await confirm({ title: titles[op], text: op === 'restore' ? undefined : (props.resource.softDelete && op === 'delete' ? t('list.operation.toTrash') : t('list.operation.irreversible')), confirmText: op === 'restore' ? t('common.restore') : t('common.delete'), destructive: op !== 'restore' })) return
 
     try {
         const { affected } = await client.batch(op, selection.value)
-        notifications.success(t(op === 'restore' ? 'list.operation.restored' : 'list.operation.deleted', { count: affected, noun: affected === 1 ? props.resource.labelSingular.toLowerCase() : props.resource.label.toLowerCase() }))
+        notifications.success(t(op === 'restore' ? 'list.operation.restored' : 'list.operation.deleted', { count: affected, noun: affected === 1 ? noun(props.resource.labelSingular) : noun(props.resource.label) }))
         selected.value = []
         allMatching.value = false
         await load()
@@ -360,7 +360,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
             </v-col>
         </v-row>
         <div class="d-flex align-center flex-wrap ga-2 mb-2">
-            <v-text-field v-model="search" :placeholder="resource.table.search.length ? t('list.search', { label: resource.label.toLowerCase() }) : t('list.noSearch')" :disabled="resource.table.search.length === 0" prepend-inner-icon="mdi-magnify" density="compact" hide-details clearable :aria-label="t('common.search')" style="max-width: 320px" />
+            <v-text-field v-model="search" :placeholder="resource.table.search.length ? t('list.search', { label: noun(resource.label) }) : t('list.noSearch')" :disabled="resource.table.search.length === 0" prepend-inner-icon="mdi-magnify" density="compact" hide-details clearable :aria-label="t('common.search')" style="max-width: 320px" />
             <VxListViewMenu ref="viewMenu" :resource="resource" :current="state" :active-id="activeView" @apply="applyView" @update:active-id="(id: number | null) => activeView = id" />
             <v-select v-if="resource.table.groupable.length" v-model="group" :items="[{ title: t('list.noGrouping'), value: null }, ...resource.table.groupable.map(g => ({ title: resource.fields.find(f => f.name === g)?.label ?? g, value: g }))]" :label="t('list.groupBy')" density="compact" hide-details style="max-width: 200px" />
             <v-select v-if="resource.softDelete" v-model="trashed" :items="[{ title: t('list.trash.active'), value: 'without' }, { title: t('list.trash.only'), value: 'only' }, { title: t('list.trash.with'), value: 'with' }]" density="compact" hide-details :aria-label="t('list.trash.label')" style="max-width: 180px" prepend-inner-icon="mdi-delete-clock-outline" />
@@ -485,7 +485,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
             </template>
 
             <template #no-data>
-                <v-empty-state icon="mdi-database-off-outline" :title="Object.keys(filters).length || groups.length || advanced.length || term ? t('list.nothingMatches') : t('list.empty', { label: resource.label.toLowerCase() })" />
+                <v-empty-state icon="mdi-database-off-outline" :title="Object.keys(filters).length || groups.length || advanced.length || term ? t('list.nothingMatches') : t('list.empty', { label: noun(resource.label) })" />
             </template>
         </v-data-table-server>
 

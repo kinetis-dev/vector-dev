@@ -23,8 +23,8 @@ export default {
     impersonation: {
         actingAs: 'Stai agendo come {name}.',
         anotherUser: 'un altro utente',
-        stop: 'Termina impersonificazione',
-        noAccess: '{name} non ha accesso all’amministrazione, quindi non c’è nulla da vedere al suo posto. L’impersonificazione è stata interrotta.',
+        stop: 'Termina impersonazione',
+        noAccess: '{name} non ha accesso all’amministrazione, quindi non c’è nulla da vedere al suo posto. L’impersonazione è stata interrotta.',
         noToken: 'L’applicazione ha risposto senza un token né un ricaricamento, quindi non è cambiato nulla.',
     },
     palette: {
@@ -45,7 +45,7 @@ export default {
         password: 'Password',
         submit: 'Accedi',
         invalidEmail: 'Inserisci un indirizzo e-mail valido',
-        welcome: 'Bentornato, {name}.',
+        welcome: 'Ti diamo il bentornato, {name}.',
     },
     home: {
         title: 'Dashboard',

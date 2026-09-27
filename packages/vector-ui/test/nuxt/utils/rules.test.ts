@@ -67,6 +67,8 @@ describe('rulesFor: constraints', () => {
         expect(check(rulesOf(rule('Email')), 'admin@vector')).toBe('Enter a valid e-mail address')
         expect(check(rulesOf(rule('Url')), 'https://kinetis.dev/docs')).toBe(true)
         expect(check(rulesOf(rule('Url')), 'ftp://kinetis.dev')).toBe('Enter a valid URL')
+        expect(check(rulesOf(rule('WebUrl')), 'https://kinetis.dev')).toBe(true)
+        expect(check(rulesOf(rule('WebUrl')), 'javascript:alert(1)')).toBe('Enter a valid URL')
     })
 
     it('numeric comparisons', () => {

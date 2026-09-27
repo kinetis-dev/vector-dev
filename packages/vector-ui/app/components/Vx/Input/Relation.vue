@@ -11,7 +11,7 @@ const props = defineProps<{ field: VectorField, rules: ((v: unknown) => true | s
 const model = defineModel<number | string | (number | string)[] | null>()
 const multiple = computed(() => props.field.type === 'manyToMany')
 const client = useVectorResource(() => props.resource)
-const { t } = useVectorT()
+const { t, noun } = useVectorT()
 
 const items = ref<VectorRelationValue[]>([])
 const target = useVectorResource(() => props.field.relation?.resource ?? props.resource)
@@ -104,7 +104,7 @@ onMounted(async () => {
         :clearable="field.nullable === true || multiple"
         :disabled="disabled || waiting"
         no-filter
-        :hint="waiting ? t('fields.relation.dependsFirst', { label: dependsOn!.label.toLowerCase() }) : (field.help ?? undefined)"
+        :hint="waiting ? t('fields.relation.dependsFirst', { label: noun(dependsOn!.label) }) : (field.help ?? undefined)"
         :persistent-hint="waiting || !!field.help"
         :placeholder="t('fields.relation.placeholder')"
     >

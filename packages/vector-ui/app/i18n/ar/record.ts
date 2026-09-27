@@ -29,15 +29,15 @@ export default {
     deleted: 'تم حذف {label}.',
     restored: 'تمت استعادة {label}.',
     impersonate: {
-        action: 'انتحال الهوية',
+        action: 'التصرف باسم المستخدم',
         title: 'التصرف باسم «{title}»؟',
-        text: 'سترى وتفعل ما يمكن لهذا المستخدم فعله، ويُسجَّل كل تغيير باسمه، مع تسجيلك بصفتك منتحل الهوية.',
+        text: 'سترى وتفعل ما يمكن لهذا المستخدم فعله، ويُسجَّل كل تغيير باسمه، مع الإشارة إلى أنك من تصرّف باسمه.',
         started: 'أنت الآن تتصرف باسم {title}.',
     },
     audit: {
         title: 'سجل التغييرات',
         byUser: 'بواسطة المستخدم {actor}',
-        impersonatedBy: '(بانتحال هوية من {impersonator})',
+        impersonatedBy: '(نيابةً عنه: {impersonator})',
         empty: 'لا توجد تغييرات مسجّلة.',
         revert: 'إرجاع',
         revertLabel: 'إرجاع هذا التغيير',

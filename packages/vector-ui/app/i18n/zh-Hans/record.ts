@@ -29,15 +29,15 @@ export default {
     deleted: '{label}已删除。',
     restored: '{label}已恢复。',
     impersonate: {
-        action: '模拟用户',
+        action: '模拟登录',
         title: '以“{title}”的身份操作？',
-        text: '你将看到并执行对方权限内的操作，每项更改都会记录为对方所做，并注明你是模拟者。',
+        text: '你将看到并执行对方权限内的操作，每项更改都会记录为对方所做，并注明你是模拟登录者。',
         started: '你现在正以 {title} 的身份操作。',
     },
     audit: {
         title: '历史记录',
         byUser: '由用户 {actor}',
-        impersonatedBy: '（由 {impersonator} 模拟）',
+        impersonatedBy: '（由 {impersonator} 模拟登录）',
         empty: '没有已记录的更改。',
         revert: '还原',
         revertLabel: '还原此更改',

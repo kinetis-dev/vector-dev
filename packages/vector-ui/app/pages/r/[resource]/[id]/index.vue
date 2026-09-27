@@ -3,7 +3,7 @@ import type { VectorAction } from '#vector/app/types/vector'
 
 definePageMeta({ layout: 'vector', middleware: 'vector-auth', key: route => route.fullPath })
 
-const { t } = useVectorT()
+const { t, noun } = useVectorT()
 const route = useRoute()
 const appConfig = useAppConfig()
 const { load, resource: find } = useVectorSchema()
@@ -54,7 +54,7 @@ async function remove(force = false) {
     const soft = resource.value.softDelete !== null && !force
 
     const ok = await confirm({
-        title: t(force ? 'record.deleteForeverTitle' : 'record.deleteTitle', { noun: resource.value.labelSingular.toLowerCase(), title: title.value }),
+        title: t(force ? 'record.deleteForeverTitle' : 'record.deleteTitle', { noun: noun(resource.value.labelSingular), title: title.value }),
         text: soft ? t('record.deleteSoftText') : t('record.deleteHardText'),
         confirmText: t('common.delete'),
         destructive: true,

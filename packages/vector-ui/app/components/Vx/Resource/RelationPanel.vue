@@ -15,7 +15,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ changed: [] }>()
 
-const { t } = useVectorT()
+const { t, noun } = useVectorT()
 const appConfig = useAppConfig()
 const { resource: find } = useVectorSchema()
 const notifications = useVectorNotifications()
@@ -67,7 +67,7 @@ async function load() {
 watch(() => props.record.id, () => { page.value = 1; load() })
 
 function open(item: VectorRecord) {
-    if (target.value) navigateTo(`${appConfig.vector.basePath}/r/${target.value.slug}/${item.id}`)
+    if (target.value) navigateTo(`${appConfig.vector.basePath}/r/${target.value.slug}/${encodeURIComponent(String(item.id))}`)
 }
 
 // --- manyToMany: attach and detach ---------------------------------------
@@ -115,7 +115,7 @@ async function detach(item: VectorRecord) {
     const title = String(item[target.value?.titleField ?? 'id'] ?? `#${item.id}`)
     if (!await confirm({
         title: t('record.panel.detachTitle', { title }),
-        text: t('record.panel.detachText', { target: target.value?.labelSingular.toLowerCase() ?? t('record.panel.record'), owner: props.owner.labelSingular.toLowerCase() }),
+        text: t('record.panel.detachText', { target: target.value ? noun(target.value.labelSingular) : t('record.panel.record'), owner: noun(props.owner.labelSingular) }),
         confirmText: t('record.panel.detach'),
         destructive: true,
     })) return
@@ -141,7 +141,7 @@ async function created() {
 }
 
 function label(n: number): string {
-    return (n === 1 ? target.value?.labelSingular : target.value?.label)?.toLowerCase() ?? t('record.panel.records')
+    return target.value ? noun(n === 1 ? target.value.labelSingular : target.value.label) : t('record.panel.records')
 }
 </script>
 
@@ -153,7 +153,7 @@ function label(n: number): string {
             <v-chip size="x-small" variant="tonal">{{ total }}</v-chip>
             <v-spacer />
             <v-btn v-if="canAttach" size="small" variant="tonal" prepend-icon="mdi-link-plus" @click="startAttach">{{ t('record.panel.attach') }}</v-btn>
-            <v-btn v-if="canCreate" size="small" variant="tonal" color="primary" prepend-icon="mdi-plus" @click="creating = true">{{ t('record.newTitle', { label: target.labelSingular.toLowerCase() }) }}</v-btn>
+            <v-btn v-if="canCreate" size="small" variant="tonal" color="primary" prepend-icon="mdi-plus" @click="creating = true">{{ t('record.newTitle', { label: noun(target.labelSingular) }) }}</v-btn>
         </v-card-title>
 
         <v-data-table-server
@@ -178,12 +178,12 @@ function label(n: number): string {
                 <v-btn icon="mdi-link-off" size="small" variant="text" :aria-label="t('record.panel.detachLabel', { title: String(item[target.titleField] ?? item.id) })" @click.stop="detach(item)" />
             </template>
             <template #no-data>
-                <div class="text-medium-emphasis py-4">{{ t('record.panel.empty', { label: target.label.toLowerCase() }) }}</div>
+                <div class="text-medium-emphasis py-4">{{ t('record.panel.empty', { label: noun(target.label) }) }}</div>
             </template>
         </v-data-table-server>
 
         <v-dialog v-model="attaching" max-width="520">
-            <v-card :title="t('record.panel.attachTitle', { label: target.label.toLowerCase() })">
+            <v-card :title="t('record.panel.attachTitle', { label: noun(target.label) })">
                 <v-card-text>
                     <v-autocomplete
                         v-model="choice"
@@ -209,7 +209,7 @@ function label(n: number): string {
         </v-dialog>
 
         <v-dialog v-model="creating" max-width="900">
-            <v-card :title="t('record.newTitle', { label: target.labelSingular.toLowerCase() })">
+            <v-card :title="t('record.newTitle', { label: noun(target.labelSingular) })">
                 <VxResourceForm v-if="creating" :resource="target" operation="create" :preset="preset" @saved="created" @cancel="creating = false" />
             </v-card>
         </v-dialog>

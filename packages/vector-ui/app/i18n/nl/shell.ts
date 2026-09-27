@@ -23,8 +23,8 @@ export default {
     impersonation: {
         actingAs: 'U handelt als {name}.',
         anotherUser: 'een andere gebruiker',
-        stop: 'Stoppen met imiteren',
-        noAccess: '{name} heeft geen toegang tot het beheer, dus er is niets te zien namens deze gebruiker. Het imiteren is gestopt.',
+        stop: 'Terug naar uw eigen account',
+        noAccess: '{name} heeft geen toegang tot het beheer, dus er is niets te zien namens deze gebruiker. Het handelen als deze gebruiker is gestopt.',
         noToken: 'De applicatie antwoordde zonder token of herlaadopdracht, dus er is niets gewijzigd.',
     },
     palette: {

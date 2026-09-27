@@ -5,7 +5,7 @@ export default {
     subjectAll: 'جميع {label} المطابقة ({count})',
     subjectCount: '{count} {label}',
     done: 'تم تنفيذ {label}.',
-    declined: 'رفض الإجراء التنفيذ.',
+    declined: 'رُفض الإجراء.',
     downloadStarted: 'بدأ التنزيل.',
     queued: 'أُضيف {label} إلى قائمة الانتظار.',
 }

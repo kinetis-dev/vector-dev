@@ -10,7 +10,7 @@ const emit = defineEmits<{ queued: [jobId: number], cancel: [] }>()
 
 const appConfig = useAppConfig()
 const client = useVectorResource(() => props.resource.slug)
-const { t } = useVectorT()
+const { t, noun } = useVectorT()
 const notifications = useVectorNotifications()
 const file = ref<File | null>(null)
 const preview = ref<VectorImportPreview | null>(null)
@@ -88,7 +88,7 @@ async function start() {
 
 <template>
     <v-dialog :model-value="true" max-width="720" persistent scrollable @update:model-value="emit('cancel')">
-        <v-card :title="t('list.import.title', { label: resource.label.toLowerCase() })">
+        <v-card :title="t('list.import.title', { label: noun(resource.label) })">
             <v-card-text>
                 <v-alert v-if="error" type="error" variant="tonal" class="mb-4" :text="error" />
                 <v-file-input v-model="file" :label="t('list.import.file')" accept=".csv,text/csv" prepend-icon="mdi-file-delimited-outline" :disabled="busy" @update:model-value="preview = null" />

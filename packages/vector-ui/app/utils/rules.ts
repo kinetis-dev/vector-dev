@@ -43,6 +43,7 @@ function compile(rule: VectorRule): Rule | null {
         case 'Email':
             return value => empty(value) || (typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) || vt('fields.rules.email')
         case 'Url':
+        case 'WebUrl':
             return value => empty(value) || (typeof value === 'string' && /^https?:\/\/\S+$/i.test(value)) || vt('fields.rules.url')
         case 'GreaterThan':
             return value => empty(value) || Number(value) > Number(a) || vt('fields.rules.greaterThan', { limit: String(a) })
