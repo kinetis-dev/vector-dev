@@ -61,7 +61,7 @@ return [
     'ID' => 'ID',
     'Image' => 'Obraz',
     'Internal' => 'Wewnętrzna',
-    'Joined' => 'Dołączył',
+    'Joined' => 'Data dołączenia',
     'Label' => 'Etykieta',
     'Labels' => 'Etykiety',
     'Lead' => 'Lider',

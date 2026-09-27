@@ -14,7 +14,7 @@ return [
     'Default theme' => 'السمة الافتراضية',
     'Footer text' => 'نص التذييل',
     'One line under every page, such as a legal notice or the environment name. Empty shows no footer.' => 'سطر واحد أسفل كل صفحة، مثل إشعار قانوني أو اسم البيئة. إذا تُرك فارغًا فلن يظهر أي تذييل.',
-    'System' => 'النظام',
+    'System' => 'حسب النظام',
     'Light' => 'فاتحة',
     'Dark' => 'داكنة',
     'Languages' => 'اللغات',
