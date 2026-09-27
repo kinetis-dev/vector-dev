@@ -7,7 +7,10 @@ export type VectorFieldType =
     | 'id' | 'string' | 'text' | 'markdown' | 'number' | 'money' | 'boolean'
     | 'enum' | 'date' | 'datetime' | 'email' | 'url' | 'password' | 'slug'
     | 'color' | 'json' | 'keyValue' | 'currency' | 'file' | 'image'
-    | 'belongsTo' | 'hasOne' | 'hasMany' | 'manyToMany'
+    | 'belongsTo' | 'hasOne' | 'hasMany' | 'manyToMany' | 'computed'
+
+/** What a computed field is shown as. */
+export type VectorComputedAs = 'text' | 'number' | 'money' | 'boolean' | 'date' | 'datetime' | 'enum'
 
 export type VectorView = 'index' | 'show' | 'create' | 'update'
 
@@ -60,6 +63,8 @@ export interface VectorField {
     options?: VectorEnumOption[]
     relation?: VectorRelation
     conditions?: VectorFieldConditions
+    /** A computed field: shown as `as`, computed on the server from the `from` fields. */
+    computed?: { as: VectorComputedAs, from: string[] }
 }
 
 /** One comparison against another field of the same form. */

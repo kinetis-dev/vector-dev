@@ -70,6 +70,13 @@ final readonly class ResourceDescriptor
             return $this;
         }
 
+        // a computed value computed from a hidden field would show it: it goes too
+        foreach ($this->fields as $name => $field) {
+            if (array_intersect($field['computed']['from'] ?? [], $hidden) !== [] && !in_array($name, $hidden, true)) {
+                $hidden[] = $name;
+            }
+        }
+
         $keep = static fn (array $names): array => array_values(array_diff($names, $hidden));
         $data = $this->data;
         $data['fields'] = array_values(array_filter($data['fields'], static fn (array $field): bool => !in_array($field['name'], $hidden, true)));
@@ -326,6 +333,27 @@ final readonly class ResourceDescriptor
         return $this->data['columns'][$this->data['titleField']];
     }
 
+    /**
+     * The computed fields among $names, with the resource method computing each.
+     *
+     * @param list<string> $names
+     * @return array<string, string> field name => method
+     */
+    public function computedMethods(array $names): array
+    {
+        $methods = [];
+
+        foreach ($names as $name) {
+            $method = $this->fields[$name]['computed']['method'] ?? null;
+
+            if (is_string($method)) {
+                $methods[$name] = $method;
+            }
+        }
+
+        return $methods;
+    }
+
     /** @return array<string, array<string, mixed>> */
     public function fields(): array
     {
@@ -424,6 +452,10 @@ final readonly class ResourceDescriptor
     public static function publicField(array $field): array
     {
         unset($field['column'], $field['enum']);
+
+        if (isset($field['computed'])) {
+            unset($field['computed']['method']);
+        }
 
         if (isset($field['relation'])) {
             unset($field['relation']['targetTable'], $field['relation']['targetKey'], $field['relation']['foreignKey'], $field['relation']['joinTable'], $field['relation']['joinColumn'], $field['relation']['inverseJoinColumn']);

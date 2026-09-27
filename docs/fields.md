@@ -20,6 +20,7 @@ from the name.
 | `Enum` | A backed enum: `of(Status::class)`, `labels()`, `colors()`. |
 | `KeyValue` | A JSON object of text values, edited as key/value rows; `columns('Attribute', 'Value')`, `maxEntries(n)`. |
 | `File`, `Image` | An uploaded file's storage key; see {doc}`files`. |
+| `Computed` | A read-only value a method of the resource computes from the record; see below. |
 | `BelongsTo`, `HasOne`, `HasMany`, `ManyToMany` | Relations to another resource, made with `::to('name', TargetResource::class)`. |
 
 ## Common modifiers
@@ -56,6 +57,30 @@ A filterable field offers the operators its value admits:
 
 A nullable column adds `null` and `nnull`. Collections are never
 filterable. The list grammar and "any of" groups are on {doc}`rest-api`.
+
+## Computed fields
+
+A computed field shows a value your resource calculates, such as a line
+total or a full name:
+
+```php
+Computed::make('lineTotal', 'Total')->as('money')->currencyField('order.currency')
+    ->from(['quantity', 'unitPriceCents'])->method('lineTotal'),
+
+public function lineTotal(array $line): ?int
+{
+    return $line['quantity'] * $line['unitPriceCents'];
+}
+```
+
+- `as()` — how it is shown: `text`, `number`, `money`, `boolean`,
+  `date`, `datetime`, or `enum` with `options()`.
+- `from()` — the fields the method reads; they always come with it.
+- `method()` — a public method of the resource, given the record.
+
+It appears on lists, record pages and exports, costs no extra query,
+and is never sorted, filtered, searched, summarized or edited. If a user
+may not see a field it reads, they do not see the computed field either.
 
 ## Relations
 

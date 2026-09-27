@@ -190,7 +190,8 @@
                         "belongsTo",
                         "hasOne",
                         "hasMany",
-                        "manyToMany"
+                        "manyToMany",
+                        "computed"
                     ]
                 },
                 "label": {
@@ -427,6 +428,34 @@
                             }
                         }
                     }
+                },
+                "computed": {
+                    "description": "A computed field's display kind and the fields its value is computed from. Read-only; never sorted, filtered, searched or written.",
+                    "type": "object",
+                    "required": [
+                        "as",
+                        "from"
+                    ],
+                    "properties": {
+                        "as": {
+                            "enum": [
+                                "text",
+                                "number",
+                                "money",
+                                "boolean",
+                                "date",
+                                "datetime",
+                                "enum"
+                            ]
+                        },
+                        "from": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "additionalProperties": false
                 }
             },
             "not": {

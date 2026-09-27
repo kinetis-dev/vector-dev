@@ -37,11 +37,14 @@ const fields = computed<VectorField[]>(() => columns.value
     .map(name => props.resource.fields.find(f => f.name === name))
     .filter((f): f is VectorField => f !== undefined))
 
+/** Numbers and money align right, a computed one shown as either too. */
+const numeric = (field: VectorField) => ['number', 'money'].includes(field.type === 'computed' ? field.computed?.as ?? '' : field.type)
+
 const headers = computed(() => fields.value.map(field => ({
     key: field.name,
     title: field.label,
     sortable: field.sortable,
-    align: (field.type === 'number' || field.type === 'money' ? 'end' : 'start') as 'start' | 'end',
+    align: (numeric(field) ? 'end' : 'start') as 'start' | 'end',
     nowrap: true,
 })))
 
@@ -459,7 +462,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
                 <tr class="font-weight-medium bg-surface-light">
                     <td />
                     <td v-if="group" />
-                    <td v-for="field in fields" :key="field.name" :class="field.type === 'number' || field.type === 'money' ? 'text-end' : ''">
+                    <td v-for="field in fields" :key="field.name" :class="numeric(field) ? 'text-end' : ''">
                         <template v-if="field.summary && field.name in summaryValues">
                             <span class="text-caption text-medium-emphasis mr-1">{{ t(`list.summary.${field.summary}`) }}</span>{{ formatSummary(field, summaryValues[field.name] ?? null) }}
                         </template>

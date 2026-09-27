@@ -11,6 +11,7 @@ use Kinetis\Vector\Attributes\Resource;
 use Kinetis\Vector\Exception\ResourceCompileException;
 use Kinetis\Vector\Fields\BelongsTo;
 use Kinetis\Vector\Fields\Boolean;
+use Kinetis\Vector\Fields\Computed;
 use Kinetis\Vector\Fields\Currency;
 use Kinetis\Vector\Fields\Date;
 use Kinetis\Vector\Fields\DateTime;
@@ -407,7 +408,9 @@ final class ResourceCompiler
 
             $array = $field->toArray();
 
-            if ($field instanceof RelationField) {
+            if ($field instanceof Computed) {
+                $array = self::compileComputed($class, $array);
+            } elseif ($field instanceof RelationField) {
                 $array = $this->compileRelation($class, $field, $array, $properties, $inverses, $joins);
             } elseif (isset($properties[$name])) {
                 $property = $properties[$name];
@@ -496,6 +499,13 @@ final class ResourceCompiler
             foreach ($visible as $name) {
                 $currency = $compiledFields[$name]['props']['currencyField'] ?? null;
 
+                // a computed value is computed from its sources: they travel with it
+                foreach ($compiledFields[$name]['computed']['from'] ?? [] as $source) {
+                    if (!in_array($source, $visible, true) && !in_array($source, $extra, true)) {
+                        $extra[] = $source;
+                    }
+                }
+
                 if ($currency === null) {
                     continue;
                 }
@@ -556,6 +566,7 @@ final class ResourceCompiler
         }
 
         self::checkConditions($compiledFields, $class);
+        self::checkComputedSources($compiledFields, $class);
         $compiledFields = self::checkDependencies($compiledFields, $class);
 
         foreach ($compiledFields as $name => $field) {
@@ -755,6 +766,70 @@ final class ResourceCompiler
             'actions' => array_values($actions),
             'widgets' => WidgetCompiler::widgets($instance->widgets(), $class),
         ];
+    }
+
+    /** How a computed value is typed on the wire, by what it is shown as. */
+    private const array COMPUTED_VALUE_TYPES = ['text' => 'string', 'number' => 'float', 'money' => 'int', 'boolean' => 'bool', 'date' => 'string', 'datetime' => 'string', 'enum' => 'string'];
+
+    /**
+     * A computed field: a public instance method of the resource, shown
+     * and never written, sorted, filtered, searched or summarized.
+     *
+     * @param class-string $class
+     * @param array<string, mixed> $array
+     * @return array<string, mixed>
+     */
+    private static function compileComputed(string $class, array $array): array
+    {
+        $name = $array['name'];
+        $method = $array['computed']['method'] ?? throw ResourceCompileException::field($class, $name, 'is computed but names no method; call method()');
+
+        if (!method_exists($class, $method) || !(new \ReflectionMethod($class, $method))->isPublic() || (new \ReflectionMethod($class, $method))->isStatic()) {
+            throw ResourceCompileException::field($class, $name, "is computed by {$method}(), which is not a public instance method of the resource");
+        }
+
+        if (array_intersect([Field::VIEW_CREATE, Field::VIEW_UPDATE], $array['views']) !== []) {
+            throw ResourceCompileException::field($class, $name, 'is computed, so it cannot be on a form');
+        }
+
+        foreach (['sortable', 'filterable', 'searchable', 'inline'] as $flag) {
+            if (($array[$flag] ?? false) === true) {
+                throw ResourceCompileException::field($class, $name, "is computed per record in PHP, so it cannot be {$flag}");
+            }
+        }
+
+        if ($array['summary'] !== null) {
+            throw ResourceCompileException::field($class, $name, 'is computed per record in PHP; a summary needs a column the database can aggregate');
+        }
+
+        if ($array['computed']['as'] === 'enum' && ($array['options'] ?? []) === []) {
+            throw ResourceCompileException::field($class, $name, 'is computed as an enum but lists no options; call options()');
+        }
+
+        $array['readonly'] = true;
+        $array['nullable'] = true;
+        $array['valueType'] = self::COMPUTED_VALUE_TYPES[$array['computed']['as']];
+
+        return $array;
+    }
+
+    /**
+     * A computed field reads other fields of the resource: never a
+     * collection, never another computed field.
+     *
+     * @param array<string, array<string, mixed>> $fields
+     */
+    private static function checkComputedSources(array $fields, string $class): void
+    {
+        foreach ($fields as $name => $field) {
+            foreach ($field['computed']['from'] ?? [] as $source) {
+                $type = $fields[$source]['type'] ?? null;
+
+                if ($type === null || in_array($type, ['computed', 'hasOne', 'hasMany', 'manyToMany'], true)) {
+                    throw ResourceCompileException::field($class, $name, "is computed from \"{$source}\", which is not a field of the resource holding a value of its own");
+                }
+            }
+        }
     }
 
     /**

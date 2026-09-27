@@ -47,6 +47,20 @@ describe('VxCell', () => {
         expect((await cell(status, null)).text()).toBe('—')
     })
 
+    it('renders a computed value with the cell of what it is shown as', async () => {
+        const total = field({ name: 'lineTotal', type: 'computed', readonly: true, props: { currencyField: 'order.currency' }, computed: { as: 'money', from: ['quantity', 'unitPriceCents'] } })
+        expect((await cell(total, 8396, { order: { id: 1, label: 'ORD-1', currency: 'EUR' } })).text()).toBe(formatMoney(8396, 'EUR'))
+
+        const paid = field({ name: 'paid', type: 'computed', computed: { as: 'boolean', from: [] } })
+        expect((await cell(paid, true)).find('.mdi-check-circle').exists()).toBe(true)
+
+        const size = field({ name: 'size', type: 'computed', options: [{ value: 'l', label: 'Large', color: null }], computed: { as: 'enum', from: [] } })
+        expect((await cell(size, 'l')).text()).toBe('Large')
+
+        const note = field({ name: 'note', type: 'computed', computed: { as: 'text', from: [] } })
+        expect((await cell(note, 'two lines')).text()).toBe('two lines')
+    })
+
     it('renders a relation by its label', async () => {
         const category = field({ name: 'category', type: 'belongsTo', relation: { kind: 'belongsTo', resource: 'categories', titleField: 'name' } })
 

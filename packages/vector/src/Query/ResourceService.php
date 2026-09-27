@@ -161,6 +161,7 @@ final readonly class ResourceService
         $this->gate->authorize($this->user, $this->policy($resource)->viewAny(...));
 
         $fields = $this->listFields($resource, $request);
+        $instance = $this->instance($resource);
         $query = $this->constrained($resource, $fields, $request, $restrict);
 
         if ($request->cursor !== null) {
@@ -170,7 +171,7 @@ final readonly class ResourceService
             $relations = $this->loadRelations($resource, $fields, $rows);
 
             return [
-                'data' => array_map(fn (array $row): array => $this->serializer->serialize($resource, $row, $fields, $relations), $rows),
+                'data' => array_map(fn (array $row): array => $this->serializer->serialize($resource, $row, $fields, $relations, $instance), $rows),
                 'nextCursor' => $page->nextCursor,
                 'hasMore' => $page->hasMore,
                 'perPage' => $request->perPage,
@@ -195,7 +196,7 @@ final readonly class ResourceService
         $relations = $this->loadRelations($resource, $fields, $rows);
 
         $envelope = [
-            'data' => array_map(fn (array $row): array => $this->serializer->serialize($resource, $row, $fields, $relations), $rows),
+            'data' => array_map(fn (array $row): array => $this->serializer->serialize($resource, $row, $fields, $relations, $instance), $rows),
             'currentPage' => $page->currentPage,
             'perPage' => $page->perPage,
             'total' => $page->total,
@@ -252,6 +253,7 @@ final readonly class ResourceService
         $this->authorizeExport($resource);
 
         $fields = $this->listFields($resource, $request);
+        $instance = $this->instance($resource);
         $total ??= $this->exportCount($resource, $request);
         $limit ??= $resource->exportLimit();
 
@@ -268,7 +270,7 @@ final readonly class ResourceService
             $relations = $this->loadRelations($resource, $fields, $rows);
 
             foreach ($rows as $row) {
-                yield $this->serializer->serialize($resource, $row, $fields, $relations);
+                yield $this->serializer->serialize($resource, $row, $fields, $relations, $instance);
             }
 
             $cursor = $page->nextCursor;
@@ -388,6 +390,14 @@ final readonly class ResourceService
         return $results;
     }
 
+    /** The resource class as the request container builds it: the one whose methods compute computed fields. */
+    private function instance(ResourceDescriptor $resource): ?VectorResource
+    {
+        $instance = $this->scope->get($resource->resourceClass());
+
+        return $instance instanceof VectorResource ? $instance : null;
+    }
+
     /**
      * The fields a list serializes: the requested subset of the index
      * fields, or all of them, plus the ones their display depends on —
@@ -409,6 +419,13 @@ final readonly class ResourceService
         }
 
         foreach ($request->columns as $name) {
+            // a computed value's sources travel with it
+            foreach ($resource->field($name)['computed']['from'] ?? [] as $source) {
+                if (!in_array($source, $fields, true)) {
+                    $fields[] = $source;
+                }
+            }
+
             $currency = $resource->field($name)['props']['currencyField'] ?? null;
             // a related record's currency comes with the relation
             $currency = is_string($currency) ? explode('.', $currency, 2)[0] : null;
@@ -583,7 +600,7 @@ final readonly class ResourceService
 
         /** @var array<string, mixed> $row */
         $relations = $this->loadRelations($resource, $fields, [$row]);
-        $record = $this->serializer->serialize($resource, $row, $fields, $relations);
+        $record = $this->serializer->serialize($resource, $row, $fields, $relations, $this->instance($resource));
         $policy = $this->policy($resource);
         $this->gate->authorize($this->user, static fn (CurrentUserInterface $user): bool|AuthorizationResponse => $policy->view($user, $record));
 
@@ -613,7 +630,7 @@ final readonly class ResourceService
         $records = [];
 
         foreach ($rows as $row) {
-            $record = $this->serializer->serialize($resource, $row, $fields, $relations);
+            $record = $this->serializer->serialize($resource, $row, $fields, $relations, $this->instance($resource));
             $records[(string) $record[$resource->primaryKeyField()]] = $record;
         }
 

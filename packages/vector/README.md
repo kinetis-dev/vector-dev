@@ -200,6 +200,7 @@ identifier, a `softDeletes()` property that is not a nullable
 | `Date`, `DateTime` | `date`, `datetime` | ISO 8601 on the wire, UTC. |
 | `Enum` | `enum` | `of(BackedEnum::class)`, `labels()`, `colors()`; options published. |
 | `File`, `Image` | `file`, `image` | Storage keys of uploaded files; see [Files and images](#files-and-images) for the upload and download endpoints. |
+| `Computed` | `computed` | A read-only value a resource method computes from the record; see [Computed fields](#computed-fields). |
 | `BelongsTo::to()`, `HasOne::to()`, `HasMany::to()`, `ManyToMany::to()` | relation | `titleField()` overrides the target's title; `BelongsTo::dependsOn()` narrows its choices by another field; `HasMany::repeater()` edits an owned relation's rows in the parent's form. |
 
 A field's `default()` is where a new record starts: the create form shows
@@ -321,6 +322,41 @@ transaction. A violation's path is `changes/{index}/{field}`, and a
 stale record answers `409` for all of them. Only simple, editable
 fields qualify: text, email, url, slug, color, number, money, boolean,
 enum, date, datetime and `belongsTo`. Anything else fails the build.
+
+### Computed fields
+
+A computed field shows a value a method of the resource computes from
+the record, on the list and the record page:
+
+```php
+Computed::make('lineTotal', 'Total')->as('money')->currencyField('order.currency')
+    ->from(['quantity', 'unitPriceCents'])->method('lineTotal'),
+
+/** @param array<string, mixed> $line the serialized record */
+public function lineTotal(array $line): ?int
+{
+    return $line['quantity'] * $line['unitPriceCents'];
+}
+```
+
+`as()` is how the UI shows it: `text`, `number` (`decimals()`), `money`
+(`currency()` or `currencyField()`), `boolean`, `date`, `datetime`, or
+`enum` with `options()`. `from()` names the fields the method reads:
+every list and record that shows the computed value carries them too,
+whatever the `columns` asked for. `method()` names a public instance
+method of the resource, built by the request container, called once per
+record with the record already serialized; it runs no query of its own,
+so a list's statement count does not change. The value is typed by
+`as()` and exported like any field.
+
+A computed field is read-only, on the list and the record page only,
+and never sorted, filtered, searched, summarized, written or imported;
+the build refuses one that asks, one without a method, one whose method
+is not a public instance method, an enum without options, and a source
+that is not a field holding a value. Hiding one of its sources from a
+user (`viewField()`) hides the computed field too, so a derived value
+never shows what the user may not see. The descriptor publishes
+`computed: {as, from}`; the method's name stays on the server.
 
 ### Filters
 
