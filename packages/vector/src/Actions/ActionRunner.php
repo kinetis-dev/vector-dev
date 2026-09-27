@@ -11,6 +11,7 @@ use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Orm\EntityManagerRegistry;
 use Kinetis\Validation\Exception\ValidationException;
 use Kinetis\Validation\Violation;
+use Kinetis\Vector\Auth\ActorContext;
 use Kinetis\Vector\Exception\ForbiddenOperationException;
 use Kinetis\Vector\Exception\ResourceNotFoundException;
 use Kinetis\Vector\Jobs\RunActionJob;
@@ -43,6 +44,7 @@ final readonly class ActionRunner
         private ValueConverter $converter,
         private JobStore $jobs,
         private VectorQueue $queue,
+        private ActorContext $actor,
     ) {}
 
     /**
@@ -71,7 +73,7 @@ final readonly class ActionRunner
             }
 
             $selection = $compiled['standalone'] ? [] : $this->selectionBody($resource, $body);
-            $jobId = $this->jobs->create('action', $resource->slug(), $name, (string) $this->user->id());
+            $jobId = $this->jobs->create('action', $resource->slug(), $name, (string) $this->user->id(), impersonatorId: $this->actor->impersonatorId);
             /** @var array<string, mixed> $rawFields */
             $this->queue->enqueue($this->jobs, $jobId, new RunActionJob($jobId, $resource->slug(), $name, $selection, $rawFields, (string) $this->user->id()));
 

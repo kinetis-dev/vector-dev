@@ -77,6 +77,8 @@ final class JobsTest extends VectorTestCase
             ->assertJsonPath('data.hasFile', true);
         $download = $this->client->get("/vector/jobs/{$jobId}/download", headers: $this->realAdminHeaders())->assertOk();
         self::assertStringStartsWith('text/csv', $download->getHeaderLine('Content-Type'));
+        self::assertSame('nosniff', $download->getHeaderLine('X-Content-Type-Options'));
+        self::assertStringContainsString('sandbox', $download->getHeaderLine('Content-Security-Policy'));
         self::assertGreaterThan(100, substr_count($download->body(), "\r\n"));
 
         // under the limit the export stays inline

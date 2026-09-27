@@ -17,7 +17,7 @@ descriptor on every run.
   `errors[].path/code/message`. Other refusals: `{"error": "..."}`.
 - An action: `{type, message, url, affected, jobId}`; a `download`
   answers the file itself; a queued action answers `202`.
-- A job: `{id, kind, resource, name, actorId, status, total, processed,
+- A job: `{id, kind, resource, name, actorId, impersonatorId, status, total, processed,
   result, failure, hasFile, fileName, createdAt, updatedAt, finishedAt}`.
 
 ## Language

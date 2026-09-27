@@ -70,6 +70,13 @@ final readonly class PreferencesController
         }
 
         /** @var array<string, mixed> $body */
+        $kept = array_keys(array_filter($body, static fn (mixed $value): bool => $value !== null));
+        $stored = array_keys($this->preferences->all((string) $this->user->id()));
+
+        if (count(array_unique([...$stored, ...$kept])) > PreferenceStore::MAX_KEYS) {
+            throw ValidationException::fromViolations([new Violation([], 'too_many', 'An account holds at most ' . PreferenceStore::MAX_KEYS . ' preference keys.')]);
+        }
+
         $this->preferences->put((string) $this->user->id(), $body);
 
         return ['data' => $this->preferences->all((string) $this->user->id())];

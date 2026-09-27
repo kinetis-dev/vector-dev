@@ -12,11 +12,13 @@ use Kinetis\QueryBuilder\Query;
 /**
  * `vector_preferences`: per-user UI state the client wants back on
  * another device — column order and visibility per resource, density,
- * theme. Keys are `[a-z0-9.-]`, values JSON up to 16 KiB.
+ * theme. Keys are `[a-z0-9.-]`, values JSON up to 16 KiB, at most
+ * MAX_KEYS of them per account — every request reads them all.
  */
 final readonly class PreferenceStore
 {
     public const int MAX_VALUE_BYTES = 16384;
+    public const int MAX_KEYS = 500;
 
     public function __construct(private VectorDatabase $db) {}
 

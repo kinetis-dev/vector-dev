@@ -19,7 +19,7 @@ use Kinetis\Validation\Violation;
 use Kinetis\Vector\Exception\ConflictException;
 use Kinetis\Vector\Exception\ForbiddenOperationException;
 use Kinetis\Vector\Exception\RecordNotFoundException;
-use Kinetis\Vector\Auth\ImpersonatedUserInterface;
+use Kinetis\Vector\Auth\ActorContext;
 use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Registry\ResourceDescriptor;
@@ -45,6 +45,7 @@ final readonly class RecordWriter
         private AuditStore $audit,
         private VectorDatabase $vector,
         private ValueConverter $converter,
+        private ActorContext $actor,
     ) {}
 
     /**
@@ -93,7 +94,7 @@ final readonly class RecordWriter
 
         $id = $this->writer->read($entity, $resource->primaryKeyField());
         $this->log($resource, 'create', [$id]);
-        $record = $this->reader->show($resource, (string) $id);
+        $record = $this->reader->written($resource, (string) $id);
         $this->audit->record($resource->slug(), [(string) $id], 'create', self::auditable($record), (string) $this->user->id(), $this->impersonator());
 
         return $record;
@@ -211,7 +212,7 @@ final readonly class RecordWriter
         $instance->afterUpdate($entity, $context);
         $this->finishRepeaters($plans);
         $this->log($resource, 'update', [$id]);
-        $record = $this->reader->show($resource, $id);
+        $record = $this->reader->written($resource, $id);
         $changes = self::diff(self::auditable($current), self::auditable($record));
 
         if ($changes !== []) {
@@ -466,7 +467,7 @@ final readonly class RecordWriter
                 $instance->afterDelete($row['entity'], new WriteContext($child, $this->user, $this->manager($child), []));
             }
 
-            $after = $this->reader->records($child, [...$created, ...array_map(strval(...), array_keys($updated))]);
+            $after = $this->reader->records($child, [...$created, ...array_map(strval(...), array_keys($updated))], scoped: false);
             $actor = (string) $this->user->id();
 
             foreach ($created as $id) {
@@ -582,7 +583,7 @@ final readonly class RecordWriter
         }
 
         $this->log($resource, 'update', array_keys($entities));
-        $after = $this->reader->records($resource, array_keys($entities));
+        $after = $this->reader->records($resource, array_keys($entities), scoped: false);
 
         foreach ($before as $id => $current) {
             $changes = self::diff(self::auditable($current), self::auditable($after[(string) $id] ?? $current));
@@ -680,7 +681,7 @@ final readonly class RecordWriter
 
         $ids = array_column($prepared, 'id');
         $this->log($resource, 'update', $ids);
-        $after = $this->reader->records($resource, $ids);
+        $after = $this->reader->records($resource, $ids, scoped: false);
         $records = [];
 
         foreach ($prepared as $item) {
@@ -990,6 +991,12 @@ final readonly class RecordWriter
             }
         }
 
+        // MySQL's message carries the duplicate value too (`Duplicate entry 'name' for key '…'`):
+        // only the index name is searched, so a submitted value never names another field
+        if (preg_match("/for key '([^']*)'/", $message, $m) === 1) {
+            $message = $m[1];
+        }
+
         uasort($columns, static fn (string $a, string $b): int => strlen($b) <=> strlen($a));
 
         foreach ($columns as $field => $column) {
@@ -1051,11 +1058,10 @@ final readonly class RecordWriter
         }
     }
 
+    /** Whoever is impersonating the user, under HTTP or in a job the impersonator started. */
     private function impersonator(): ?string
     {
-        $id = $this->user instanceof ImpersonatedUserInterface ? $this->user->impersonatorId() : null;
-
-        return $id === null ? null : (string) $id;
+        return $this->actor->impersonatorId;
     }
 
     /**

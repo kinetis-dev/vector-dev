@@ -62,6 +62,7 @@ final readonly class ResourceController
         private \Kinetis\Vector\VectorDefaults $defaults,
         private \Kinetis\Vector\Translation\LocaleResolver $locales,
         private \Kinetis\Vector\Translation\Labels $labels,
+        private \Kinetis\Vector\Auth\ActorContext $actor,
     ) {}
 
     /** @return array<string, mixed> */
@@ -104,7 +105,7 @@ final readonly class ResourceController
         if ($this->queue->available() && ($total > $descriptor->exportLimit() || $format === 'xlsx')) {
             /** @var array<string, mixed> $stored */
             $stored = array_intersect_key($params, array_flip(['filter', 'q', 'sort', 'columns']));
-            $jobId = $this->jobs->create('export', $descriptor->slug(), 'export', (string) $this->user->id());
+            $jobId = $this->jobs->create('export', $descriptor->slug(), 'export', (string) $this->user->id(), impersonatorId: $this->actor->impersonatorId);
             $this->queue->enqueue($this->jobs, $jobId, new ExportJob($jobId, $descriptor->slug(), $stored, (string) $this->user->id(), $format));
 
             return JsonResponse::create(['type' => 'job', 'jobId' => $jobId, 'message' => 'The export was queued.'], 202);
@@ -176,7 +177,7 @@ final readonly class ResourceController
         $contents = (string) $upload->file->getStream();
         $reader = CsvReader::fromString($contents); // refuses a file without a header or over the row cap
         $fileName = mb_substr($upload->file->getClientFilename() ?? 'import.csv', 0, 255); // the column's width
-        $jobId = $this->jobs->create('import', $descriptor->slug(), 'import', (string) $this->user->id(), $reader->rowCount(), $contents, $fileName, 'text/csv');
+        $jobId = $this->jobs->create('import', $descriptor->slug(), 'import', (string) $this->user->id(), $reader->rowCount(), $contents, $fileName, 'text/csv', $this->actor->impersonatorId);
         $this->queue->enqueue($this->jobs, $jobId, new ImportJob($jobId, $descriptor->slug(), $mapping, (string) $this->user->id(), $upload->mode, $upload->mode === 'create' || $upload->key === '' ? null : $upload->key));
 
         return JsonResponse::create(['type' => 'job', 'jobId' => $jobId, 'rows' => $reader->rowCount()], 202);

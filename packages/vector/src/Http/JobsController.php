@@ -43,7 +43,12 @@ final readonly class JobsController
         $job = $this->owned($id);
         $file = $this->jobs->file($job['id']) ?? throw RecordNotFoundException::of('jobs', $id);
 
-        return FileResponse::fromContents($file['contents'], $file['type'], 200, $file['name'], ['Cache-Control' => 'no-store']);
+        // an attachment, never sniffed or run: the same policy a record's file download carries
+        return FileResponse::fromContents($file['contents'], $file['type'], 200, $file['name'], [
+            'Cache-Control' => 'no-store',
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Security-Policy' => "default-src 'none'; sandbox",
+        ]);
     }
 
     /** @return array<string, mixed> */

@@ -15,7 +15,7 @@ use Kinetis\QueryBuilder\Query;
  * where an export leaves its file — base64, so one text-safe column
  * serves MySQL and PostgreSQL alike. Request-neutral: holds the link only.
  *
- * @phpstan-type JobRow array{id: int, kind: string, resource: string, name: string, actorId: string, status: string, total: int|null, processed: int, result: array<string, mixed>|null, failure: string|null, hasFile: bool, fileName: string|null, createdAt: string, updatedAt: string, finishedAt: string|null}
+ * @phpstan-type JobRow array{id: int, kind: string, resource: string, name: string, actorId: string, impersonatorId: string|null, status: string, total: int|null, processed: int, result: array<string, mixed>|null, failure: string|null, hasFile: bool, fileName: string|null, createdAt: string, updatedAt: string, finishedAt: string|null}
  */
 final readonly class JobStore
 {
@@ -29,8 +29,11 @@ final readonly class JobStore
 
     public function __construct(private VectorDatabase $db) {}
 
-    /** @param 'action'|'export'|'import' $kind */
-    public function create(string $kind, string $resource, string $name, string $actorId, ?int $total = null, ?string $file = null, ?string $fileName = null, ?string $fileType = null): int
+    /**
+     * @param 'action'|'export'|'import' $kind
+     * @param string|null $impersonatorId who was impersonating the actor when the job was started; the worker records the job's writes as theirs too
+     */
+    public function create(string $kind, string $resource, string $name, string $actorId, ?int $total = null, ?string $file = null, ?string $fileName = null, ?string $fileType = null, ?string $impersonatorId = null): int
     {
         $now = self::now();
 
@@ -39,6 +42,7 @@ final readonly class JobStore
             'resource' => $resource,
             'name' => $name,
             'actor_id' => $actorId,
+            'impersonator_id' => $impersonatorId,
             'status' => self::QUEUED,
             'total' => $total,
             'processed' => 0,
@@ -57,7 +61,7 @@ final readonly class JobStore
     public function find(int $id): ?array
     {
         $row = $this->query()->table('vector_jobs')
-            ->select('id', 'kind', 'resource', 'name', 'actor_id', 'status', 'total', 'processed', 'result', 'failure', 'file_name', 'created_at', 'updated_at', 'finished_at')
+            ->select('id', 'kind', 'resource', 'name', 'actor_id', 'impersonator_id', 'status', 'total', 'processed', 'result', 'failure', 'file_name', 'created_at', 'updated_at', 'finished_at')
             ->selectRaw('CASE WHEN file IS NULL THEN 0 ELSE 1 END AS has_file')
             ->where('id', '=', $id)
             ->first();
@@ -69,7 +73,7 @@ final readonly class JobStore
     public function forActor(string $actorId, int $limit = 50): array
     {
         $rows = $this->query()->table('vector_jobs')
-            ->select('id', 'kind', 'resource', 'name', 'actor_id', 'status', 'total', 'processed', 'result', 'failure', 'file_name', 'created_at', 'updated_at', 'finished_at')
+            ->select('id', 'kind', 'resource', 'name', 'actor_id', 'impersonator_id', 'status', 'total', 'processed', 'result', 'failure', 'file_name', 'created_at', 'updated_at', 'finished_at')
             ->selectRaw('CASE WHEN file IS NULL THEN 0 ELSE 1 END AS has_file')
             ->where('actor_id', '=', $actorId)
             ->orderBy('id', 'DESC')
@@ -170,6 +174,7 @@ final readonly class JobStore
             'resource' => (string) $row['resource'],
             'name' => (string) $row['name'],
             'actorId' => (string) $row['actor_id'],
+            'impersonatorId' => $row['impersonator_id'] === null ? null : (string) $row['impersonator_id'],
             'status' => (string) $row['status'],
             'total' => $row['total'] === null ? null : (int) $row['total'],
             'processed' => (int) $row['processed'],

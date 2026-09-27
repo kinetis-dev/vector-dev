@@ -10,6 +10,7 @@ use Kinetis\Vector\Query\ListRequest;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Query\XlsxWriter;
 use Kinetis\Vector\Registry\VectorRegistry;
+use Kinetis\Vector\Store\JobStore;
 use Kinetis\Vector\Write\ValueConverter;
 
 /**
@@ -61,7 +62,7 @@ final readonly class ExportJob implements Job
             })();
             [$file, $type] = $this->format === 'xlsx'
                 ? [XlsxWriter::document($descriptor, $fields, $counting), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
-                : [CsvWriter::document($descriptor, $fields, $counting), 'text/csv; charset=utf-8'];
+                : [CsvWriter::document($descriptor, $fields, $counting, JobStore::MAX_FILE_BYTES), 'text/csv; charset=utf-8'];
             $name = $descriptor->slug() . '-' . gmdate('Ymd-His') . '.' . ($this->format === 'xlsx' ? 'xlsx' : 'csv');
 
             return ['result' => ['rows' => $rows, 'fileName' => $name], 'processed' => $rows, 'file' => $file, 'fileName' => $name, 'fileType' => $type, 'notice' => "{$rows} rows are ready to download."];

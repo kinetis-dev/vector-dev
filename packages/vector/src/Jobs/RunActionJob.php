@@ -32,7 +32,7 @@ final readonly class RunActionJob implements Job
     public function handle(JobContext $context, VectorRegistry $registry): void
     {
         $descriptor = $registry->resource($this->resource);
-        $compiled = $descriptor->action($this->action) ?? throw new \RuntimeException("Unknown action {$this->action}.");
+        $compiled = $descriptor->action($this->action) ?? throw new JobFailedException("Unknown action {$this->action}.");
 
         $context->run($this->jobId, $this->actorId, "{$compiled['label']} on {$descriptor->label()}", function () use ($context, $descriptor, $compiled): array {
             $runner = $context->get(ActionRunner::class);
@@ -53,7 +53,7 @@ final readonly class RunActionJob implements Job
             $ids = $runner->resolveSelection($descriptor, $this->selection, $compiled['standalone']);
 
             if ($ids === [] && !$compiled['standalone']) {
-                throw new \RuntimeException('The selection matches no records any more.');
+                throw new JobFailedException('The selection matches no records any more.');
             }
 
             $context->jobs->progress($this->jobId, 0, count($ids));
@@ -65,7 +65,7 @@ final readonly class RunActionJob implements Job
                 $response = $runner->runNow($descriptor, $this->action, $chunk, $this->fields);
 
                 if ($response->type === 'danger') {
-                    throw new \RuntimeException($response->message ?? 'The action declined.');
+                    throw new JobFailedException($response->message ?? 'The action declined.');
                 }
 
                 $processed += count($chunk);

@@ -69,7 +69,7 @@ final readonly class ImportJob implements Job
             // the resource as the admin who started the job sees it
             $descriptor = $service->visible($descriptor);
 
-            $file = $context->jobs->file($this->jobId) ?? throw new \RuntimeException('The uploaded file is gone.');
+            $file = $context->jobs->file($this->jobId) ?? throw new JobFailedException('The uploaded file is gone.');
             $reader = CsvReader::fromString($file['contents']);
             $context->jobs->progress($this->jobId, 0, $reader->rowCount());
             $created = 0;

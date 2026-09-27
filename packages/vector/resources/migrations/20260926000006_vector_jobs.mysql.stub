@@ -21,6 +21,7 @@ return new class implements Migration
                 resource VARCHAR(120) NOT NULL,
                 name VARCHAR(120) NOT NULL,
                 actor_id VARCHAR(191) NOT NULL,
+                impersonator_id VARCHAR(191) NULL,
                 status VARCHAR(20) NOT NULL,
                 total INT UNSIGNED NULL,
                 processed INT UNSIGNED NOT NULL DEFAULT 0,

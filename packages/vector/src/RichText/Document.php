@@ -277,7 +277,34 @@ final readonly class Document
             $doc = self::mapImages($doc, $imageUrl);
         }
 
-        return (new Editor(['extensions' => $this->extensionsFor($features)]))->setContent($doc)->getHTML();
+        return (new Editor(['extensions' => $this->extensionsFor($features)]))->setContent(self::withRendererLinkAttributes($doc))->getHTML();
+    }
+
+    /**
+     * The document with every link's `rel` and `class` left to the
+     * renderer's defaults (`noopener noreferrer nofollow`, none): a value
+     * stored before validate() held them, or written around it, never
+     * overrides what keeps the page safe.
+     *
+     * @param array<array-key, mixed> $node
+     * @return array<array-key, mixed>
+     */
+    private static function withRendererLinkAttributes(array $node): array
+    {
+        if (is_array($node['marks'] ?? null)) {
+            foreach ($node['marks'] as $i => $mark) {
+                if (is_array($mark) && ($mark['type'] ?? null) === 'link' && is_array($mark['attrs'] ?? null)) {
+                    unset($mark['attrs']['rel'], $mark['attrs']['class']);
+                    $node['marks'][$i] = $mark;
+                }
+            }
+        }
+
+        if (is_array($node['content'] ?? null)) {
+            $node['content'] = array_map(static fn (mixed $child): mixed => is_array($child) ? self::withRendererLinkAttributes($child) : $child, $node['content']);
+        }
+
+        return $node;
     }
 
     /**
@@ -411,6 +438,9 @@ final readonly class Document
             $problem = match ("{$type}.{$name}") {
                 'link.href' => self::href($value),
                 'link.target' => $value === null || $value === '_blank' ? null : 'must be _blank or null.',
+                // the editor sends its own defaults for these two; a value of the author's own would reach the rendered anchor
+                'link.rel' => $value === null || (is_string($value) && preg_match('/^(?:(?:noopener|noreferrer|nofollow)(?: |$))*$/', $value) === 1) ? null : 'must be noopener, noreferrer or nofollow.',
+                'link.class' => $value === null || $value === '' ? null : 'must be empty.',
                 'heading.level' => is_int($value) && $value >= 1 && $value <= 6 ? null : 'must be a heading level from 1 to 6.',
                 'orderedList.start' => $value === null || (is_int($value) && $value >= 0) ? null : 'must be a whole number.',
                 'codeBlock.language' => $value === null || (is_string($value) && preg_match('/^[A-Za-z0-9+#._-]{0,32}$/', $value) === 1) ? null : 'is not a language name.',
@@ -474,7 +504,6 @@ final readonly class Document
             'horizontalRule' => [\Tiptap\Nodes\HorizontalRule::class],
             'table' => [\Tiptap\Nodes\Table::class, \Tiptap\Nodes\TableRow::class, \Tiptap\Nodes\TableHeader::class, \Tiptap\Nodes\TableCell::class],
             'image' => [\Tiptap\Nodes\Image::class],
-            'mention' => [\Tiptap\Nodes\Mention::class],
         ];
 
         foreach ($table as $feature => $classes) {
@@ -483,6 +512,15 @@ final readonly class Document
                     $extensions[] = new $class();
                 }
             }
+        }
+
+        if ($on('mention')) {
+            // the label as the plain-text projection shows it; tiptap-php appends renderText() output as is, so it is escaped here
+            $extensions[] = new \Tiptap\Nodes\Mention(['renderLabel' => static fn (object $node): string => htmlspecialchars(
+                '@' . (string) ($node->attrs->label ?? $node->attrs->id ?? ''),
+                ENT_QUOTES | ENT_SUBSTITUTE,
+                'UTF-8',
+            )]);
         }
 
         if ($on('link')) {

@@ -618,7 +618,7 @@ demo/backend/             the demo Kinetis application, with kinetis/vector inst
   bootstrap.php           JWT keys, CORS for the standalone UI origin, the Vector bindings
   public/vector/ui/       the published hosted bundle (generated; not committed)
   public/vector-extensions/  the demo's runtime UI extension
-  translations/           the demo's labels in seven more languages (machine translations)
+  translations/           the demo's labels in sixteen more languages (machine translations)
   tests/                  PHPUnit (App\Tests\)
 demo/frontend/            the demo Nuxt app: extends @kinetis/vector-ui, points at the demo API
 demo/e2e/                 the end-to-end suite: Playwright, both deployment modes, against the running stack

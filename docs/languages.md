@@ -24,7 +24,7 @@ still recognisable. The list is in one order whatever language you are
 in, so it never reshuffles on a switch: the languages' own names in
 Unicode's language-neutral order — Latin-script names alphabetically,
 then each other script as a group (Greek, Cyrillic, Hebrew, Arabic, the
-Indic scripts, Thai, Korean, then Chinese and Japanese). The settings
+Indic scripts, Thai, Korean, Japanese, then Chinese). The settings
 page lists them the same way. Choosing one switches the whole
 admin at once — menus, labels, dates and numbers — and is remembered as
 your preference, on every device you sign in from. Hebrew and Arabic
