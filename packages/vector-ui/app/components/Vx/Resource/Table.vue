@@ -447,7 +447,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
             <template #group-header="{ item, columns: cols, toggleGroup, isGroupOpen }">
                 <tr class="bg-surface-light">
                     <td :colspan="cols.length" class="font-weight-medium">
-                        <v-btn size="small" variant="text" :icon="isGroupOpen(item) ? 'mdi-chevron-down' : 'mdi-chevron-right'" @click="toggleGroup(item)" />
+                        <v-btn size="small" variant="text" :icon="isGroupOpen(item) ? 'mdi-chevron-down' : 'mdi-chevron-right'" :aria-label="isGroupOpen(item) ? t('list.collapseGroup') : t('list.expandGroup')" :aria-expanded="isGroupOpen(item)" @click="toggleGroup(item)" />
                         <span class="text-medium-emphasis mr-2">{{ t('list.groupHeader', { label: groupField?.label ?? '' }) }}</span>
                         <VxCell v-if="groupField" :field="groupField" :value="item.value" :record="{}" :resource="resource" context="index" />
                         <v-chip size="x-small" class="ml-2" variant="tonal">{{ item.items.length }}</v-chip>

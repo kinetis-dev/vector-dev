@@ -17,8 +17,15 @@ const emit = defineEmits<{ saved: [record: VectorRecord], cancel: [] }>()
 
 const { t } = useVectorT()
 const { inputFor, editable } = useVectorInputs()
+const { resource: find } = useVectorSchema()
 const notifications = useVectorNotifications()
 const client = useVectorResource(() => props.resource.slug)
+
+const serverErrors = reactive<Record<string, string[]>>({})
+const submitting = ref(false)
+const formError = ref<string | null>(null)
+/** Relation fields whose current rows could not be read: shown as they are, never written from a guess. */
+const unloaded = reactive(new Set<string>())
 
 const fields = computed<VectorField[]>(() => props.resource.fields.filter(f => editable(f, props.operation)))
 
@@ -52,18 +59,29 @@ function defaultFor(field: VectorField): unknown {
 }
 
 // A manyToMany field's current membership is not in the record (it lists
-// as a count), so an edit form fetches the ids it holds.
+// as a count), so an edit form fetches every id it holds: the server
+// syncs the whole list, so a partial one would detach what it left out.
 if (props.operation === 'update' && props.record) {
     for (const field of fields.value.filter(f => f.type === 'manyToMany')) {
-        client.related(props.record.id, field.name, { perPage: 200 }).then((page) => {
-            values[field.name] = page.data.map(r => r.id)
-            initial[field.name] = [...(values[field.name] as unknown[])]
+        allRelatedIds(props.record.id, field).then((ids) => {
+            values[field.name] = ids
+            initial[field.name] = [...ids]
+        }).catch((error) => {
+            unloaded.add(field.name)
+            formError.value = vectorErrorMessage(error)
         })
     }
 
     // A repeater's rows: each child as a row of the fields it writes, its relations as ids.
     for (const field of fields.value.filter(f => f.repeater)) {
-        client.rows(props.record.id, field.name).then((page) => {
+        client.rows(props.record.id, field.name).catch((error) => {
+            unloaded.add(field.name)
+            formError.value = vectorErrorMessage(error)
+
+            return null
+        }).then((page) => {
+            if (page === null) return
+
             const rows = page.data.map(record => Object.fromEntries([
                 ['id', record.id],
                 ...field.repeater!.fields.map((name) => {
@@ -77,9 +95,18 @@ if (props.operation === 'update' && props.record) {
     }
 }
 
-const serverErrors = reactive<Record<string, string[]>>({})
-const submitting = ref(false)
-const formError = ref<string | null>(null)
+/** Every id a many-to-many field holds, page by page: the target's page cap bounds one request, not the membership. */
+async function allRelatedIds(id: string | number, field: VectorField): Promise<unknown[]> {
+    const perPage = (field.relation ? find(field.relation.resource)?.table.maxPerPage : undefined) ?? 100
+    const ids: unknown[] = []
+
+    for (let page = 1; ; page++) {
+        const result = await client.related(id, field.name, { page, perPage })
+        ids.push(...result.data.map(r => r.id))
+
+        if (page >= result.lastPage) return ids
+    }
+}
 
 const wide = (field: VectorField) => ['markdown', 'text', 'json', 'keyValue'].includes(field.type) || !!field.repeater
 
@@ -143,6 +170,10 @@ function payload(onlyChanged: boolean): Record<string, unknown> {
 
     for (const field of fields.value) {
         const value = values[field.name]
+
+        if (unloaded.has(field.name)) {
+            continue // its current rows never arrived; writing an empty list would detach them all
+        }
 
         if (onlyChanged && JSON.stringify(value) === JSON.stringify(initial[field.name])) {
             continue

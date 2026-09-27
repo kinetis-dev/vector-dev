@@ -10,7 +10,7 @@ const appConfig = useAppConfig()
 const slug = computed(() => String(route.params.resource))
 const resource = computed(() => find(slug.value))
 
-useHead({ title: () => resource.value ? `${resource.value.label} · Vector` : 'Vector' })
+useHead({ title: () => resource.value?.label ?? '' })
 </script>
 
 <template>

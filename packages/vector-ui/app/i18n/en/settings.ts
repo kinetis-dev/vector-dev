@@ -1,6 +1,6 @@
 // The settings area's strings; see common.ts for words every area shares.
 export default {
-    pageTitle: 'Settings · Vector',
+    pageTitle: 'Settings',
     heading: 'Settings',
     empty: {
         title: 'No settings',

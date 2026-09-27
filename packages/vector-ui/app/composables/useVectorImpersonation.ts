@@ -10,16 +10,25 @@ export function useVectorImpersonation() {
     const { load } = useVectorSchema()
     const impersonator = useState<{ id: number | string, name: string | null } | null>('vector.impersonator', () => null)
 
-    async function apply(result: { accessToken?: string, expiresIn?: number, user?: { id: number | string, name: string }, reload?: boolean }) {
+    type Swap = { accessToken?: string, expiresIn?: number, user?: { id: number | string, name: string }, target?: { id: number | string, name: string }, reload?: boolean }
+
+    async function apply(result: Swap) {
         if (result.reload && import.meta.client) {
             window.location.reload()
 
             return
         }
 
-        if (result.accessToken && result.user) {
+        if (!result.accessToken) {
+            throw new Error(vt('shell.impersonation.noToken'))
+        }
+
+        // who the token is for: the application's `user`, the controller's `target`, or the token's own subject
+        const subject = result.user ?? result.target ?? { id: subjectOf(result.accessToken) ?? '', name: auth.user?.name ?? '' }
+
+        {
             const previous = { token: auth.token, expiresAt: auth.expiresAt, user: auth.user }
-            auth.adopt(result.accessToken, result.expiresIn ?? 3600, { id: result.user.id, name: result.user.name })
+            auth.adopt(result.accessToken, result.expiresIn ?? 3600, { id: subject.id, name: subject.name })
             useVectorPreferences().clear()
 
             try {
@@ -32,7 +41,7 @@ export function useVectorImpersonation() {
                     await api('/vector/impersonate', { method: 'DELETE' }).catch(() => undefined)
                     if (previous.token && previous.user) auth.adopt(previous.token, Math.max(1, Math.round((previous.expiresAt - Date.now()) / 1000)), previous.user)
                     await load(true)
-                    throw new Error(vt('shell.impersonation.noAccess', { name: result.user.name }))
+                    throw new Error(vt('shell.impersonation.noAccess', { name: subject.name }))
                 }
 
                 throw error
@@ -40,14 +49,23 @@ export function useVectorImpersonation() {
         }
     }
 
+    /** The `sub` of a JWT, read without verifying it: the server already did, and this only labels the session. */
+    function subjectOf(token: string): string | null {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]?.replace(/-/g, '+').replace(/_/g, '/') ?? '')) as { sub?: unknown }
+
+            return typeof payload.sub === 'string' || typeof payload.sub === 'number' ? String(payload.sub) : null
+        } catch {
+            return null
+        }
+    }
+
     async function start(userId: number | string) {
-        const result = await api<{ accessToken?: string, expiresIn?: number, user?: { id: number | string, name: string }, reload?: boolean, impersonator: number | string }>(`/vector/impersonate/${encodeURIComponent(String(userId))}`, { method: 'POST' })
-        await apply(result)
+        await apply(await api<Swap>(`/vector/impersonate/${encodeURIComponent(String(userId))}`, { method: 'POST' }))
     }
 
     async function stop() {
-        const result = await api<{ accessToken?: string, expiresIn?: number, user?: { id: number | string, name: string }, reload?: boolean }>('/vector/impersonate', { method: 'DELETE' })
-        await apply(result)
+        await apply(await api<Swap>('/vector/impersonate', { method: 'DELETE' }))
     }
 
     /** Reads who is impersonating from /vector/me; null when nobody. */

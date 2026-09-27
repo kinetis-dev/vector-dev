@@ -11,11 +11,14 @@ const id = Number(route.params.id)
 const job = ref<VectorJob | null>(null)
 const error = ref<string | null>(null)
 
+const polling = new AbortController()
+onBeforeUnmount(() => polling.abort())
+
 onMounted(async () => {
     try {
-        await jobs.watch(id, j => (job.value = j))
+        await jobs.watch(id, j => (job.value = j), polling.signal)
     } catch (caught) {
-        error.value = vectorErrorMessage(caught)
+        if (!polling.signal.aborted) error.value = vectorErrorMessage(caught)
     }
 })
 

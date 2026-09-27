@@ -134,7 +134,7 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
     }
 
     async function downloadFile(id: string | number, field: string, fallbackName: string): Promise<void> {
-        const response = await api.raw(`${base()}/${encodeURIComponent(String(id))}/files/${encodeURIComponent(field)}`, { responseType: 'blob' })
+        const response = await asFile(() => api.raw(`${base()}/${encodeURIComponent(String(id))}/files/${encodeURIComponent(field)}`, { responseType: 'blob' }))
         saveBlob(response._data as Blob, filenameOf(response.headers.get('content-disposition')) ?? fallbackName)
     }
 
@@ -156,14 +156,29 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
 
     /**
      * Runs an action. A download answers with a file, which lands in the
-     * browser's download list; anything else is the JSON envelope.
+     * browser's download list; anything else is the JSON envelope. An
+     * action that declines answers 422 with `type: 'danger'`, which is an
+     * outcome for the dialog to show, not a failure.
      */
     async function runAction(name: string, selection: VectorSelection | null, fields: Record<string, unknown>): Promise<VectorActionResponse> {
-        const response = await api.raw(`${base()}/actions/${encodeURIComponent(name)}`, {
-            method: 'POST',
-            body: { ...(selection ?? {}), fields },
-            responseType: 'blob',
-        })
+        let response
+
+        try {
+            response = await asFile(() => api.raw(`${base()}/actions/${encodeURIComponent(name)}`, {
+                method: 'POST',
+                body: { ...(selection ?? {}), fields },
+                responseType: 'blob',
+            }))
+        } catch (error) {
+            const declined = (error as { status?: number, data?: { type?: string } } | null)
+
+            if (declined?.status === 422 && declined.data?.type === 'danger') {
+                return declined.data as VectorActionResponse
+            }
+
+            throw error
+        }
+
         const type = response.headers.get('content-type') ?? ''
 
         if (!type.includes('json')) {
@@ -177,7 +192,7 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
 
     /** Downloads the CSV, or answers the job the server queued for a large one. */
     async function exportCsv(options: VectorListOptions = {}): Promise<{ jobId: number } | null> {
-        const response = await api.raw(`${base()}/export`, { query: { ...listQuery({ ...options, page: undefined, perPage: undefined }), format: 'csv' }, responseType: 'blob' })
+        const response = await asFile(() => api.raw(`${base()}/export`, { query: { ...listQuery({ ...options, page: undefined, perPage: undefined }), format: 'csv' }, responseType: 'blob' }))
 
         if (response.status === 202) {
             const queued = JSON.parse(await (response._data as Blob).text()) as { jobId: number }
@@ -233,6 +248,32 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
     }
 
     return { list, related, show, create, update, remove, removeMany, batch, changes, attach, detach, upload, fileBlob, downloadFile, forceRemove, restore, runAction, exportCsv, audit, revert, rows, widget, importPreview, importCsv, options }
+}
+
+/**
+ * Runs a request made with `responseType: 'blob'`. ofetch reads the body
+ * as a Blob before it looks at the status, so a 4xx arrives as a Blob of
+ * JSON; this reads that JSON back onto the error, so `status` and `data`
+ * mean what they mean on every other request (422 violations included).
+ */
+export async function asFile<T>(request: () => Promise<T>): Promise<T> {
+    try {
+        return await request()
+    } catch (error) {
+        const failure = error as { data?: unknown } | null
+
+        if (failure?.data instanceof Blob) {
+            const text = await failure.data.text()
+
+            try {
+                failure.data = JSON.parse(text)
+            } catch {
+                failure.data = { error: text }
+            }
+        }
+
+        throw error
+    }
 }
 
 function filenameOf(disposition: string | null): string | undefined {

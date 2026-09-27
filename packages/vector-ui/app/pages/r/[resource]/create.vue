@@ -13,7 +13,7 @@ const slug = computed(() => String(route.params.resource))
 const resource = computed(() => find(slug.value))
 const base = computed(() => `${appConfig.vector.basePath}/r/${slug.value}`)
 
-useHead({ title: () => resource.value ? `${t('record.newTitle', { label: resource.value.labelSingular.toLowerCase() })} · ${resource.value.label}` : 'Vector' })
+useHead({ title: () => resource.value ? `${t('record.newTitle', { label: resource.value.labelSingular.toLowerCase() })} · ${resource.value.label}` : '' })
 
 function saved(record: VectorRecord) {
     navigateTo(`${base.value}/${encodeURIComponent(String(record.id))}`)
