@@ -16,5 +16,9 @@ final readonly class ImportRequest
         #[FileExtension(['csv', 'txt'])]
         public UploadedFileInterface $file,
         public string $mapping = '{}',
+        /** create (the default), update (only existing records) or upsert (either) */
+        public string $mode = 'create',
+        /** The field matching a row to a record in update and upsert: the key or a unique field, mapped. */
+        public string $key = '',
     ) {}
 }

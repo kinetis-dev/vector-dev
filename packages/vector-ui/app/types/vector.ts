@@ -201,6 +201,9 @@ export interface VectorAuditEntry {
     createdAt: string
 }
 
+/** create adds every row; update changes the records a key column finds; upsert does either. */
+export type VectorImportMode = 'create' | 'update' | 'upsert'
+
 export interface VectorImportPreview {
     headers: string[]
     rows: number

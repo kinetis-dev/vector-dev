@@ -1,4 +1,4 @@
-import type { VectorActionResponse, VectorAuditEntry, VectorFilterQuery, VectorImportPreview, VectorPage, VectorRecord, VectorRecordPermissions, VectorRelationValue, VectorSelection, VectorSort, VectorUploaded, VectorWidgetData } from '#vector/app/types/vector'
+import type { VectorActionResponse, VectorAuditEntry, VectorFilterQuery, VectorImportMode, VectorImportPreview, VectorPage, VectorRecord, VectorRecordPermissions, VectorRelationValue, VectorSelection, VectorSort, VectorUploaded, VectorWidgetData } from '#vector/app/types/vector'
 
 export interface VectorListOptions {
     page?: number
@@ -233,10 +233,13 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
         return api<VectorImportPreview>(`${base()}/import/preview`, { method: 'POST', body })
     }
 
-    function importCsv(file: File, mapping: Record<string, string>): Promise<{ jobId: number, rows: number }> {
+    /** `mode` update or upsert matches each row to a record by `key`, a mapped key or unique field. */
+    function importCsv(file: File, mapping: Record<string, string>, mode: VectorImportMode = 'create', key = ''): Promise<{ jobId: number, rows: number }> {
         const body = new FormData()
         body.append('file', file)
         body.append('mapping', JSON.stringify(mapping))
+        body.append('mode', mode)
+        if (mode !== 'create') body.append('key', key)
 
         return api<{ jobId: number, rows: number }>(`${base()}/import`, { method: 'POST', body })
     }

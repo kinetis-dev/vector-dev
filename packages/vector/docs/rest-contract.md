@@ -26,6 +26,29 @@ A resource's `replicable` says whether the admin offers Duplicate; a
 field's `unique` whether a copy starts without its value (and, for an
 import, whether it can match rows). A copy is an ordinary create.
 
+## Import
+
+`POST /vector/r/{resource}/import` takes a multipart `file`, `mapping`
+(JSON, CSV header → field name), `mode` and `key`:
+
+| `mode` | Each row | Needs |
+|---|---|---|
+| `create` (default) | is created | `permissions.create`; no `key` |
+| `update` | updates the record whose `key` matches it; a row matching none is a failed row | `permissions.update` and a `key` |
+| `upsert` | updates the matching record, or is created when none matches | either permission and a `key` |
+
+`key` is the resource's primary key field or a field with `unique:
+true`, and must be mapped. The mapping may name what the mode writes: the
+`create` view's fields, the `update` view's, or either for `upsert` (a
+row is then refused, per row, a field its own path does not take). The
+key itself is matched by and never written by an update. Each match is
+one indexed lookup through the resource's `scope()`, excluding trashed
+records, and each write goes through the writer, so rules, the `create`
+or `update` policy, hooks and audit apply per row. The job's `result` is
+`{created, updated, failed}` (an object whose key order is not
+guaranteed); refused rows, with an `error` column, are the job's file.
+`POST …/import/preview` suggests a mapping, including the key column.
+
 ## Layout
 
 A resource's `layout` is `null`, or `{form, show}`: each a list of nodes

@@ -695,6 +695,19 @@ reported on the row. A queued action must still tolerate a chunk running
 twice, because a chunk's flush and the progress written after it are two
 statements.
 
+An import creates each row, or — with `mode: update` or `upsert` and
+a `key` column (the primary key or a `unique()` field, mapped) —
+updates the record the key finds, creating the rest in `upsert` and
+sending them to the failed-rows file in `update`. One indexed lookup per
+row runs through the resource's `scope()`, so a row can only update a
+record its admin may list; every write goes through the writer, so the
+`update` policy, rules, hooks and audit apply per row. The result is
+`{created, updated, failed}`; see the [REST contract](docs/rest-contract.md#import).
+Re-importing an export with `key: sku` in `upsert` mode changes the
+values in place instead of duplicating rows — map the columns that
+import back (a relation exports its label, a rich-text field its plain
+text) and skip the rest.
+
 Vector has no queue of its own. Two settings decide where its jobs go:
 
 | Key | Meaning |

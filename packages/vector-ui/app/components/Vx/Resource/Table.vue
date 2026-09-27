@@ -363,7 +363,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
             <v-spacer />
             <v-btn v-for="action in standaloneActions" :key="action.name" size="small" variant="tonal" :prepend-icon="action.icon ?? undefined" @click="dialogAction = action">{{ action.label }}</v-btn>
             <v-btn v-if="resource.permissions.export" size="small" variant="text" icon="mdi-download-outline" :aria-label="t('list.exportCsv')" @click="exportCsv" />
-            <v-btn v-if="resource.permissions.create && schema?.capabilities.queue" size="small" variant="text" icon="mdi-upload-outline" :aria-label="t('list.importCsv')" @click="importing = true" />
+            <v-btn v-if="(resource.permissions.create || resource.permissions.update) && schema?.capabilities.queue" size="small" variant="text" icon="mdi-upload-outline" :aria-label="t('list.importCsv')" @click="importing = true" />
             <VxListColumnManager v-model="columns" :resource="resource" />
         </div>
         <VxListFilterBar v-model="filters" v-model:groups="groups" v-model:advanced="advanced" :resource="resource" class="mb-2" />

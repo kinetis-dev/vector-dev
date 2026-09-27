@@ -608,6 +608,23 @@ final readonly class ResourceService
     }
 
     /**
+     * The identifier of the one record whose $field holds $value, through
+     * the resource's scope and without trashed records: what an import
+     * updating by a key column matches a row to. One indexed statement —
+     * $field is the key or a unique field.
+     */
+    public function findByKey(ResourceDescriptor $resource, string $field, mixed $value): int|string|null
+    {
+        $column = $resource->columns()[$field] ?? throw new \LogicException("{$field} has no column.");
+        $query = $this->baseQuery($resource, null)->select($resource->primaryKeyColumn())->where($column, '=', $value)->limit(1);
+        $this->applySoftDelete($resource, $query, ListRequest::TRASHED_WITHOUT);
+        $row = $query->first();
+        $id = is_array($row) ? ($row[$resource->primaryKeyColumn()] ?? null) : null;
+
+        return is_int($id) || is_string($id) ? $id : null;
+    }
+
+    /**
      * Several records by identifier, serialized as show() serializes one,
      * in one statement plus one per relation field. For policy decisions
      * about records the caller already names; no view check of its own.

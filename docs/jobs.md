@@ -50,10 +50,23 @@ progress written after it are separate statements.
 ## Imports
 
 An import reads a CSV (up to 50 000 rows and 8 MB), maps columns to
-fields as the user chose, and creates each row through the normal write
+fields as the user chose, and writes each row through the normal write
 path: validation, policy, hooks and audit. Rows that fail are collected
 into a file on the finished job, with the reason for each in an `error`
 column.
+
+What a row does depends on the mode:
+
+| Mode | A row | Needs |
+|---|---|---|
+| Create new records | is created | permission to create |
+| Update existing records | updates the record its key column matches; a row that matches none fails | permission to update, and a key |
+| Update or create | updates the matching record, or is created | either permission, and a key |
+
+The key column is the record's ID or a field declared `unique()`, and
+must be mapped. A row can only match a record you may see in the list,
+and each update is still checked against the update policy. The
+finished job reports how many rows were created, updated and failed.
 
 Rows are created one by one: a failed row never undoes the rows before
 it. To retry, fix and import the failed-rows file, not the original.

@@ -134,7 +134,13 @@ final readonly class ResourceController
     public function import(string $resource, #[Body] ImportRequest $upload): ResponseInterface
     {
         $descriptor = $this->service->resource($resource);
-        $this->service->permissions($descriptor)['create'] || throw new ForbiddenOperationException('This account may not create records here.');
+        $permissions = $this->service->permissions($descriptor);
+        // each row is still authorized as the create or update it becomes
+        match ($upload->mode) {
+            'update' => $permissions['update'] || throw new ForbiddenOperationException('This account may not update records here.'),
+            'upsert' => $permissions['create'] || $permissions['update'] || throw new ForbiddenOperationException('This account may not create or update records here.'),
+            default => $permissions['create'] || throw new ForbiddenOperationException('This account may not create records here.'),
+        };
         $reason = $this->queue->unavailableReason();
 
         if ($reason !== null) {
@@ -151,7 +157,7 @@ final readonly class ResourceController
             throw ValidationException::fromViolations([new Violation(['mapping'], 'type_mismatch', 'must be a JSON object.')]);
         }
 
-        $mapping = $this->mapper->validateMapping($descriptor, $mapping);
+        $mapping = $this->mapper->validateMapping($descriptor, $mapping, $upload->mode, $upload->key);
 
         if ($mapping === []) {
             throw ValidationException::fromViolations([new Violation(['mapping'], 'required', 'must map at least one column.')]);
@@ -161,7 +167,7 @@ final readonly class ResourceController
         $reader = CsvReader::fromString($contents); // refuses a file without a header or over the row cap
         $fileName = mb_substr($upload->file->getClientFilename() ?? 'import.csv', 0, 255); // the column's width
         $jobId = $this->jobs->create('import', $descriptor->slug(), 'import', (string) $this->user->id(), $reader->rowCount(), $contents, $fileName, 'text/csv');
-        $this->queue->enqueue($this->jobs, $jobId, new ImportJob($jobId, $descriptor->slug(), $mapping, (string) $this->user->id()));
+        $this->queue->enqueue($this->jobs, $jobId, new ImportJob($jobId, $descriptor->slug(), $mapping, (string) $this->user->id(), $upload->mode, $upload->mode === 'create' || $upload->key === '' ? null : $upload->key));
 
         return JsonResponse::create(['type' => 'job', 'jobId' => $jobId, 'rows' => $reader->rowCount()], 202);
     }

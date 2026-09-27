@@ -123,6 +123,18 @@ export default {
         skip: '— skip —',
         start: 'Import {rows} rows',
         queued: 'Import of {rows} rows queued.',
+        mode: 'Rows',
+        modes: {
+            create: 'Create new records',
+            update: 'Update existing records',
+            upsert: 'Update or create',
+        },
+        key: 'Match rows by',
+        noKey: 'Map a column to the key or a unique field first.',
+        modeHelp: {
+            update: 'Each row updates the record whose value matches; a row that matches none goes to the failed-rows file.',
+            upsert: 'Each row updates the record whose value matches, or creates one when none does.',
+        },
     },
     page: {
         create: 'New {noun}',
