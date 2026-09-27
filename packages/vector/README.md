@@ -801,9 +801,15 @@ the UI hides the Jobs page and the import button.
 ## MCP tools
 
 `Kinetis\Vector\Mcp\VectorTools` registers `vector_resources`,
-`vector_query`, `vector_get`, `vector_create`, `vector_update`,
-`vector_delete`, `vector_run_action` and `vector_widget`, and the
-`vector://schema` resource. They call the same services and policies as
+`vector_describe`, `vector_query`, `vector_get`, `vector_create`,
+`vector_update`, `vector_delete`, `vector_run_action` and
+`vector_widget`, and the `vector://schema` resource.
+`vector_resources` is an index (slug, label, group). `vector_describe`
+gives one resource as an agent needs it (`Mcp\ResourceDescription`):
+per field whether a create must send it (`RecordInput::requiredOnCreate()`,
+the writer's own rule), what may write it, its rules, choices, format,
+relation and filter operators, plus the actions' dialogs and this
+user's permissions, translated and without fields a policy hides. They call the same services and policies as
 the routes, inject `CurrentUserInterface` (so `kinetis mcp:serve` fails
 closed without an identity) and ask `VectorAccessInterface` as the
 `vector` group would. Open-shaped arguments are plain JSON objects:

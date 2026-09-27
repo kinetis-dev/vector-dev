@@ -113,7 +113,7 @@ final class AuditImpersonationMcpTest extends VectorTestCase
         self::assertIsArray($list);
         $names = array_column($list['result']['tools'], 'name');
 
-        foreach (['vector_resources', 'vector_query', 'vector_get', 'vector_create', 'vector_update', 'vector_delete', 'vector_run_action', 'vector_widget'] as $tool) {
+        foreach (['vector_resources', 'vector_describe', 'vector_query', 'vector_get', 'vector_create', 'vector_update', 'vector_delete', 'vector_run_action', 'vector_widget'] as $tool) {
             self::assertContains($tool, $names);
         }
 
