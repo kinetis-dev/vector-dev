@@ -42,7 +42,9 @@ final readonly class WidgetRunner
             throw new ForbiddenOperationException("The widget {$compiled['name']} is not available to this account.");
         }
 
-        $key = "{$cacheScope}/{$compiled['name']}/{$range}";
+        // a result computed for one account is that account's unless the widget declared it the same for all
+        $owner = ($compiled['cacheShared'] ?? false) === true ? 'shared' : 'user:' . $this->user->id();
+        $key = "{$cacheScope}/{$compiled['name']}/{$range}/{$owner}";
         $seconds = $compiled['cacheSeconds'];
 
         if ($seconds > 0 && ($cached = $this->cache->get($key)) !== null) {
@@ -56,6 +58,19 @@ final readonly class WidgetRunner
         }
 
         return $result;
+    }
+
+    /**
+     * Whether this user may open a compiled dashboard at all; every path
+     * that computes one of its widgets asks first, HTTP and MCP alike.
+     *
+     * @param array<string, mixed> $dashboard as the registry compiled it
+     */
+    public function dashboardVisible(array $dashboard): bool
+    {
+        $instance = $this->scope->get($dashboard['class']);
+
+        return $instance instanceof VectorDashboard && $instance->canView($this->user);
     }
 
     /**

@@ -4,14 +4,11 @@ declare(strict_types=1);
 
 namespace Kinetis\Vector\Http;
 
-use Kinetis\Container\RequestScope;
 use Kinetis\Http\Attributes\Get;
 use Kinetis\Http\Attributes\Middleware;
 use Kinetis\Http\Attributes\RoutePrefix;
-use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Vector\Exception\ForbiddenOperationException;
 use Kinetis\Vector\Registry\VectorRegistry;
-use Kinetis\Vector\Widgets\VectorDashboard;
 use Kinetis\Vector\Widgets\WidgetRunner;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -23,8 +20,6 @@ final readonly class DashboardController
     public function __construct(
         private VectorRegistry $registry,
         private WidgetRunner $widgets,
-        private RequestScope $scope,
-        private CurrentUserInterface $user,
     ) {}
 
     /** @return array{data: array<string, mixed>} */
@@ -59,9 +54,8 @@ final readonly class DashboardController
     private function admitted(string $name): array
     {
         $dashboard = $this->registry->dashboard($name);
-        $instance = $this->scope->get($dashboard['class']);
 
-        if (!$instance instanceof VectorDashboard || !$instance->canView($this->user)) {
+        if (!$this->widgets->dashboardVisible($dashboard)) {
             throw new ForbiddenOperationException('This dashboard is not available to this account.');
         }
 
