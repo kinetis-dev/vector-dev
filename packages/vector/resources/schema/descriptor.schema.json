@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://kinetis.dev/schemas/vector/descriptor.json",
     "title": "Vector descriptor",
-    "description": "What GET /vector/schema publishes: the compiled resources, settings groups, dashboards, menu and branding, overlaid with the caller's permissions.",
+    "description": "What GET /vector/schema publishes: the compiled resources, settings groups, dashboards, menu and branding, overlaid with the caller's permissions and translated into the caller's language.",
     "type": "object",
     "required": [
         "version",
@@ -68,6 +68,59 @@
                 },
                 "queue": {
                     "type": "boolean"
+                },
+                "uploads": {
+                    "type": "boolean"
+                },
+                "exportFormats": {
+                    "description": "The export formats offered: csv always; xlsx where openspout/openspout and ext-zip are installed, VECTOR_EXPORT_FORMATS lists it, and a queue runs it.",
+                    "type": "array",
+                    "items": {
+                        "enum": [
+                            "csv",
+                            "xlsx"
+                        ]
+                    },
+                    "uniqueItems": true
+                }
+            }
+        },
+        "i18n": {
+            "description": "The language this descriptor's labels are in, and the languages this user may switch to: the ones the administrator enabled in the Languages settings group.",
+            "type": "object",
+            "required": [
+                "locale",
+                "locales"
+            ],
+            "properties": {
+                "locale": {
+                    "type": "string"
+                },
+                "locales": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "code",
+                            "name",
+                            "dir"
+                        ],
+                        "properties": {
+                            "code": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "description": "The language's name in itself.",
+                                "type": "string"
+                            },
+                            "dir": {
+                                "enum": [
+                                    "ltr",
+                                    "rtl"
+                                ]
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -190,7 +243,9 @@
                         "belongsTo",
                         "hasOne",
                         "hasMany",
-                        "manyToMany"
+                        "manyToMany",
+                        "computed",
+                        "richtext"
                     ]
                 },
                 "label": {
@@ -427,6 +482,107 @@
                             }
                         }
                     }
+                },
+                "computed": {
+                    "description": "A computed field's display kind and the fields its value is computed from. Read-only; never sorted, filtered, searched or written.",
+                    "type": "object",
+                    "required": [
+                        "as",
+                        "from"
+                    ],
+                    "properties": {
+                        "as": {
+                            "enum": [
+                                "text",
+                                "number",
+                                "money",
+                                "boolean",
+                                "date",
+                                "datetime",
+                                "enum"
+                            ]
+                        },
+                        "from": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "richtext": {
+                    "description": "A rich-text field: the editor's JSON document, validated against this schema on write. `features` is the allow-list of node and mark types; images come from `imageField`'s uploads and are stored as storage keys; mentions from the `mentions` relation. `storesHtml` means the stored value (as read) is HTML rendered through the same schema.",
+                    "type": "object",
+                    "required": [
+                        "features",
+                        "imageField",
+                        "mentions",
+                        "storesHtml",
+                        "maxBytes"
+                    ],
+                    "properties": {
+                        "features": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "imageField": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "mentions": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "storesHtml": {
+                            "type": "boolean"
+                        },
+                        "maxBytes": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "markdown": {
+                    "description": "A Markdown field's editor toolbar. The stored value is Markdown source.",
+                    "type": "object",
+                    "required": [
+                        "toolbar"
+                    ],
+                    "properties": {
+                        "toolbar": {
+                            "type": "array",
+                            "items": {
+                                "enum": [
+                                    "bold",
+                                    "italic",
+                                    "strike",
+                                    "code",
+                                    "heading",
+                                    "list",
+                                    "blockquote",
+                                    "codeBlock",
+                                    "horizontalRule",
+                                    "link"
+                                ]
+                            }
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "unique": {
+                    "description": "The value is unique among the resource's records (unique()): a duplicated record's form starts without it, and a CSV import may match rows by it.",
+                    "type": "boolean"
+                },
+                "default": {
+                    "description": "The value a create form starts with (hasDefault says whether there is one); for a Currency field without its own, VECTOR_CURRENCY."
                 }
             },
             "not": {
@@ -556,6 +712,10 @@
                 "cacheSeconds": {
                     "type": "integer",
                     "minimum": 0
+                },
+                "cacheShared": {
+                    "description": "Whether the widget's cached result is shared by every user (true) or kept per user.",
+                    "type": "boolean"
                 }
             },
             "not": {
@@ -579,7 +739,8 @@
                 "softDelete",
                 "actions",
                 "widgets",
-                "permissions"
+                "permissions",
+                "layout"
             ],
             "properties": {
                 "slug": {
@@ -827,6 +988,40 @@
                         "export",
                         "setDefaultView"
                     ]
+                },
+                "layout": {
+                    "description": "How the form and the show page group the fields: sections, tabs and column spans, per view. Null when the resource declared none. Layout never changes what is validated, serialized or written.",
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "required": [
+                        "form",
+                        "show"
+                    ],
+                    "properties": {
+                        "form": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/layoutNode"
+                            }
+                        },
+                        "show": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/layoutNode"
+                            }
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "replicable": {
+                    "description": "Whether a record may be duplicated into a new one's form; true unless the resource opts out (replicable()).",
+                    "type": "boolean"
+                },
+                "globallySearchable": {
+                    "description": "Whether GET /vector/search covers this resource.",
+                    "type": "boolean"
                 }
             },
             "not": {
@@ -897,6 +1092,82 @@
                 },
                 "value": {}
             }
+        },
+        "layoutNode": {
+            "description": "One node of a resource's layout: a section, a group of tabs, a tab, or a field placed by name. Every key is present; the ones a kind does not use are null or false.",
+            "type": "object",
+            "required": [
+                "kind",
+                "label",
+                "description",
+                "collapsible",
+                "collapsed",
+                "columns",
+                "span",
+                "name",
+                "children"
+            ],
+            "properties": {
+                "kind": {
+                    "enum": [
+                        "section",
+                        "tabs",
+                        "tab",
+                        "field"
+                    ]
+                },
+                "label": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "collapsible": {
+                    "type": "boolean"
+                },
+                "collapsed": {
+                    "type": "boolean"
+                },
+                "columns": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ],
+                    "minimum": 1,
+                    "maximum": 4
+                },
+                "span": {
+                    "description": "A field's width in its section's grid: 1 or 2 columns, or the whole row. Null lets the UI size the field by its type.",
+                    "enum": [
+                        1,
+                        2,
+                        "full",
+                        null
+                    ]
+                },
+                "name": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "children": {
+                    "type": [
+                        "array",
+                        "null"
+                    ],
+                    "items": {
+                        "$ref": "#/$defs/layoutNode"
+                    }
+                }
+            },
+            "additionalProperties": false
         }
     }
 }

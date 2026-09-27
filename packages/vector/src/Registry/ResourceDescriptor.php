@@ -70,6 +70,13 @@ final readonly class ResourceDescriptor
             return $this;
         }
 
+        // a computed value computed from a hidden field would show it: it goes too
+        foreach ($this->fields as $name => $field) {
+            if (array_intersect($field['computed']['from'] ?? [], $hidden) !== [] && !in_array($name, $hidden, true)) {
+                $hidden[] = $name;
+            }
+        }
+
         $keep = static fn (array $names): array => array_values(array_diff($names, $hidden));
         $data = $this->data;
         $data['fields'] = array_values(array_filter($data['fields'], static fn (array $field): bool => !in_array($field['name'], $hidden, true)));
@@ -84,6 +91,15 @@ final readonly class ResourceDescriptor
         $data['table_view']['defaultSort'] = array_values(array_filter($data['table_view']['defaultSort'], static fn (array $sort): bool => !in_array($sort['field'], $hidden, true)));
         $data['show_view']['fields'] = $keep($data['show_view']['fields']);
         $data['show_view']['extra'] = $keep($data['show_view']['extra']);
+
+        // the layout loses the hidden fields, and a section or tab they leave empty
+        if (($data['layout'] ?? null) !== null) {
+            $visible = static fn (string $name): bool => !in_array($name, $hidden, true);
+            $data['layout'] = [
+                'form' => LayoutCompiler::prune($data['layout']['form'], $visible),
+                'show' => LayoutCompiler::prune($data['layout']['show'], $visible),
+            ];
+        }
         $data['globallySearchable'] = $data['globallySearchable'] && $data['searchColumns'] !== [];
         $data['searchResult'] = array_map(static fn (?string $field): ?string => in_array($field, $hidden, true) ? null : $field, $data['searchResult']);
 
@@ -218,6 +234,22 @@ final readonly class ResourceDescriptor
         return $this->data['table_view']['bulkLimit'];
     }
 
+    /**
+     * How the form and the show page group the fields, or null when the
+     * resource declared no sections, tabs or spans.
+     *
+     * @return array{form: list<array<string, mixed>>, show: list<array<string, mixed>>}|null
+     */
+    public function layout(): ?array
+    {
+        return $this->data['layout'] ?? null;
+    }
+
+    public function replicable(): bool
+    {
+        return $this->data['replicable'] ?? true;
+    }
+
     /** @return list<array<string, mixed>> */
     public function actions(): array
     {
@@ -306,6 +338,27 @@ final readonly class ResourceDescriptor
         return $this->data['columns'][$this->data['titleField']];
     }
 
+    /**
+     * The computed fields among $names, with the resource method computing each.
+     *
+     * @param list<string> $names
+     * @return array<string, string> field name => method
+     */
+    public function computedMethods(array $names): array
+    {
+        $methods = [];
+
+        foreach ($names as $name) {
+            $method = $this->fields[$name]['computed']['method'] ?? null;
+
+            if (is_string($method)) {
+                $methods[$name] = $method;
+            }
+        }
+
+        return $methods;
+    }
+
     /** @return array<string, array<string, mixed>> */
     public function fields(): array
     {
@@ -390,6 +443,8 @@ final readonly class ResourceDescriptor
         $public['show'] = $public['show_view'];
         unset($public['table_view'], $public['show_view']);
         $public['fields'] = array_map(self::publicField(...), $public['fields']);
+        $public['layout'] ??= null;
+        $public['replicable'] ??= true;
 
         return $public;
     }
@@ -403,6 +458,14 @@ final readonly class ResourceDescriptor
     public static function publicField(array $field): array
     {
         unset($field['column'], $field['enum']);
+
+        if (isset($field['computed'])) {
+            unset($field['computed']['method']);
+        }
+
+        if (isset($field['richtext'])) {
+            unset($field['richtext']['textField'], $field['textColumn'], $field['searchColumn']);
+        }
 
         if (isset($field['relation'])) {
             unset($field['relation']['targetTable'], $field['relation']['targetKey'], $field['relation']['foreignKey'], $field['relation']['joinTable'], $field['relation']['joinColumn'], $field['relation']['inverseJoinColumn']);

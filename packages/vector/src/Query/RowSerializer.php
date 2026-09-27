@@ -7,6 +7,7 @@ namespace Kinetis\Vector\Query;
 use DateTimeImmutable;
 use DateTimeZone;
 use Kinetis\Vector\Registry\ResourceDescriptor;
+use Kinetis\Vector\VectorResource;
 
 /**
  * Turns a database row into the record a client sees: every field
@@ -19,9 +20,10 @@ final readonly class RowSerializer
      * @param array<string, mixed> $row
      * @param list<string> $fieldNames the fields to include
      * @param array<string, array<int|string, mixed>> $relations field name => (key => display value)
+     * @param VectorResource|null $instance the resource, which computes its computed fields
      * @return array<string, mixed>
      */
-    public function serialize(ResourceDescriptor $resource, array $row, array $fieldNames, array $relations): array
+    public function serialize(ResourceDescriptor $resource, array $row, array $fieldNames, array $relations, ?VectorResource $instance = null): array
     {
         $record = [];
 
@@ -32,6 +34,13 @@ final readonly class RowSerializer
                 continue;
             }
 
+            // computed once every other field is serialized, from the record itself
+            if ($field['type'] === 'computed') {
+                $record[$name] = null;
+
+                continue;
+            }
+
             $record[$name] = match ($field['type']) {
                 'belongsTo' => $this->belongsTo($field, $row, $relations[$name] ?? []),
                 'hasOne' => $relations[$name][$this->key($row, $resource)] ?? null,
@@ -39,6 +48,10 @@ final readonly class RowSerializer
                 'keyValue' => self::keyValue($row[$field['column']] ?? null),
                 default => $this->scalar($field, $row[$field['column']] ?? null),
             };
+        }
+
+        foreach ($resource->computedMethods($fieldNames) as $name => $method) {
+            $record[$name] = $instance === null ? null : self::computed($resource->field($name) ?? [], $instance->{$method}($record));
         }
 
         $soft = $resource->softDelete();
@@ -108,6 +121,29 @@ final readonly class RowSerializer
         }
 
         return $map;
+    }
+
+    /**
+     * A computed value, typed by what it is shown as.
+     *
+     * @param array<string, mixed> $field
+     */
+    private static function computed(array $field, mixed $value): mixed
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return match ($field['computed']['as'] ?? 'text') {
+            'money' => (int) round(is_numeric($value) ? (float) $value : 0.0),
+            'number' => is_int($value) ? $value : (is_numeric($value) ? (float) $value : null),
+            'boolean' => (bool) $value,
+            'date' => $value instanceof \DateTimeInterface ? $value->format('Y-m-d') : (is_scalar($value) ? (string) $value : null),
+            'datetime' => $value instanceof \DateTimeInterface
+                ? \DateTimeImmutable::createFromInterface($value)->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.v\Z')
+                : (is_scalar($value) ? (string) $value : null),
+            default => is_scalar($value) || $value instanceof \Stringable ? (string) $value : null,
+        };
     }
 
     /** @param array<string, mixed> $field */

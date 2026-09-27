@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { VectorWidget, VectorWidgetData } from '#vector/app/types/vector'
 
-// One widget card: loads its data for the selected range and renders
-// the shape its type declares. A consuming app replaces a type through
+// One widget card: loads its data for the selected range — and again in a
+// new language, whose labels the server translates — and renders the shape
+// its type declares. A consuming app replaces a type through
 // app.config.vector.widgets, like fields and inputs.
 const props = defineProps<{
     widget: VectorWidget
@@ -32,7 +33,8 @@ async function refresh() {
     }
 }
 
-watch(range, refresh)
+const { current: locale } = useVectorLocale()
+watch([range, locale], refresh)
 onMounted(refresh)
 
 const builtIn: Record<string, Component> = {

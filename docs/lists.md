@@ -79,13 +79,19 @@ edits asks first.
 
 ## Export and import
 
-- **Export CSV** downloads the list as it is filtered, sorted and
-  columned. A large export runs as a background job; you are notified
-  when the file is ready.
+- **Export** downloads the list as it is filtered, sorted and columned,
+  as CSV or — where the server offers it — as an Excel workbook (XLSX)
+  whose numbers, amounts, yes/no values and dates are real spreadsheet
+  values. A large CSV export, and every Excel export, runs as a
+  background job; you are notified when the file is ready.
 - **Import CSV** reads a file, suggests which column goes to which
-  field, and lets you correct the mapping or skip a column. The import
-  runs as a background job; rows that fail come back as a file to fix
-  and import again.
+  field, and lets you correct the mapping or skip a column. Choose
+  whether rows **create new records**, **update existing records**, or
+  **update or create**; the last two match each row by a key column —
+  the ID or a unique field such as a SKU. Re-importing a corrected
+  export this way changes records instead of duplicating them. The
+  import runs as a background job; rows that fail come back as a file
+  to fix and import again.
 
 ## See also
 

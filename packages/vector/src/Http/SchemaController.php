@@ -17,6 +17,8 @@ use Kinetis\Vector\Store\PreferenceStore;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Store\NotificationStore;
 use Kinetis\Vector\Store\SettingsStore;
+use Kinetis\Vector\Translation\Labels;
+use Kinetis\Vector\Translation\LocaleResolver;
 use Kinetis\Vector\Auth\ImpersonatedUserInterface;
 use Kinetis\Vector\Auth\ImpersonationInterface;
 use Kinetis\Vector\Widgets\VectorDashboard;
@@ -24,9 +26,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
- * The descriptor, overlaid with what this user may do. Resources the
- * user may not list are absent, not marked. The ETag covers the overlay,
- * so a client caches per identity.
+ * The descriptor, overlaid with what this user may do and translated
+ * into the language this request is answered in. Resources the user may
+ * not list are absent, not marked. The ETag covers the overlay and the
+ * language, so a client caches per identity and per language.
  */
 #[RoutePrefix('/vector')]
 #[Middleware('@vector')]
@@ -39,6 +42,9 @@ final readonly class SchemaController
         private PreferenceStore $preferences,
         private RequestScope $scope,
         private NotificationStore $notifications,
+        private \Kinetis\Vector\VectorDefaults $defaults,
+        private LocaleResolver $locales,
+        private Labels $labels,
     ) {}
 
     #[Get('/schema')]
@@ -94,15 +100,19 @@ final readonly class SchemaController
             'capabilities' => [
                 'impersonation' => $this->scope->has(ImpersonationInterface::class) && $this->impersonation()?->canImpersonate($this->user) === true,
                 'queue' => $this->vectorQueue()->available(),
+                // XLSX is written in the queue worker only
+                'exportFormats' => array_values(array_filter($this->defaults->exportFormats, fn (string $format): bool => $format === 'csv' || $this->vectorQueue()->available())),
                 'uploads' => $this->scope->get(\Kinetis\Vector\Files\VectorStorage::class) instanceof \Kinetis\Vector\Files\VectorStorage
                     && $this->scope->get(\Kinetis\Vector\Files\VectorStorage::class)->available(),
             ],
             'branding' => isset($registry->settings()['branding']) ? $this->settings->values($registry->settingsGroup('branding')) : null,
+            // the language this answer is in, and the ones this user may switch to
+            'i18n' => $i18n = $this->locales->resolve((string) $this->user->id()),
             // a money value is in its currency's minor units: these codes are not hundredths
             'minorUnits' => \Kinetis\Vector\Fields\Currency::MINOR_UNITS,
         ];
 
-        return $this->cached($request, $document);
+        return $this->cached($request, $this->labels->document($document, $i18n['locale']), $i18n['locale']);
     }
 
     #[Get('/schema/{resource}')]
@@ -115,7 +125,9 @@ final readonly class SchemaController
             return JsonResponse::create(['error' => 'This account may not view this resource.'], 403);
         }
 
-        return $this->cached($request, $this->overlay($descriptor, $permissions));
+        $locale = $this->locales->resolve((string) $this->user->id())['locale'];
+
+        return $this->cached($request, $this->labels->document($this->overlay($descriptor, $permissions), $locale), $locale);
     }
 
     /** @return array<string, mixed> */
@@ -164,10 +176,10 @@ final readonly class SchemaController
     }
 
     /** @param array<string, mixed> $document */
-    private function cached(ServerRequestInterface $request, array $document): ResponseInterface
+    private function cached(ServerRequestInterface $request, array $document, string $locale): ResponseInterface
     {
         $json = json_encode($document, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
-        $etag = '"' . hash('xxh128', $json . '|' . $this->user->id()) . '"';
+        $etag = '"' . hash('xxh128', $json . '|' . $this->user->id() . '|' . $locale) . '"';
 
         if (in_array($etag, array_map('trim', explode(',', $request->getHeaderLine('If-None-Match'))), true)) {
             return PlainTextResponse::create('', 304, ['ETag' => $etag]);

@@ -1,0 +1,23 @@
+// Words every area shares. Keep a key here only when two areas or more use it.
+export default {
+    save: 'שמירה',
+    cancel: 'ביטול',
+    create: 'יצירה',
+    edit: 'עריכה',
+    delete: 'מחיקה',
+    deleteForever: 'מחיקה לצמיתות',
+    restore: 'שחזור',
+    close: 'סגירה',
+    apply: 'החלה',
+    remove: 'הסרה',
+    search: 'חיפוש',
+    loading: 'טוען…',
+    required: 'שדה חובה',
+    none: '—',
+    yes: 'כן',
+    no: 'לא',
+    download: 'הורדה',
+    actions: 'פעולות',
+    confirm: 'אישור',
+    serverRejected: 'השרת דחה את הבקשה.',
+}

@@ -23,11 +23,24 @@ abstract class VectorResource
      * The fields to administer. An empty list means "derive every field
      * from the entity's metadata"; a non-empty list replaces derivation.
      *
-     * @return list<Field>
+     * Sections and tabs (Fields\Layout\Section, Fields\Layout\Tabs) may
+     * sit among the fields to group them on the form and the show page;
+     * see the descriptor's `layout`.
+     *
+     * @return list<Field|\Kinetis\Vector\Fields\Layout\Layout>
      */
     public function fields(): array
     {
         return [];
+    }
+
+    /**
+     * Whether a record may be duplicated into a new one's form (the
+     * admin's Duplicate button). True unless a resource opts out.
+     */
+    public function replicable(): bool
+    {
+        return true;
     }
 
     /**
@@ -121,15 +134,16 @@ abstract class VectorResource
     }
 
     /**
-     * The field a global search result shows under its title — a text,
-     * number or enum field, such as a SKU or an e-mail — or null for none.
+     * The field a global search result and a relation's choice list show
+     * under the title — a text, number or enum field, such as a SKU or an
+     * e-mail — or null for none.
      */
     public function searchSubtitle(): ?string
     {
         return null;
     }
 
-    /** The image field a global search result shows as its thumbnail, or null for none. */
+    /** The image field a global search result and a relation's choice list show as a thumbnail, or null for none. */
     public function searchImage(): ?string
     {
         return null;

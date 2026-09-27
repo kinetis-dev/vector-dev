@@ -1,0 +1,23 @@
+// Words every area shares. Keep a key here only when two areas or more use it.
+export default {
+    save: 'Kaydet',
+    cancel: 'İptal',
+    create: 'Oluştur',
+    edit: 'Düzenle',
+    delete: 'Sil',
+    deleteForever: 'Kalıcı olarak sil',
+    restore: 'Geri yükle',
+    close: 'Kapat',
+    apply: 'Uygula',
+    remove: 'Kaldır',
+    search: 'Ara',
+    loading: 'Yükleniyor…',
+    required: 'Zorunlu',
+    none: '—',
+    yes: 'Evet',
+    no: 'Hayır',
+    download: 'İndir',
+    actions: 'Eylemler',
+    confirm: 'Onayla',
+    serverRejected: 'Sunucu isteği reddetti.',
+}

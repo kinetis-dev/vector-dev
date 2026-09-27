@@ -35,4 +35,12 @@ final readonly class Credentials
 
         return $user->verifyPassword($password) ? $user : null;
     }
+
+    /** The user a refresh token names, as they are now: a changed name or role reaches the next access token. */
+    public function find(string $id): ?User
+    {
+        return preg_match('/^[1-9][0-9]{0,17}$/', $id) === 1
+            ? $this->entities->repository(User::class)->query()->where('id', '=', (int) $id)->first()
+            : null;
+    }
 }

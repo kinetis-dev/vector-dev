@@ -61,13 +61,13 @@ async function revert(entry: VectorAuditEntry) {
                             size="x-small"
                             variant="text"
                             prepend-icon="mdi-undo-variant"
-                            class="ml-2"
+                            class="ms-2"
                             :loading="reverting === entry.id"
                             :aria-label="t('record.audit.revertLabel')"
                             @click="revert(entry)"
                         >{{ t('record.audit.revert') }}</v-btn>
                     </div>
-                    <ul v-if="Object.keys(entry.changes).length" class="text-caption mt-1 pl-4">
+                    <ul v-if="Object.keys(entry.changes).length" class="text-caption mt-1 ps-4">
                         <li v-for="(change, field) in entry.changes" :key="field">
                             <span class="text-medium-emphasis">{{ label(String(field)) }}:</span>
                             <template v-if="entry.event === 'create'"> {{ show(change) }}</template>

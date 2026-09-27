@@ -6,8 +6,13 @@ export { expect }
 export const API = 'http://localhost:8080'
 export const UI = 'http://localhost:3000/'
 
-/** The seeded accounts (demo:seed). */
-export const ADMIN = { email: 'admin@vector.local', password: 'password', name: 'Vector Admin' }
+/**
+ * The seeded accounts (demo:seed). The suite's admin is its own, not the
+ * admin a person signs in as: every test resets this account's saved
+ * preferences, and some change them (its language), which would otherwise
+ * reach — and be reached by — whoever uses the demo at the same time.
+ */
+export const ADMIN = { email: 'e2e@vector.local', password: 'password', name: 'E2E Admin' }
 export const EDITOR = { email: 'editor@vector.local', password: 'password', name: 'Demo Editor' }
 export type Account = typeof ADMIN
 
@@ -59,8 +64,34 @@ export class Api {
         if (Object.keys(saved).length > 0) await this.preferences(Object.fromEntries(Object.keys(saved).map(key => [key, null])))
     }
 
-    async remove(resource: string, id: unknown): Promise<void> {
-        const response = await this.request.delete(`${API}/vector/r/${resource}/${id}`, { headers: this.headers })
+    /** A settings group's current values. */
+    async settingsValues(group: string): Promise<Record<string, unknown>> {
+        const response = await this.request.get(`${API}/vector/settings/${group}`, { headers: this.headers })
+        expect(response.ok(), await response.text()).toBeTruthy()
+        return (await response.json()).data.values
+    }
+
+    /** Replaces a settings group's values; `{}` puts every field back to its default. */
+    async settings(group: string, values: Record<string, unknown>): Promise<void> {
+        const response = await this.request.put(`${API}/vector/settings/${group}`, { headers: this.headers, data: values })
+        expect(response.ok(), await response.text()).toBeTruthy()
+    }
+
+    async show(resource: string, id: unknown): Promise<Record<string, unknown>> {
+        const response = await this.request.get(`${API}/vector/r/${resource}/${id}`, { headers: this.headers })
+        expect(response.ok(), await response.text()).toBeTruthy()
+        return (await response.json()).data
+    }
+
+    async update(resource: string, id: unknown, values: Record<string, unknown>): Promise<Record<string, unknown>> {
+        const response = await this.request.patch(`${API}/vector/r/${resource}/${id}`, { headers: this.headers, data: values })
+        expect(response.ok(), await response.text()).toBeTruthy()
+        return (await response.json()).data
+    }
+
+    /** Deletes a record; `force` removes a soft-deleting resource's record for good. */
+    async remove(resource: string, id: unknown, force = false): Promise<void> {
+        const response = await this.request.delete(`${API}/vector/r/${resource}/${id}`, { headers: this.headers, params: force ? { force: '1' } : {} })
         expect([204, 200, 404]).toContain(response.status())
     }
 }
@@ -93,16 +124,16 @@ export async function signIn(page: Page, mode: Mode, account: Account = ADMIN): 
 
 /** Records a test created, removed after it whatever its outcome. */
 export class Cleanup {
-    private readonly pending: { resource: string, name: string }[] = []
+    private readonly pending: { resource: string, name: string, force: boolean }[] = []
 
-    /** Removes every `resource` record whose search matches `name` once the test ends. */
-    byName(resource: string, name: string) {
-        this.pending.push({ resource, name })
+    /** Removes every `resource` record whose search matches `name` once the test ends — for good with `force`. */
+    byName(resource: string, name: string, force = false) {
+        this.pending.push({ resource, name, force })
     }
 
     async run(api: Api) {
-        for (const { resource, name } of this.pending.splice(0)) {
-            for (const record of await api.search(resource, name)) await api.remove(resource, record.id)
+        for (const { resource, name, force } of this.pending.splice(0)) {
+            for (const record of await api.search(resource, name)) await api.remove(resource, record.id, force)
         }
     }
 }
@@ -117,8 +148,13 @@ export const test = base.extend<{ admin: Page, api: Api, cleanup: Cleanup }, Opt
      */
     admin: async ({ page, mode, api }, use) => {
         await api.resetPreferences()
+        // the Languages settings are global: whatever a person set in the demo, a test starts from all
+        // languages on and English, and the person's settings come back afterwards
+        const languages = await api.settingsValues('languages')
+        await api.settings('languages', {})
         await signIn(page, mode)
         await use(page)
+        await api.settings('languages', languages)
     },
 
     api: async ({ playwright }, use) => {

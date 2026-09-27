@@ -1,5 +1,6 @@
 import * as vue from 'vue'
-import { VAlert, VAutocomplete, VBtn, VCard, VCheckbox, VChip, VIcon, VProgressLinear, VRating, VSelect, VSwitch, VTextField, VTextarea } from 'vuetify/components'
+import { Extension as TiptapExtension, Mark as TiptapMark, Node as TiptapNode, mergeAttributes } from '@tiptap/core'
+import { VAlert, VAutocomplete, VBtn, VCard, VCheckbox, VChip, VIcon, VProgressLinear, VRating, VSelect, VSwitch, VTable, VTextField, VTextarea } from 'vuetify/components'
 
 /**
  * Runtime UI extensions (§4.15 tier 2). `window.Vector` is the
@@ -16,15 +17,23 @@ export default defineNuxtPlugin(() => {
     const notifications = useVectorNotifications()
     const appConfig = useAppConfig()
     const config = useRuntimeConfig()
-    const vuetify = { VAlert, VAutocomplete, VBtn, VCard, VCheckbox, VChip, VIcon, VProgressLinear, VRating, VSelect, VSwitch, VTextField, VTextarea }
+    // VTable for a custom page's tables: its wrapper, not a bare <table>, carries Vuetify's table styles
+    const vuetify = { VAlert, VAutocomplete, VBtn, VCard, VCheckbox, VChip, VIcon, VProgressLinear, VRating, VSelect, VSwitch, VTable, VTextField, VTextarea }
 
     const api = {
         version: 1,
         vue,
         vuetify,
+        // what a rich-text extension is built from, so one needs no bundler of its own
+        tiptap: { Node: TiptapNode, Mark: TiptapMark, Extension: TiptapExtension, mergeAttributes },
         defineCell: (name: string, component: vue.Component) => registries.cells.set(name, vue.markRaw(component)),
         defineInput: (name: string, component: vue.Component) => registries.inputs.set(name, vue.markRaw(component)),
         defineWidget: (type: string, component: vue.Component) => registries.widgets.set(type, vue.markRaw(component)),
+        /**
+         * A rich-text node or mark type (a Tiptap extension) a field's `features` may then name. The server
+         * accepts it only when the application registered the same name with Document::extend().
+         */
+        defineRichTextExtension: (name: string, extension: import('@tiptap/core').AnyExtension) => registries.richText.set(name, vue.markRaw(extension)),
         /** Adds or overrides UI messages for a locale: defineMessages('de', { common: { save: 'Speichern' } }). */
         defineMessages: (locale: string, messages: Record<string, unknown>) => i18n.global.mergeLocaleMessage(locale, messages),
         /** A custom page at `/p/{name}`, listed in the menu: definePage('stock', { title: 'Stock', icon: 'mdi-warehouse', component }). */
@@ -59,9 +68,11 @@ declare global {
             version: number
             vue: typeof vue
             vuetify: Record<string, vue.Component>
+            tiptap: { Node: typeof TiptapNode, Mark: typeof TiptapMark, Extension: typeof TiptapExtension, mergeAttributes: typeof mergeAttributes }
             defineCell: (name: string, component: vue.Component) => void
             defineInput: (name: string, component: vue.Component) => void
             defineWidget: (type: string, component: vue.Component) => void
+            defineRichTextExtension: (name: string, extension: import('@tiptap/core').AnyExtension) => void
             defineMessages: (locale: string, messages: Record<string, unknown>) => void
             definePage: (name: string, page: { title: string, icon?: string, group?: string, component: vue.Component }) => void
             api: import('nitropack').$Fetch

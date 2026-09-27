@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useTheme } from 'vuetify'
+import { languageName } from '#vector/app/i18n'
 
 const appConfig = useAppConfig()
 const auth = useVectorAuthStore()
@@ -14,6 +15,22 @@ apply() // hosted: branding is known before the descriptor loads
 await load()
 apply()
 watch(branding, apply)
+
+// the user's language: the descriptor names it and the ones on offer; the app bar switches it.
+// Followed on every reload of the descriptor: saving the Languages settings changes what is on offer,
+// and switching off the language in use moves the user to another.
+const language = useVectorLocale()
+watch(() => schema.value?.i18n, i18n => language.adopt(i18n), { immediate: true })
+const currentLanguage = computed(() => language.locales.value.find(l => l.code === language.current.value) ?? null)
+async function chooseLanguage(code: string) {
+    try {
+        await language.choose(code)
+    } catch (caught) {
+        useVectorNotifications().error(t('shell.languageFailed', { error: vectorErrorMessage(caught) }))
+        // refused — say, switched off since this menu was loaded: the descriptor says what is on offer now
+        await load(true).catch(() => undefined)
+    }
+}
 
 useHead({ titleTemplate: title => title ? t('shell.titleTemplate', { title, brand: branding.value.title }) : branding.value.title })
 
@@ -75,7 +92,7 @@ async function logout() {
         return
     }
 
-    auth.clear()
+    await auth.logout() // revokes the refresh token where the application issued one
     clear()
     useVectorPreferences().clear()
     await navigateTo(`${appConfig.vector.basePath || ''}/login`)
@@ -146,9 +163,26 @@ const pageGroups = computed(() => {
             <v-app-bar-title>{{ branding.title }}</v-app-bar-title>
             <v-spacer />
             <v-btn v-if="appConfig.vector.commandPalette" variant="text" prepend-icon="mdi-magnify" class="d-none d-sm-flex" @click="palette && (palette.open = true)">
-                {{ t('common.search') }} <kbd class="ml-2 text-caption text-medium-emphasis">⌘K</kbd>
+                {{ t('common.search') }} <kbd class="ms-2 text-caption text-medium-emphasis">⌘K</kbd>
             </v-btn>
             <VxInbox />
+            <v-menu v-if="language.locales.value.length > 1">
+                <template #activator="{ props: menu }">
+                    <v-btn v-bind="menu" icon="mdi-translate" variant="text" :aria-label="t('shell.language', { name: currentLanguage?.name ?? language.current.value })" />
+                </template>
+                <v-list density="compact" :aria-label="t('shell.language', { name: currentLanguage?.name ?? language.current.value })">
+                    <!-- each in its own name (and script direction), with its name in the current language beneath -->
+                    <v-list-item
+                        v-for="locale in language.locales.value"
+                        :key="locale.code"
+                        :subtitle="languageName(locale.code, language.current.value, locale.name) ?? undefined"
+                        :active="locale.code === language.current.value"
+                        @click="chooseLanguage(locale.code)"
+                    >
+                        <template #title><span :lang="locale.code" :dir="locale.dir">{{ locale.name }}</span></template>
+                    </v-list-item>
+                </v-list>
+            </v-menu>
             <v-btn icon="mdi-theme-light-dark" variant="text" :aria-label="t('shell.toggleTheme')" @click="toggleTheme" />
             <v-menu>
                 <template #activator="{ props }">

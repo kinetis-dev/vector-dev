@@ -53,18 +53,17 @@ function subtitleOf(r: VectorSearchResult): string {
 // bearer-authenticated admin sees them too; a missing file keeps the icon.
 const thumbs = reactive<Record<string, string>>({})
 watch(results, (list) => {
-    for (const [key, url] of Object.entries(thumbs)) {
-        URL.revokeObjectURL(url)
+    for (const key of Object.keys(thumbs)) {
         delete thumbs[key]
     }
     for (const r of list) {
         if (!r.image) continue
         api<Blob>(`/vector/r/${encodeURIComponent(r.resource)}/${encodeURIComponent(String(r.id))}/files/${encodeURIComponent(r.image)}`, { responseType: 'blob' })
-            .then((blob) => { if (results.value.includes(r)) thumbs[keyOf(r)] = URL.createObjectURL(blob) })
+            .then(dataUrl)
+            .then((url) => { if (results.value.includes(r)) thumbs[keyOf(r)] = url })
             .catch(() => {})
     }
 })
-onBeforeUnmount(() => Object.values(thumbs).forEach(url => URL.revokeObjectURL(url)))
 
 const pages = useVectorPages()
 const pageItems = computed(() => Object.entries(pages.value).filter(([, p]) => (query.value ?? '').trim() === '' || p.title.toLowerCase().includes((query.value ?? '').trim().toLowerCase())))
@@ -98,7 +97,7 @@ defineExpose({ open })
                         <v-list-subheader>{{ t('shell.palette.records') }}</v-list-subheader>
                         <v-list-item v-for="r in results" :key="keyOf(r)" :title="r.title" :subtitle="subtitleOf(r)" @click="go(`/r/${r.resource}/${encodeURIComponent(String(r.id))}`)">
                             <template #prepend>
-                                <v-avatar v-if="thumbs[keyOf(r)]" rounded size="32" class="mr-4">
+                                <v-avatar v-if="thumbs[keyOf(r)]" rounded size="32" class="me-4">
                                     <v-img :src="thumbs[keyOf(r)]" alt="" cover />
                                 </v-avatar>
                                 <v-icon v-else icon="mdi-file-document-outline" />

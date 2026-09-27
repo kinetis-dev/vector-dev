@@ -50,7 +50,12 @@ A widget renderer receives `data` and `widget`.
 An extension is a plain ES module. List it in `VECTOR_UI_EXTENSIONS`
 (hosted) or `runtimeConfig.public.vector.extensions` (standalone). Its
 default export receives `window.Vector`, which hands it Vue, a curated
-set of Vuetify components and the registration functions:
+set of Vuetify components (`VAlert`, `VAutocomplete`, `VBtn`, `VCard`,
+`VCheckbox`, `VChip`, `VIcon`, `VProgressLinear`, `VRating`, `VSelect`,
+`VSwitch`, `VTable`, `VTextField`, `VTextarea`) and the registration
+functions. For a table, render `VTable` with your `thead` and `tbody` as
+its content: Vuetify's table styles belong to its wrapper, so the class
+on a bare `<table>` leaves the columns unaligned.
 
 ```js
 export default function ({ vue, vuetify, defineCell }) {
@@ -66,8 +71,33 @@ Number::make('stock')->component('stock-level'),
 ```
 
 `window.Vector` also offers `defineInput`, `defineWidget`, `definePage`,
-`defineMessages`, `api` (the admin's API client, with its credentials),
-`notify`, `navigate` and `t` (the admin's translator).
+`defineMessages`, `defineRichTextExtension`, `api` (the admin's API
+client, with its credentials), `notify`, `navigate`, `t` (the admin's
+translator) and `tiptap` (`Node`, `Mark`, `Extension`, `mergeAttributes`,
+to build a rich-text node without a bundler).
+
+## Rich-text extensions
+
+A node or mark type — a callout, an embed — joins the rich-text schema
+on both sides:
+
+```js
+export default function ({ tiptap, defineRichTextExtension }) {
+    defineRichTextExtension('callout', tiptap.Node.create({
+        name: 'callout', group: 'block', content: 'paragraph+',
+        addAttributes: () => ({ tone: { default: 'info' } }),
+        parseHTML: () => [{ tag: 'aside[data-callout]' }],
+        renderHTML: ({ HTMLAttributes }) => ['aside', tiptap.mergeAttributes(HTMLAttributes, { 'data-callout': '' }), 0],
+    }))
+}
+```
+
+```php
+$app->instance(Document::class, (new Document())->extend(new NodeSpec('callout', ['tone'])));
+```
+
+A field then lists `callout` in its `features()`. The server accepts the
+node only once registered, so both sides agree.
 
 ## Custom pages
 

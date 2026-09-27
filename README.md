@@ -49,7 +49,9 @@ Every `docker compose` command in this file runs from `demo/`.
   domain, and the SQL queue table the test suite uses for a named
   connection of Vector's own.
 - Redis 7 is on `localhost:6379`: the application's queue
-  (the named queue connection `jobs`, `QUEUE_JOBS_CONNECTION=redis`).
+  (the named queue connection `jobs`, `QUEUE_JOBS_CONNECTION=redis`) and,
+  in database 1, the application cache (`REDIS_HOST`,
+  `kinetis/cache-redis`) that holds login throttling and refresh tokens.
 - Uploaded files live on the private `storage` volume
   (`FILESYSTEM_DRIVER=local`, `FILESYSTEM_ROOT=/var/lib/vector-storage`),
   shared by `app` and `worker` and never served by nginx. Request bodies
@@ -106,8 +108,10 @@ docker compose logs -f app
 docker compose logs -f node
 ```
 
-`demo:seed --fresh` empties the demo tables and fills them again;
-`--scale=N` multiplies the row counts. Most products get an image, which
+`demo:seed --fresh` empties the demo tables and fills them again — the
+shop's identifiers restarting at 1 — and clears Vector's audit trail and
+action log, whose rows name those identifiers; `--scale=N` multiplies the row
+counts. Most products get an image, which
 the seed stores in Vector's storage as an upload would. Run the seed as
 `www-data`, the user the application runs as; files stored as root are
 not the application's to read.
@@ -125,8 +129,11 @@ docker compose run --rm e2e                     # the admin in a browser, standa
 
 The end-to-end suite (`demo/e2e`, Playwright) needs the hosted bundle
 published (above) and writes to the demo databases. Run it on its own,
-not alongside PHPUnit. It clears the admin account's saved UI
-preferences before each test. See
+not alongside PHPUnit. It signs in as its own admin, `e2e@vector.local`,
+whose saved UI preferences it clears before each test, so it and a
+person using the demo as `admin@vector.local` do not disturb each other;
+on a database seeded before that account existed, `demo:seed` (without
+`--fresh`) adds it. See
 [demo/e2e/README.md](demo/e2e/README.md).
 
 ## Documentation
@@ -451,11 +458,11 @@ is `403`.
 
 | Route | Answers |
 |---|---|
-| `GET /vector/schema` | The descriptor: every resource this user may list, its fields, table and show views, permissions, and the menu. Carries an `ETag`; `If-None-Match` answers `304`. |
+| `GET /vector/schema` | The descriptor: every resource this user may list, its fields, table and show views, permissions, and the menu, with labels translated into the user's language (their `locale` preference, else the administrator's default) and `i18n` naming it and the languages on offer. Carries an `ETag` per user and language; `If-None-Match` answers `304`. |
 | `GET /vector/schema/{resource}` | One resource of it. |
 | `GET /vector/me` | The authenticated identity. |
 | `GET /vector/r/{resource}` | A page of records under the list grammar: `page`, `perPage` (bounded by the resource), `sort=-createdAt,name` over sortable fields, `filter[field][op]=value` over filterable fields with the operators the descriptor publishes (`eq ne lt lte gt gte in nin like nlike between null nnull`; `filter[field]=value` is `eq`, `in`/`nin`/`between` take `a,b`), `filter[or][i]…` alternatives and `filter[and][i]…` combined filter objects (four deep, 50 conditions), `filter[trashed]=only|with` on a soft-deleting resource, `q` over searchable fields, `group=field`, `summaries=1`, `columns=a,b`, or `cursor` for keyset pages by the identifier. The Kinetis `Paginator` envelope (or `{data, nextCursor, hasMore}` under a cursor), `belongsTo` values as `{id, label}`, `hasMany`/`manyToMany` as `{count}`, `summaries` when asked, `_trashed` on a soft-deleting resource. |
-| `GET /vector/r/{resource}/export` | The same grammar as a CSV download, inline up to the resource's export limit. |
+| `GET /vector/r/{resource}/export` | The same grammar as a CSV download, inline up to the resource's export limit. `format=xlsx` writes a typed Excel workbook, always as a job (the demo installs `openspout/openspout`). |
 | `GET /vector/r/{resource}/{id}` | One record with every show field and its permissions: `update`, `delete`, `restore`, `forceDelete`, and the `actions` this user may run on it. |
 | `POST /vector/r/{resource}` | Creates a record from a JSON object of field values; `201` with the record, or the standard `422` document naming every failing field. |
 | `PATCH /vector/r/{resource}/{id}` | Partial update. `If-Match: "<version>"` (or a `version` member) against the entity's `#[Version]` column answers `409` on a stale row. |
@@ -467,18 +474,18 @@ is `403`.
 | `GET /vector/r/{resource}/{id}/{relation}/rows` | A repeater's rows: every child of the record as the child resource shows one, for the edit form. Create and patch take the whole list under the field's name: a row with an `id` updates that child, one without creates it, one left out is deleted; a row's violation names `field/{row}/{column}`. |
 | `GET /vector/r/{resource}/{id}/{relation}` | A page of the records a `hasMany` or `manyToMany` field holds, as the target resource lists them. |
 | `POST /vector/r/{resource}/{id}/{relation}/attach`, `…/detach` | `{"ids": [...]}` adds records to, or removes them from, a `manyToMany` field; each is authorized by the policy's `attach` or `detach`, logged and audited. |
-| `GET /vector/r/{resource}/fields/{field}/options?q=` | Options for a relation input, searching the target's title; `?ids=` resolves known identifiers. A `dependsOn` relation narrows by `depends[{field}]=` (the form's value of the field it depends on). |
+| `GET /vector/r/{resource}/fields/{field}/options?q=` | Options for a relation input, searching the target's title; `?ids=` resolves known identifiers. Each option is `{id, label}`, plus `subtitle` (the target's `searchSubtitle()` value) and `image` (its `searchImage()` field, when the record has one) where the target declares them and the user may see them. A `dependsOn` relation narrows by `depends[{field}]=` (the form's value of the field it depends on). |
 | `GET /vector/badges` | The menu's badges: for every resource with a `badge()` this user may list, `{count, color, label}` by slug, the count of its filter as the user's list counts it. |
 | `GET /vector/search?q=` | Global search: the first matches of every globally searchable resource this user may list, each with its `title`, the resource's `searchSubtitle()` value as `subtitle`, and, when the record holds one, the `searchImage()` field to fetch its thumbnail from as `image`. |
 | `GET/POST /vector/views/{resource}`, `PUT/DELETE /vector/views/{resource}/{id}` | Saved list views — a name, a validated list state, `shared`, `isDefault`, and `resourceDefault` (a shared view everyone without a default of their own opens with; one per resource; the policy's `setDefaultView` decides it); the owner alone changes one. |
-| `GET/PUT /vector/preferences` | Per-user UI preferences as JSON values by key (`columns.<resource>`, …); `PUT` merges, a `null` removes. |
-| `GET /vector/settings`, `GET/PUT /vector/settings/{group}` | Typed settings groups (`#[Settings]` classes extending `SettingsGroup`) with their values; `PUT` validates the body like a form and replaces the group's values. `branding` ships with Vector and is published with the descriptor. |
+| `GET/PUT /vector/preferences` | Per-user UI preferences as JSON values by key (`columns.<resource>`, `locale` — the language the admin is shown in, …); `PUT` merges, a `null` removes. |
+| `GET /vector/settings`, `GET/PUT /vector/settings/{group}` | Typed settings groups (`#[Settings]` classes extending `SettingsGroup`) with their values; `PUT` validates the body like a form and replaces the group's values. `branding` and `languages` ship with Vector; `branding` is published with the descriptor. |
 | `POST /vector/r/{resource}/fields/{field}/upload` | Stores one file (multipart `file`) for a file or image field after detecting its format from the bytes; answers `{key, name, size, type}`, the key being the value to write. |
-| `GET /vector/r/{resource}/{id}/files/{field}` | The record's stored file: an image inline, anything else as an attachment. |
+| `GET /vector/r/{resource}/{id}/files/{field}` | The record's stored file: an image inline, anything else as an attachment. `?key=` serves an image one of the record's rich-text documents shows from that field's uploads. |
 | `GET /vector/r/{resource}/{id}/audit` | The record's audit trail: every event with the field-level changes the writer observed, the actor and, when impersonating, the impersonator. |
 | `POST /vector/r/{resource}/{id}/audit/{entry}/revert` | Puts back the `from` values of one `update` or `revert` entry, for the fields this user may see and edit, through the update path; audited as `revert`. `409` when one of those fields changed since. |
 | `GET /vector/r/{resource}/widgets/{widget}?range=` | A resource widget's data. |
-| `POST /vector/r/{resource}/import/preview`, `POST /vector/r/{resource}/import` | CSV import (multipart `file`, then `mapping` as JSON): the preview answers headers, a sample and a suggested mapping; the import stores the file on a job and queues it. Every row is one create through the writer; failed rows come back as a file. |
+| `POST /vector/r/{resource}/import/preview`, `POST /vector/r/{resource}/import` | CSV import (multipart `file`, then `mapping` as JSON, `mode` and `key`): the preview answers headers, a sample and a suggested mapping; the import stores the file on a job and queues it. Every row is one create, or — in `update`/`upsert` mode — an update of the record its `key` column (the id or a unique field) matches, through the writer; failed rows come back as a file. |
 | `POST /vector/r/{resource}/actions/{action}` (queued) | An action whose class declares `queued()` answers `202 {type: "job", jobId}` and runs in chunks in the worker. |
 | `GET /vector/jobs`, `GET /vector/jobs/{id}`, `GET /vector/jobs/{id}/download` | The caller's background jobs — queued actions, large exports, imports — with progress to poll and the file a finished one left. |
 | `GET /vector/dashboards/{name}`, `GET /vector/dashboards/{name}/widgets/{widget}?range=` | A dashboard's cards, and one card's data for a range (`7d`, `30d`, `90d`, `1y`, … as the widget declares). |
@@ -489,11 +496,34 @@ is `403`.
 
 Two authentication modes reach the same routes. **Bearer mode** sends
 `Authorization: Bearer <jwt>` from `/auth/login` — what the standalone UI
-on `localhost:3000` does. **Cookie mode** rides the session the
+on `localhost:3000` does, renewing it through `/auth/refresh`. **Cookie mode** rides the session the
 application's `/login` page opened and must send the `X-CSRF-Token` the
 shell handed out on every unsafe method — what the hosted UI does. The
 demo's `App\Auth\VectorAuthMiddleware` accepts either and sits in the
 `vector` and `vector-shell` groups after `VectorSessionMiddleware`.
+
+Signing in — and protecting it — is the application's responsibility;
+Vector never sees a password. The demo is the worked example, on the
+application cache (`kinetis/cache-redis`, `REDIS_HOST` in `.env`, a
+database of its own on the stack's Redis):
+
+| Demo route | What it does |
+|---|---|
+| `POST /auth/login` | `{email, password}` → a 15-minute `accessToken` and a single-use `refreshToken` (12 hours), with `expiresIn`, `refreshExpiresIn` and `user`. |
+| `POST /auth/refresh` | `{refreshToken}` → a new pair in the same shape; the redeemed token is refused from then on, and the user is reloaded so a changed role applies. |
+| `POST /auth/logout` | `{refreshToken}` → `204`; the refresh token is revoked. |
+| `POST /login` | The hosted sign-in form, throttled the same way. |
+
+Failed attempts go through the framework's `AttemptThrottle`, counted
+per e-mail *from one client address* and per address — never per e-mail
+alone, which would let anyone lock a victim out by typing their address.
+Five failures in fifteen minutes lock that e-mail from that address (the
+owner still signs in from their own), twenty lock the address, a success
+clears both, and a locked attempt answers `429` with `Retry-After` (a
+message on the form). Without a configured cache both
+sign-ins answer `503` rather than run unthrottled; the rest of the
+application still works. Impersonation issues 15-minute access tokens and
+no refresh token.
 
 A resource is a class extending `Kinetis\Vector\VectorResource` carrying
 `#[Resource(entity: ...)]`; an empty class derives every field from the
@@ -538,6 +568,14 @@ demo endpoint `GET /vector-demo/stock-overview`
 (`demo/backend/src/Http/StockOverviewController.php`, in the `vector`
 middleware group).
 
+The product description is a rich-text document (headings, lists, links,
+tables, images) and a ticket's body a rich-text field that stores HTML;
+ticket replies are Markdown. The shop's own product page,
+`GET /shop/products/{id}` (`demo/backend/src/Http/ProductPageController.php`,
+public, not part of the admin), renders the description through
+`Kinetis\Vector\RichText\Document::toHtml()`, and `demo:seed` writes
+the descriptions as documents.
+
 The demo sends one `Content-Security-Policy` for the whole application:
 the framework's `SECURITY_CSP`, `{nonce}` replaced per request. The
 hosted shell puts that request's nonce on every inline script tag, and
@@ -550,6 +588,16 @@ Branding — title, logo URL, theme colours, footer line — is a settings
 group an admin edits at `/settings`, stored as values and rendered
 escaped.
 
+Each user picks the admin's language from the app bar: English, German,
+French, Dutch, Italian, Spanish, Portuguese (Portugal and Brazil),
+Polish, Turkish, Russian, Ukrainian, Hebrew and Arabic (right to left),
+Korean, Japanese or Simplified Chinese — the non-English ones machine
+translations. The choice is the user's
+preference; an administrator decides which languages are on offer under
+**Settings → Languages**, and the default, English unless changed.
+The demo's labels are translated in `demo/backend/translations/`
+(`VECTOR_TRANSLATIONS_DIR=translations`), also by machine.
+
 ## Layout
 
 ```text
@@ -558,7 +606,7 @@ packages/vector-ui/       @kinetis/vector-ui (Nuxt layer); its Vitest suite in t
 demo/docker-compose.yml   the stack: app, worker, nginx, mysql, postgres, redis, node (and e2e, run on demand)
 demo/docker/              the PHP image, nginx and php.ini
 demo/backend/             the demo Kinetis application, with kinetis/vector installed from ../../packages/vector
-  src/Auth/               JWT login (/auth/login, /auth/me), session login (/login, /logout), the vector and mcp group middleware, impersonation
+  src/Auth/               JWT login (/auth/login, /auth/refresh, /auth/logout, /auth/me), session login (/login, /logout), login throttling, the vector and mcp group middleware, impersonation
   src/Console/            demo:seed
   src/Domain/             the shop's entities and enums, on MySQL (kinetis/orm)
   src/Domain/Support/     the support desk's entities and enums, on PostgreSQL
@@ -570,6 +618,7 @@ demo/backend/             the demo Kinetis application, with kinetis/vector inst
   bootstrap.php           JWT keys, CORS for the standalone UI origin, the Vector bindings
   public/vector/ui/       the published hosted bundle (generated; not committed)
   public/vector-extensions/  the demo's runtime UI extension
+  translations/           the demo's labels in seven more languages (machine translations)
   tests/                  PHPUnit (App\Tests\)
 demo/frontend/            the demo Nuxt app: extends @kinetis/vector-ui, points at the demo API
 demo/e2e/                 the end-to-end suite: Playwright, both deployment modes, against the running stack

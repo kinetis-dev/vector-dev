@@ -17,7 +17,7 @@ export interface VectorHostedConfig {
     user: { id: number | string, name: string | null } | null
     branding: import('#vector/app/types/vector').VectorBranding | null
     extensions: string[]
-    /** The UI's language (VECTOR_UI_LOCALE), when the deployment names one. */
+    /** The language the server resolved for this user: the shell starts in it. */
     locale?: string | null
 }
 

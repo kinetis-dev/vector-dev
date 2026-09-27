@@ -42,6 +42,8 @@ final readonly class VectorTools
         private ActionRunner $actions,
         private WidgetRunner $widgets,
         private ValueConverter $converter,
+        private \Kinetis\Vector\Translation\LocaleResolver $locales,
+        private \Kinetis\Vector\Translation\Labels $labels,
     ) {}
 
     /** @return array<string, mixed>|ToolResult */
@@ -200,7 +202,10 @@ final readonly class VectorTools
             }
         }
 
-        return ['version' => $this->registry->toArray()['version'], 'resources' => $resources, 'dashboards' => array_keys($this->registry->dashboards())];
+        // in the language this user chose in the admin, else the default
+        $locale = $this->locales->resolve((string) $this->user->id())['locale'];
+
+        return ['version' => $this->registry->toArray()['version'], 'locale' => $locale, 'resources' => $this->labels->document($resources, $locale), 'dashboards' => array_keys($this->registry->dashboards())];
     }
 
     /**

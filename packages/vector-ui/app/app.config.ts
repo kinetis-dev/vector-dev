@@ -17,7 +17,7 @@ export default defineAppConfig({
         widgets: {} as Record<string, string>,
         // The resource whose records are users, for the Impersonate button (Phase 5).
         usersResource: null as string | null,
-        // The UI's language, when the hosted shell does not name one (VECTOR_UI_LOCALE).
+        // The UI's language before the descriptor names the user's, when neither the hosted shell nor this browser does.
         locale: 'en',
         // Messages an application adds or overrides, by locale and area: { de: { common: { save: 'Speichern' } } }.
         messages: {} as Record<string, Record<string, unknown>>,

@@ -8,21 +8,27 @@ use Kinetis\Queue\Job;
 use Kinetis\Vector\Query\CsvWriter;
 use Kinetis\Vector\Query\ListRequest;
 use Kinetis\Vector\Query\ResourceService;
+use Kinetis\Vector\Query\XlsxWriter;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Write\ValueConverter;
 
 /**
- * An export too large for the inline path: the CSV is built in keyset
- * pages and stored on the job row for the actor to download.
+ * An export too large for the inline path, or an XLSX one: the file is
+ * built from keyset pages and stored on the job row for the actor to
+ * download.
  */
 final readonly class ExportJob implements Job
 {
-    /** @param array<string, mixed> $params the list grammar as query parameters */
+    /**
+     * @param array<string, mixed> $params the list grammar as query parameters
+     * @param string $format csv or xlsx
+     */
     public function __construct(
         public int $jobId,
         public string $resource,
         public array $params,
         public string $actorId,
+        public string $format = 'csv',
     ) {}
 
     public function handle(JobContext $context, VectorRegistry $registry, ValueConverter $converter): void
@@ -53,10 +59,12 @@ final readonly class ExportJob implements Job
                     yield $record;
                 }
             })();
-            $csv = CsvWriter::document($descriptor, $fields, $counting);
-            $name = $descriptor->slug() . '-' . gmdate('Ymd-His') . '.csv';
+            [$file, $type] = $this->format === 'xlsx'
+                ? [XlsxWriter::document($descriptor, $fields, $counting), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+                : [CsvWriter::document($descriptor, $fields, $counting), 'text/csv; charset=utf-8'];
+            $name = $descriptor->slug() . '-' . gmdate('Ymd-His') . '.' . ($this->format === 'xlsx' ? 'xlsx' : 'csv');
 
-            return ['result' => ['rows' => $rows, 'fileName' => $name], 'processed' => $rows, 'file' => $csv, 'fileName' => $name, 'fileType' => 'text/csv; charset=utf-8', 'notice' => "{$rows} rows are ready to download."];
+            return ['result' => ['rows' => $rows, 'fileName' => $name], 'processed' => $rows, 'file' => $file, 'fileName' => $name, 'fileType' => $type, 'notice' => "{$rows} rows are ready to download."];
         });
     }
 }

@@ -57,6 +57,34 @@ abstract class VectorTestCase extends ApplicationTestCase
         return $overrides;
     }
 
+    /** The subject of headersIn()'s viewer: an admin no seeded user is. */
+    private const string VIEWER = '990001';
+
+    private bool $viewerChose = false;
+
+    /** @var list<array<string, mixed>> the demo's Languages settings, set aside while a test runs */
+    private array $asideSettings = [];
+
+    /** @var list<array<string, mixed>> the seeded admin's language, set aside while a test runs */
+    private array $asideLanguage = [];
+
+    /**
+     * The demo is a live database that a person may be using in a browser
+     * meanwhile: the Languages settings are global, and the seeded admin
+     * (user 1, as adminHeaders() signs in) may have chosen a language.
+     * Every test starts from the stock defaults — all languages on,
+     * English, no choice — and what was there is put back afterwards.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->asideSettings = $this->vectorQuery()->table('vector_settings')->where('group', '=', 'languages')->get();
+        $this->vectorQuery()->table('vector_settings')->where('group', '=', 'languages')->delete();
+        $this->asideLanguage = $this->vectorQuery()->table('vector_preferences')->where('owner_id', '=', '1')->where('key', '=', 'locale')->get();
+        $this->vectorQuery()->table('vector_preferences')->where('owner_id', '=', '1')->where('key', '=', 'locale')->delete();
+    }
+
     /** A builder on the connection Vector's own tables live on. */
     protected function vectorQuery(): \Kinetis\QueryBuilder\Query
     {
@@ -119,6 +147,44 @@ abstract class VectorTestCase extends ApplicationTestCase
         $work();
 
         return $this->statementsSent() - $before - 1;
+    }
+
+    /**
+     * Headers of a viewer of the tests' own — never the seeded admin a
+     * person may be using in a browser meanwhile — who has chosen `$locale`
+     * (null: no choice) as their language. Their choice is cleared after
+     * the test.
+     *
+     * @return array<string, string>
+     */
+    protected function headersIn(?string $locale): array
+    {
+        $headers = ['Authorization' => 'Bearer ' . $this->issue(self::VIEWER, true)];
+        $this->client->put('/vector/preferences', body: ['locale' => $locale], headers: $headers)->assertOk();
+        $this->viewerChose = true;
+
+        return $headers;
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->viewerChose) {
+            $this->client->put('/vector/preferences', body: ['locale' => null], headers: ['Authorization' => 'Bearer ' . $this->issue(self::VIEWER, true)]);
+        }
+
+        // put back what setUp() set aside, whatever the test left
+        $this->vectorQuery()->table('vector_settings')->where('group', '=', 'languages')->delete();
+        $this->vectorQuery()->table('vector_preferences')->where('owner_id', '=', '1')->where('key', '=', 'locale')->delete();
+
+        if ($this->asideSettings !== []) {
+            $this->vectorQuery()->table('vector_settings')->insert($this->asideSettings);
+        }
+
+        if ($this->asideLanguage !== []) {
+            $this->vectorQuery()->table('vector_preferences')->insert($this->asideLanguage);
+        }
+
+        parent::tearDown();
     }
 
     protected function tokenFor(string $subject): string

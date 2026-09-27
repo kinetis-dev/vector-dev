@@ -34,7 +34,7 @@ final class UserResource extends VectorResource
         return [
             Id::make(),
             Text::make('name')->required()->max(120)->sortable()->searchable(),
-            Email::make('email')->required()->max(255)->sortable()->searchable(),
+            Email::make('email')->required()->max(255)->unique()->sortable()->searchable(),
             Boolean::make('isAdmin', 'Admin')->sortable()->filterable(),
             DateTime::make('createdAt')->readonly()->sortable()->hideFromForms(),
         ];

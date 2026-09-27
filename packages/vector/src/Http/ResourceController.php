@@ -59,6 +59,9 @@ final readonly class ResourceController
         private \Kinetis\Vector\Files\FileService $files,
         private WidgetRunner $widgets,
         private RowMapper $mapper,
+        private \Kinetis\Vector\VectorDefaults $defaults,
+        private \Kinetis\Vector\Translation\LocaleResolver $locales,
+        private \Kinetis\Vector\Translation\Labels $labels,
     ) {}
 
     /** @return array<string, mixed> */
@@ -73,7 +76,9 @@ final readonly class ResourceController
     /**
      * The list under the same grammar as a CSV file, inline up to the
      * resource's export limit. `columns` picks the columns; without it
-     * every index column is exported.
+     * every index column is exported. `format=xlsx`, where offered, is
+     * always a job: openspout writes through temporary files, which only
+     * the queue worker may block on.
      */
     #[Get('/{resource}/export')]
     public function export(string $resource, ServerRequestInterface $request): ResponseInterface
@@ -81,8 +86,13 @@ final readonly class ResourceController
         $descriptor = $this->service->resource($resource);
         $params = $request->getQueryParams();
 
-        if (($params['format'] ?? 'csv') !== 'csv') {
-            throw ValidationException::fromViolations([new Violation(['format'], 'invalid_choice', 'must be csv.')]);
+        $format = $params['format'] ?? 'csv';
+        $formats = $this->queue->available() ? $this->defaults->exportFormats : ['csv'];
+
+        if (!in_array($format, $formats, true)) {
+            $hint = $format === 'xlsx' && in_array('xlsx', $this->defaults->exportFormats, true) ? ' An XLSX export runs in the queue, which is not configured.' : '';
+
+            throw ValidationException::fromViolations([new Violation(['format'], 'invalid_choice', 'must be ' . implode(' or ', $formats) . '.' . $hint)]);
         }
 
         $this->service->authorizeExport($descriptor); // before any counting or queueing
@@ -90,12 +100,12 @@ final readonly class ResourceController
         $fields = $listRequest->columns ?? $descriptor->toArray()['table']['columns'];
         $total = $this->service->exportCount($descriptor, $listRequest);
 
-        // above the inline limit the export becomes a job, when the application queues
-        if ($this->queue->available() && $total > $descriptor->exportLimit()) {
+        // above the inline limit, or as XLSX, the export becomes a job
+        if ($this->queue->available() && ($total > $descriptor->exportLimit() || $format === 'xlsx')) {
             /** @var array<string, mixed> $stored */
             $stored = array_intersect_key($params, array_flip(['filter', 'q', 'sort', 'columns']));
             $jobId = $this->jobs->create('export', $descriptor->slug(), 'export', (string) $this->user->id());
-            $this->queue->enqueue($this->jobs, $jobId, new ExportJob($jobId, $descriptor->slug(), $stored, (string) $this->user->id()));
+            $this->queue->enqueue($this->jobs, $jobId, new ExportJob($jobId, $descriptor->slug(), $stored, (string) $this->user->id(), $format));
 
             return JsonResponse::create(['type' => 'job', 'jobId' => $jobId, 'message' => 'The export was queued.'], 202);
         }
@@ -134,7 +144,13 @@ final readonly class ResourceController
     public function import(string $resource, #[Body] ImportRequest $upload): ResponseInterface
     {
         $descriptor = $this->service->resource($resource);
-        $this->service->permissions($descriptor)['create'] || throw new ForbiddenOperationException('This account may not create records here.');
+        $permissions = $this->service->permissions($descriptor);
+        // each row is still authorized as the create or update it becomes
+        match ($upload->mode) {
+            'update' => $permissions['update'] || throw new ForbiddenOperationException('This account may not update records here.'),
+            'upsert' => $permissions['create'] || $permissions['update'] || throw new ForbiddenOperationException('This account may not create or update records here.'),
+            default => $permissions['create'] || throw new ForbiddenOperationException('This account may not create records here.'),
+        };
         $reason = $this->queue->unavailableReason();
 
         if ($reason !== null) {
@@ -151,7 +167,7 @@ final readonly class ResourceController
             throw ValidationException::fromViolations([new Violation(['mapping'], 'type_mismatch', 'must be a JSON object.')]);
         }
 
-        $mapping = $this->mapper->validateMapping($descriptor, $mapping);
+        $mapping = $this->mapper->validateMapping($descriptor, $mapping, $upload->mode, $upload->key);
 
         if ($mapping === []) {
             throw ValidationException::fromViolations([new Violation(['mapping'], 'required', 'must map at least one column.')]);
@@ -161,7 +177,7 @@ final readonly class ResourceController
         $reader = CsvReader::fromString($contents); // refuses a file without a header or over the row cap
         $fileName = mb_substr($upload->file->getClientFilename() ?? 'import.csv', 0, 255); // the column's width
         $jobId = $this->jobs->create('import', $descriptor->slug(), 'import', (string) $this->user->id(), $reader->rowCount(), $contents, $fileName, 'text/csv');
-        $this->queue->enqueue($this->jobs, $jobId, new ImportJob($jobId, $descriptor->slug(), $mapping, (string) $this->user->id()));
+        $this->queue->enqueue($this->jobs, $jobId, new ImportJob($jobId, $descriptor->slug(), $mapping, (string) $this->user->id(), $upload->mode, $upload->mode === 'create' || $upload->key === '' ? null : $upload->key));
 
         return JsonResponse::create(['type' => 'job', 'jobId' => $jobId, 'rows' => $reader->rowCount()], 202);
     }
@@ -204,9 +220,12 @@ final readonly class ResourceController
 
     /** One record's stored file: an image inline, anything else as a download. */
     #[Get('/{resource}/{id}/files/{field}')]
-    public function file(string $resource, string $id, string $field): ResponseInterface
+    public function file(string $resource, string $id, string $field, ServerRequestInterface $request): ResponseInterface
     {
-        return $this->files->download($this->service->resource($resource), $id, $field);
+        // ?key= serves an image a rich-text document of the record shows from this field's uploads
+        $key = $request->getQueryParams()['key'] ?? null;
+
+        return $this->files->download($this->service->resource($resource), $id, $field, is_string($key) && $key !== '' ? $key : null);
     }
 
     /**
@@ -302,7 +321,9 @@ final readonly class ResourceController
         $compiled = $descriptor->widget($widget) ?? throw WidgetRunner::notFound($widget);
         $range = $request->getQueryParams()['range'] ?? null;
 
-        return ['data' => $this->widgets->run($compiled, is_string($range) && $range !== '' ? $range : null, "resources/{$resource}")];
+        $locale = $this->locales->resolve((string) $this->user->id())['locale'];
+
+        return ['data' => $this->labels->document($this->widgets->run($compiled, is_string($range) && $range !== '' ? $range : null, "resources/{$resource}"), $locale)];
     }
 
 

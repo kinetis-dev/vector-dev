@@ -28,8 +28,6 @@ final readonly class VectorUi
         public ?string $csp,
         /** @var list<string> */
         public array $extensions,
-        /** The UI's language, a BCP 47 tag such as de or pt-BR; null leaves it to the bundle. */
-        public ?string $locale = null,
     ) {}
 
     /**
@@ -63,23 +61,6 @@ final readonly class VectorUi
             $config->string('VECTOR_SHELL_HEAD', ''),
             $csp === '' ? null : $csp,
             array_values(array_filter(array_map('trim', explode(',', $config->string('VECTOR_UI_EXTENSIONS', ''))))),
-            self::locale($config->string('VECTOR_UI_LOCALE', '')),
         );
-    }
-
-    /** A BCP 47 language tag (letters, digits, hyphens), or null when unset. */
-    private static function locale(string $locale): ?string
-    {
-        $locale = trim($locale);
-
-        if ($locale === '') {
-            return null;
-        }
-
-        if (preg_match('/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/D', $locale) !== 1) {
-            throw new \InvalidArgumentException("VECTOR_UI_LOCALE \"{$locale}\" is not a language tag such as en, de or pt-BR.");
-        }
-
-        return $locale;
     }
 }

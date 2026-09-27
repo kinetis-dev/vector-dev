@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kinetis\Vector\Settings;
 
 use Kinetis\Http\CurrentUserInterface;
+use Kinetis\Validation\Violation;
 use Kinetis\Vector\Fields\Field;
 
 /**
@@ -47,5 +48,18 @@ abstract class SettingsGroup
     public function canManage(CurrentUserInterface $user): bool
     {
         return true;
+    }
+
+    /**
+     * Request-time: what the values say together, once each field passed
+     * its own rules — a rule that spans fields. Nothing is saved while one
+     * violation remains.
+     *
+     * @param array<string, mixed> $values every field of the group, as stored
+     * @return list<Violation>
+     */
+    public function validate(array $values): array
+    {
+        return [];
     }
 }

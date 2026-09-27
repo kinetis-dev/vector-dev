@@ -11,28 +11,56 @@ use Kinetis\Vector\Write\InputViolation;
 use Kinetis\Vector\Write\ValueConverter;
 
 /**
- * Turns one CSV row into the JSON body a create takes, through the
- * mapping the admin chose: text is parsed by each field's value type
- * (the same parser list filters use), an empty cell is null, a
+ * Turns one CSV row into the JSON body a create or an update takes,
+ * through the mapping the admin chose: text is parsed by each field's
+ * value type (the same parser list filters use), an empty cell is null, a
  * manyToMany takes `a|b|c` identifiers. What comes out is still raw
  * input — the writer validates it like any request.
+ *
+ * An import creates records (`create`), updates the records a key column
+ * finds (`update`), or does whichever a row needs (`upsert`). The key is
+ * the resource's own key or a field marked unique(), and must be mapped.
  */
 final readonly class RowMapper
 {
+    public const array MODES = ['create', 'update', 'upsert'];
+
     public function __construct(private ValueConverter $converter) {}
 
     /**
-     * The mapping's fields must exist, be writable on create, and not
-     * be named twice.
+     * The mapping's fields must exist, be written by the mode's view
+     * (create, update, or either for an upsert — a row then refuses what
+     * its own path does not take), and not be named twice; update and
+     * upsert need a key, mapped, that identifies one record.
      *
      * @param array<array-key, mixed> $mapping CSV header => field name ('' skips the column)
      * @return array<string, string>
      */
-    public function validateMapping(ResourceDescriptor $resource, array $mapping): array
+    public function validateMapping(ResourceDescriptor $resource, array $mapping, string $mode = 'create', ?string $key = null): array
     {
         $clean = [];
         $used = [];
         $violations = [];
+
+        if (!in_array($mode, self::MODES, true)) {
+            throw ValidationException::fromViolations([new Violation(['mode'], 'invalid_choice', 'must be create, update or upsert.')]);
+        }
+
+        $key = $key === '' ? null : $key;
+
+        if ($mode === 'create' && $key !== null) {
+            $violations[] = new Violation(['key'], 'unexpected_field', 'matches rows to records, which a create-only import does not do.');
+        }
+
+        if ($mode !== 'create') {
+            $keyField = $key === null ? null : $resource->field($key);
+
+            if ($keyField === null || ($key !== $resource->primaryKeyField() && ($keyField['unique'] ?? false) !== true)) {
+                $violations[] = new Violation(['key'], 'invalid_choice', 'must be the resource\'s key or a unique field: ' . implode(', ', self::keys($resource)) . '.');
+            } elseif (!in_array($key, $mapping, true)) {
+                $violations[] = new Violation(['key'], 'invalid_choice', "\"{$key}\" must be mapped to a column.");
+            }
+        }
 
         foreach ($mapping as $header => $field) {
             if (!is_string($field) || $field === '') {
@@ -40,9 +68,12 @@ final readonly class RowMapper
             }
 
             $compiled = $resource->field($field);
+            $views = $mode === 'create' ? ['create'] : ($mode === 'update' ? ['update'] : ['create', 'update']);
+            $writable = $compiled !== null && $compiled['readonly'] !== true && array_intersect($views, $compiled['views']) !== []
+                && !in_array($compiled['type'], ['id', 'hasOne', 'hasMany', 'computed'], true);
 
-            if ($compiled === null || $compiled['readonly'] === true || !in_array('create', $compiled['views'], true) || in_array($compiled['type'], ['id', 'hasOne', 'hasMany'], true)) {
-                $violations[] = new Violation(['mapping', (string) $header], 'invalid_choice', "\"{$field}\" is not a field this resource accepts on create.");
+            if (!$writable && !($field === $key && $mode !== 'create')) {
+                $violations[] = new Violation(['mapping', (string) $header], 'invalid_choice', "\"{$field}\" is not a field this resource accepts on " . ($mode === 'upsert' ? 'create or update' : $mode) . '.');
 
                 continue;
             }
@@ -65,6 +96,16 @@ final readonly class RowMapper
     }
 
     /**
+     * The fields an update or upsert may match rows by: the key, and every unique field.
+     *
+     * @return list<string>
+     */
+    public static function keys(ResourceDescriptor $resource): array
+    {
+        return array_values(array_unique([$resource->primaryKeyField(), ...array_keys(array_filter($resource->fields(), static fn (array $f): bool => ($f['unique'] ?? false) === true))]));
+    }
+
+    /**
      * A mapping guessed from the headers: a header equal to a field's
      * name or label, ignoring case and punctuation.
      *
@@ -77,7 +118,11 @@ final readonly class RowMapper
         $byKey = [];
 
         foreach ($resource->fields() as $name => $field) {
-            if ($field['readonly'] === true || !in_array('create', $field['views'], true) || in_array($field['type'], ['id', 'hasOne', 'hasMany'], true)) {
+            // anything an import may write, and the key an update matches by
+            $importable = $field['readonly'] !== true && array_intersect(['create', 'update'], $field['views']) !== []
+                && !in_array($field['type'], ['id', 'hasOne', 'hasMany', 'computed'], true);
+
+            if (!$importable && $name !== $resource->primaryKeyField()) {
                 continue;
             }
 
@@ -101,16 +146,47 @@ final readonly class RowMapper
     }
 
     /**
+     * The key a row carries, typed as the field is: null when its cell is empty.
+     *
      * @param array<string, string> $mapping
      * @param array<string, string> $row
+     */
+    public function keyOf(ResourceDescriptor $resource, array $mapping, array $row, string $key): mixed
+    {
+        $header = array_search($key, $mapping, true);
+        $raw = $header === false ? '' : trim($row[$header] ?? '');
+
+        if ($raw === '') {
+            return null;
+        }
+
+        $field = $resource->field($key) ?? throw new \LogicException("{$key} is not a field.");
+
+        try {
+            return $key === $resource->primaryKeyField()
+                ? $this->converter->identifier($resource->primaryKeyType(), $raw)
+                : $this->converter->fromQuery($field, $raw);
+        } catch (InputViolation $e) {
+            throw ValidationException::fromViolations([$e->violation->under($key)]);
+        }
+    }
+
+    /**
+     * @param array<string, string> $mapping
+     * @param array<string, string> $row
+     * @param string|null $except a field left out of the body: the key an update matched by
      * @return array<string, mixed>
      */
-    public function payload(ResourceDescriptor $resource, array $mapping, array $row): array
+    public function payload(ResourceDescriptor $resource, array $mapping, array $row, ?string $except = null): array
     {
         $payload = [];
         $violations = [];
 
         foreach ($mapping as $header => $name) {
+            if ($name === $except) {
+                continue;
+            }
+
             $field = $resource->field($name);
 
             if ($field === null) {

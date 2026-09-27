@@ -17,7 +17,7 @@ final class HostedShellPolicyTest extends VectorTestCase
 
     protected function configOverrides(): array
     {
-        return [...parent::configOverrides(), 'VECTOR_SHELL_CSP' => self::POLICY, 'VECTOR_UI_LOCALE' => 'pt-BR'];
+        return [...parent::configOverrides(), 'VECTOR_SHELL_CSP' => self::POLICY];
     }
 
     public function testTheShellAnswersWithItsOwnPolicyAndTheRequestsNonce(): void
@@ -33,7 +33,6 @@ final class HostedShellPolicyTest extends VectorTestCase
         $nonce = preg_match('/"cspNonce":"([^"]+)"/', $shell->body(), $n) === 1 ? $n[1] : self::fail('the shell publishes its nonce');
         self::assertSame(str_replace('{nonce}', $nonce, self::POLICY), $shell->getHeaderLine('Content-Security-Policy'));
 
-        self::assertStringContainsString('"locale":"pt-BR"', $shell->body(), 'VECTOR_UI_LOCALE reaches the bundle');
 
         $login = $this->client->get('/login')->getHeaderLine('Content-Security-Policy');
         self::assertStringContainsString("frame-ancestors 'none'", $login, 'the sign-in page keeps the application policy');

@@ -161,6 +161,7 @@ final readonly class ResourceService
         $this->gate->authorize($this->user, $this->policy($resource)->viewAny(...));
 
         $fields = $this->listFields($resource, $request);
+        $instance = $this->instance($resource);
         $query = $this->constrained($resource, $fields, $request, $restrict);
 
         if ($request->cursor !== null) {
@@ -170,7 +171,7 @@ final readonly class ResourceService
             $relations = $this->loadRelations($resource, $fields, $rows);
 
             return [
-                'data' => array_map(fn (array $row): array => $this->serializer->serialize($resource, $row, $fields, $relations), $rows),
+                'data' => array_map(fn (array $row): array => $this->serializer->serialize($resource, $row, $fields, $relations, $instance), $rows),
                 'nextCursor' => $page->nextCursor,
                 'hasMore' => $page->hasMore,
                 'perPage' => $request->perPage,
@@ -195,7 +196,7 @@ final readonly class ResourceService
         $relations = $this->loadRelations($resource, $fields, $rows);
 
         $envelope = [
-            'data' => array_map(fn (array $row): array => $this->serializer->serialize($resource, $row, $fields, $relations), $rows),
+            'data' => array_map(fn (array $row): array => $this->serializer->serialize($resource, $row, $fields, $relations, $instance), $rows),
             'currentPage' => $page->currentPage,
             'perPage' => $page->perPage,
             'total' => $page->total,
@@ -252,6 +253,7 @@ final readonly class ResourceService
         $this->authorizeExport($resource);
 
         $fields = $this->listFields($resource, $request);
+        $instance = $this->instance($resource);
         $total ??= $this->exportCount($resource, $request);
         $limit ??= $resource->exportLimit();
 
@@ -268,7 +270,7 @@ final readonly class ResourceService
             $relations = $this->loadRelations($resource, $fields, $rows);
 
             foreach ($rows as $row) {
-                yield $this->serializer->serialize($resource, $row, $fields, $relations);
+                yield $this->serializer->serialize($resource, $row, $fields, $relations, $instance);
             }
 
             $cursor = $page->nextCursor;
@@ -388,6 +390,14 @@ final readonly class ResourceService
         return $results;
     }
 
+    /** The resource class as the request container builds it: the one whose methods compute computed fields. */
+    private function instance(ResourceDescriptor $resource): ?VectorResource
+    {
+        $instance = $this->scope->get($resource->resourceClass());
+
+        return $instance instanceof VectorResource ? $instance : null;
+    }
+
     /**
      * The fields a list serializes: the requested subset of the index
      * fields, or all of them, plus the ones their display depends on —
@@ -409,6 +419,13 @@ final readonly class ResourceService
         }
 
         foreach ($request->columns as $name) {
+            // a computed value's sources travel with it
+            foreach ($resource->field($name)['computed']['from'] ?? [] as $source) {
+                if (!in_array($source, $fields, true)) {
+                    $fields[] = $source;
+                }
+            }
+
             $currency = $resource->field($name)['props']['currencyField'] ?? null;
             // a related record's currency comes with the relation
             $currency = is_string($currency) ? explode('.', $currency, 2)[0] : null;
@@ -583,11 +600,28 @@ final readonly class ResourceService
 
         /** @var array<string, mixed> $row */
         $relations = $this->loadRelations($resource, $fields, [$row]);
-        $record = $this->serializer->serialize($resource, $row, $fields, $relations);
+        $record = $this->serializer->serialize($resource, $row, $fields, $relations, $this->instance($resource));
         $policy = $this->policy($resource);
         $this->gate->authorize($this->user, static fn (CurrentUserInterface $user): bool|AuthorizationResponse => $policy->view($user, $record));
 
         return $record;
+    }
+
+    /**
+     * The identifier of the one record whose $field holds $value, through
+     * the resource's scope and without trashed records: what an import
+     * updating by a key column matches a row to. One indexed statement —
+     * $field is the key or a unique field.
+     */
+    public function findByKey(ResourceDescriptor $resource, string $field, mixed $value): int|string|null
+    {
+        $column = $resource->columns()[$field] ?? throw new \LogicException("{$field} has no column.");
+        $query = $this->baseQuery($resource, null)->select($resource->primaryKeyColumn())->where($column, '=', $value)->limit(1);
+        $this->applySoftDelete($resource, $query, ListRequest::TRASHED_WITHOUT);
+        $row = $query->first();
+        $id = is_array($row) ? ($row[$resource->primaryKeyColumn()] ?? null) : null;
+
+        return is_int($id) || is_string($id) ? $id : null;
     }
 
     /**
@@ -613,7 +647,7 @@ final readonly class ResourceService
         $records = [];
 
         foreach ($rows as $row) {
-            $record = $this->serializer->serialize($resource, $row, $fields, $relations);
+            $record = $this->serializer->serialize($resource, $row, $fields, $relations, $this->instance($resource));
             $records[(string) $record[$resource->primaryKeyField()]] = $record;
         }
 
@@ -680,9 +714,14 @@ final readonly class ResourceService
      * list filter has no form) it searches them all. Resolving identifiers
      * is never narrowed, so a stored choice keeps its label.
      *
+     * An option carries the target's search subtitle and, when the record
+     * has one, the name of its search image field (fetched through the
+     * file endpoint like any image) — each only when the field is declared
+     * and visible to this user. Both come from the same statement.
+     *
      * @param list<string> $ids
      * @param array<string, string> $depends field name => the form's current value, as query text
-     * @return list<array{id: int|string, label: string}>
+     * @return list<array{id: int|string, label: string, subtitle?: string|null, image?: string|null}>
      */
     public function options(ResourceDescriptor $resource, string $fieldName, string $search, array $ids, int $limit = 20, array $depends = []): array
     {
@@ -696,10 +735,15 @@ final readonly class ResourceService
         $target = $this->resource($relation['resource']);
         $this->gate->authorize($this->user, $this->policy($target)->viewAny(...));
 
+        // what tells two choices apart, from fields this user may see (resource() hid the rest)
+        ['subtitle' => $subtitle, 'image' => $image] = $target->searchResult();
+        $subtitleColumn = $subtitle === null || $target->field($subtitle) === null ? null : $target->columns()[$subtitle] ?? null;
+        $imageColumn = $image === null || $target->field($image) === null ? null : $target->columns()[$image] ?? null;
+
         // the target as this user may list it: its scope() applies, and a
         // trashed record is not offered, though one already chosen keeps its label
         $query = $this->baseQuery($target, null)
-            ->select($target->primaryKeyColumn(), $target->titleColumn())
+            ->select(...array_values(array_unique(array_filter([$target->primaryKeyColumn(), $target->titleColumn(), $subtitleColumn, $imageColumn]))))
             ->orderBy($target->titleColumn(), 'ASC')
             ->limit(min($limit, 100));
         $this->applySoftDelete($target, $query, $ids === [] ? ListRequest::TRASHED_WITHOUT : ListRequest::TRASHED_WITH);
@@ -731,10 +775,20 @@ final readonly class ResourceService
         $options = [];
 
         foreach ($query->get() as $row) {
-            $options[] = [
+            $option = [
                 'id' => $target->primaryKeyType() === 'int' ? (int) $row[$target->primaryKeyColumn()] : (string) $row[$target->primaryKeyColumn()],
                 'label' => (string) $row[$target->titleColumn()],
             ];
+
+            if ($subtitleColumn !== null) {
+                $option['subtitle'] = $row[$subtitleColumn] === null ? null : (string) $row[$subtitleColumn];
+            }
+
+            if ($imageColumn !== null) {
+                $option['image'] = is_string($row[$imageColumn]) && $row[$imageColumn] !== '' ? $image : null;
+            }
+
+            $options[] = $option;
         }
 
         return $options;

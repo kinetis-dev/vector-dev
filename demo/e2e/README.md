@@ -56,15 +56,21 @@ current source: publish it again after changing the UI.
 
 ## What it assumes
 
-- The seed: `admin@vector.local` and `editor@vector.local` (no admin
-  access), both with the password `password`, and 150 products,
-  `SKU-00001` to `SKU-00150`. No test creates or deletes products.
+- The seed: `e2e@vector.local`, the suite's own admin, and
+  `editor@vector.local` (no admin access), both with the password
+  `password`, and 150 products, `SKU-00001` to `SKU-00150`. No test
+  creates or deletes products. A database seeded before the suite had
+  its own account gets it from `demo:seed` without `--fresh`, which adds
+  just that account and changes nothing else.
 - One run at a time, one test at a time (`workers: 1`). The suite
   writes to the demo databases: what a test creates it names uniquely
   (`unique()`) and removes afterwards, even when it fails (`cleanup`).
-- The admin's saved UI preferences (list columns and the like) are
-  cleared before each test, so every list starts from its defaults. A
-  person using the demo as the admin at the same time loses theirs.
+- The suite's admin's saved UI preferences (list columns, language and
+  the like) are cleared before each test, so every list starts from its
+  defaults, and some tests change them. That is why the suite has an
+  account of its own: a person using the demo as `admin@vector.local` at
+  the same time neither loses their preferences nor changes the suite's
+  (a language picked in the browser used to reach the tests' pages).
 
 ## Known bugs
 

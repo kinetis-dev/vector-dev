@@ -14,7 +14,7 @@ interface H3Event {
     method: string
     path: string
     headers: Headers
-    node: { req: { body?: string | Uint8Array | null }, res: { statusCode: number } }
+    node: { req: { body?: string | Uint8Array | FormData | null }, res: { statusCode: number } }
 }
 
 /**
@@ -29,13 +29,15 @@ export function endpoint(url: string, reply: Reply = {}, method?: string) {
     const handler = async (event: H3Event) => {
         // the environment's mock request holds the whole body; it is not a readable stream
         const body = event.node.req.body
-        const raw = body === null || body === undefined ? '' : typeof body === 'string' ? body : new TextDecoder().decode(body)
+        // a multipart body arrives as the FormData itself: its fields, a file by its name
+        const form = body instanceof FormData ? Object.fromEntries([...body.entries()].map(([k, v]) => [k, typeof v === 'string' ? v : v.name])) : null
+        const raw = body === null || body === undefined || body instanceof FormData ? '' : typeof body === 'string' ? body : new TextDecoder().decode(body)
 
         const request: Received = {
             method: event.method,
             path: event.path.replace(/^\/_/, ''), // the environment mounts registered endpoints under /_
             headers: event.headers,
-            body: raw === '' ? undefined : JSON.parse(raw),
+            body: form ?? (raw === '' ? undefined : JSON.parse(raw)),
         }
         requests.push(request)
 

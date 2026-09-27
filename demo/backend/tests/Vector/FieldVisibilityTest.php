@@ -128,6 +128,14 @@ final class FieldVisibilityTest extends VectorTestCase
         }
     }
 
+    public function testAHiddenSubtitleLeavesTheChoiceList(): void
+    {
+        // customers show their e-mail under the name, but not to an account that may not see it
+        $options = $this->client->get('/vector/r/orders/fields/customer/options', ['q' => ''], $this->adminHeaders())->assertOk()->json()['data'];
+        self::assertNotEmpty($options);
+        self::assertSame(['id', 'label'], array_keys($options[0]));
+    }
+
     private function shop(): Query
     {
         $link = $this->app->get(MysqlLink::class);

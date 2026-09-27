@@ -2,8 +2,11 @@ import type { $Fetch } from 'nitropack'
 
 /**
  * The one HTTP client every Vector request goes through. Bearer mode
- * attaches the in-memory token and sends the user to the login page on
- * a 401; cookie mode (hosted) rides the application's session cookie,
+ * attaches the in-memory token — renewed first when it has under two
+ * minutes left — and on a 401 renews it once and repeats the request,
+ * sending the user to the login page only when that fails too (a 401
+ * means the request did nothing, so repeating even a POST is safe);
+ * cookie mode (hosted) rides the application's session cookie,
  * sends the CSRF token on every unsafe method, and hands a 401 to the
  * application's own login URL.
  */
@@ -16,18 +19,30 @@ export function useVectorApi(): $Fetch {
     return $fetch.create({
         baseURL: runtime.hosted ? (runtime.apiBase ?? '') : config.public.vector.apiBase,
         credentials: runtime.hosted ? 'same-origin' : 'omit',
-        onRequest({ options }) {
+        async onRequest({ options }) {
             if (runtime.hosted) {
                 const method = String(options.method ?? 'GET').toUpperCase()
 
                 if (runtime.csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
                     options.headers.set('X-CSRF-Token', runtime.csrfToken)
                 }
-            } else if (auth.token) {
-                options.headers.set('Authorization', `Bearer ${auth.token}`)
+            } else {
+                const token = await auth.fresh()
+                if (token) options.headers.set('Authorization', `Bearer ${token}`)
             }
         },
-        async onResponseError({ response }) {
+        async onResponseError({ response, options }) {
+            const once = options as typeof options & { vectorRenewed?: boolean }
+
+            if (response.status === 401 && !runtime.hosted && !once.vectorRenewed && auth.canRefresh && await auth.refresh()) {
+                // repeated once, with the renewed token (onRequest sets it)
+                once.vectorRenewed = true
+                options.retry = 1
+                options.retryStatusCodes = [401]
+
+                return
+            }
+
             if (response.status === 401) {
                 if (runtime.hosted && runtime.loginUrl && import.meta.client) {
                     window.location.assign(runtime.loginUrl)

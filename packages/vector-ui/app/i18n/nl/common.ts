@@ -1,0 +1,23 @@
+// Words every area shares. Keep a key here only when two areas or more use it.
+export default {
+    save: 'Opslaan',
+    cancel: 'Annuleren',
+    create: 'Aanmaken',
+    edit: 'Bewerken',
+    delete: 'Verwijderen',
+    deleteForever: 'Definitief verwijderen',
+    restore: 'Herstellen',
+    close: 'Sluiten',
+    apply: 'Toepassen',
+    remove: 'Verwijderen',
+    search: 'Zoeken',
+    loading: 'Laden…',
+    required: 'Verplicht',
+    none: '—',
+    yes: 'Ja',
+    no: 'Nee',
+    download: 'Downloaden',
+    actions: 'Acties',
+    confirm: 'Bevestigen',
+    serverRejected: 'De server heeft het verzoek geweigerd.',
+}

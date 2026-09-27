@@ -7,7 +7,25 @@ export type VectorFieldType =
     | 'id' | 'string' | 'text' | 'markdown' | 'number' | 'money' | 'boolean'
     | 'enum' | 'date' | 'datetime' | 'email' | 'url' | 'password' | 'slug'
     | 'color' | 'json' | 'keyValue' | 'currency' | 'file' | 'image'
-    | 'belongsTo' | 'hasOne' | 'hasMany' | 'manyToMany'
+    | 'belongsTo' | 'hasOne' | 'hasMany' | 'manyToMany' | 'computed' | 'richtext'
+
+/** A rich-text feature: a node or mark type the field's schema allows (or one a runtime extension added). */
+export type VectorRichTextFeature = 'bold' | 'italic' | 'underline' | 'strike' | 'code' | 'heading' | 'list' | 'blockquote' | 'codeBlock' | 'horizontalRule' | 'link' | 'table' | 'image' | 'mention' | (string & {})
+
+/** A rich-text field's schema and sources. */
+export interface VectorRichText {
+    features: VectorRichTextFeature[]
+    /** The file or image field whose uploads images come from. */
+    imageField: string | null
+    /** The relation whose records `@` mentions. */
+    mentions: string | null
+    /** The stored value is HTML rendered through the schema, not the document. */
+    storesHtml: boolean
+    maxBytes: number
+}
+
+/** What a computed field is shown as. */
+export type VectorComputedAs = 'text' | 'number' | 'money' | 'boolean' | 'date' | 'datetime' | 'enum'
 
 export type VectorView = 'index' | 'show' | 'create' | 'update'
 
@@ -44,6 +62,8 @@ export interface VectorField {
     readonly: boolean
     /** Editable in place in the list (inlineEditable()). */
     inline?: boolean
+    /** Unique among the resource's records: a duplicate starts without it; an import may match by it. */
+    unique?: boolean
     /** hasMany: the owned rows edited inside the parent's form */
     repeater?: { fields: string[], min: number, max: number } | null
     help: string | null
@@ -60,6 +80,12 @@ export interface VectorField {
     options?: VectorEnumOption[]
     relation?: VectorRelation
     conditions?: VectorFieldConditions
+    /** A computed field: shown as `as`, computed on the server from the `from` fields. */
+    computed?: { as: VectorComputedAs, from: string[] }
+    /** A rich-text field's schema. */
+    richtext?: VectorRichText
+    /** A Markdown field's toolbar. */
+    markdown?: { toolbar: string[] }
 }
 
 /** One comparison against another field of the same form. */
@@ -112,6 +138,8 @@ export interface VectorWidget {
     ranges: Record<string, string>
     width: 3 | 4 | 6 | 12
     cacheSeconds: number
+    /** Whether the cached result is shared by every user, or kept per user. */
+    cacheShared?: boolean
 }
 
 export interface VectorWidgetData {
@@ -174,6 +202,23 @@ export interface VectorAuditEntry {
     changes: Record<string, { from: unknown, to: unknown }>
     createdAt: string
 }
+
+export type VectorExportFormat = 'csv' | 'xlsx'
+
+/** A language the admin can be shown in: its tag, its name in itself, and its direction. */
+export interface VectorLocale {
+    code: string
+    name: string
+    dir: 'ltr' | 'rtl'
+}
+
+export interface VectorSchemaI18n {
+    locale: string
+    locales: VectorLocale[]
+}
+
+/** create adds every row; update changes the records a key column finds; upsert does either. */
+export type VectorImportMode = 'create' | 'update' | 'upsert'
 
 export interface VectorImportPreview {
     headers: string[]
@@ -259,6 +304,31 @@ export interface VectorSort {
     order: 'asc' | 'desc'
 }
 
+/**
+ * One node of a resource's layout. Every key is present; the ones a kind
+ * does not use are null or false. A `field` node names a field of the
+ * resource; the others hold `children`.
+ */
+export interface VectorLayoutNode {
+    kind: 'section' | 'tabs' | 'tab' | 'field'
+    label: string | null
+    description: string | null
+    collapsible: boolean
+    collapsed: boolean
+    /** A section's or tab's grid columns (1 to 4). */
+    columns: number | null
+    /** A field's width: 1 or 2 columns, or the whole row; null sizes it by its type. */
+    span: 1 | 2 | 'full' | null
+    name: string | null
+    children: VectorLayoutNode[] | null
+}
+
+/** How the form and the show page group the fields, per view. */
+export interface VectorLayout {
+    form: VectorLayoutNode[]
+    show: VectorLayoutNode[]
+}
+
 export interface VectorResource {
     slug: string
     label: string
@@ -282,9 +352,15 @@ export interface VectorResource {
         bulkLimit: number
     }
     show: { fields: string[] }
+    /** Whether a record may be duplicated into a new one's form. */
+    replicable?: boolean
+    /** Sections, tabs and spans; null when the resource declares none. Optional for a descriptor from before layout existed. */
+    layout?: VectorLayout | null
     softDelete: { field: string } | null
     /** what a global search result shows besides its title */
     searchResult?: { subtitle: string | null, image: string | null }
+    /** Whether global search covers this resource. */
+    globallySearchable?: boolean
     actions: VectorAction[]
     widgets: VectorWidget[]
     permissions: { viewAny: boolean, create: boolean, update: boolean, delete: boolean, export: boolean, setDefaultView?: boolean }
@@ -309,8 +385,11 @@ export interface VectorSchema {
     menu: VectorMenuGroup[]
     settings: { name: string, label: string, icon: string | null }[]
     dashboards: { name: string, label: string, icon: string | null }[]
-    capabilities: { impersonation: boolean, queue: boolean, uploads?: boolean }
+    /** `exportFormats`: what the export menu offers — csv always, xlsx where the server can write it (in the queue). */
+    capabilities: { impersonation: boolean, queue: boolean, uploads?: boolean, exportFormats?: VectorExportFormat[] }
     branding: VectorBranding | null
+    /** The language this descriptor is in, and the ones this user may switch to. */
+    i18n?: VectorSchemaI18n
     /** ISO 4217 exponents of the currencies whose minor unit is not a hundredth */
     minorUnits?: Record<string, number>
 }
@@ -326,6 +405,10 @@ export interface VectorMe {
 export interface VectorRelationValue {
     id: number | string
     label: string
+    /** A choice list's option only: the target's search subtitle, when declared and visible. */
+    subtitle?: string | null
+    /** A choice list's option only: the image field to fetch its thumbnail from, when the record has one. */
+    image?: string | null
 }
 
 export interface VectorUploaded {

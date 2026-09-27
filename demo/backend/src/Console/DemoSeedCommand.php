@@ -17,6 +17,8 @@ use Kinetis\Console\Attributes\Command;
 use Kinetis\Console\CommandArguments;
 use Kinetis\Orm\Date;
 use Kinetis\Orm\EntityManager;
+use Kinetis\Persistence\Contract\MysqlLink;
+use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\Vector\Files\VectorStorage;
 
 /**
@@ -57,7 +59,22 @@ final readonly class DemoSeedCommand
         private EntityManager $entities,
         private SupportSeeder $support,
         private VectorStorage $storage,
+        private MysqlLink $db,
+        private VectorDatabase $vector,
     ) {}
+
+    /**
+     * The end-to-end suite's own admin: the suite resets its preferences
+     * before every test and changes them during it (its language, its
+     * columns), so it never signs in as the admin a person uses at the
+     * same time.
+     */
+    public const string E2E_EMAIL = 'e2e@vector.local';
+
+    private static function e2eAccount(): User
+    {
+        return new User(self::E2E_EMAIL, 'E2E Admin', 'password', true);
+    }
 
     #[Command('demo:seed', description: 'Fills the demo domain with sample data (--fresh, --scale=N)')]
     public function seed(CommandArguments $arguments): int
@@ -68,10 +85,26 @@ final readonly class DemoSeedCommand
             $this->truncate();
             $this->support->truncate();
 
+            // the audit trail and action log describe records that are gone, and ids start from 1 again:
+            // cleared where Vector's tables live, and in the MySQL copy the test suite also runs against
+            foreach (['vector_audit', 'vector_action_events'] as $table) {
+                $this->vector->query()->table($table)->whereRaw('1 = 1')->delete();
+                (new \Kinetis\QueryBuilder\Query($this->db))->table($table)->whereRaw('1 = 1')->delete();
+            }
+
             if ($this->storage->available()) {
                 $this->storage->filesystem()->deleteDirectory('vector/products');
             }
         } elseif ($this->entities->repository(User::class)->query()->exists()) {
+            if (!$this->entities->repository(User::class)->query()->where('email', '=', self::E2E_EMAIL)->exists()) {
+                // a database seeded before the end-to-end suite had an account of its own: add just that
+                $this->entities->persist(self::e2eAccount());
+                $this->entities->flush();
+                echo 'Added the end-to-end suite\'s account, ' . self::E2E_EMAIL . ".\n";
+
+                return 0;
+            }
+
             if ($this->support->isEmpty()) {
                 // the shop is seeded and the support desk (PostgreSQL) is new: seed only that
                 mt_srand(20260925);
@@ -89,6 +122,7 @@ final readonly class DemoSeedCommand
 
         $this->entities->persist(new User('admin@vector.local', 'Vector Admin', 'password', true));
         $this->entities->persist(new User('editor@vector.local', 'Demo Editor', 'password', false));
+        $this->entities->persist(self::e2eAccount());
 
         $categories = [];
         $position = 0;
@@ -134,7 +168,7 @@ final readonly class DemoSeedCommand
                 weightKg: mt_rand(50, 12000) / 1000,
             );
             $product->describe(
-                "**{$name}** — a demo product in the {$category->name()} category.\n\nLorem ipsum dolor sit amet.",
+                self::descriptionDocument($name, $category->name()),
                 // a key-value field: text values
                 json_encode(['color' => ['black', 'silver', 'white'][mt_rand(0, 2)], 'warrantyMonths' => ['12', '24', '36'][mt_rand(0, 2)]], JSON_THROW_ON_ERROR),
                 mt_rand(0, 3) === 0 ? null : $this->image($i, $colourOf[$category->name()] ?? [96, 96, 96]),
@@ -219,7 +253,7 @@ final readonly class DemoSeedCommand
 
         $this->entities->flush();
 
-        echo "Seeded 2 users, " . count($categories) . " leaf categories, " . count($tags) . " tags, {$productCount} products, {$customerCount} customers and {$orderCount} orders.\n";
+        echo "Seeded 3 users, " . count($categories) . " leaf categories, " . count($tags) . " tags, {$productCount} products, {$customerCount} customers and {$orderCount} orders.\n";
         $this->seedSupport($scale);
         echo "Log in with admin@vector.local / password.\n";
 
@@ -252,6 +286,11 @@ final readonly class DemoSeedCommand
         $builder()->table('categories')->where('parent_id', '!=', null)->delete();
         $builder()->table('categories')->where('id', '>', 0)->delete();
         $builder()->table('users')->where('id', '>', 0)->delete();
+
+        // a fresh seed numbers its records from 1 again, so ids (the admin is user 1) do not drift
+        foreach (['order_lines', 'orders', 'products', 'customer_profiles', 'customers', 'tags', 'categories', 'users'] as $table) {
+            $this->db->execute("ALTER TABLE `{$table}` AUTO_INCREMENT = 1");
+        }
     }
 
     /**
@@ -302,4 +341,22 @@ final readonly class DemoSeedCommand
     {
         return trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($text)), '-');
     }
+
+    /** A product description as the admin's rich-text editor stores it: its JSON document. */
+    private static function descriptionDocument(string $name, string $category): string
+    {
+        $text = static fn (string $text, array $marks = []): array => ['type' => 'text', 'text' => $text, ...($marks === [] ? [] : ['marks' => $marks])];
+        $item = static fn (string $line): array => ['type' => 'listItem', 'content' => [['type' => 'paragraph', 'content' => [$text($line)]]]];
+
+        return json_encode(['type' => 'doc', 'content' => [
+            ['type' => 'paragraph', 'content' => [$text($name, [['type' => 'bold']]), $text(" — a demo product in the {$category} category.")]],
+            ['type' => 'bulletList', 'content' => [$item('Two-year warranty'), $item('Free returns within 30 days')]],
+            ['type' => 'paragraph', 'content' => [
+                $text('Read the '),
+                $text('care guide', [['type' => 'link', 'attrs' => ['href' => 'https://example.com/care', 'target' => '_blank', 'rel' => 'noopener noreferrer nofollow', 'class' => null]]]),
+                $text(' before first use.'),
+            ]],
+        ]], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+    }
+
 }

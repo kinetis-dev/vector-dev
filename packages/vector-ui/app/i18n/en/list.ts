@@ -17,6 +17,12 @@ export default {
     exportCsv: 'Export CSV',
     importCsv: 'Import CSV',
     exportQueued: 'The export is large and was queued; you are notified when it is ready.',
+    exportPrepared: 'The export is being prepared; you are notified when it is ready.',
+    export: 'Export',
+    exportFormats: {
+        csv: 'CSV',
+        xlsx: 'Excel (XLSX)',
+    },
     nothingMatches: 'Nothing matches',
     empty: 'No {label} yet',
     summary: {
@@ -123,6 +129,18 @@ export default {
         skip: '— skip —',
         start: 'Import {rows} rows',
         queued: 'Import of {rows} rows queued.',
+        mode: 'Rows',
+        modes: {
+            create: 'Create new records',
+            update: 'Update existing records',
+            upsert: 'Update or create',
+        },
+        key: 'Match rows by',
+        noKey: 'Map a column to the key or a unique field first.',
+        modeHelp: {
+            update: 'Each row updates the record whose value matches; a row that matches none goes to the failed-rows file.',
+            upsert: 'Each row updates the record whose value matches, or creates one when none does.',
+        },
     },
     page: {
         create: 'New {noun}',

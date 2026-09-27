@@ -41,8 +41,7 @@ async function choose(files: File | File[] | null) {
     try {
         picked.value = await client.upload(props.field.name, file)
         model.value = picked.value.key
-        if (preview.value) URL.revokeObjectURL(preview.value)
-        preview.value = image.value ? URL.createObjectURL(file) : null
+        preview.value = image.value ? await dataUrl(file) : null
     } catch (error) {
         const failure = error as { data?: { errors?: { message: string }[] } } | null
         uploadError.value = failure?.data?.errors?.[0]?.message ? t('fields.upload.rejected', { message: failure.data.errors[0].message }) : vectorErrorMessage(error)
@@ -54,11 +53,9 @@ async function choose(files: File | File[] | null) {
 function clear() {
     model.value = null
     picked.value = null
-    if (preview.value) URL.revokeObjectURL(preview.value)
     preview.value = null
 }
 
-onBeforeUnmount(() => { if (preview.value) URL.revokeObjectURL(preview.value) })
 </script>
 
 <template>

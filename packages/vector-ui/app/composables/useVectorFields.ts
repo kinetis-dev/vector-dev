@@ -16,6 +16,7 @@ const cells: Record<string, Component> = {
     string: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Text.vue')),
     text: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Text.vue')),
     markdown: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Markdown.vue')),
+    richtext: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/RichText.vue')),
     number: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Number.vue')),
     money: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Money.vue')),
     boolean: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Boolean.vue')),
@@ -57,7 +58,10 @@ export function useVectorFields() {
             return overrides[field.type]!
         }
 
-        return cells[field.type] ?? cells.string!
+        // a computed value is shown by the cell of what it is computed as
+        const type = field.type === 'computed' ? (field.computed?.as === 'text' ? 'string' : field.computed?.as ?? 'string') : field.type
+
+        return cells[type] ?? cells.string!
     }
 
     return { cellFor }

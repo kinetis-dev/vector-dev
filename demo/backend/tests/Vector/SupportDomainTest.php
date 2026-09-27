@@ -115,7 +115,7 @@ final class SupportDomainTest extends VectorTestCase
         $number = 'TCK-T' . substr(bin2hex(random_bytes(4)), 0, 7);
 
         $created = $this->client->post('/vector/r/tickets', body: [
-            'number' => $number, 'subject' => 'Parcel lost', 'body' => 'It never arrived.', 'status' => 'open', 'priority' => 'high',
+            'number' => $number, 'subject' => 'Parcel lost', 'body' => json_encode(['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'It never arrived.']]]]], JSON_THROW_ON_ERROR), 'status' => 'open', 'priority' => 'high',
             'channel' => 'email', 'customerEmail' => 'lost@example.com', 'team' => $teamId, 'assignee' => $agentId, 'labels' => $labelIds,
             'compensationCents' => 1500, 'currency' => 'EUR', 'isEscalated' => true, 'metadata' => '{"carrier": "DHL"}',
             'dueAt' => '2026-10-01T09:00:00Z',
@@ -134,7 +134,7 @@ final class SupportDomainTest extends VectorTestCase
 
         // PostgreSQL's unique violation lands on the field it names
         $this->client->post('/vector/r/tickets', body: [
-            'number' => $number, 'subject' => 'Dup', 'body' => 'x', 'status' => 'open', 'priority' => 'low', 'channel' => 'web',
+            'number' => $number, 'subject' => 'Dup', 'body' => json_encode(['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'x']]]]], JSON_THROW_ON_ERROR), 'status' => 'open', 'priority' => 'low', 'channel' => 'web',
             'customerEmail' => 'dup@example.com', 'team' => $teamId, 'compensationCents' => 0, 'currency' => 'EUR', 'isEscalated' => false,
         ], headers: $h)->assertValidationError('number');
 

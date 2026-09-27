@@ -1,4 +1,4 @@
-import type { VectorActionResponse, VectorAuditEntry, VectorFilterQuery, VectorImportPreview, VectorPage, VectorRecord, VectorRecordPermissions, VectorRelationValue, VectorSelection, VectorSort, VectorUploaded, VectorWidgetData } from '#vector/app/types/vector'
+import type { VectorActionResponse, VectorAuditEntry, VectorExportFormat, VectorFilterQuery, VectorImportMode, VectorImportPreview, VectorPage, VectorRecord, VectorRecordPermissions, VectorRelationValue, VectorSelection, VectorSort, VectorUploaded, VectorWidgetData } from '#vector/app/types/vector'
 
 export interface VectorListOptions {
     page?: number
@@ -128,9 +128,12 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
         return api<VectorUploaded>(`${base()}/fields/${encodeURIComponent(field)}/upload`, { method: 'POST', body })
     }
 
-    /** A record's stored file, fetched with the API's credentials (an <img src> could not send a bearer token). */
-    function fileBlob(id: string | number, field: string): Promise<Blob> {
-        return api<Blob>(`${base()}/${encodeURIComponent(String(id))}/files/${encodeURIComponent(field)}`, { responseType: 'blob' })
+    /**
+     * A record's stored file, fetched with the API's credentials (an <img src> could not send a bearer token);
+     * with `key`, an image one of its rich-text documents shows from that field's uploads.
+     */
+    function fileBlob(id: string | number, field: string, key?: string): Promise<Blob> {
+        return api<Blob>(`${base()}/${encodeURIComponent(String(id))}/files/${encodeURIComponent(field)}`, { responseType: 'blob', query: key ? { key } : undefined })
     }
 
     async function downloadFile(id: string | number, field: string, fallbackName: string): Promise<void> {
@@ -191,8 +194,9 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
     }
 
     /** Downloads the CSV, or answers the job the server queued for a large one. */
-    async function exportCsv(options: VectorListOptions = {}): Promise<{ jobId: number } | null> {
-        const response = await asFile(() => api.raw(`${base()}/export`, { query: { ...listQuery({ ...options, page: undefined, perPage: undefined }), format: 'csv' }, responseType: 'blob' }))
+    /** A CSV above the inline limit, and every XLSX, comes back as a queued job instead of a file. */
+    async function exportFile(options: VectorListOptions = {}, format: VectorExportFormat = 'csv'): Promise<{ jobId: number } | null> {
+        const response = await asFile(() => api.raw(`${base()}/export`, { query: { ...listQuery({ ...options, page: undefined, perPage: undefined }), format }, responseType: 'blob' }))
 
         if (response.status === 202) {
             const queued = JSON.parse(await (response._data as Blob).text()) as { jobId: number }
@@ -200,10 +204,12 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
             return { jobId: queued.jobId }
         }
 
-        saveBlob(response._data as Blob, filenameOf(response.headers.get('content-disposition')) ?? `${toValue(slug)}.csv`)
+        saveBlob(response._data as Blob, filenameOf(response.headers.get('content-disposition')) ?? `${toValue(slug)}.${format}`)
 
         return null
     }
+
+    const exportCsv = (options: VectorListOptions = {}) => exportFile(options, 'csv')
 
     function audit(id: string | number): Promise<{ data: VectorAuditEntry[] }> {
         return api<{ data: VectorAuditEntry[] }>(`${base()}/${encodeURIComponent(String(id))}/audit`)
@@ -230,10 +236,13 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
         return api<VectorImportPreview>(`${base()}/import/preview`, { method: 'POST', body })
     }
 
-    function importCsv(file: File, mapping: Record<string, string>): Promise<{ jobId: number, rows: number }> {
+    /** `mode` update or upsert matches each row to a record by `key`, a mapped key or unique field. */
+    function importCsv(file: File, mapping: Record<string, string>, mode: VectorImportMode = 'create', key = ''): Promise<{ jobId: number, rows: number }> {
         const body = new FormData()
         body.append('file', file)
         body.append('mapping', JSON.stringify(mapping))
+        body.append('mode', mode)
+        if (mode !== 'create') body.append('key', key)
 
         return api<{ jobId: number, rows: number }>(`${base()}/import`, { method: 'POST', body })
     }
@@ -247,7 +256,7 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
         })
     }
 
-    return { list, related, show, create, update, remove, removeMany, batch, changes, attach, detach, upload, fileBlob, downloadFile, forceRemove, restore, runAction, exportCsv, audit, revert, rows, widget, importPreview, importCsv, options }
+    return { list, related, show, create, update, remove, removeMany, batch, changes, attach, detach, upload, fileBlob, downloadFile, forceRemove, restore, runAction, exportCsv, exportFile, audit, revert, rows, widget, importPreview, importCsv, options }
 }
 
 /**

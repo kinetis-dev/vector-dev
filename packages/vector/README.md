@@ -147,7 +147,11 @@ Global search (`globallySearchable()`, on by default) lists a record by
 its title. `searchSubtitle()` names a text, number or enum field to show
 under the title, such as a SKU. `searchImage()` names an image field to
 show as a thumbnail. Both are checked at compile time, and both drop out
-for a user who may not see the field.
+for a user who may not see the field. A relation input's choice list
+shows them too: each option is `{id, label, subtitle?, image?}`, read in
+the options' one statement, and the UI fetches the thumbnail through the
+target's authenticated file endpoint, so two customers with the same
+name are told apart by their e-mail.
 
 `badge()` puts a count beside the resource in the menu. It returns the
 records matching a filter in the list grammar, counted as the user's own
@@ -191,7 +195,9 @@ identifier, a `softDeletes()` property that is not a nullable
 |---|---|---|
 | `Id` | `id` | Read-only, sortable, never on a form. |
 | `Text`, `Email`, `Url`, `Password`, `Slug`, `Color` | `string` … `color` | String columns; `searchable()` allowed. `Slug::from('name')`. |
-| `Textarea`, `Markdown`, `Json` | `text`, `markdown`, `json` | Wide inputs; JSON is a string column. |
+| `Textarea`, `Json` | `text`, `json` | Wide inputs; JSON is a string column. |
+| `RichText` | `richtext` | Long-form content edited in a word-processor-like editor and stored as its JSON document; see [Rich text](#rich-text). |
+| `Markdown` | `markdown` | Markdown source for technical content, edited WYSIWYG (with a source view) and shown rendered and sanitized; `toolbar([...])`. |
 | `Currency` | `currency` | An ISO 4217 code in a string column, chosen from a searchable list that names each code in the UI's language (`EUR · Euro`). The list holds every code, or `allowed(['EUR', 'USD'])`. Codes are stored upper-case, anything else is refused, and it filters like an enum. Its default is `default('EUR')`, else `VECTOR_CURRENCY`. |
 | `KeyValue` | `keyValue` | A JSON object of text values in a string column, edited as key/value rows. On the wire it is an object; a stored number or boolean reads back as text, and an empty object stores `null` where the column allows it. Keys are trimmed and at most 100 characters. `maxEntries(n)` (50 by default), `columns('Attribute', 'Value')`. A JSON column may reorder the keys. It cannot be sorted, filtered, searched or summarized. Imported as JSON text. |
 | `Number` | `number` | `decimals(n)`, `step()`; `summarize()`. |
@@ -200,6 +206,7 @@ identifier, a `softDeletes()` property that is not a nullable
 | `Date`, `DateTime` | `date`, `datetime` | ISO 8601 on the wire, UTC. |
 | `Enum` | `enum` | `of(BackedEnum::class)`, `labels()`, `colors()`; options published. |
 | `File`, `Image` | `file`, `image` | Storage keys of uploaded files; see [Files and images](#files-and-images) for the upload and download endpoints. |
+| `Computed` | `computed` | A read-only value a resource method computes from the record; see [Computed fields](#computed-fields). |
 | `BelongsTo::to()`, `HasOne::to()`, `HasMany::to()`, `ManyToMany::to()` | relation | `titleField()` overrides the target's title; `BelongsTo::dependsOn()` narrows its choices by another field; `HasMany::repeater()` edits an owned relation's rows in the parent's form. |
 
 A field's `default()` is where a new record starts: the create form shows
@@ -211,8 +218,18 @@ Every field takes `label()`, `help()`, `sortable()`, `searchable()`,
 `filterable()`, `readonly()`, `hideFromIndex()/Show()/Forms()`,
 `onlyOn*()`, `rule(Constraint::class, ...args)` (any framework
 constraint), `required()`, `max()`, `min()`, `default()`, `props()`,
-`component('name')` (a UI cell/input by name), `summarize('sum'|'avg'|'min'|'max'|'count')`
-and `inlineEditable()`.
+`component('name')` (a UI cell/input by name), `summarize('sum'|'avg'|'min'|'max'|'count')`,
+`inlineEditable()` and `unique()`.
+
+**Duplicate.** A record's page offers **Duplicate** when the user may
+create and the resource is `replicable()` (true unless it returns
+false): a create form filled from the record. It copies every value the
+create form writes — a many-to-many's membership, a repeater's rows as
+new rows — except a field marked `unique()` (the column's unique index
+would refuse it; the ORM's metadata does not carry indexes, so the field
+says so) and file or image keys (a stored key belongs to its record). The
+copy is saved through the ordinary create. The descriptor publishes
+`unique` on every field and `replicable` on the resource.
 
 **Conditions.** `visibleWhen($field, $op, $value)`, `requiredWhen(...)`
 and `disabledWhen(...)` make a field depend on another field of the same
@@ -275,6 +292,43 @@ BelongsTo::to('team', TeamResource::class),
 BelongsTo::to('assignee', AgentResource::class)->dependsOn('team'),
 ```
 
+**Layout.** `fields()` may return sections and tabs among the fields to
+group them on the form and the show page:
+
+```php
+use Kinetis\Vector\Fields\Layout\{Section, Tabs};
+
+return [
+    Id::make(),
+    Section::make('Details')->fields(['sku', 'name', 'status']),
+    Section::make('Pricing')->description('In the product\'s currency.')->collapsible()->columns(2)
+        ->fields(['priceCents', 'currency']),
+    Tabs::make()
+        ->tab('Content', ['description', Section::make('Media')->fields(['imageKey'])])
+        ->tab('Publishing', ['isFeatured', 'releasedAt']),
+    Text::make('sku'), Text::make('name'), // … every field, in its own order
+];
+```
+
+A section or tab holds fields, or the names of fields declared elsewhere
+in `fields()`, which it then places; a tab may also hold sections, and a
+section holds only fields. A top-level field keeps its place. A
+section's grid has `columns(1..4)` (2 by default), and a field takes
+`columnSpan(1|2|'full')` of it, or a width the UI picks by its type.
+`collapsible()` folds a section open and closed; `collapsed()` starts it
+closed. A field declaring `columnSpan()` gives the resource a layout even
+without sections.
+
+Layout never changes what is validated, serialized, filtered or
+written: the compiler flattens it to the same field list and publishes
+it apart, as the descriptor's `layout` — `{form, show}`, each a tree of
+nodes (`section`, `tabs`, `tab`, `field`), with the fields that view
+shows and without a section or tab left empty; `null` for a resource
+without one. A field `viewField()` hides leaves it the same way. A name
+the resource does not declare, or one placed twice, fails the build. The
+form opens the section and activates the tab holding a field with an
+error.
+
 **Inline editing.** `inlineEditable()` lets the list edit a field in its
 cell. Edits across rows collect into one changeset that is saved with
 `POST /vector/r/{resource}/changes`. Each record in it is authorized,
@@ -284,6 +338,128 @@ transaction. A violation's path is `changes/{index}/{field}`, and a
 stale record answers `409` for all of them. Only simple, editable
 fields qualify: text, email, url, slug, color, number, money, boolean,
 enum, date, datetime and `belongsTo`. Anything else fails the build.
+
+### Computed fields
+
+A computed field shows a value a method of the resource computes from
+the record, on the list and the record page:
+
+```php
+Computed::make('lineTotal', 'Total')->as('money')->currencyField('order.currency')
+    ->from(['quantity', 'unitPriceCents'])->method('lineTotal'),
+
+/** @param array<string, mixed> $line the serialized record */
+public function lineTotal(array $line): ?int
+{
+    return $line['quantity'] * $line['unitPriceCents'];
+}
+```
+
+`as()` is how the UI shows it: `text`, `number` (`decimals()`), `money`
+(`currency()` or `currencyField()`), `boolean`, `date`, `datetime`, or
+`enum` with `options()`. `from()` names the fields the method reads:
+every list and record that shows the computed value carries them too,
+whatever the `columns` asked for. `method()` names a public instance
+method of the resource, built by the request container, called once per
+record with the record already serialized; it runs no query of its own,
+so a list's statement count does not change. The value is typed by
+`as()` and exported like any field.
+
+A computed field is read-only, on the list and the record page only,
+and never sorted, filtered, searched, summarized, written or imported;
+the build refuses one that asks, one without a method, one whose method
+is not a public instance method, an enum without options, and a source
+that is not a field holding a value. Hiding one of its sources from a
+user (`viewField()`) hides the computed field too, so a derived value
+never shows what the user may not see. The descriptor publishes
+`computed: {as, from}`; the method's name stays on the server.
+
+### Rich text
+
+`RichText` is the long-form field: a Tiptap (ProseMirror) editor in the
+admin, **stored as the editor's JSON document** — a tree, not markup —
+in a string property on a `TEXT` or `JSON` column. The server validates
+every write against a fixed schema, so sanitizing becomes schema
+validation:
+
+- the value is valid JSON with a `{"type": "doc", "content": [...]}`
+  root;
+- every node and mark type is one of the field's `features()`, and every
+  attribute is one that type defines;
+- a link goes to `http(s):`, `mailto:` or a relative place;
+- the document is at most `maxBytes()` (256 KiB by default), 32 levels
+  deep and 20 000 nodes.
+
+A refusal is a 422 on the field, with the path into the document
+(`description/content/2/marks/0/attrs/href`). An empty document is no
+value, so `required()` works.
+
+```php
+RichText::make('description')
+    ->features(['bold', 'italic', 'heading', 'list', 'link', 'table'])  // default: all but image and mention
+    ->imageField('imageKey')        // images upload through this file/image field and store its key
+    ->mentions('assignee')          // @ offers the records of this relation
+    ->textField('descriptionText'), // search reads the plain text the writer fills here
+```
+
+The features are `bold`, `italic`, `underline`, `strike`, `code`,
+`heading`, `list`, `blockquote`, `codeBlock`, `horizontalRule`, `link`,
+`table`, `image` and `mention`. An image stores a **storage key, never a
+URL**: it must be a key the image field's upload endpoint issued (or one
+already in the stored document), and the admin fetches it with its
+credentials through `GET /vector/r/{resource}/{id}/files/{imageField}?key=…`,
+which serves only keys a document of that record shows. A rich-text
+field is never sorted or summarized, filtered only by `null`/`nnull`,
+and searched only through `textField()` — a second string property the
+writer fills with `Document::toPlainText()` on every write; the build
+refuses `searchable()` without one.
+
+**On the application's own pages** `Kinetis\Vector\RichText\Document`
+renders a stored value without knowing the editor:
+
+```php
+public function __construct(private Document $document) {}
+
+$html = $this->document->toHtml($product['description'], Document::DEFAULT_FEATURES,
+    static fn (string $key): ?string => "/media/{$key}");   // or null to leave an image out
+```
+
+`toHtml()` renders through [`ueberdosis/tiptap-php`](https://github.com/ueberdosis/tiptap-php)
+configured with exactly the given features (never its highlighting code
+blocks, which reach the filesystem or a process): what they do not cover
+is dropped, and text and attributes are escaped. `toPlainText()` is the
+projection CSV exports and search use. The demo's shop page,
+`GET /shop/products/{id}`, renders the product description this way.
+
+**An application node type** — a callout, an embed — is registered on
+both sides: `Document::extend(new NodeSpec('callout', ['tone'], renderer: CalloutNode::class))`
+on the server (bind the extended `Document` in `bootstrap.php`), and
+`window.Vector.defineRichTextExtension('callout', extension)` in the
+admin; a field then names `callout` in its features. The server accepts
+the node only once registered, so client and server agree on the schema.
+
+**HTML storage** is an opt-in for an existing HTML column,
+`RichText::make('body')->storesHtml()`: the admin still sends the
+document, and the server stores `toHtml()` of it; the admin reads the
+stored HTML back through the same schema, so anything outside it is
+dropped on the next save. Fidelity is only what HTML carries — prefer
+the document for new columns. The demo's ticket body is one.
+
+`Markdown` stays the field for technical text: the stored value is the
+Markdown source; the admin edits it WYSIWYG through `@tiptap/markdown`
+with a view of the source, and shows it through markdown-it (HTML in the
+source off, bare URLs linked) and the same sanitizer. The descriptor
+publishes `richtext: {features, imageField, mentions, storesHtml,
+maxBytes}` and `markdown: {toolbar}`.
+
+**In the browser** the admin renders HTML only from a document it
+generated itself through the field's schema, then DOMPurify with an
+allow-list matching it (no `style`, no event handlers, no `src`), and a
+sanitizer that fails its canary check is not trusted — values are then
+shown as text. Under the hosted shell's strict CSP the editor's own style
+element carries the response nonce, table resizing (which writes
+`style` attributes) is off, and images display as `data:` URLs: the
+editor and the record page run without a single violation.
 
 ### Filters
 
@@ -433,9 +609,44 @@ limit. Without a filesystem, uploads are unavailable
 ### Settings groups
 
 A `#[Settings]` class extending `SettingsGroup` declares `fields()` and
-`canManage()`; values are stored in `vector_settings` and edited on the
-UI's settings page through the same registry as a form. `Branding`
-ships with Vector. A setting is a value, never markup.
+`canManage()`, and may override `validate(array $values)` for a rule
+across its fields — a request-time check, like `canManage()`, whose
+violations refuse the save; values are stored in `vector_settings` and
+edited on the UI's settings page through the same registry as a form. `Branding` and
+`Languages` ship with Vector. A setting is a value, never markup.
+
+### Languages and translated labels
+
+The admin is shown in each user's own language. The descriptor, settings
+groups, dashboards and widget results are translated at response time —
+the compiled registry stays in the labels' own words — for the request's
+language: the user's `locale` preference, else the administrator's
+default (English unless changed) — the browser's languages play no part —
+among the languages on offer: the ones the
+administrator enabled in the built-in **Languages** settings group, all
+eight the UI ships at first. Every list of languages — the menu, the
+switches, the default's options — follows `Locales::SHIPPED`, which is
+kept in the Unicode root collation of the languages' own names (Latin
+script alphabetically, then each other script as a group), the same in
+every language; a test fails when a language is added out of place. The schema carries
+`i18n: {locale, locales: [{code, name, dir}]}`, its ETag covers the
+language, and the MCP schema resource is translated for the user's
+preference.
+
+Every label a resource, field, enum, action, widget, dashboard or
+settings group declares is looked up as a key and shown as declared when
+there is no translation, so English labels need no file. Vector binds a
+`MessagesTranslator` over its own `translations/` (its built-in settings
+groups) and the application's `VECTOR_TRANSLATIONS_DIR`, each
+`{locale}.php` returning `['Products' => 'Produkte', …]`; an application
+binds `Kinetis\Vector\Translation\TranslatorInterface` itself to use
+another translator. The UI ships German, French, Dutch, Italian, Spanish,
+Portuguese (Portugal and Brazil), Polish, Turkish, Russian, Ukrainian,
+Hebrew and Arabic (right to left), Korean, Japanese and Simplified
+Chinese beside English; those catalogs, and
+Vector's own label translations, are machine translations. Validation
+messages are not translated yet: the framework's and Vector's own arrive
+in English.
 
 ### Policies
 
@@ -523,6 +734,42 @@ reported on the row. A queued action must still tolerate a chunk running
 twice, because a chunk's flush and the progress written after it are two
 statements.
 
+### XLSX exports
+
+`format=xlsx` on `GET /vector/r/{resource}/export` writes an Excel
+workbook with typed cells: numbers and money as numbers (money in major
+units, its currency in the header when the field has one, else from the
+row's currency), booleans as booleans, dates and date-times as real date
+cells (in UTC), and everything else as text under the same formula guard
+as CSV. It needs `openspout/openspout` (MIT) and PHP's `zip` extension:
+
+```sh
+composer require openspout/openspout
+```
+
+Without them the descriptor's `capabilities.exportFormats` is `["csv"]`
+and the UI offers CSV alone. **An XLSX export is always a job.** The
+decision, checked against openspout 5.12's own source: its XLSX writer
+builds the sheet in a temporary folder and zips it with `ZipArchive` on
+a real file path, and has no memory-only path. That is blocking file I/O,
+which a persistent request worker must not do; the queue worker may. So
+XLSX is offered only when a queue runs Vector's jobs, the request answers
+202 with the job, and the same field selection and limits apply
+(`exportQueueLimit()`).
+
+An import creates each row, or — with `mode: update` or `upsert` and
+a `key` column (the primary key or a `unique()` field, mapped) —
+updates the record the key finds, creating the rest in `upsert` and
+sending them to the failed-rows file in `update`. One indexed lookup per
+row runs through the resource's `scope()`, so a row can only update a
+record its admin may list; every write goes through the writer, so the
+`update` policy, rules, hooks and audit apply per row. The result is
+`{created, updated, failed}`; see the [REST contract](docs/rest-contract.md#import).
+Re-importing an export with `key: sku` in `upsert` mode changes the
+values in place instead of duplicating rows — map the columns that
+import back (a relation exports its label, a rich-text field its plain
+text) and skip the rest.
+
 Vector has no queue of its own. Two settings decide where its jobs go:
 
 | Key | Meaning |
@@ -586,8 +833,9 @@ with `X-CSRF-Token` on writes under the hosted shell — see
 | `VECTOR_SHELL_HEAD` | A raw fragment appended before `</head>` of the shell; `{nonce}` is replaced. Deployment configuration only. |
 | `VECTOR_SHELL_CSP` | A `Content-Security-Policy` for the shell alone, sent instead of the application's `SECURITY_CSP`, `{nonce}` replaced per response. Unset, the application's policy applies, and the shell uses the nonce it put on the request. |
 | `VECTOR_UI_EXTENSIONS` | Comma-separated ES-module URLs the UI imports after boot. |
-| `VECTOR_UI_LOCALE` | The hosted UI's language (`de`, `pt-BR`, …); unset, the bundle's own default (English). |
+| `VECTOR_TRANSLATIONS_DIR` | A directory of `{locale}.php` files translating the application's labels, relative to the project root. Read once at boot. |
 | `VECTOR_CURRENCY` | The ISO 4217 code a `Currency` field starts from when it sets no `default()` of its own (and allows the code). An invalid code stops the boot. |
+| `VECTOR_EXPORT_FORMATS` | The export formats offered, `csv,xlsx` by default. CSV is always offered; XLSX only where `openspout/openspout` and `ext-zip` are installed and a queue runs Vector's jobs. An unknown format stops the boot. |
 | `VECTOR_DB_CONNECTION` | The connection Vector's own tables live on (`default` when unset). |
 | `VECTOR_QUEUE` | The queue name Vector's jobs are pushed to (`default` when unset). |
 | `VECTOR_QUEUE_CONNECTION` | A named queue connection for Vector's jobs; its backend is `QUEUE_<NAME>_CONNECTION`. |

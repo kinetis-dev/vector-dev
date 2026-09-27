@@ -71,6 +71,18 @@ describe('useVectorResource', () => {
         expect(update.requests[0]!.body).toEqual({ name: 'Sale' })
     })
 
+    it('asks for an XLSX export by format, and follows the job it is queued as', async () => {
+        const exported = endpoint('/vector/r/products/export', { status: 202, body: { type: 'job', jobId: 12, message: 'The export was queued.' } })
+        cleanups.push(exported.unregister)
+
+        const queued = await useVectorResource('products').exportFile({ columns: ['sku', 'name'] }, 'xlsx')
+
+        expect(queued).toEqual({ jobId: 12 })
+        const url = new URL(exported.requests[0]!.path, 'http://x')
+        expect(url.searchParams.get('format')).toBe('xlsx')
+        expect(url.searchParams.get('columns')).toBe('sku,name')
+    })
+
     it('encodes ids and slugs into the path', async () => {
         const show = endpoint('/vector/r/tags/a%2Fb', { body: { data: { id: 'a/b' }, permissions: {} } })
         cleanups.push(show.unregister)

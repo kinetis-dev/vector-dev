@@ -4,12 +4,23 @@ declare(strict_types=1);
 
 namespace App\Tests\Vector;
 
+use Kinetis\Authorization\AuthorizationResponse;
+use Kinetis\Config\Config;
+use Kinetis\Container\AppScope;
+use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Persistence\Contract\MysqlLink;
 use Kinetis\QueryBuilder\Query;
+use Kinetis\Vector\Auth\AllowAllPolicy;
+use Kinetis\Vector\Auth\ResourcePolicy;
 
 /** Queued actions, queued exports and imports, run inline through the sync queue, and what they leave behind. */
 final class JobsTest extends VectorTestCase
 {
+    protected function registerTestDoubles(AppScope $app, Config $config): void
+    {
+        parent::registerTestDoubles($app, $config);
+        $app->instance(AllowAllPolicy::class, new FrozenArchivedPolicy());
+    }
     public function testAQueuedActionRunsInChunksAndReportsIntoItsJobRow(): void
     {
         $link = $this->link();
@@ -126,6 +137,191 @@ final class JobsTest extends VectorTestCase
         (new Query($link))->table('products')->where('sku', 'LIKE', "IMP-{$stamp}-%")->delete();
     }
 
+    public function testReImportingAnExportWithUpsertByKeyUpdatesWithoutCreating(): void
+    {
+        $link = $this->link();
+        $skus = ['SKU-00010', 'SKU-00011', 'SKU-00012'];
+        $before = $this->products($skus);
+        $export = $this->client->get('/vector/r/products/export', query: ['columns' => 'sku,name,priceCents,stock', 'filter' => ['sku' => ['in' => implode(',', $skus)]]], headers: $this->realAdminHeaders())
+            ->assertOk()->body();
+
+        // the admin corrects the prices in a spreadsheet and imports the file back
+        $lines = explode("\r\n", trim(substr($export, 3)));
+        self::assertSame('SKU,Name,Price,Stock', $lines[0]);
+        $csv = $lines[0] . "\r\n" . implode("\r\n", array_map(static function (string $line): string {
+            $cells = str_getcsv($line, escape: '');
+
+            return "{$cells[0]},\"{$cells[1]}\"," . ((int) $cells[2] + 100) . ",{$cells[3]}";
+        }, array_slice($lines, 1))) . "\r\n";
+        $preview = $this->upload('/vector/r/products/import/preview', $csv)->assertOk()->json();
+        self::assertIsArray($preview);
+        self::assertSame(['SKU' => 'sku', 'Name' => 'name', 'Price' => 'priceCents', 'Stock' => 'stock'], $preview['mapping']);
+        $count = (new Query($link))->table('products')->count();
+        $auditBefore = $this->updateAudits($before);
+
+        try {
+            $job = $this->assertResult(['created' => 0, 'updated' => 3, 'failed' => 0], $this->import($csv, $preview['mapping'], 'upsert', 'sku'))
+                ->assertJsonPath('data.hasFile', false)
+                ->json();
+            self::assertIsArray($job);
+            $inbox = $this->client->get('/vector/notifications', headers: $this->realAdminHeaders())->assertOk()->json();
+            self::assertIsArray($inbox);
+            self::assertStringContainsString('0 created, 3 updated, 0 failed.', json_encode($inbox['data'][0], JSON_THROW_ON_ERROR));
+
+            self::assertSame($count, (new Query($link))->table('products')->count(), 'no row was created');
+            foreach ($this->products($skus) as $sku => $row) {
+                self::assertSame((int) $before[$sku]['price_cents'] + 100, (int) $row['price_cents']);
+            }
+            self::assertSame($auditBefore + 3, $this->updateAudits($before), 'one audit entry per updated row');
+        } finally {
+            foreach ($before as $row) {
+                (new Query($link))->table('products')->where('id', '=', (int) $row['id'])->update(['price_cents' => (int) $row['price_cents']]);
+            }
+        }
+    }
+
+    public function testUpdateByKeySendsAnUnknownKeyToTheFailedRowsAndUpsertCreatesIt(): void
+    {
+        $link = $this->link();
+        $known = $this->products(['SKU-00020'])['SKU-00020'];
+        $stamp = bin2hex(random_bytes(3));
+        $categoryId = (int) (new Query($link))->table('categories')->select('id')->orderBy('id', 'ASC')->value('id');
+        // an update row gives only what changes; a created row everything a create requires
+        $csv = "sku,name,slug,status,category,priceCents,currency,stock,weightKg,isFeatured\r\n"
+            . "SKU-00020,Renamed by import,,,,,,,,\r\n"
+            . "NEW-{$stamp},Created by upsert,new-{$stamp},draft,{$categoryId},1500,EUR,3,0.4,false\r\n"
+            . ",No key,,,,,,,,\r\n";
+        $mapping = array_combine($headers = explode(',', 'sku,name,slug,status,category,priceCents,currency,stock,weightKg,isFeatured'), $headers);
+
+        try {
+            $update = $this->assertResult(['created' => 0, 'updated' => 1, 'failed' => 2], $this->import($csv, $mapping, 'update', 'sku'))
+                ->json();
+            self::assertIsArray($update);
+            $failed = $this->client->get("/vector/jobs/{$update['data']['id']}/download", headers: $this->realAdminHeaders())->assertOk()->body();
+            self::assertStringContainsString("NEW-{$stamp}", $failed);
+            self::assertStringContainsString('No product has this sku.', $failed);
+            self::assertStringContainsString('sku matches the row to a record and cannot be empty.', $failed);
+            self::assertSame('Renamed by import', (new Query($link))->table('products')->where('id', '=', (int) $known['id'])->value('name'));
+            self::assertSame(0, (new Query($link))->table('products')->where('sku', '=', "NEW-{$stamp}")->count());
+
+            $this->assertResult(['created' => 1, 'updated' => 1, 'failed' => 1], $this->import($csv, $mapping, 'upsert', 'sku'));
+            self::assertSame(1, (new Query($link))->table('products')->where('sku', '=', "NEW-{$stamp}")->count());
+        } finally {
+            (new Query($link))->table('products')->where('id', '=', (int) $known['id'])->update(['name' => $known['name']]);
+            (new Query($link))->table('products')->where('sku', '=', "NEW-{$stamp}")->delete();
+        }
+    }
+
+    public function testTheKeyAndTheModeAreValidatedBeforeAnythingIsQueued(): void
+    {
+        $csv = "id,sku,name\r\n1,SKU-00001,x\r\n";
+
+        foreach ([
+            [['sku' => 'sku', 'name' => 'name'], 'replace', 'sku', 'mode'],
+            [['sku' => 'sku', 'name' => 'name'], 'update', '', 'key'],
+            [['sku' => 'sku', 'name' => 'name'], 'update', 'name', 'key'], // not unique
+            [['name' => 'name'], 'update', 'sku', 'key'], // not mapped
+            [['sku' => 'sku', 'name' => 'name'], 'create', 'sku', 'key'], // a create matches nothing
+            [['id' => 'id', 'name' => 'name'], 'create', '', 'mapping'], // the id is only ever a key
+        ] as [$mapping, $mode, $key, $path]) {
+            $errors = $this->upload('/vector/r/products/import', $csv, ['mapping' => json_encode($mapping, JSON_THROW_ON_ERROR), 'mode' => $mode, 'key' => $key])
+                ->assertStatus(422)->json()['errors'];
+            self::assertSame($path, $errors[0]['path'][0], "{$mode} by '{$key}'");
+        }
+
+        // the resource's own key matches rows too, and is not written
+        $this->upload('/vector/r/products/import/preview', $csv)->assertOk()->assertJsonPath('mapping.id', 'id');
+        $id = (int) $this->products(['SKU-00001'])['SKU-00001']['id'];
+        $name = (string) $this->products(['SKU-00001'])['SKU-00001']['name'];
+
+        try {
+            $this->import("id,name\r\n{$id},By id\r\n", ['id' => 'id', 'name' => 'name'], 'update', 'id')->assertJsonPath('data.result.updated', 1);
+            self::assertSame('By id', $this->products(['SKU-00001'])['SKU-00001']['name']);
+        } finally {
+            (new Query($this->link()))->table('products')->where('id', '=', $id)->update(['name' => $name]);
+        }
+    }
+
+    public function testEachUpdatedRowIsAuthorizedByTheUpdatePolicy(): void
+    {
+        $link = $this->link();
+        $archived = (new Query($link))->table('products')->select('id', 'sku', 'name')->where('status', '=', 'archived')->where('deleted_at', '=', null)->orderBy('id', 'ASC')->first();
+        $draft = $this->products(['SKU-00030'])['SKU-00030'];
+        self::assertIsArray($archived);
+        $csv = "sku,name\r\n{$archived['sku']},Thawed\r\nSKU-00030,Edited\r\n";
+
+        try {
+            $job = $this->assertResult(['created' => 0, 'updated' => 1, 'failed' => 1], $this->import($csv, ['sku' => 'sku', 'name' => 'name'], 'update', 'sku'))
+                ->json();
+            self::assertIsArray($job);
+            $failed = $this->client->get("/vector/jobs/{$job['data']['id']}/download", headers: $this->realAdminHeaders())->assertOk()->body();
+            self::assertStringContainsString('Archived products are frozen.', $failed);
+            self::assertSame($archived['name'], (new Query($link))->table('products')->where('id', '=', (int) $archived['id'])->value('name'));
+        } finally {
+            (new Query($link))->table('products')->where('id', '=', (int) $draft['id'])->update(['name' => $draft['name']]);
+        }
+    }
+
+    public function testAnImportThatCannotWriteIsForbiddenBeforeItIsQueued(): void
+    {
+        // users are never created from the admin, but they are updated: by email, which is unique
+        $csv = "email,name\r\nnobody@vector.invalid,Nobody\r\n";
+        $this->upload('/vector/r/users/import', $csv, ['mapping' => json_encode(['name' => 'name'], JSON_THROW_ON_ERROR)])->assertStatus(403);
+        $this->upload('/vector/r/users/import', $csv, ['mapping' => json_encode(['email' => 'email', 'name' => 'name'], JSON_THROW_ON_ERROR), 'mode' => 'upsert', 'key' => 'email'])->assertStatus(202);
+        $queued = $this->upload('/vector/r/users/import', $csv, ['mapping' => json_encode(['email' => 'email', 'name' => 'name'], JSON_THROW_ON_ERROR), 'mode' => 'update', 'key' => 'email'])->assertStatus(202)->json();
+        self::assertIsArray($queued);
+        $this->assertResult(['created' => 0, 'updated' => 0, 'failed' => 1], $this->client->get("/vector/jobs/{$queued['jobId']}", headers: $this->realAdminHeaders())->assertOk());
+        self::assertSame(0, (new Query($this->link()))->table('users')->where('email', '=', 'nobody@vector.invalid')->count(), 'an upsert row is still authorized as the create it would be');
+    }
+
+    /**
+     * Queues an import (the sync queue runs it) and returns its job.
+     *
+     * @param array<string, string> $mapping
+     */
+    private function import(string $csv, array $mapping, string $mode, string $key): \Kinetis\Testing\TestResponse
+    {
+        $queued = $this->upload('/vector/r/products/import', $csv, ['mapping' => json_encode($mapping, JSON_THROW_ON_ERROR), 'mode' => $mode, 'key' => $key])
+            ->assertStatus(202)->json();
+        self::assertIsArray($queued);
+
+        return $this->client->get("/vector/jobs/{$queued['jobId']}", headers: $this->realAdminHeaders())->assertOk()->assertJsonPath('data.status', 'done');
+    }
+
+    /**
+     * The job's counts, whatever order the JSON column keeps them in.
+     *
+     * @param array<string, int> $expected
+     */
+    private function assertResult(array $expected, \Kinetis\Testing\TestResponse $job): \Kinetis\Testing\TestResponse
+    {
+        $result = $job->json()['data']['result'] ?? null;
+        self::assertIsArray($result);
+        ksort($result);
+        ksort($expected);
+        self::assertSame($expected, $result);
+
+        return $job;
+    }
+
+    /**
+     * @param list<string> $skus
+     * @return array<string, array<string, mixed>> sku => row
+     */
+    private function products(array $skus): array
+    {
+        $rows = (new Query($this->link()))->table('products')->select('id', 'sku', 'name', 'price_cents')->whereIn('sku', $skus)->get();
+
+        return array_column($rows, null, 'sku');
+    }
+
+    /** @param array<string, array<string, mixed>> $rows */
+    private function updateAudits(array $rows): int
+    {
+        return $this->vectorQuery()->table('vector_audit')->where('resource', '=', 'products')->where('event', '=', 'update')
+            ->whereIn('record_id', array_map(static fn (array $r): string => (string) $r['id'], array_values($rows)))->count();
+    }
+
     /**
      * A real multipart body: the framework parses the stream itself.
      *
@@ -150,5 +346,14 @@ final class JobsTest extends VectorTestCase
         self::assertInstanceOf(MysqlLink::class, $link);
 
         return $link;
+    }
+}
+
+/** The default policy, except that an archived product is not updated (nothing else in these tests updates one). */
+final class FrozenArchivedPolicy extends ResourcePolicy
+{
+    public function update(CurrentUserInterface $user, array $record): bool|AuthorizationResponse
+    {
+        return ($record['status'] ?? null) === 'archived' && array_key_exists('sku', $record) ? AuthorizationResponse::deny('Archived products are frozen.') : true;
     }
 }

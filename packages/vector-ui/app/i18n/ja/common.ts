@@ -1,0 +1,23 @@
+// Words every area shares. Keep a key here only when two areas or more use it.
+export default {
+    save: '保存',
+    cancel: 'キャンセル',
+    create: '作成',
+    edit: '編集',
+    delete: '削除',
+    deleteForever: '完全に削除',
+    restore: '復元',
+    close: '閉じる',
+    apply: '適用',
+    remove: '削除',
+    search: '検索',
+    loading: '読み込み中…',
+    required: '必須',
+    none: '—',
+    yes: 'はい',
+    no: 'いいえ',
+    download: 'ダウンロード',
+    actions: 'アクション',
+    confirm: '確認',
+    serverRejected: 'サーバーがリクエストを拒否しました。',
+}

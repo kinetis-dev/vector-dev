@@ -34,6 +34,8 @@ final readonly class SettingsController
         private RequestScope $scope,
         private CurrentUserInterface $user,
         private FieldInput $input,
+        private \Kinetis\Vector\Translation\LocaleResolver $locales,
+        private \Kinetis\Vector\Translation\Labels $labels,
     ) {}
 
     /** @return array{data: list<array<string, mixed>>} every manageable group with its values */
@@ -41,10 +43,11 @@ final readonly class SettingsController
     public function index(): array
     {
         $groups = [];
+        $locale = $this->locale();
 
         foreach ($this->registry->settings() as $group) {
             if ($this->manageable($group)) {
-                $groups[] = [...$group->toArray(), 'values' => $this->store->values($group)];
+                $groups[] = [...$this->labels->document($group->toArray(), $locale), 'values' => $this->store->values($group)];
             }
         }
 
@@ -61,7 +64,7 @@ final readonly class SettingsController
             throw new ForbiddenOperationException('This account may not manage these settings.');
         }
 
-        return ['data' => [...$descriptor->toArray(), 'values' => $this->store->values($descriptor)]];
+        return ['data' => [...$this->labels->document($descriptor->toArray(), $this->locale()), 'values' => $this->store->values($descriptor)]];
     }
 
     /**
@@ -102,9 +105,22 @@ final readonly class SettingsController
             };
         }
 
+        // a rule across the group's fields, as the group states it
+        $group = $this->scope->get($descriptor->groupClass());
+        $violations = $group instanceof \Kinetis\Vector\Settings\SettingsGroup ? $group->validate($stored) : [];
+
+        if ($violations !== []) {
+            throw ValidationException::fromViolations($violations);
+        }
+
         $this->store->save($descriptor, $stored, (string) $this->user->id());
 
-        return ['data' => [...$descriptor->toArray(), 'values' => $this->store->values($descriptor)]];
+        return ['data' => [...$this->labels->document($descriptor->toArray(), $this->locale()), 'values' => $this->store->values($descriptor)]];
+    }
+
+    private function locale(): string
+    {
+        return $this->locales->resolve((string) $this->user->id())['locale'];
     }
 
     private function manageable(SettingsDescriptor $group): bool

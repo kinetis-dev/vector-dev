@@ -5,6 +5,8 @@ import type { VectorField, VectorRelationValue } from '#vector/app/types/vector'
 // target's title on the server, debounced, dropping stale answers. A
 // dependent choice list searches with the form's value of the field it
 // depends on, waits for one, and drops its choice when that value changes.
+// An option shows the target's subtitle and thumbnail when it has them;
+// thumbnails come through the API client as data URLs, like image cells.
 const props = defineProps<{ field: VectorField, rules: ((v: unknown) => true | string)[], errorMessages: string[], resource: string, record?: Record<string, unknown>, disabled?: boolean }>()
 const model = defineModel<number | string | (number | string)[] | null>()
 const multiple = computed(() => props.field.type === 'manyToMany')
@@ -12,6 +14,19 @@ const client = useVectorResource(() => props.resource)
 const { t } = useVectorT()
 
 const items = ref<VectorRelationValue[]>([])
+const target = useVectorResource(() => props.field.relation?.resource ?? props.resource)
+const thumbs = reactive<Record<string, string>>({})
+const requested = new Set<string>()
+
+function loadThumbs(options: VectorRelationValue[]) {
+    for (const option of options) {
+        const key = String(option.id)
+        if (!option.image || requested.has(key)) continue
+        requested.add(key)
+        target.fileBlob(option.id, option.image).then(dataUrl).then((url) => { thumbs[key] = url }).catch(() => {})
+    }
+}
+
 const search = ref('')
 const loading = ref(false)
 let requestId = 0
@@ -40,6 +55,7 @@ async function fetchOptions(query: string, ids: (number | string)[] = []) {
             const selected = items.value.filter(i => isSelected(i.id))
             const merged = [...selected, ...result.data.filter(r => !selected.some(s => s.id === r.id))]
             items.value = merged
+            loadThumbs(result.data)
         }
     } finally {
         if (id === requestId) loading.value = false
@@ -91,5 +107,21 @@ onMounted(async () => {
         :hint="waiting ? t('fields.relation.dependsFirst', { label: dependsOn!.label.toLowerCase() }) : (field.help ?? undefined)"
         :persistent-hint="waiting || !!field.help"
         :placeholder="t('fields.relation.placeholder')"
-    />
+    >
+        <template #item="{ props: itemProps, item }">
+            <v-list-item v-bind="itemProps" :subtitle="(item as VectorRelationValue).subtitle ?? undefined">
+                <template v-if="thumbs[String((item as VectorRelationValue).id)]" #prepend>
+                    <v-avatar rounded size="32"><v-img :src="thumbs[String((item as VectorRelationValue).id)]" alt="" cover /></v-avatar>
+                </template>
+            </v-list-item>
+        </template>
+        <template v-if="multiple" #chip="{ props: chipProps, item }">
+            <v-chip v-bind="chipProps" :prepend-avatar="thumbs[String((item as VectorRelationValue).id)]" :title="(item as VectorRelationValue).subtitle ?? undefined" />
+        </template>
+        <template v-else #selection="{ item }">
+            <v-avatar v-if="thumbs[String((item as VectorRelationValue).id)]" rounded size="24" class="me-2"><v-img :src="thumbs[String((item as VectorRelationValue).id)]" alt="" cover /></v-avatar>
+            <span>{{ (item as VectorRelationValue).label }}</span>
+            <span v-if="(item as VectorRelationValue).subtitle" class="text-medium-emphasis ms-2 vx-relation-subtitle">{{ (item as VectorRelationValue).subtitle }}</span>
+        </template>
+    </v-autocomplete>
 </template>

@@ -13,7 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ clear: [name: string] }>()
 const { inputFor } = useVectorInputs()
-const wide = (field: VectorField) => ['markdown', 'text', 'json'].includes(field.type)
+const wide = (field: VectorField) => ['markdown', 'richtext', 'text', 'json'].includes(field.type)
 
 // Conditions (visibleWhen, requiredWhen, disabledWhen) follow the values as they are edited.
 const states = computed<Record<string, VectorFieldState>>(() => Object.fromEntries(props.fields.map(f => [f.name, fieldState(f, props.values)])))

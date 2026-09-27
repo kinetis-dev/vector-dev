@@ -13,19 +13,17 @@ const key = computed(() => (typeof props.value === 'string' && props.value !== '
 const size = computed(() => (props.context === 'show' ? 200 : 40))
 
 watch([key, () => props.record.id], async () => {
-    if (url.value) URL.revokeObjectURL(url.value)
     url.value = null
     failed.value = false
     if (!key.value || props.record.id === undefined || props.record.id === null) return
 
     try {
-        url.value = URL.createObjectURL(await client.fileBlob(props.record.id as string | number, props.field.name))
+        url.value = await dataUrl(await client.fileBlob(props.record.id as string | number, props.field.name))
     } catch {
         failed.value = true
     }
 }, { immediate: true })
 
-onBeforeUnmount(() => { if (url.value) URL.revokeObjectURL(url.value) })
 const { t } = useVectorT()
 </script>
 

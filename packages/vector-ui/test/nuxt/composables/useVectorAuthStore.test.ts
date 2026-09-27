@@ -140,6 +140,90 @@ describe('useVectorAuthStore', () => {
         expect(sessionStorage.getItem(KEY)).toBeNull()
     })
 
+    describe('refresh tokens', () => {
+        const pair = (access: string, refresh: string) => ({ accessToken: access, tokenType: 'Bearer', expiresIn: 900, refreshToken: refresh, refreshExpiresIn: 43_200, user: { id: 1, name: 'Vector Admin' } })
+
+        it('keeps the refresh token beside the access token, in sessionStorage only', async () => {
+            const login = endpoint('/auth/login', { body: pair('jwt-1', 'r-1') }, 'POST')
+            const auth = useVectorAuthStore()
+
+            await auth.login('admin@vector.local', 'password')
+
+            expect(auth.refreshToken).toBe('r-1')
+            expect(auth.canRefresh).toBe(true)
+            expect(JSON.parse(sessionStorage.getItem(KEY)!)).toMatchObject({ token: 'jwt-1', refreshToken: 'r-1', refreshSubject: '1' })
+            expect(localStorage.getItem(KEY)).toBeNull()
+            login.unregister()
+        })
+
+        it('renews a token with under two minutes left before it is used, once however many ask', async () => {
+            const login = endpoint('/auth/login', { body: { ...pair('jwt-1', 'r-1'), expiresIn: 60 } }, 'POST')
+            const refresh = endpoint('/auth/refresh', { body: pair('jwt-2', 'r-2') }, 'POST')
+            const auth = useVectorAuthStore()
+            await auth.login('admin@vector.local', 'password')
+
+            const [a, b] = await Promise.all([auth.fresh(), auth.fresh()])
+
+            expect([a, b]).toEqual(['jwt-2', 'jwt-2'])
+            expect(refresh.requests).toHaveLength(1)
+            expect(refresh.requests[0]!.body).toEqual({ refreshToken: 'r-1' })
+            expect(auth.refreshToken).toBe('r-2')
+            login.unregister()
+            refresh.unregister()
+        })
+
+        it('outlives the access token: a reload after it expired renews the session', async () => {
+            sessionStorage.setItem(KEY, JSON.stringify({ token: 'old', expiresAt: Date.now() - 1000, user: { id: 1, name: 'Vector Admin' }, refreshToken: 'r-1', refreshExpiresAt: Date.now() + 60_000, refreshSubject: '1' }))
+            const refresh = endpoint('/auth/refresh', { body: pair('jwt-2', 'r-2') }, 'POST')
+            const auth = useVectorAuthStore()
+
+            auth.restore()
+            expect(auth.isAuthenticated).toBe(true)
+            expect(await auth.fresh()).toBe('jwt-2')
+            refresh.unregister()
+        })
+
+        it('signs out when the refresh token is refused', async () => {
+            const login = endpoint('/auth/login', { body: { ...pair('jwt-1', 'r-1'), expiresIn: 60 } }, 'POST')
+            const refresh = endpoint('/auth/refresh', { status: 401, body: { error: 'Invalid or expired refresh token.' } }, 'POST')
+            const auth = useVectorAuthStore()
+            await auth.login('admin@vector.local', 'password')
+
+            expect(await auth.refresh()).toBe(false)
+            expect(auth.token).toBeNull()
+            expect(auth.isAuthenticated).toBe(false)
+            expect(sessionStorage.getItem(KEY)).toBeNull()
+            login.unregister()
+            refresh.unregister()
+        })
+
+        it('never renews an impersonation: the refresh token is the signed-in user\'s', async () => {
+            const login = endpoint('/auth/login', { body: pair('jwt-1', 'r-1') }, 'POST')
+            const auth = useVectorAuthStore()
+            await auth.login('admin@vector.local', 'password')
+
+            auth.adopt('as-editor', 60, { id: 2, name: 'Demo Editor' })
+
+            expect(auth.canRefresh).toBe(false)
+            expect(await auth.fresh()).toBe('as-editor')
+            login.unregister()
+        })
+
+        it('revokes the refresh token on logout', async () => {
+            const login = endpoint('/auth/login', { body: pair('jwt-1', 'r-1') }, 'POST')
+            const logout = endpoint('/auth/logout', { status: 204 }, 'POST')
+            const auth = useVectorAuthStore()
+            await auth.login('admin@vector.local', 'password')
+
+            await auth.logout()
+
+            expect(logout.requests[0]!.body).toEqual({ refreshToken: 'r-1' })
+            expect(auth.token).toBeNull()
+            login.unregister()
+            logout.unregister()
+        })
+    })
+
     it('in hosted mode is signed in by the application, from the shell\'s user', () => {
         sessionStorage.setItem(KEY, JSON.stringify({ token: 'stale', expiresAt: Date.now() + 60_000, user: { id: 9, name: 'x' } }))
         window.__VECTOR__ = {

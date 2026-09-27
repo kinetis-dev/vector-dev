@@ -1,0 +1,23 @@
+// Words every area shares. Keep a key here only when two areas or more use it.
+export default {
+    save: 'Зберегти',
+    cancel: 'Скасувати',
+    create: 'Створити',
+    edit: 'Редагувати',
+    delete: 'Видалити',
+    deleteForever: 'Видалити назавжди',
+    restore: 'Відновити',
+    close: 'Закрити',
+    apply: 'Застосувати',
+    remove: 'Прибрати',
+    search: 'Пошук',
+    loading: 'Завантаження…',
+    required: 'Обов’язкове',
+    none: '—',
+    yes: 'Так',
+    no: 'Ні',
+    download: 'Завантажити',
+    actions: 'Дії',
+    confirm: 'Підтвердити',
+    serverRejected: 'Сервер відхилив запит.',
+}

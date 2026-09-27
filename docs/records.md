@@ -12,6 +12,9 @@ with this record: **Edit**, **Delete**, **Actions**, and, in the trash,
 **New *record*** on a list, or **Edit** on a record, opens a form with
 one input per field you may write.
 
+- **Sections and tabs** — a long form may be grouped. A folded section
+  opens, and a tab switches, when a field inside it needs attention; a
+  tab with a problem carries a red dot.
 - **Validation** — the form checks what it can as you go (a required
   field, a length, an e-mail address). What only the server can check,
   such as a duplicate name, comes back on the field it concerns.
@@ -24,10 +27,32 @@ one input per field you may write.
   order's lines: add, change or remove them, and they save with the
   record.
 - **Files and images** upload as soon as you pick them.
+- **Formatted text** — a rich-text field has a toolbar: bold, headings,
+  lists, links, tables and, where allowed, images and `@` mentions. A
+  Markdown field adds **Source** to edit the text itself. Pasted content
+  keeps only the formatting the field allows.
 
 Editing sends only what you changed. If someone saved the record after
 you opened it, your save is refused rather than overwriting their
 change; reload and edit again.
+
+### Saving
+
+- The arrow beside **Save** (or **Create**) offers **Save and continue
+  editing** and, on a new record, **Create and add another**, which
+  opens a fresh form with the defaults. The admin remembers the one you
+  used last and makes it the button.
+- <kbd>Ctrl</kbd>+<kbd>S</kbd> (<kbd>⌘</kbd>+<kbd>S</kbd> on a Mac) saves.
+- Leaving a form with unsaved changes — a menu entry, **Cancel**, a
+  reload — asks first. Nothing is lost by accident; once saved, you
+  leave without a question.
+
+## Duplicating
+
+**Duplicate** on a record's page opens a new form filled with its
+values, so a similar record takes seconds. Values that must be unique
+(a SKU, a slug) and files start empty; related tags and similar
+memberships are copied. Nothing exists until you save.
 
 ## Related records
 

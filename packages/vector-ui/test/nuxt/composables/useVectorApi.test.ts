@@ -58,6 +58,21 @@ describe('useVectorApi, standalone (bearer)', () => {
         expect(useRouter().currentRoute.value.path).toBe('/login')
     })
 
+    it('on a 401 renews the session once and repeats the request', async () => {
+        const auth = useVectorAuthStore()
+        mock('/auth/login', { body: { accessToken: 'revoked', tokenType: 'Bearer', expiresIn: 900, refreshToken: 'r-1', refreshExpiresIn: 3600, user: { id: 1, name: 'Vector Admin' } } }, 'POST')
+        const refresh = mock('/auth/refresh', { body: { accessToken: 'renewed', tokenType: 'Bearer', expiresIn: 900, refreshToken: 'r-2', refreshExpiresIn: 3600, user: { id: 1, name: 'Vector Admin' } } }, 'POST')
+        const probe = mock('/vector/probe', request => request.headers.get('authorization') === 'Bearer renewed' ? { body: { ok: true } } : { status: 401, body: { error: 'Unauthenticated.' } }, 'POST')
+        await auth.login('admin@vector.local', 'password')
+
+        const answer = await useVectorApi()('/vector/probe', { method: 'POST', body: { a: 1 } })
+
+        expect(answer).toEqual({ ok: true })
+        expect(refresh.requests).toHaveLength(1)
+        expect(probe.requests.map(r => r.headers.get('authorization'))).toEqual(['Bearer revoked', 'Bearer renewed'])
+        expect(auth.token).toBe('renewed')
+    })
+
     it('leaves the session alone on other errors', async () => {
         const auth = useVectorAuthStore()
         auth.adopt('token-123', 3600, { id: 1, name: 'Vector Admin' })

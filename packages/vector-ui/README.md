@@ -58,7 +58,10 @@ placing the same path in the consuming app (Nuxt layer semantics).
 
 Runtime extensions are plain ES modules that need no build of this
 layer. `window.Vector` hands them Vue and a curated set of Vuetify
-components:
+components — `VAlert`, `VAutocomplete`, `VBtn`, `VCard`, `VCheckbox`,
+`VChip`, `VIcon`, `VProgressLinear`, `VRating`, `VSelect`, `VSwitch`,
+`VTable` (a custom page's tables: `thead` and `tbody` as its content),
+`VTextField`, `VTextarea`:
 
 ```js
 export default function ({ vue, vuetify, defineCell, defineInput, defineWidget }) {
@@ -109,6 +112,38 @@ Vector's own routes. `window.Vector` also hands extensions `api`,
 `notify`, `navigate`, `t` (the admin's translator) and
 `defineMessages()`.
 
+## Forms
+
+`VxResourceForm` tracks unsaved changes (`dirty`, exposed with
+`reset()`), and with `variants` — as the create and edit pages use it —
+offers the save variants (back to the record, continue editing, add
+another), remembers the last one as the user preference
+`form.saveVariant`, and saves with Ctrl/Cmd+S. The pages guard leaving a
+changed form through `useLeaveGuard()`, the same confirm dialog the
+list's unsaved inline edits use. `saved` emits the record and the
+variant.
+
+## Rich text and Markdown
+
+`RichText` fields edit in a Tiptap editor (`@tiptap/*`, MIT) over exactly
+the field's `features`, with a toolbar built from them; the value is the
+document as JSON text. Images upload through the field's image field;
+`@` mentions search its `mentions` relation. `Markdown` fields edit the
+same way through `@tiptap/markdown`, with a source view.
+
+On the record page a value is shown as HTML — the layer's only `v-html`,
+in `Vx/Cell/RichText.vue` and `Vx/Cell/Markdown.vue` — and only after it
+was generated from the document through the schema (or rendered by
+markdown-it with HTML off) and passed through **DOMPurify** with an
+allow-list matching the schema. DOMPurify is dual-licensed MPL-2.0 OR
+Apache-2.0; the layer uses it **under Apache-2.0**. If the sanitizer
+fails its canary check in some environment, values show as text instead.
+
+A runtime extension adds a node or mark type with
+`window.Vector.defineRichTextExtension(name, extension)`, built from
+`window.Vector.tiptap` (`Node`, `Mark`, `Extension`, `mergeAttributes`);
+the server must register the same name (`Document::extend()`).
+
 ## Theming
 
 Vuetify `defaults` and the two themes are set in the layer's
@@ -118,34 +153,53 @@ footer) applies over them, rendered escaped.
 
 ## Languages
 
-The admin's own strings — buttons, menus, dialogs, validation and
-notification texts — come from a message catalog through `vue-i18n`;
-labels the descriptor carries (resources, fields, actions, enum options)
-are the application's and arrive in its own language. English ships
-with the layer and is the fallback, string by string, for every other
-locale. Vuetify's component strings (pagination, empty tables) follow the
-same locale from Vuetify's own translations.
+Each user sees the admin in their own language. The layer ships English
+(the base and the fallback, key by key) and German, French, Dutch,
+Italian, Spanish, Portuguese (`pt`, European, and `pt-BR`), Polish,
+Turkish, Russian, Ukrainian, Hebrew, Arabic, Korean, Japanese and
+Simplified Chinese (`zh-Hans`) — **machine translations**, which an
+application can override. Labels the descriptor carries (resources,
+fields, actions, enum options, widgets, settings) arrive translated by
+the server for the same language.
 
-The locale is the hosted shell's `VECTOR_UI_LOCALE` when set, otherwise
-`app.config` `vector.locale`. Add or override messages per locale and
-area in `app.config`:
+The descriptor's `i18n` names the user's language and the languages on
+offer (the ones the administrator enabled in the Languages settings).
+The language menu in the app bar lists them in the server's order — the
+languages' own names by Unicode root collation, the same in every
+language — each named in itself with its name in the current language
+beneath (`languageName()`, from `Intl.DisplayNames`), and switches it: `useVectorLocale().choose(code)` stores the user's `locale`
+preference and reloads the descriptor. Before the descriptor loads, the
+UI starts in the hosted shell's language, else the one this browser last
+used, else `app.config` `vector.locale`. Applying a language switches the
+catalog, Vuetify's component strings, the `Intl` formatting of dates,
+numbers and money, and `<html lang dir>`: Hebrew and Arabic render right to left,
+and the layer's own components use logical spacing (`ms-`/`me-`) so they
+mirror.
+
+Add or override messages per locale and area in `app.config`:
 
 ```ts
 export default defineAppConfig({
     vector: {
-        locale: 'de',
         messages: {
-            de: { common: { save: 'Speichern', cancel: 'Abbrechen' }, list: { exportCsv: 'CSV exportieren', filter: { add: 'Filter hinzufügen' } } },
+            de: { common: { save: 'Sichern' }, list: { filter: { add: 'Filter hinzufügen' } } },
         },
     },
 })
 ```
 
 A runtime extension adds them without a build:
-`window.Vector.defineMessages('de', { common: { save: 'Speichern' } })`.
-The English catalog in `app/i18n/en/` names every key. Messages use
-`{name}` placeholders and `a | b | c` plural forms, and are never
-rendered as HTML.
+`window.Vector.defineMessages('de', { common: { save: 'Sichern' } })`.
+The English catalog in `app/i18n/en/` names every key, and a test holds
+every shipped locale to the same keys and placeholders. Messages use
+`{name}` placeholders and are never rendered as HTML. A plural message
+lists its language's own forms, `a | b | …`, in CLDR order — zero, one,
+two, few, many, other — keeping the ones whole counts reach there
+(`pluralCategories()`): one form in Japanese, two in English (one,
+other), three in Hebrew (one, two, other) and Russian (one, few, many),
+six in Arabic. `pluralRule()` picks the form by the browser's
+`Intl.PluralRules`; a two-form message an application adds is read the
+English way in any language.
 
 ## Authentication modes
 
@@ -154,9 +208,14 @@ injects. Present, the layer is in **cookie mode**: same-origin API,
 `credentials: same-origin`, `X-CSRF-Token` on every unsafe method, a
 401 sends the browser to the application's login URL. Absent, the layer
 is in **bearer mode**: `POST /auth/login` on `apiBase`, the token in
-memory (mirrored to `sessionStorage` for reloads), a 401 goes to
-`/login`. Impersonation swaps the token in bearer mode and reloads in
-cookie mode.
+memory (mirrored to `sessionStorage` for reloads). When the login answers
+a `refreshToken`, the store renews both tokens through
+`POST /auth/refresh` — once at a time, when the access token has under
+two minutes left and once on a 401, after which the request is repeated —
+and signs out when the renewal is refused; logout revokes it with
+`POST /auth/logout`. Without one, the session ends with its token and a
+401 goes to `/login`. Impersonation swaps the token in bearer mode (and
+is never renewed) and reloads in cookie mode.
 
 ## Testing
 
