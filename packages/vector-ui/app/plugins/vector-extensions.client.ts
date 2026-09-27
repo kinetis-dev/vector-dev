@@ -1,6 +1,6 @@
 import * as vue from 'vue'
 import { Extension as TiptapExtension, Mark as TiptapMark, Node as TiptapNode, mergeAttributes } from '@tiptap/core'
-import { VAlert, VAutocomplete, VBtn, VCard, VCheckbox, VChip, VIcon, VProgressLinear, VRating, VSelect, VSwitch, VTextField, VTextarea } from 'vuetify/components'
+import { VAlert, VAutocomplete, VBtn, VCard, VCheckbox, VChip, VIcon, VProgressLinear, VRating, VSelect, VSwitch, VTable, VTextField, VTextarea } from 'vuetify/components'
 
 /**
  * Runtime UI extensions (§4.15 tier 2). `window.Vector` is the
@@ -17,7 +17,8 @@ export default defineNuxtPlugin(() => {
     const notifications = useVectorNotifications()
     const appConfig = useAppConfig()
     const config = useRuntimeConfig()
-    const vuetify = { VAlert, VAutocomplete, VBtn, VCard, VCheckbox, VChip, VIcon, VProgressLinear, VRating, VSelect, VSwitch, VTextField, VTextarea }
+    // VTable for a custom page's tables: its wrapper, not a bare <table>, carries Vuetify's table styles
+    const vuetify = { VAlert, VAutocomplete, VBtn, VCard, VCheckbox, VChip, VIcon, VProgressLinear, VRating, VSelect, VSwitch, VTable, VTextField, VTextarea }
 
     const api = {
         version: 1,

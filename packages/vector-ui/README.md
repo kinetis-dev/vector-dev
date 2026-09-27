@@ -58,7 +58,10 @@ placing the same path in the consuming app (Nuxt layer semantics).
 
 Runtime extensions are plain ES modules that need no build of this
 layer. `window.Vector` hands them Vue and a curated set of Vuetify
-components:
+components — `VAlert`, `VAutocomplete`, `VBtn`, `VCard`, `VCheckbox`,
+`VChip`, `VIcon`, `VProgressLinear`, `VRating`, `VSelect`, `VSwitch`,
+`VTable` (a custom page's tables: `thead` and `tbody` as its content),
+`VTextField`, `VTextarea`:
 
 ```js
 export default function ({ vue, vuetify, defineCell, defineInput, defineWidget }) {

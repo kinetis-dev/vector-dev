@@ -32,18 +32,21 @@ export default function ({ vue, vuetify, definePage, defineMessages, t }) {
 
                 return () => h('div', [
                     h(vuetify.VBtn, { prependIcon: 'mdi-refresh', variant: 'tonal', loading: loading.value, class: 'mb-4', onClick: load }, () => t('demo.stockOverview.refresh')),
-                    data.value && h('table', { class: 'v-table', style: 'width: 100%; border-collapse: collapse' }, [
+                    // VTable renders Vuetify's wrapper and a real <table> inside it: its
+                    // `.v-table` class belongs on that wrapper, never on the table itself
+                    data.value && h(vuetify.VTable, { hover: true }, () => [
                         h('thead', h('tr', [
-                            h('th', { style: 'text-align: start; padding: 8px' }, t('demo.stockOverview.category')),
-                            h('th', { style: 'text-align: end; padding: 8px' }, t('demo.stockOverview.products')),
-                            h('th', { style: 'text-align: end; padding: 8px' }, t('demo.stockOverview.units')),
-                            h('th', { style: 'text-align: end; padding: 8px' }, t('demo.stockOverview.low', { threshold: data.value.threshold })),
+                            h('th', { class: 'text-start' }, t('demo.stockOverview.category')),
+                            h('th', { class: 'text-end' }, t('demo.stockOverview.products')),
+                            h('th', { class: 'text-end' }, t('demo.stockOverview.units')),
+                            h('th', { class: 'text-end' }, t('demo.stockOverview.low', { threshold: data.value.threshold })),
                         ])),
                         h('tbody', data.value.categories.map(c => h('tr', { key: c.id }, [
-                            h('td', { style: 'padding: 8px' }, h('a', { href: '#', onClick: (e) => { e.preventDefault(); props.vector.navigate(`/r/categories/${c.id}`) } }, c.name)),
-                            h('td', { style: 'text-align: end; padding: 8px' }, String(c.products)),
-                            h('td', { style: 'text-align: end; padding: 8px' }, String(c.units)),
-                            h('td', { style: 'text-align: end; padding: 8px' }, c.low > 0 ? h(vuetify.VChip, { size: 'small', color: 'warning', variant: 'tonal', label: true }, () => String(c.low)) : '0'),
+                            h('td', h('a', { href: '#', onClick: (e) => { e.preventDefault(); props.vector.navigate(`/r/categories/${c.id}`) } }, c.name)),
+                            // numbers right-aligned in figures of one width, so the columns line up
+                            h('td', { class: 'text-end', style: 'font-variant-numeric: tabular-nums' }, String(c.products)),
+                            h('td', { class: 'text-end', style: 'font-variant-numeric: tabular-nums' }, String(c.units)),
+                            h('td', { class: 'text-end' }, c.low > 0 ? h(vuetify.VChip, { size: 'small', color: 'warning', variant: 'tonal', label: true }, () => String(c.low)) : '0'),
                         ]))),
                     ]),
                 ])

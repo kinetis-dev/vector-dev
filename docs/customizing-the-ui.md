@@ -50,7 +50,12 @@ A widget renderer receives `data` and `widget`.
 An extension is a plain ES module. List it in `VECTOR_UI_EXTENSIONS`
 (hosted) or `runtimeConfig.public.vector.extensions` (standalone). Its
 default export receives `window.Vector`, which hands it Vue, a curated
-set of Vuetify components and the registration functions:
+set of Vuetify components (`VAlert`, `VAutocomplete`, `VBtn`, `VCard`,
+`VCheckbox`, `VChip`, `VIcon`, `VProgressLinear`, `VRating`, `VSelect`,
+`VSwitch`, `VTable`, `VTextField`, `VTextarea`) and the registration
+functions. For a table, render `VTable` with your `thead` and `tbody` as
+its content: Vuetify's table styles belong to its wrapper, so the class
+on a bare `<table>` leaves the columns unaligned.
 
 ```js
 export default function ({ vue, vuetify, defineCell }) {
