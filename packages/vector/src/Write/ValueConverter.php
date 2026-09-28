@@ -7,28 +7,34 @@ namespace Kinetis\Vector\Write;
 use BackedEnum;
 use DateTimeImmutable;
 use DateTimeZone;
+use Kinetis\Container\RequestScope;
 use Kinetis\Orm\Date;
 use Kinetis\Orm\EntityManagerRegistry;
 use Kinetis\Validation\Constraint;
 use Kinetis\Validation\Violation;
+use Kinetis\Vector\Auth\PasswordHasherInterface;
 use Kinetis\Vector\Fields\KeyValue;
+use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Throwable;
 
 /**
  * Turns a raw input value into the typed value a compiled field holds —
  * a related entity is loaded through the manager of the connection that
- * entity lives on —
+ * entity lives on, and only when the target's scope() lists it for this
+ * user, so a value never points at a record its author may not see —
  * and runs the field's compiled rules. Shared by record writes, action
  * dialogs, settings pages and — in its query-string form — list
  * filters, so one conversion vocabulary serves every input Vector
- * accepts. Pure per call; holds only the registry.
+ * accepts. Pure per call; the reader that answers the scope question is
+ * resolved from the request on demand, since it takes this converter.
  */
 final readonly class ValueConverter
 {
     public function __construct(
         private VectorRegistry $registry,
         private EntityManagerRegistry $managers,
+        private RequestScope $scope,
     ) {}
 
     /**
@@ -52,8 +58,41 @@ final readonly class ValueConverter
             'manyToMany' => $this->relatedList($field, $raw),
             'keyValue' => $this->keyValue($field, $raw),
             'currency' => self::currency($field, $raw),
+            'password' => $this->password($field, $raw),
             default => $this->scalar($field, $raw),
         };
+    }
+
+    /**
+     * Whether a submitted value means "leave the stored password alone":
+     * an empty value for a hashed field, which a form sends when the
+     * admin typed nothing into it.
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function keepsStoredPassword(array $field, mixed $raw): bool
+    {
+        return $field['type'] === 'password' && isset($field['props']['hasher']) && ($raw === null || $raw === '');
+    }
+
+    /**
+     * @param array<string, mixed> $field
+     * @throws InputViolation
+     */
+    private function password(array $field, mixed $raw): string
+    {
+        $plain = is_string($raw) ? $raw : throw self::mismatch('a string');
+        $hasher = $field['props']['hasher'] ?? null;
+
+        if (!is_string($hasher)) {
+            return $plain;
+        }
+
+        $service = $this->scope->get($hasher);
+
+        return $service instanceof PasswordHasherInterface
+            ? $service->hash($plain)
+            : throw new \LogicException("{$hasher} did not resolve to a PasswordHasherInterface; bind the application's hasher on AppScope in bootstrap.php.");
     }
 
     /**
@@ -278,9 +317,16 @@ final readonly class ValueConverter
     {
         $target = $this->registry->resource($field['relation']['resource']);
         $id = $this->identifier($target->primaryKeyType(), $raw);
+        $notFound = new InputViolation(new Violation([], 'not_found', "names no {$target->slug()} record.", ['id' => $id]));
+
+        // a record outside the target's scope() answers as one that does not exist: no oracle across it
+        if ($this->reader()->withinScope($target, [$id]) === []) {
+            throw $notFound;
+        }
+
         $entity = $this->managers->managerFor($target->entityClass())->repository($target->entityClass())->find($id);
 
-        return $entity ?? throw new InputViolation(new Violation([], 'not_found', "names no {$target->slug()} record.", ['id' => $id]));
+        return $entity ?? throw $notFound;
     }
 
     /**
@@ -306,13 +352,23 @@ final readonly class ValueConverter
         }
 
         $ids = array_values(array_unique($ids));
-        $found = $this->managers->managerFor($target->entityClass())->repository($target->entityClass())->query()->whereIn($target->primaryKeyField(), $ids)->get();
+        $found = count($this->reader()->withinScope($target, $ids)) === count($ids)
+            ? $this->managers->managerFor($target->entityClass())->repository($target->entityClass())->query()->whereIn($target->primaryKeyField(), $ids)->get()
+            : [];
 
         if (count($found) !== count($ids)) {
             throw new InputViolation(new Violation([], 'not_found', "names a {$target->slug()} record that does not exist."));
         }
 
         return $found;
+    }
+
+    /** The request's reader, for the scope a relation's target applies; resolved late, because it holds this converter. */
+    private function reader(): ResourceService
+    {
+        $reader = $this->scope->get(ResourceService::class);
+
+        return $reader instanceof ResourceService ? $reader : throw new \LogicException('ResourceService did not resolve.');
     }
 
     public static function mismatch(string $expected): InputViolation

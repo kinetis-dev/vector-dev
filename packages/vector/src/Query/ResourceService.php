@@ -586,9 +586,16 @@ final readonly class ResourceService
         return $summaries;
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * One record, for a user who may list the resource and view that
+     * record: a resource the policy hides from the list is not reachable
+     * by identifier either.
+     *
+     * @return array<string, mixed>
+     */
     public function show(ResourceDescriptor $resource, string $id): array
     {
+        $this->authorizeViewAny($resource);
         $fields = $resource->showFields();
         $query = $this->baseQuery($resource, $fields)
             ->where($resource->primaryKeyColumn(), '=', $this->identifier($resource, $id));
@@ -628,18 +635,20 @@ final readonly class ResourceService
      * Several records by identifier, serialized as show() serializes one,
      * in one statement plus one per relation field. For policy decisions
      * about records the caller already names; no view check of its own.
+     * `$scoped` false leaves the resource's scope() out: what a write this
+     * request just made reads back as, wherever the scope now puts it.
      *
      * @param list<int|string> $ids
      * @return array<string, array<string, mixed>> identifier => record
      */
-    public function records(ResourceDescriptor $resource, array $ids): array
+    public function records(ResourceDescriptor $resource, array $ids, bool $scoped = true): array
     {
         if ($ids === []) {
             return [];
         }
 
         $fields = $resource->showFields();
-        $rows = $this->baseQuery($resource, $fields)
+        $rows = $this->baseQuery($resource, $fields, $scoped)
             ->whereIn($resource->primaryKeyColumn(), array_map(fn (int|string $id): int|string => $this->identifier($resource, (string) $id), $ids))
             ->get();
         /** @var list<array<string, mixed>> $rows */
@@ -652,6 +661,42 @@ final readonly class ResourceService
         }
 
         return $records;
+    }
+
+    /**
+     * The record a write of this request left behind, as show() would
+     * serialize it, whether or not the resource's scope() still lists it
+     * for this user: the write was authorized on the record it started
+     * from, and what it produced is answered and audited as it is.
+     *
+     * @return array<string, mixed>
+     */
+    public function written(ResourceDescriptor $resource, string $id): array
+    {
+        return $this->records($resource, [$id], scoped: false)[$id] ?? throw RecordNotFoundException::of($resource->slug(), $id);
+    }
+
+    /**
+     * Which of $ids name a record of $target this user may list: the
+     * target's scope() applied, trashed rows included, in one statement.
+     * What a relation value must point at.
+     *
+     * @param list<int|string> $ids
+     * @return list<int|string>
+     */
+    public function withinScope(ResourceDescriptor $target, array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $column = $target->primaryKeyColumn();
+        $rows = $this->baseQuery($target, null)->select($column)->whereIn($column, $ids)->get();
+
+        return array_map(
+            static fn (array $row): int|string => $target->primaryKeyType() === 'int' ? (int) $row[$column] : (string) $row[$column],
+            $rows,
+        );
     }
 
     /**
@@ -742,10 +787,11 @@ final readonly class ResourceService
 
         // the target as this user may list it: its scope() applies, and a
         // trashed record is not offered, though one already chosen keeps its label
+        $ids = array_slice($ids, 0, 100);
         $query = $this->baseQuery($target, null)
             ->select(...array_values(array_unique(array_filter([$target->primaryKeyColumn(), $target->titleColumn(), $subtitleColumn, $imageColumn]))))
             ->orderBy($target->titleColumn(), 'ASC')
-            ->limit(min($limit, 100));
+            ->limit($ids === [] ? min($limit, 100) : count($ids)); // every chosen id gets its label back
         $this->applySoftDelete($target, $query, $ids === [] ? ListRequest::TRASHED_WITHOUT : ListRequest::TRASHED_WITH);
 
         $dependsOn = $relation['dependsOn'] ?? null;
@@ -766,7 +812,7 @@ final readonly class ResourceService
         if ($ids !== []) {
             $query->whereIn($target->primaryKeyColumn(), array_map(
                 static fn (string $id): int|string => $target->primaryKeyType() === 'int' ? (int) $id : $id,
-                array_slice($ids, 0, 100),
+                $ids,
             ));
         } elseif ($search !== '') {
             $query->whereRaw(Sql::like($this->dialect($target), $target->titleColumn()), ['%' . addcslashes($search, '%_\\') . '%']);
@@ -870,8 +916,11 @@ final readonly class ResourceService
         });
     }
 
-    /** @param list<string>|null $fields null leaves the projection untouched */
-    private function baseQuery(ResourceDescriptor $resource, ?array $fields): Query
+    /**
+     * @param list<string>|null $fields null leaves the projection untouched
+     * @param bool $scoped whether the resource's scope() narrows it, as every read of this user's does
+     */
+    private function baseQuery(ResourceDescriptor $resource, ?array $fields, bool $scoped = true): Query
     {
         $query = $this->query($resource)->table($resource->table());
 
@@ -897,6 +946,10 @@ final readonly class ResourceService
             }
 
             $query->select(...$columns);
+        }
+
+        if (!$scoped) {
+            return $query;
         }
 
         $instance = $this->scope->get($resource->resourceClass());

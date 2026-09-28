@@ -29,15 +29,15 @@ export default {
     deleted: '{label} を削除しました。',
     restored: '{label} を復元しました。',
     impersonate: {
-        action: 'なりすまし',
+        action: '代理操作',
         title: '「{title}」として操作しますか？',
-        text: 'そのユーザーが閲覧・操作できる範囲で操作でき、すべての変更はそのユーザーによるものとして、あなたをなりすまし実行者として記録されます。',
+        text: 'そのユーザーが閲覧・操作できる範囲で操作でき、すべての変更はそのユーザーによるものとして記録され、あなたが代理操作者として併記されます。',
         started: '{title} として操作しています。',
     },
     audit: {
         title: '履歴',
         byUser: 'ユーザー {actor} による',
-        impersonatedBy: '（{impersonator} によるなりすまし）',
+        impersonatedBy: '（{impersonator} が代理操作）',
         empty: '記録された変更はありません。',
         revert: '元に戻す',
         revertLabel: 'この変更を元に戻す',

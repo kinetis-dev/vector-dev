@@ -35,7 +35,7 @@ return [
     'City' => 'Cidade',
     'Closed' => 'Fechado',
     'Color' => 'Cor',
-    'Compensation' => 'Remuneração',
+    'Compensation' => 'Compensação',
     'Content' => 'Conteúdo',
     'Country' => 'País',
     'Created at' => 'Criado em',

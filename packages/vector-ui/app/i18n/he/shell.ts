@@ -46,6 +46,7 @@ export default {
         submit: 'התחברות',
         invalidEmail: 'יש להזין כתובת דוא״ל תקינה',
         welcome: 'שמחים לראות אותך שוב, {name}.',
+        signedOutIdle: 'יצאת מהמערכת לאחר {minutes} דקות ללא פעילות. יש להיכנס שוב כדי להמשיך מאותו מקום.',
     },
     home: {
         title: 'לוח בקרה',

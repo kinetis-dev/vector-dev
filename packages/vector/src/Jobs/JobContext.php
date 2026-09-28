@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace Kinetis\Vector\Jobs;
 
+use Kinetis\Authorization\Exception\AuthorizationException;
 use Kinetis\Container\RequestScope;
 use Kinetis\Http\CurrentUserInterface;
+use Kinetis\Validation\Exception\ValidationException;
+use Kinetis\Vector\Auth\ActorContext;
 use Kinetis\Vector\Auth\ActorResolverInterface;
 use Kinetis\Vector\Auth\VectorAccessInterface;
+use Kinetis\Vector\Exception\VectorException;
 use Kinetis\Vector\Store\JobStore;
 use Kinetis\Vector\Store\NotificationStore;
+use Psr\Log\LoggerInterface;
 
 /**
  * What every Vector job does first: rebuild the actor on the job's own
@@ -26,18 +31,23 @@ final readonly class JobContext
         private VectorAccessInterface $access,
         public JobStore $jobs,
         public NotificationStore $notifications,
+        private LoggerInterface $log,
     ) {}
 
-    /** @throws \RuntimeException when the actor no longer exists or lost admin access */
-    public function actAs(string $actorId): CurrentUserInterface
+    /**
+     * @param string|null $impersonatorId who was impersonating the actor when the job was started: the worker's log and audit rows name them, as the request's did
+     * @throws JobFailedException when the actor no longer exists or lost admin access
+     */
+    public function actAs(string $actorId, ?string $impersonatorId = null): CurrentUserInterface
     {
         $user = $this->actors->resolve($actorId);
 
         if ($user === null || !$this->access->canAccessVector($user)) {
-            throw new \RuntimeException("Actor {$actorId} cannot run this job: unknown, or no longer admitted to the admin.");
+            throw new JobFailedException("Actor {$actorId} cannot run this job: unknown, or no longer admitted to the admin.");
         }
 
         $this->scope->instance(CurrentUserInterface::class, $user);
+        $this->scope->instance(ActorContext::class, new ActorContext($user, $impersonatorId));
 
         return $user;
     }
@@ -63,16 +73,35 @@ final readonly class JobContext
         }
 
         try {
-            $user = $this->actAs($actorId);
+            $user = $this->actAs($actorId, $this->jobs->find($jobId)['impersonatorId'] ?? null);
             /** @var array{result: array<string, mixed>, processed?: int, file?: string|null, fileName?: string|null, fileType?: string|null, notice?: string} $outcome */
             $outcome = $body($user);
             $this->jobs->finish($jobId, $outcome['result'], $outcome['processed'] ?? null, $outcome['file'] ?? null, $outcome['fileName'] ?? null, $outcome['fileType'] ?? null);
             $this->notifications->notify($actorId, $title, $outcome['notice'] ?? null, "/jobs/{$jobId}", 'success');
         } catch (\Throwable $e) {
-            $this->jobs->fail($jobId, $e->getMessage());
-            $this->notifications->notify($actorId, "{$title} failed", $e->getMessage(), "/jobs/{$jobId}", 'error');
+            $failure = self::reportable($e);
+            $this->jobs->fail($jobId, $failure);
+            $this->notifications->notify($actorId, "{$title} failed", $failure, "/jobs/{$jobId}", 'error');
 
             throw $e;
         }
+    }
+
+    /**
+     * What the job row and the notification say about a failure: a
+     * message Vector or the framework wrote for the admin, verbatim; any
+     * other exception — a driver's, a library's — carries connection
+     * details and SQL the admin should not read, so those go to the log
+     * and the row gets a generic line.
+     */
+    private function reportable(\Throwable $e): string
+    {
+        if ($e instanceof VectorException || $e instanceof ValidationException || $e instanceof AuthorizationException || $e instanceof \LengthException) {
+            return $e->getMessage();
+        }
+
+        $this->log->error('A Vector job failed: ' . $e->getMessage(), ['exception' => $e]);
+
+        return 'The job failed unexpectedly; the server log has the details.';
     }
 }

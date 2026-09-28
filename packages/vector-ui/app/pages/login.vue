@@ -13,6 +13,8 @@ const email = ref('')
 const password = ref('')
 const submitting = ref(false)
 const error = ref<string | null>(null)
+// why the last session ended, when the admin ended it itself
+const notice = computed(() => route.query.reason === 'idle' ? t('shell.login.signedOutIdle', { minutes: appConfig.vector.idleMinutes }) : null)
 
 const rules = {
     required: (value: string) => value.trim() !== '' || t('common.required'),
@@ -95,6 +97,7 @@ async function submit(event: SubmitEventPromise) {
                                 :rules="[rules.required]"
                                 prepend-inner-icon="mdi-lock-outline"
                             />
+                            <v-alert v-if="notice && !error" type="info" variant="tonal" class="mb-4" :text="notice" />
                             <v-alert v-if="error" type="error" variant="tonal" class="mb-4" :text="error" />
                             <v-btn type="submit" color="primary" block :loading="submitting">{{ t('shell.login.submit') }}</v-btn>
                         </v-form>

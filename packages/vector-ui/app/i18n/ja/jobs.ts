@@ -20,6 +20,7 @@ export default {
         running: '実行中',
         done: '完了',
         failed: '失敗',
+        stalled: '停滞',
     },
     detail: {
         pageTitle: 'ジョブ #{id}',

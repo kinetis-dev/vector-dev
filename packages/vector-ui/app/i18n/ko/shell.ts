@@ -46,6 +46,7 @@ export default {
         submit: '로그인',
         invalidEmail: '올바른 이메일 주소를 입력하세요',
         welcome: '{name}님, 다시 오신 것을 환영합니다.',
+        signedOutIdle: '{minutes}분 동안 활동이 없어 로그아웃되었습니다. 다시 로그인하면 중단한 곳에서 계속할 수 있습니다.',
     },
     home: {
         title: '대시보드',

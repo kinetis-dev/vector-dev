@@ -20,6 +20,7 @@ export default {
         running: 'çalışıyor',
         done: 'tamamlandı',
         failed: 'başarısız',
+        stalled: 'takıldı',
     },
     detail: {
         pageTitle: 'İş #{id}',

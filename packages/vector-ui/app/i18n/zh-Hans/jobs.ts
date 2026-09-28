@@ -20,6 +20,7 @@ export default {
         running: '运行中',
         done: '已完成',
         failed: '失败',
+        stalled: '停滞',
     },
     detail: {
         pageTitle: '任务 #{id}',

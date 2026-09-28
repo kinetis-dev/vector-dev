@@ -29,15 +29,15 @@ export default {
     deleted: 'Se eliminó {label}.',
     restored: 'Se restauró {label}.',
     impersonate: {
-        action: 'Suplantar',
+        action: 'Actuar como',
         title: '¿Actuar como “{title}”?',
-        text: 'Verá y hará lo que esa persona puede hacer, y cada cambio se registrará como suyo, con usted como suplantador.',
+        text: 'Verá y hará lo que esa persona puede hacer, y cada cambio se registrará como suyo, indicando que usted actuaba en su nombre.',
         started: 'Ahora actúa como {title}.',
     },
     audit: {
         title: 'Historial',
         byUser: 'por el usuario {actor}',
-        impersonatedBy: '(suplantado por {impersonator})',
+        impersonatedBy: '(actuando en su nombre: {impersonator})',
         empty: 'No hay cambios registrados.',
         revert: 'Revertir',
         revertLabel: 'Revertir este cambio',

@@ -217,6 +217,19 @@ and signs out when the renewal is refused; logout revokes it with
 401 goes to `/login`. Impersonation swaps the token in bearer mode (and
 is never renewed) and reloads in cookie mode.
 
+A session does not end on its own otherwise: the store renews the token
+before it runs out and the shell polls badges and the inbox, so an open
+tab would stay signed in for as long as it is open. App config
+`vector.idleMinutes` (30 by default; 0 turns it off) ends it when nobody
+has used the admin — no pointer, key, touch or scroll — for that long:
+bearer mode revokes the refresh token and opens the login page with a
+notice and the way back to the page that was open; cookie mode posts the
+application's logout form. A tab that comes back into view after sleeping
+is checked at that moment too. How long a session may last in all is the
+application's rule: the reference app ends one twelve hours after the
+sign-in, however often it renewed (its refresh endpoint keeps the original
+end).
+
 ## Testing
 
 `pnpm typecheck` runs `vue-tsc --strict` over the layer, its tests

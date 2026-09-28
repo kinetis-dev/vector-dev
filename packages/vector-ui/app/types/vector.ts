@@ -172,7 +172,7 @@ export interface VectorJob {
     resource: string
     name: string
     actorId: string
-    status: 'queued' | 'running' | 'done' | 'failed'
+    status: 'queued' | 'running' | 'done' | 'failed' | 'stalled'
     total: number | null
     processed: number
     result: Record<string, unknown> | null

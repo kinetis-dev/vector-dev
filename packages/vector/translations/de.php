@@ -20,4 +20,7 @@ return [
     'Languages' => 'Sprachen',
     'Default language' => 'Standardsprache',
     'The language for a user who has not chosen one.' => 'Die Sprache für Benutzer, die keine gewählt haben.',
+    'Background jobs' => 'Hintergrundaufträge',
+    'Stalled after (minutes)' => 'Als hängend gilt nach (Minuten)',
+    'A running job that reports no progress for this many minutes is shown as stalled, and vector:jobs:reap marks it failed.' => 'Ein laufender Auftrag, der so viele Minuten keinen Fortschritt meldet, wird als hängend angezeigt; vector:jobs:reap markiert ihn als fehlgeschlagen.',
 ];

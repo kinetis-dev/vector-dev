@@ -7,6 +7,7 @@ namespace Kinetis\Vector\Registry;
 use Kinetis\Vector\Exception\ResourceCompileException;
 use Kinetis\Vector\Widgets\VectorDashboard;
 use Kinetis\Vector\Widgets\VectorWidget;
+use Kinetis\Vector\Widgets\WidgetRequest;
 
 /** Compiles widget and dashboard definitions into descriptor data. */
 final class WidgetCompiler
@@ -37,6 +38,12 @@ final class WidgetCompiler
 
             if (!in_array($widget->type(), [VectorWidget::STAT, VectorWidget::TREND, VectorWidget::PARTITION, VectorWidget::PROGRESS, VectorWidget::TABLE], true)) {
                 throw ResourceCompileException::resource($owner, "widget {$class} has the type \"{$widget->type()}\"");
+            }
+
+            foreach (array_keys($widget->ranges()) as $range) {
+                if (!WidgetRequest::isRange($range)) {
+                    throw ResourceCompileException::resource($owner, "widget {$class} declares the range \"{$range}\"; a range is a number of hours, days, months or years (24h, 30d, 6m, 1y) or all");
+                }
             }
 
             $widgets[$name] = [

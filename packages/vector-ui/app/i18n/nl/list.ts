@@ -61,7 +61,7 @@ export default {
         title: 'Kolommen',
         moveUp: 'Omhoog',
         moveDown: 'Omlaag',
-        reset: 'Herstellen',
+        reset: 'Standaard herstellen',
     },
     filter: {
         add: 'Filter toevoegen',

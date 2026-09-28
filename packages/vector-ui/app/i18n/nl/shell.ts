@@ -23,8 +23,8 @@ export default {
     impersonation: {
         actingAs: 'U handelt als {name}.',
         anotherUser: 'een andere gebruiker',
-        stop: 'Stoppen met imiteren',
-        noAccess: '{name} heeft geen toegang tot het beheer, dus er is niets te zien namens deze gebruiker. Het imiteren is gestopt.',
+        stop: 'Terug naar uw eigen account',
+        noAccess: '{name} heeft geen toegang tot het beheer, dus er is niets te zien namens deze gebruiker. Het handelen als deze gebruiker is gestopt.',
         noToken: 'De applicatie antwoordde zonder token of herlaadopdracht, dus er is niets gewijzigd.',
     },
     palette: {
@@ -46,6 +46,7 @@ export default {
         submit: 'Aanmelden',
         invalidEmail: 'Voer een geldig e-mailadres in',
         welcome: 'Welkom terug, {name}.',
+        signedOutIdle: 'U bent na {minutes} minuten zonder activiteit afgemeld. Meld u opnieuw aan om verder te gaan waar u gebleven was.',
     },
     home: {
         title: 'Dashboard',

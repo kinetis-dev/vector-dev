@@ -13,7 +13,7 @@ export default {
         menu: 'Weitere Speicheroptionen',
         saveContinue: 'Speichern und weiter bearbeiten',
         createContinue: 'Anlegen und weiter bearbeiten',
-        createAnother: 'Anlegen und weiteren anlegen',
+        createAnother: 'Anlegen und weiteren hinzufügen',
     },
     leave: {
         title: 'Änderungen verwerfen?',
@@ -23,7 +23,7 @@ export default {
     inTrash: 'Im Papierkorb',
     deleteTitle: '{noun} „{title}“ löschen?',
     deleteForeverTitle: '{noun} „{title}“ endgültig löschen?',
-    deleteSoftText: 'Der Eintrag wird in den Papierkorb verschoben und kann wiederhergestellt werden.',
+    deleteSoftText: 'Der Datensatz wird in den Papierkorb verschoben und kann wiederhergestellt werden.',
     deleteHardText: 'Dies kann nicht rückgängig gemacht werden.',
     trashed: '{label} in den Papierkorb verschoben.',
     deleted: '{label} gelöscht.',
@@ -31,13 +31,13 @@ export default {
     impersonate: {
         action: 'Identität wechseln',
         title: 'Als „{title}“ handeln?',
-        text: 'Sie sehen und tun, was diese Person kann; jede Änderung wird in ihrem Namen protokolliert, mit Ihnen als Vertretung.',
+        text: 'Sie sehen und tun, was diese Person kann; jede Änderung wird in ihrem Namen protokolliert, mit Ihnen als ausführender Person.',
         started: 'Sie handeln jetzt als {title}.',
     },
     audit: {
         title: 'Verlauf',
         byUser: 'von Benutzer {actor}',
-        impersonatedBy: '(in Vertretung durch {impersonator})',
+        impersonatedBy: '(ausgeführt von {impersonator})',
         empty: 'Keine aufgezeichneten Änderungen.',
         revert: 'Zurücksetzen',
         revertLabel: 'Diese Änderung zurücksetzen',
@@ -56,7 +56,7 @@ export default {
         detach: 'Verknüpfung lösen',
         detachLabel: 'Verknüpfung von {title} lösen',
         detachTitle: 'Verknüpfung von „{title}“ lösen?',
-        detachText: 'Der Eintrag bleibt als {target} erhalten; nur die Verknüpfung zu {owner} wird entfernt.',
+        detachText: 'Der Datensatz bleibt als {target} erhalten; nur die Verknüpfung zu {owner} wird entfernt.',
         detached: 'Verknüpfung von {title} gelöst.',
     },
 }

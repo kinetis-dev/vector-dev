@@ -35,7 +35,7 @@ return [
     'City' => 'עיר',
     'Closed' => 'סגורה',
     'Color' => 'צבע',
-    'Compensation' => 'תגמול',
+    'Compensation' => 'פיצוי',
     'Content' => 'תוכן',
     'Country' => 'מדינה',
     'Created at' => 'מועד יצירה',

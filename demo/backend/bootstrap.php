@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Auth\DemoActorResolver;
+use App\Auth\DemoPasswordHasher;
 use App\Auth\DemoVectorAccess;
 use Kinetis\AuthJwt\JwtAuthenticator;
 use Kinetis\AuthJwt\JwtIssuer;
@@ -12,6 +13,7 @@ use Kinetis\Config\Config;
 use Kinetis\Container\AppScope;
 use Kinetis\Http\Middleware\CorsMiddleware;
 use Kinetis\Vector\Auth\ActorResolverInterface;
+use Kinetis\Vector\Auth\PasswordHasherInterface;
 use Kinetis\Vector\Auth\VectorAccessInterface;
 
 return static function (AppScope $app, Config $config): void {
@@ -30,6 +32,9 @@ return static function (AppScope $app, Config $config): void {
     ));
 
     $app->instance(VectorAccessInterface::class, new DemoVectorAccess());
+
+    // The users resource lets an admin set a password: hashed here, the way the login verifies it.
+    $app->instance(PasswordHasherInterface::class, new DemoPasswordHasher());
 
     // Background jobs run as the admin who started them: this rebuilds that identity in the worker.
     $app->bind(ActorResolverInterface::class, DemoActorResolver::class);

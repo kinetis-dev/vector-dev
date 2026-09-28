@@ -156,7 +156,8 @@ final readonly class VectorTools
             $response = $this->actions->run($this->reader->resource($resource), $action, ['ids' => $ids, 'fields' => $values]);
 
             if ($response->type === 'download') {
-                return ['type' => 'download', 'filename' => $response->filename, 'contents' => $response->contents];
+                // a file is bytes, and a tool result is JSON text: base64 carries a workbook as well as a CSV
+                return ['type' => 'download', 'filename' => $response->filename, 'contentType' => $response->contentType, 'encoding' => 'base64', 'contents' => base64_encode((string) $response->contents)];
             }
 
             return $response->toArray();
@@ -211,7 +212,9 @@ final readonly class VectorTools
         // in the language this user chose in the admin, else the default
         $locale = $this->locales->resolve((string) $this->user->id())['locale'];
 
-        return ['version' => $this->registry->toArray()['version'], 'locale' => $locale, 'resources' => $this->labels->document($resources, $locale), 'dashboards' => array_keys($this->registry->dashboards())];
+        $dashboards = array_keys(array_filter($this->registry->dashboards(), $this->widgets->dashboardVisible(...)));
+
+        return ['version' => $this->registry->toArray()['version'], 'locale' => $locale, 'resources' => $this->labels->document($resources, $locale), 'dashboards' => $dashboards];
     }
 
     /**

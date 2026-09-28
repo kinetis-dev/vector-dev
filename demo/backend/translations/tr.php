@@ -35,7 +35,7 @@ return [
     'City' => 'Şehir',
     'Closed' => 'Kapalı',
     'Color' => 'Renk',
-    'Compensation' => 'Ücret',
+    'Compensation' => 'Tazminat',
     'Content' => 'İçerik',
     'Country' => 'Ülke',
     'Created at' => 'Oluşturulma',

@@ -21,6 +21,11 @@ use Psr\Http\Message\ServerRequestInterface;
  * are throttled per e-mail and per client address (LoginAttempts); a
  * refresh reloads the user, so a changed role takes effect at the next
  * renewal; logout revokes the refresh token.
+ *
+ * A session has an absolute end: twelve hours after the sign-in. A
+ * refresh hands out a refresh token that expires when the one it
+ * replaced would have, never twelve hours from now, so a tab that keeps
+ * renewing itself still has to sign in again by then.
  */
 final readonly class LoginController
 {
@@ -68,8 +73,17 @@ final readonly class LoginController
         try {
             $redeemed = $this->attempts->refreshTokens()->redeem($data->refreshToken);
             $user = $redeemed === null ? null : $this->credentials->find($redeemed['subject']);
+            $endsAt = $redeemed['claims']['sessionEndsAt'] ?? null;
 
-            return $user === null ? ErrorResponse::create(401, 'Invalid or expired refresh token.') : $this->tokens($user);
+            if ($user === null || !is_int($endsAt)) {
+                return ErrorResponse::create(401, 'Invalid or expired refresh token.');
+            }
+
+            if ($endsAt <= time()) {
+                return ErrorResponse::create(401, 'The session has reached its end; sign in again.');
+            }
+
+            return $this->tokens($user, $endsAt);
         } catch (LoginUnavailableException $e) {
             return ErrorResponse::create(503, $e->getMessage());
         }
@@ -90,13 +104,19 @@ final readonly class LoginController
         return PlainTextResponse::create('', 204, ['Cache-Control' => 'no-store']);
     }
 
-    /** @throws LoginUnavailableException */
-    private function tokens(User $user): ResponseInterface
+    /**
+     * @param int|null $sessionEndsAt when the session signed in, as a Unix timestamp; null starts a new one now
+     * @throws LoginUnavailableException
+     */
+    private function tokens(User $user, ?int $sessionEndsAt = null): ResponseInterface
     {
         $claims = ['name' => $user->name(), 'vector' => $user->isAdmin()];
+        $endsAt = $sessionEndsAt ?? time() + self::REFRESH_TTL_SECONDS;
+        $remaining = max(1, $endsAt - time());
 
         try {
-            $refresh = $this->attempts->refreshTokens()->issue((string) $user->id(), ttlSeconds: self::REFRESH_TTL_SECONDS);
+            // the refresh token remembers the session's end and lives no longer than that
+            $refresh = $this->attempts->refreshTokens()->issue((string) $user->id(), ['sessionEndsAt' => $endsAt], ttlSeconds: $remaining);
         } catch (RefreshTokenUnavailableException) {
             // never stored: hand out no token that cannot be redeemed
             return ErrorResponse::create(503, 'The session could not be stored; try again.');
@@ -107,7 +127,7 @@ final readonly class LoginController
             'tokenType' => 'Bearer',
             'expiresIn' => self::ACCESS_TTL_SECONDS,
             'refreshToken' => $refresh,
-            'refreshExpiresIn' => self::REFRESH_TTL_SECONDS,
+            'refreshExpiresIn' => $remaining,
             'user' => ['id' => $user->id(), 'name' => $user->name(), 'email' => $user->email()],
         ], 200, ['Cache-Control' => 'no-store']);
     }

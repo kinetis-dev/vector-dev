@@ -15,7 +15,7 @@ use Kinetis\QueryBuilder\Query;
  * where an export leaves its file — base64, so one text-safe column
  * serves MySQL and PostgreSQL alike. Request-neutral: holds the link only.
  *
- * @phpstan-type JobRow array{id: int, kind: string, resource: string, name: string, actorId: string, status: string, total: int|null, processed: int, result: array<string, mixed>|null, failure: string|null, hasFile: bool, fileName: string|null, createdAt: string, updatedAt: string, finishedAt: string|null}
+ * @phpstan-type JobRow array{id: int, kind: string, resource: string, name: string, actorId: string, impersonatorId: string|null, status: string, total: int|null, processed: int, result: array<string, mixed>|null, failure: string|null, hasFile: bool, fileName: string|null, createdAt: string, updatedAt: string, finishedAt: string|null}
  */
 final readonly class JobStore
 {
@@ -23,14 +23,19 @@ final readonly class JobStore
     public const string RUNNING = 'running';
     public const string DONE = 'done';
     public const string FAILED = 'failed';
+    /** Answered, never stored: a running row nothing has updated for the configured minutes (StalledJobs). */
+    public const string STALLED = 'stalled';
 
     /** The most a job's file may hold: 12 MiB of file is 16 MiB of base64, MySQL's `MEDIUMBLOB`. */
     public const int MAX_FILE_BYTES = 12 * 1024 * 1024;
 
     public function __construct(private VectorDatabase $db) {}
 
-    /** @param 'action'|'export'|'import' $kind */
-    public function create(string $kind, string $resource, string $name, string $actorId, ?int $total = null, ?string $file = null, ?string $fileName = null, ?string $fileType = null): int
+    /**
+     * @param 'action'|'export'|'import' $kind
+     * @param string|null $impersonatorId who was impersonating the actor when the job was started; the worker records the job's writes as theirs too
+     */
+    public function create(string $kind, string $resource, string $name, string $actorId, ?int $total = null, ?string $file = null, ?string $fileName = null, ?string $fileType = null, ?string $impersonatorId = null): int
     {
         $now = self::now();
 
@@ -39,6 +44,7 @@ final readonly class JobStore
             'resource' => $resource,
             'name' => $name,
             'actor_id' => $actorId,
+            'impersonator_id' => $impersonatorId,
             'status' => self::QUEUED,
             'total' => $total,
             'processed' => 0,
@@ -57,7 +63,7 @@ final readonly class JobStore
     public function find(int $id): ?array
     {
         $row = $this->query()->table('vector_jobs')
-            ->select('id', 'kind', 'resource', 'name', 'actor_id', 'status', 'total', 'processed', 'result', 'failure', 'file_name', 'created_at', 'updated_at', 'finished_at')
+            ->select('id', 'kind', 'resource', 'name', 'actor_id', 'impersonator_id', 'status', 'total', 'processed', 'result', 'failure', 'file_name', 'created_at', 'updated_at', 'finished_at')
             ->selectRaw('CASE WHEN file IS NULL THEN 0 ELSE 1 END AS has_file')
             ->where('id', '=', $id)
             ->first();
@@ -69,7 +75,7 @@ final readonly class JobStore
     public function forActor(string $actorId, int $limit = 50): array
     {
         $rows = $this->query()->table('vector_jobs')
-            ->select('id', 'kind', 'resource', 'name', 'actor_id', 'status', 'total', 'processed', 'result', 'failure', 'file_name', 'created_at', 'updated_at', 'finished_at')
+            ->select('id', 'kind', 'resource', 'name', 'actor_id', 'impersonator_id', 'status', 'total', 'processed', 'result', 'failure', 'file_name', 'created_at', 'updated_at', 'finished_at')
             ->selectRaw('CASE WHEN file IS NULL THEN 0 ELSE 1 END AS has_file')
             ->where('actor_id', '=', $actorId)
             ->orderBy('id', 'DESC')
@@ -150,6 +156,28 @@ final readonly class JobStore
         $this->query()->table('vector_jobs')->where('id', '=', $id)->update(['status' => self::FAILED, 'failure' => mb_substr($failure, 0, 2000), 'updated_at' => $now, 'finished_at' => $now]);
     }
 
+    /**
+     * Fails every running row last updated before $cutoff: the worker
+     * running it stopped reporting. How many rows changed. A job that
+     * is in fact still running finishes as usual afterwards, since
+     * finish() and fail() write unconditionally; the message says why the
+     * row was closed.
+     */
+    public function failStalled(\DateTimeImmutable $cutoff, int $minutes): int
+    {
+        $now = self::now();
+
+        return $this->query()->table('vector_jobs')
+            ->where('status', '=', self::RUNNING)
+            ->where('updated_at', '<', $cutoff->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s.u'))
+            ->update([
+                'status' => self::FAILED,
+                'failure' => "No progress was reported for {$minutes} minutes; the worker running this job stopped.",
+                'updated_at' => $now,
+                'finished_at' => $now,
+            ]);
+    }
+
     /** Drops the stored upload once a job consumed it, keeping the row small. */
     public function clearFile(int $id): void
     {
@@ -170,6 +198,7 @@ final readonly class JobStore
             'resource' => (string) $row['resource'],
             'name' => (string) $row['name'],
             'actorId' => (string) $row['actor_id'],
+            'impersonatorId' => $row['impersonator_id'] === null ? null : (string) $row['impersonator_id'],
             'status' => (string) $row['status'],
             'total' => $row['total'] === null ? null : (int) $row['total'],
             'processed' => (int) $row['processed'],

@@ -20,4 +20,7 @@ return [
     'Languages' => '语言',
     'Default language' => '默认语言',
     'The language for a user who has not chosen one.' => '未选择语言的用户所使用的语言。',
+    'Background jobs' => '后台任务',
+    'Stalled after (minutes)' => '视为停滞的时长（分钟）',
+    'A running job that reports no progress for this many minutes is shown as stalled, and vector:jobs:reap marks it failed.' => '运行中的任务在这么多分钟内未报告进度时会显示为停滞；vector:jobs:reap 会将其标记为失败。',
 ];

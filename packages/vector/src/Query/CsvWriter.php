@@ -18,8 +18,10 @@ final class CsvWriter
     /**
      * @param list<string> $fields
      * @param iterable<array<string, mixed>> $records
+     * @param int|null $maxBytes the most the document may grow to; past it the rows stop and a LengthException says why
+     * @throws \LengthException
      */
-    public static function document(ResourceDescriptor $resource, array $fields, iterable $records): string
+    public static function document(ResourceDescriptor $resource, array $fields, iterable $records, ?int $maxBytes = null): string
     {
         $out = fopen('php://memory', 'r+');
 
@@ -38,6 +40,12 @@ final class CsvWriter
             fputcsv($out, array_map(static fn (string $name): string => self::cell(
                 in_array($name, $richText, true) && is_string($record[$name] ?? null) ? $document->toPlainText($record[$name]) : ($record[$name] ?? null),
             ), $fields), ',', '"', '\\', "\r\n");
+
+            if ($maxBytes !== null && ftell($out) > $maxBytes) {
+                fclose($out);
+
+                throw new \LengthException(sprintf('The export is larger than %d MiB, the most a job file holds. Narrow the selection or the columns.', intdiv($maxBytes, 1048576)));
+            }
         }
 
         rewind($out);

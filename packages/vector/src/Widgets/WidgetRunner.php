@@ -26,10 +26,20 @@ final readonly class WidgetRunner
     public function run(array $compiled, ?string $range, string $cacheScope): array
     {
         $ranges = $compiled['ranges'];
-        $range ??= array_key_first($ranges) ?? 'all';
 
-        if ($ranges !== [] && !isset($ranges[$range])) {
-            throw new InvalidListRequestException("\"{$range}\" is not a range of {$compiled['name']}; use " . implode(', ', array_keys($ranges)) . '.');
+        if ($ranges === []) {
+            // a widget without ranges is computed over everything; the request text plays no part in its cache key
+            if ($range !== null && $range !== 'all') {
+                throw new InvalidListRequestException("{$compiled['name']} takes no range.");
+            }
+
+            $range = 'all';
+        } else {
+            $range ??= array_key_first($ranges);
+
+            if (!isset($ranges[$range])) {
+                throw new InvalidListRequestException("\"{$range}\" is not a range of {$compiled['name']}; use " . implode(', ', array_keys($ranges)) . '.');
+            }
         }
 
         $widget = $this->scope->get($compiled['class']);
@@ -51,7 +61,7 @@ final readonly class WidgetRunner
             return [...$cached, 'cached' => true];
         }
 
-        $result = [...$widget->calculate(WidgetRequest::for($ranges === [] ? 'all' : $range, $this->user))->toArray(), 'range' => $range, 'cached' => false];
+        $result = [...$widget->calculate(WidgetRequest::for($range, $this->user))->toArray(), 'range' => $range, 'cached' => false];
 
         if ($seconds > 0) {
             $this->cache->put($key, $result, $seconds);

@@ -46,6 +46,7 @@ export default {
         submit: 'Oturum aç',
         invalidEmail: 'Geçerli bir e-posta adresi girin',
         welcome: 'Tekrar hoş geldiniz, {name}.',
+        signedOutIdle: '{minutes} dakika boyunca işlem yapılmadığı için oturumunuz kapatıldı. Kaldığınız yerden devam etmek için yeniden giriş yapın.',
     },
     home: {
         title: 'Pano',

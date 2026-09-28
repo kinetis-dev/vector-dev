@@ -30,16 +30,9 @@ final readonly class WidgetRequest
     public static function for(string $range, CurrentUserInterface $user, ?DateTimeImmutable $now = null): self
     {
         $now ??= new DateTimeImmutable('now', new DateTimeZone('UTC'));
-        $interval = match (true) {
-            $range === 'all' => null,
-            preg_match('/^(\d{1,3})d$/', $range, $m) === 1 => new \DateInterval("P{$m[1]}D"),
-            preg_match('/^(\d{1,3})h$/', $range, $m) === 1 => new \DateInterval("PT{$m[1]}H"),
-            preg_match('/^(\d{1,2})y$/', $range, $m) === 1 => new \DateInterval("P{$m[1]}Y"),
-            preg_match('/^(\d{1,3})m$/', $range, $m) === 1 => new \DateInterval("P{$m[1]}M"),
-            default => throw new \InvalidArgumentException("\"{$range}\" is not a range."),
-        };
+        $interval = self::interval($range) ?? throw new \InvalidArgumentException("\"{$range}\" is not a range.");
 
-        if ($interval === null) {
+        if ($interval === false) {
             $from = new DateTimeImmutable('1970-01-01', new DateTimeZone('UTC'));
 
             return new self($range, $from, $now, $from, $from, $user);
@@ -48,6 +41,25 @@ final readonly class WidgetRequest
         $from = $now->sub($interval);
 
         return new self($range, $from, $now, $from->sub($interval), $from, $user);
+    }
+
+    /** Whether $range is a key this grammar reads: what a widget's ranges() may declare. */
+    public static function isRange(string $range): bool
+    {
+        return self::interval($range) !== null;
+    }
+
+    /** The range's length; false for `all`, null for a key outside the grammar. */
+    private static function interval(string $range): \DateInterval|false|null
+    {
+        return match (true) {
+            $range === 'all' => false,
+            preg_match('/^(\d{1,3})d$/', $range, $m) === 1 => new \DateInterval("P{$m[1]}D"),
+            preg_match('/^(\d{1,3})h$/', $range, $m) === 1 => new \DateInterval("PT{$m[1]}H"),
+            preg_match('/^(\d{1,2})y$/', $range, $m) === 1 => new \DateInterval("P{$m[1]}Y"),
+            preg_match('/^(\d{1,3})m$/', $range, $m) === 1 => new \DateInterval("P{$m[1]}M"),
+            default => null,
+        };
     }
 
     /** The number of days the range spans, at least 1. */

@@ -20,6 +20,7 @@ export default {
         running: 'w toku',
         done: 'gotowe',
         failed: 'niepowodzenie',
+        stalled: 'zawieszone',
     },
     detail: {
         pageTitle: 'Zadanie #{id}',

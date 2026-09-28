@@ -13,7 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ done: [affected: number], cancel: [] }>()
 
-const { t } = useVectorT()
+const { t, noun } = useVectorT()
 const notifications = useVectorNotifications()
 const client = useVectorResource(() => props.resource.slug)
 const { editable } = useVectorInputs()
@@ -34,8 +34,8 @@ watch(chosen, (names) => {
 })
 
 const subject = computed(() => props.selection.all
-    ? t('list.bulkEdit.everyMatching', { noun: props.resource.labelSingular.toLowerCase(), count: props.count })
-    : t('list.bulkEdit.some', { count: props.count, noun: (props.count === 1 ? props.resource.labelSingular : props.resource.label).toLowerCase() }))
+    ? t('list.bulkEdit.everyMatching', { noun: noun(props.resource.labelSingular), count: props.count })
+    : t('list.bulkEdit.some', { count: props.count, noun: noun(props.count === 1 ? props.resource.labelSingular : props.resource.label) }))
 
 async function save(event: SubmitEventPromise) {
     const { valid } = await event
@@ -47,7 +47,7 @@ async function save(event: SubmitEventPromise) {
 
     try {
         const { affected } = await client.batch('update', props.selection, { ...values })
-        notifications.success(t('list.bulkEdit.updated', { count: affected, noun: (affected === 1 ? props.resource.labelSingular : props.resource.label).toLowerCase() }))
+        notifications.success(t('list.bulkEdit.updated', { count: affected, noun: noun(affected === 1 ? props.resource.labelSingular : props.resource.label) }))
         emit('done', affected)
     } catch (error) {
         formError.value = applyViolations(error, values, serverErrors)

@@ -83,6 +83,10 @@ final readonly class RecordInput
                 continue;
             }
 
+            if (ValueConverter::keepsStoredPassword($field, $raw)) {
+                continue; // nothing typed into a hashed password: the stored hash stays; a create still reports it required
+            }
+
             // With storage configured, a new file value must be a key the upload endpoint issued for this field.
             if (in_array($field['type'], ['file', 'image'], true) && is_string($raw) && $raw !== '' && $raw !== ($current[$name] ?? null)
                 && $this->storage->available() && !$this->files->issued($resource, $name, $raw)) {

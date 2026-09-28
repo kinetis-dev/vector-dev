@@ -8,6 +8,7 @@ use BackedEnum;
 use Kinetis\Orm\Metadata\MetadataRegistry;
 use Kinetis\Vector\Actions\VectorAction;
 use Kinetis\Vector\Attributes\Resource;
+use Kinetis\Vector\Auth\PasswordHasherInterface;
 use Kinetis\Vector\Exception\ResourceCompileException;
 use Kinetis\Vector\Fields\BelongsTo;
 use Kinetis\Vector\Fields\Boolean;
@@ -590,6 +591,18 @@ final class ResourceCompiler
 
                 if ($field['hasDefault'] && !in_array($field['default'], $codes, true)) {
                     throw ResourceCompileException::field($class, $name, 'defaults to a currency it does not allow');
+                }
+            }
+
+            if ($field['type'] === 'password' && isset($field['props']['hasher'])) {
+                $hasher = $field['props']['hasher'];
+
+                if (!is_string($hasher) || !interface_exists($hasher) && !class_exists($hasher) || !is_a($hasher, PasswordHasherInterface::class, true)) {
+                    throw ResourceCompileException::field($class, $name, 'is hashed by ' . (is_string($hasher) ? $hasher : get_debug_type($hasher)) . ', which does not implement ' . PasswordHasherInterface::class);
+                }
+
+                if (($field['valueType'] ?? null) !== 'string') {
+                    throw ResourceCompileException::field($class, $name, 'is a hashed password, which stores its hash in a string property');
                 }
             }
 

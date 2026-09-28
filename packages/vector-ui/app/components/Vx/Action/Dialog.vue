@@ -13,7 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ done: [affected: number], cancel: [] }>()
 
-const { t } = useVectorT()
+const { t, noun } = useVectorT()
 const appConfig = useAppConfig()
 const notifications = useVectorNotifications()
 const client = useVectorResource(() => props.resource.slug)
@@ -30,8 +30,8 @@ for (const field of props.action.fields) {
 const subject = computed(() => props.action.standalone
     ? ''
     : props.selection?.all
-        ? t('actions.subjectAll', { label: props.resource.labelSingular.toLowerCase(), count: props.count })
-        : t('actions.subjectCount', { count: props.count, label: (props.count === 1 ? props.resource.labelSingular : props.resource.label).toLowerCase() }))
+        ? t('actions.subjectAll', { label: noun(props.resource.labelSingular), count: props.count })
+        : t('actions.subjectCount', { count: props.count, label: noun(props.count === 1 ? props.resource.labelSingular : props.resource.label) }))
 
 async function run(event: SubmitEventPromise) {
     const { valid } = await event

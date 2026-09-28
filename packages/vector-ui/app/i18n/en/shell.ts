@@ -46,6 +46,7 @@ export default {
         submit: 'Sign in',
         invalidEmail: 'Enter a valid e-mail address',
         welcome: 'Welcome back, {name}.',
+        signedOutIdle: 'You were signed out after {minutes} minutes of inactivity. Sign in again to continue where you left off.',
     },
     home: {
         title: 'Dashboard',

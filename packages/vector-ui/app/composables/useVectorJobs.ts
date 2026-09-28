@@ -24,7 +24,7 @@ export function useVectorJobs() {
             const job = await show(id)
             onUpdate?.(job)
 
-            if (job.status === 'done' || job.status === 'failed' || signal?.aborted) {
+            if (job.status === 'done' || job.status === 'failed' || job.status === 'stalled' || signal?.aborted) {
                 return job
             }
 

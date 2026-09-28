@@ -20,6 +20,7 @@ export default {
         running: 'en curso',
         done: 'completada',
         failed: 'fallida',
+        stalled: 'bloqueada',
     },
     detail: {
         pageTitle: 'Tarea #{id}',

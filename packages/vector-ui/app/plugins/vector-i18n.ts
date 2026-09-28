@@ -5,7 +5,7 @@ import { bundledMessages, isRtl, pluralRule, rtlLanguages, vuetifyLocale } from 
  * The admin's own strings, translated through vue-i18n, in the language
  * the user chose. The descriptor's labels arrive translated by the server.
  *
- * The UI ships English and seven machine-translated locales. It starts in
+ * The UI ships English and sixteen machine-translated locales. It starts in
  * the hosted shell's language (the server's answer for this user), else
  * the one this browser last used, else app config `vector.locale`, else
  * English; the descriptor then confirms it, and the language menu in the

@@ -9,7 +9,7 @@ const drawer = ref<boolean | null>(null)
 const { schema, menu, load, clear } = useVectorSchema()
 const { branding, apply } = useVectorBranding()
 const palette = ref<{ open: boolean } | null>(null)
-const { t } = useVectorT()
+const { t, noun } = useVectorT()
 
 apply() // hosted: branding is known before the descriptor loads
 await load()
@@ -75,7 +75,15 @@ async function stopImpersonating() {
     }
 }
 
-async function logout() {
+// nobody at the keyboard for vector.idleMinutes: the session ends, and the login page says why
+useVectorIdle(() => signOut('idle'))
+
+function logout() {
+    return signOut()
+}
+
+/** Ends the session: the application's, by its own logout form, or the bearer one, then the login page. */
+async function signOut(reason?: 'idle') {
     if (runtime.hosted && runtime.logoutUrl) {
         // the application ends its own session: a form post carrying its CSRF token
         const form = document.createElement('form')
@@ -95,7 +103,11 @@ async function logout() {
     await auth.logout() // revokes the refresh token where the application issued one
     clear()
     useVectorPreferences().clear()
-    await navigateTo(`${appConfig.vector.basePath || ''}/login`)
+    await navigateTo({
+        path: `${appConfig.vector.basePath || ''}/login`,
+        // back to this page after signing in again, and the reason the session ended
+        query: reason === 'idle' ? { reason, redirect: useRoute().fullPath } : {},
+    })
 }
 
 // Custom pages, grouped by their menu section ("Pages" when they name none).
@@ -137,7 +149,7 @@ const pageGroups = computed(() => {
                                 variant="flat"
                                 label
                                 :color="badgeOf(resource.slug)!.color"
-                                :aria-label="t('shell.nav.badge', { count: badgeOf(resource.slug)!.count, label: badgeOf(resource.slug)!.label ?? resource.label.toLowerCase() })"
+                                :aria-label="t('shell.nav.badge', { count: badgeOf(resource.slug)!.count, label: badgeOf(resource.slug)!.label ?? noun(resource.label) })"
                             >{{ formatNumber(badgeOf(resource.slug)!.count) }}</v-chip>
                         </template>
                     </v-list-item>

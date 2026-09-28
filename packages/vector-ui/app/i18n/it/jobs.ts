@@ -20,6 +20,7 @@ export default {
         running: 'in esecuzione',
         done: 'completato',
         failed: 'non riuscito',
+        stalled: 'bloccata',
     },
     detail: {
         pageTitle: 'Job #{id}',

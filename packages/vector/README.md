@@ -194,7 +194,7 @@ identifier, a `softDeletes()` property that is not a nullable
 | Class | Type | Notes |
 |---|---|---|
 | `Id` | `id` | Read-only, sortable, never on a form. |
-| `Text`, `Email`, `Url`, `Password`, `Slug`, `Color` | `string` … `color` | String columns; `searchable()` allowed. `Slug::from('name')`. |
+| `Text`, `Email`, `Url`, `Password`, `Slug`, `Color` | `string` … `color` | String columns; `searchable()` allowed. `Slug::from('name')`. `Email` must be an address and `Url` an absolute http(s) URL (the admin shows it as a link), unless the field declares an e-mail, URL or pattern rule of its own; `Password` stores what is written, so the resource's `create()`/`apply()` hashes it — or it is `hashed()`: the value is hashed through the application's `Kinetis\\Vector\\Auth\\PasswordHasherInterface`, bound on `AppScope` in `bootstrap.php` (the first request refuses when nothing binds it), or through the implementation `hashed(OtherHasher::class)` names for a table hashed differently; an empty value on a form keeps the stored hash. |
 | `Textarea`, `Json` | `text`, `json` | Wide inputs; JSON is a string column. |
 | `RichText` | `richtext` | Long-form content edited in a word-processor-like editor and stored as its JSON document; see [Rich text](#rich-text). |
 | `Markdown` | `markdown` | Markdown source for technical content, edited WYSIWYG (with a source view) and shown rendered and sanitized; `toolbar([...])`. |
@@ -612,8 +612,8 @@ A `#[Settings]` class extending `SettingsGroup` declares `fields()` and
 `canManage()`, and may override `validate(array $values)` for a rule
 across its fields — a request-time check, like `canManage()`, whose
 violations refuse the save; values are stored in `vector_settings` and
-edited on the UI's settings page through the same registry as a form. `Branding` and
-`Languages` ship with Vector. A setting is a value, never markup.
+edited on the UI's settings page through the same registry as a form. `Branding`,
+`Languages` and `Jobs` (background jobs) ship with Vector. A setting is a value, never markup.
 
 ### Languages and translated labels
 
@@ -624,7 +624,7 @@ language: the user's `locale` preference, else the administrator's
 default (English unless changed) — the browser's languages play no part —
 among the languages on offer: the ones the
 administrator enabled in the built-in **Languages** settings group, all
-eight the UI ships at first. Every list of languages — the menu, the
+of them at first. Every list of languages — the menu, the
 switches, the default's options — follows `Locales::SHIPPED`, which is
 kept in the Unicode root collation of the languages' own names (Latin
 script alphabetically, then each other script as a group), the same in
@@ -657,6 +657,13 @@ in English.
 only what you restrict. `$record` is the serialized row. `scope()` on the
 resource restricts rows per user. A resource without a policy uses
 `AllowAllPolicy`: every user the access policy admits may do everything.
+
+**Listing and reaching.** A user `viewAny()` refuses cannot reach a
+record by identifier either: show, audit, files, related lists and
+writes all answer 403, as the list does. A relation value — a `belongsTo`
+choice, a `manyToMany` list — must name a record the target resource's
+`scope()` lists for the writer; one outside it answers `not_found`, the
+same as one that does not exist.
 
 **Field visibility.** `viewField($user, $field)` decides whether a user
 sees a field at all. A hidden field leaves that user's descriptor, every
@@ -727,12 +734,26 @@ Queued actions, exports above `exportLimit()` (up to
 `exportQueueLimit()`) and every import become jobs. Each reports into
 `vector_jobs`, which the UI polls, and notifies the admin who started
 it; that admin is rebuilt in the worker through the application's
-`ActorResolverInterface`. Every Vector job is pushed for one attempt and
+`ActorResolverInterface`, and when they were being impersonated the job
+row remembers by whom, so the job's log and audit rows name the
+impersonator as the request's would. A failure the admin should read —
+the selection is gone, the action declined, a validation refusal — is
+reported on the row verbatim; any other exception is logged and the row
+says only that the job failed. Every Vector job is pushed for one attempt and
 claims its row with one conditional write before it starts, so a job the
 backend redelivers on its own does not run again; a failure is final and
 reported on the row. A queued action must still tolerate a chunk running
 twice, because a chunk's flush and the progress written after it are two
 statements.
+
+A job moves its own row, so a worker that dies mid-way leaves the row
+`running`. A running row that has reported no progress for the minutes
+the **Background jobs** settings group allows (30 until an admin changes
+it) is answered as `stalled` — the jobs page shows it so and stops
+polling — and `kinetis vector:jobs:reap`, run now and then by a
+scheduler, marks such rows failed with the reason. The row itself stays
+`running` until the reaper closes it, so a job that is in fact still
+running finishes as usual.
 
 ### XLSX exports
 
@@ -893,8 +914,9 @@ answers a `VectorResponse` with chaining assertions (`assertRecord`,
 - `perPage` ≤ `maxPerPage()` (200), a bulk selection ≤ `bulkLimit()`
   (1000), an inline export ≤ `exportLimit()` (10 000), a queued export ≤
   `exportQueueLimit()` (250 000), an import ≤ 50 000 rows and 8 MB, a
-  saved view or preference value ≤ 16 KiB, a job file ≤ 12 MiB (16 MiB
-  as base64).
+  saved view or preference value ≤ 16 KiB and at most 500 preference
+  keys per account, a job file ≤ 12 MiB (16 MiB as base64; a CSV export
+  job stops at that size and reports it).
 - Timestamps and soft deletes are resource conventions the writer
   applies; the ORM's optimistic lock and unique indexes map to 409 and
   422.
@@ -902,5 +924,5 @@ answers a `VectorResponse` with chaining assertions (`assertRecord`,
   resource's own searchable columns; relation search and full-text
   search are not implemented.
 - Vector's writes to its own tables (action log, audit, jobs) run on
-  Vector's connection; when that is not the entities' connection, they
-  commit separately from the entity flush.
+  Vector's connection as statements of their own, after the entity
+  flush has committed — on the same connection or another.

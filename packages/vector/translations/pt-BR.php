@@ -20,4 +20,7 @@ return [
     'Languages' => 'Idiomas',
     'Default language' => 'Idioma padrão',
     'The language for a user who has not chosen one.' => 'O idioma de um usuário que ainda não escolheu nenhum.',
+    'Background jobs' => 'Tarefas em segundo plano',
+    'Stalled after (minutes)' => 'Considerada travada após (minutos)',
+    'A running job that reports no progress for this many minutes is shown as stalled, and vector:jobs:reap marks it failed.' => 'Uma tarefa em execução que não informa progresso por esses minutos é exibida como travada; vector:jobs:reap a marca como falha.',
 ];

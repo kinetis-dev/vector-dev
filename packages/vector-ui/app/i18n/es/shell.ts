@@ -23,8 +23,8 @@ export default {
     impersonation: {
         actingAs: 'Está actuando como {name}.',
         anotherUser: 'otro usuario',
-        stop: 'Dejar de suplantar',
-        noAccess: '{name} no tiene acceso a la administración, así que no hay nada que ver en su nombre. Se detuvo la suplantación.',
+        stop: 'Dejar de actuar como otro usuario',
+        noAccess: '{name} no tiene acceso a la administración, así que no hay nada que ver en su nombre. Se dejó de actuar en su nombre.',
         noToken: 'La aplicación respondió sin un token ni una recarga, así que no cambió nada.',
     },
     palette: {
@@ -46,6 +46,7 @@ export default {
         submit: 'Iniciar sesión',
         invalidEmail: 'Introduzca una dirección de correo electrónico válida',
         welcome: 'Hola de nuevo, {name}.',
+        signedOutIdle: 'Se cerró la sesión tras {minutes} minutos de inactividad. Inicie sesión de nuevo para continuar donde lo dejó.',
     },
     home: {
         title: 'Panel',

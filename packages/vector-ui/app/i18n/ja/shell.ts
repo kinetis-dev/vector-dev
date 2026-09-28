@@ -23,8 +23,8 @@ export default {
     impersonation: {
         actingAs: '{name} として操作しています。',
         anotherUser: '別のユーザー',
-        stop: 'なりすましを終了',
-        noAccess: '{name} は管理画面へのアクセス権がないため、表示できる内容がありません。なりすましを終了しました。',
+        stop: '代理操作を終了',
+        noAccess: '{name} は管理画面へのアクセス権がないため、表示できる内容がありません。代理操作を終了しました。',
         noToken: 'アプリケーションがトークンも再読み込みも返さなかったため、何も変更されていません。',
     },
     palette: {
@@ -46,6 +46,7 @@ export default {
         submit: 'ログイン',
         invalidEmail: '有効なメールアドレスを入力してください',
         welcome: 'おかえりなさい、{name} さん。',
+        signedOutIdle: '{minutes} 分間操作がなかったためサインアウトしました。もう一度サインインすると、続きから再開できます。',
     },
     home: {
         title: 'ダッシュボード',
