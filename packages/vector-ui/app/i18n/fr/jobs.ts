@@ -20,6 +20,7 @@ export default {
         running: 'en cours',
         done: 'terminée',
         failed: 'échouée',
+        stalled: 'bloquée',
     },
     detail: {
         pageTitle: 'Tâche n° {id}',

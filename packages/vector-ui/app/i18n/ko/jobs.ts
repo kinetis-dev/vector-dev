@@ -20,6 +20,7 @@ export default {
         running: '실행 중',
         done: '완료',
         failed: '실패',
+        stalled: '중단됨',
     },
     detail: {
         pageTitle: '작업 #{id}',

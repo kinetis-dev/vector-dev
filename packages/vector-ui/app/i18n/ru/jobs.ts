@@ -20,6 +20,7 @@ export default {
         running: 'выполняется',
         done: 'готово',
         failed: 'ошибка',
+        stalled: 'зависла',
     },
     detail: {
         pageTitle: 'Задача #{id}',

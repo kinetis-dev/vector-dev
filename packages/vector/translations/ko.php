@@ -20,4 +20,7 @@ return [
     'Languages' => '언어',
     'Default language' => '기본 언어',
     'The language for a user who has not chosen one.' => '언어를 선택하지 않은 사용자에게 적용되는 언어입니다.',
+    'Background jobs' => '백그라운드 작업',
+    'Stalled after (minutes)' => '중단으로 간주 (분)',
+    'A running job that reports no progress for this many minutes is shown as stalled, and vector:jobs:reap marks it failed.' => '실행 중인 작업이 이 시간(분) 동안 진행 상황을 보고하지 않으면 중단됨으로 표시되며, vector:jobs:reap이 실패로 표시합니다.',
 ];

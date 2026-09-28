@@ -20,6 +20,7 @@ export default {
         running: 'قيد التشغيل',
         done: 'مكتملة',
         failed: 'فاشلة',
+        stalled: 'متوقفة',
     },
     detail: {
         pageTitle: 'المهمة #{id}',

@@ -23,6 +23,8 @@ final readonly class JobStore
     public const string RUNNING = 'running';
     public const string DONE = 'done';
     public const string FAILED = 'failed';
+    /** Answered, never stored: a running row nothing has updated for the configured minutes (StalledJobs). */
+    public const string STALLED = 'stalled';
 
     /** The most a job's file may hold: 12 MiB of file is 16 MiB of base64, MySQL's `MEDIUMBLOB`. */
     public const int MAX_FILE_BYTES = 12 * 1024 * 1024;
@@ -152,6 +154,28 @@ final readonly class JobStore
     {
         $now = self::now();
         $this->query()->table('vector_jobs')->where('id', '=', $id)->update(['status' => self::FAILED, 'failure' => mb_substr($failure, 0, 2000), 'updated_at' => $now, 'finished_at' => $now]);
+    }
+
+    /**
+     * Fails every running row last updated before $cutoff: the worker
+     * running it stopped reporting. How many rows changed. A job that
+     * is in fact still running finishes as usual afterwards, since
+     * finish() and fail() write unconditionally; the message says why the
+     * row was closed.
+     */
+    public function failStalled(\DateTimeImmutable $cutoff, int $minutes): int
+    {
+        $now = self::now();
+
+        return $this->query()->table('vector_jobs')
+            ->where('status', '=', self::RUNNING)
+            ->where('updated_at', '<', $cutoff->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s.u'))
+            ->update([
+                'status' => self::FAILED,
+                'failure' => "No progress was reported for {$minutes} minutes; the worker running this job stopped.",
+                'updated_at' => $now,
+                'finished_at' => $now,
+            ]);
     }
 
     /** Drops the stored upload once a job consumed it, keeping the row small. */

@@ -20,6 +20,7 @@ export default {
         running: 'bezig',
         done: 'voltooid',
         failed: 'mislukt',
+        stalled: 'vastgelopen',
     },
     detail: {
         pageTitle: 'Taak #{id}',

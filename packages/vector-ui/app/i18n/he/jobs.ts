@@ -20,6 +20,7 @@ export default {
         running: 'בריצה',
         done: 'הושלמה',
         failed: 'נכשלה',
+        stalled: 'תקועה',
     },
     detail: {
         pageTitle: 'משימה #{id}',

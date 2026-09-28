@@ -20,4 +20,7 @@ return [
     'Languages' => 'اللغات',
     'Default language' => 'اللغة الافتراضية',
     'The language for a user who has not chosen one.' => 'لغة المستخدم الذي لم يختر لغة.',
+    'Background jobs' => 'مهام الخلفية',
+    'Stalled after (minutes)' => 'تُعد متوقفة بعد (دقائق)',
+    'A running job that reports no progress for this many minutes is shown as stalled, and vector:jobs:reap marks it failed.' => 'المهمة الجارية التي لا تبلّغ عن تقدم طوال هذا العدد من الدقائق تُعرض كمتوقفة؛ ويضع الأمر vector:jobs:reap علامة فشل عليها.',
 ];

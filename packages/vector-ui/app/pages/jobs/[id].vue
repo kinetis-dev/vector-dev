@@ -32,7 +32,7 @@ const percent = computed(() => (job.value && job.value.total ? Math.min(100, (jo
         <v-alert v-if="error" type="error" variant="tonal" :text="error" />
         <v-card v-else-if="job">
             <v-card-item>
-                <v-card-title class="text-capitalize">{{ t(`jobs.kind.${job.kind}`) }} · {{ job.name }} <v-chip size="small" class="ms-2" :color="{ queued: 'grey', running: 'info', done: 'success', failed: 'error' }[job.status]" variant="tonal">{{ t(`jobs.status.${job.status}`) }}</v-chip></v-card-title>
+                <v-card-title class="text-capitalize">{{ t(`jobs.kind.${job.kind}`) }} · {{ job.name }} <v-chip size="small" class="ms-2" :color="{ queued: 'grey', running: 'info', done: 'success', failed: 'error', stalled: 'warning' }[job.status]" variant="tonal">{{ t(`jobs.status.${job.status}`) }}</v-chip></v-card-title>
                 <v-card-subtitle>{{ job.resource }} · {{ t('jobs.detail.started', { date: formatDateTime(job.createdAt) }) }}<template v-if="job.finishedAt"> · {{ t('jobs.detail.finished', { date: formatDateTime(job.finishedAt) }) }}</template></v-card-subtitle>
             </v-card-item>
             <v-card-text>

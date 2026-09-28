@@ -14,7 +14,7 @@ onUnmounted(pause)
 
 useHead({ title: () => t('jobs.title') })
 
-const color: Record<VectorJob['status'], string> = { queued: 'grey', running: 'info', done: 'success', failed: 'error' }
+const color: Record<VectorJob['status'], string> = { queued: 'grey', running: 'info', done: 'success', failed: 'error', stalled: 'warning' }
 </script>
 
 <template>

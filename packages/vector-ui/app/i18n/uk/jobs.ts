@@ -20,6 +20,7 @@ export default {
         running: 'виконується',
         done: 'виконано',
         failed: 'помилка',
+        stalled: 'зависло',
     },
     detail: {
         pageTitle: 'Завдання #{id}',

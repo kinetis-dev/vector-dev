@@ -20,6 +20,7 @@ export default {
         running: 'em execução',
         done: 'concluída',
         failed: 'com falha',
+        stalled: 'bloqueada',
     },
     detail: {
         pageTitle: 'Tarefa #{id}',
