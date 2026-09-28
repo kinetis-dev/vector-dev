@@ -36,12 +36,25 @@ final class InstallCommandTest extends TestCase
         $GLOBALS['_composer_bin_dir'] = $this->binDir;
         putenv($this->connection === false ? 'DB_CONNECTION' : 'DB_CONNECTION=' . $this->connection);
 
-        foreach (glob($this->root . '/migrations/*') ?: [] as $file) {
-            unlink($file);
+        // the whole temporary project: migrations/, and public/vector/ui/ when a hosted bundle was there to publish
+        self::remove($this->root);
+    }
+
+    private static function remove(string $path): void
+    {
+        if (is_dir($path) && !is_link($path)) {
+            foreach (scandir($path) ?: [] as $entry) {
+                if ($entry !== '.' && $entry !== '..') {
+                    self::remove("{$path}/{$entry}");
+                }
+            }
+
+            rmdir($path);
+
+            return;
         }
 
-        @rmdir($this->root . '/migrations');
-        rmdir($this->root);
+        unlink($path);
     }
 
     public function testAFreshApplicationGetsItsMigrationsDirectoryCreated(): void
