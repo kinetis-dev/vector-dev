@@ -10,6 +10,7 @@
         "kinetis/framework": "^1.21.1",
         "kinetis/mcp": "^1.8.0",
         "kinetis/mcp-protocol": "^1.1.0",
+        "kinetis/migrations": "^1.4.0",
         "kinetis/orm": "^1.12.0",
         "kinetis/persistence": "^1.4.3",
         "kinetis/query-builder": "^1.8.0",

@@ -2183,7 +2183,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector",
-                "reference": "cc5278bad7e7f64a6e4889a96c451357cf447439"
+                "reference": "51d2b6b95fff861a87e11b931d6594467b46dd2d"
             },
             "require": {
                 "kinetis/authorization": "^1.0.4",
@@ -2191,6 +2191,7 @@
                 "kinetis/framework": "^1.21.1",
                 "kinetis/mcp": "^1.8.0",
                 "kinetis/mcp-protocol": "^1.1.0",
+                "kinetis/migrations": "^1.4.0",
                 "kinetis/orm": "^1.12.0",
                 "kinetis/persistence": "^1.4.3",
                 "kinetis/query-builder": "^1.8.0",

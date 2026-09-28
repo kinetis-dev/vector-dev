@@ -62,8 +62,8 @@ final readonly class InstallCommand
 
         $migrations = $root . '/migrations';
 
-        if (!is_dir($migrations)) {
-            fwrite(STDERR, "No migrations/ directory at {$root}; install kinetis/migrations first.\n");
+        if (!is_dir($migrations) && !mkdir($migrations, 0755) && !is_dir($migrations)) {
+            fwrite(STDERR, "Could not create {$migrations}.\n");
 
             return 1;
         }
