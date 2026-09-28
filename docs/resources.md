@@ -36,8 +36,10 @@ final class ProductResource extends VectorResource
 
 `#[Resource]` names the `entity`, the menu `group`, an `icon` (a
 Material Design Icons name) and the `title` field that names a record in
-breadcrumbs, relations and search. `slug`, `label` and `labelSingular`
-override the names derived from the class.
+breadcrumbs, relations and search. `slug` overrides the URL name; by
+default the mapped table name is used with underscores replaced by dashes.
+`label` and `labelSingular` override the display names derived from the
+class.
 
 ## Derived or declared fields
 

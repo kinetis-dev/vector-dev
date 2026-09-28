@@ -242,7 +242,7 @@ final class ResourceCompiler
             $resource = $attribute->newInstance();
             $entity = $this->entities[$resource->entity]
                 ?? throw ResourceCompileException::resource($class, "{$resource->entity} is not a mapped entity");
-            $slug = $resource->slug ?? $entity['table'];
+            $slug = $resource->slug ?? str_replace('_', '-', $entity['table']);
 
             if (preg_match('/^[a-z][a-z0-9-]*$/', $slug) !== 1) {
                 throw ResourceCompileException::resource($class, "slug \"{$slug}\" must be lower-case letters, digits and dashes");
