@@ -17,7 +17,7 @@ From `demo/`, with the stack up, migrated and seeded (see the root
 README), and the hosted bundle published once:
 
 ```sh
-docker compose exec node pnpm --filter frontend generate:hosted
+docker compose exec node pnpm generate:hosted
 docker compose exec app vendor/bin/kinetis vector:install
 docker compose restart app
 ```

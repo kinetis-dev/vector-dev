@@ -27,6 +27,17 @@ final readonly class AdminAuthMiddleware implements MiddlewareInterface { /* …
 Register nothing when no credential is present: the API then answers
 `401`, and the hosted shell redirects to your login page.
 
+## The `vector-shell` middleware group
+
+Hosted mode's shell page, `GET /vector/ui` and every deep link under it,
+is in the `vector-shell` group. Your session and authentication
+middleware join it as they join `vector`, as above. Vector's own
+`VectorShellAccessMiddleware` is the group's innermost member: a request
+that reaches it with no identity registered is redirected to
+`VECTOR_LOGIN_URL` (`302`, `Cache-Control: no-store`); any other reaches
+the page. The group always exists, so the route table is valid before
+your middleware joins it.
+
 ## Standalone: bearer tokens
 
 The standalone UI signs in with `POST {apiBase}/auth/login`, sending

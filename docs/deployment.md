@@ -32,7 +32,10 @@ The application serves the UI itself, behind its own session:
 vendor/bin/kinetis vector:install
 ```
 
-publishes the bundle to `public/vector/ui` (`VECTOR_UI_DIR`). Vector
+publishes the bundle a released `kinetis/vector` package ships to
+`public/vector/ui` (`VECTOR_UI_DIR`). A source install has no bundle;
+the command says so and exits successfully, since the migrations and the
+API need none. Vector
 then answers `GET /vector/ui` and every deep link under it with the
 bundle's page and one inline script carrying the configuration: the API
 base, the login and logout URLs, the session's CSRF token, branding and

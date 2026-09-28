@@ -18,7 +18,7 @@ application scope carries request state.
 
 ```sh
 composer require kinetis/vector
-vendor/bin/kinetis vector:install      # publishes migrations and, when built, the hosted UI
+vendor/bin/kinetis vector:install      # publishes migrations and the hosted UI a released package ships
 vendor/bin/kinetis migrate
 vendor/bin/kinetis build               # production: compiles the registry into the cache
 ```
@@ -30,7 +30,11 @@ and `vector_notifications`. It is idempotent. A later change to those
 tables will ship as a new migration with a later timestamp, so run
 `vector:install` again after an upgrade, then `migrate`. It publishes
 the MySQL or the PostgreSQL version of each, as the connection's
-`DB_CONNECTION` key says (`mysql` or `pgsql`).
+`DB_CONNECTION` key says (`mysql` or `pgsql`). It then copies the hosted
+admin bundle a released package ships into `public/vector/ui`. An
+install from source has no bundle: the command says so and still
+succeeds, and the hosted shell is served only when `VECTOR_UI_DIR`
+points at a separately built one.
 
 ### Multi-database applications
 
@@ -843,7 +847,10 @@ authentication middleware joins the `mcp` group.
 Authentication is the application's. Its middleware in the `vector`
 group registers `CurrentUserInterface`; `VectorAccessMiddleware`, the
 group's innermost member, then asks the application-bound
-`VectorAccessInterface`. A user object may also implement
+`VectorAccessInterface`. The same middleware joins the `vector-shell`
+group of the hosted shell page, whose innermost member,
+`VectorShellAccessMiddleware`, redirects a request without a user to
+`VECTOR_LOGIN_URL`. A user object may also implement
 `VectorShellUserInterface` (a display name for the hosted shell) and
 `ImpersonatedUserInterface` (who is impersonating it, written to every
 log and audit row). Both deployment modes of the UI are first-class:

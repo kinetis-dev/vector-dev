@@ -17,8 +17,10 @@ tools) and registers `CurrentUserInterface`.
 ## Hosted
 
 The PHP application serves the same UI itself from `public/vector/ui`,
-with its own session. `kinetis vector:install` publishes the bundle the
-package ships (built with `NUXT_APP_BASE_URL=/vector/ui/`);
+with its own session. `kinetis vector:install` publishes the bundle a
+released package ships (built with `NUXT_APP_BASE_URL=/vector/ui/`); a
+source install has none, and serves one only when `VECTOR_UI_DIR`
+points at a separately built bundle.
 `ShellController` answers `GET /vector/ui` and every deep link under
 it with the bundle's `index.html` plus one inline script:
 `window.__VECTOR__` — API base, base path, cookie mode, login and
@@ -32,10 +34,13 @@ hours later, so a tab that renews itself still signs in again by then;
 the layer's own idle timeout (`vector.idleMinutes`, 30 by default) ends
 a session nobody is using before that, in both modes.
 
-The application composes the `vector` and `vector-shell` groups from
-its session middleware (a thin subclass of `SessionMiddleware`) and an
-authentication middleware that reads the session, verifies the CSRF
-token on unsafe methods, and registers the user. A monolith on a view
+The application's session middleware (a thin subclass of
+`SessionMiddleware`) and an authentication middleware that reads the
+session, verifies the CSRF token on unsafe methods, and registers the
+user join both the `vector` and `vector-shell` groups. Vector owns the
+innermost member of each: `VectorAccessMiddleware` in `vector`,
+`VectorShellAccessMiddleware` in `vector-shell`, which redirects a
+request that arrives without a user to `VECTOR_LOGIN_URL`. A monolith on a view
 adapter keeps its own login page; Vector adds none.
 
 ### Content Security Policy

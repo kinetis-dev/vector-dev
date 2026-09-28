@@ -128,10 +128,10 @@ final readonly class ResourceClient
         return $this->post("{$this->base}/{$id}/audit/{$entryId}/revert", []);
     }
 
-    /** @param array<string, mixed> $query the list grammar */
+    /** @param array<string, mixed> $query the list grammar; `format` is csv unless it names another */
     public function export(array $query = []): VectorResponse
     {
-        return $this->get("{$this->base}/export", [...$query, 'format' => 'csv']);
+        return $this->get("{$this->base}/export", ['format' => 'csv', ...$query]);
     }
 
     /** Uploads $contents for a file or image field; the answer's `key` is the value to write. */
