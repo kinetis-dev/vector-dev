@@ -79,6 +79,6 @@ final class CsvWriter
     {
         $signedNumber = ($text[0] ?? '') !== '' && str_contains('+-', $text[0]) && is_numeric($text);
 
-        return $text !== '' && str_contains('=+-@\t\r', $text[0]) && !$signedNumber ? "'" . $text : $text;
+        return $text !== '' && str_contains("=+-@\t\r", $text[0]) && !$signedNumber ? "'" . $text : $text;
     }
 }

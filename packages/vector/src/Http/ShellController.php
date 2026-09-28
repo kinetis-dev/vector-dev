@@ -12,7 +12,6 @@ use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Http\Middleware\SecurityHeadersMiddleware;
 use Kinetis\Http\Responses\HtmlResponse;
 use Kinetis\Http\Responses\PlainTextResponse;
-use Kinetis\Http\Responses\RedirectResponse;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Store\SettingsStore;
 use Kinetis\Vector\Ui\VectorUi;
@@ -25,13 +24,15 @@ use Psr\Http\Message\ServerRequestInterface;
  * same document whatever the tail; the tail is the SPA router's, never
  * a path this code touches).
  *
- * The `vector-shell` group is the application's: its session middleware
- * joins it and registers CurrentUserInterface when a user is signed in.
- * Without one, the page redirects to the application's login URL. The
- * document is the published bundle's own index.html with, before
- * </head>, one inline script carrying the configuration the bundle
- * reads from `window.__VECTOR__` (JSON-encoded so no value can close the
- * tag) and the deployment's own head fragment. Every inline script tag
+ * The `vector-shell` group's session and authentication members are the
+ * application's: they register CurrentUserInterface when a user is
+ * signed in. Its innermost member, VectorShellAccessMiddleware, is
+ * Vector's: without an identity it redirects to the application's login
+ * URL, so this page always has a user. The document is the published
+ * bundle's own index.html with, before </head>, one inline script
+ * carrying the configuration the bundle reads from `window.__VECTOR__`
+ * (JSON-encoded so no value can close the tag) and the deployment's own
+ * head fragment. Every inline script tag
  * in the document — the bundle's, this one, the deployer's — receives
  * the response's nonce, so a strict Content-Security-Policy admits
  * exactly them.
@@ -69,10 +70,6 @@ final readonly class ShellController
 
     private function shell(ServerRequestInterface $request): ResponseInterface
     {
-        if (!$this->scope->isRegistered(CurrentUserInterface::class)) {
-            return RedirectResponse::to($this->ui->loginUrl, 302, ['Cache-Control' => 'no-store']);
-        }
-
         if ($this->ui->indexHtml === null) {
             return PlainTextResponse::create(
                 "The admin UI is not published: no index.html under {$this->ui->publishedDir}. Run `vendor/bin/kinetis vector:install` to publish it under public/vector/ui, or point VECTOR_UI_DIR at a published bundle.",

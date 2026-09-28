@@ -13,7 +13,7 @@ use Attribute;
  * request time.
  *
  * @param class-string $entity the #[Entity] class this resource administers
- * @param string|null $slug the URL segment; defaults to the entity's table name
+ * @param string|null $slug the URL segment; defaults to the entity's table name with underscores replaced by dashes
  * @param string|null $title the field shown as a record's title; defaults to the first string field
  */
 #[Attribute(Attribute::TARGET_CLASS)]

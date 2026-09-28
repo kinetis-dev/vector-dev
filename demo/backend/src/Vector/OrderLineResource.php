@@ -15,7 +15,7 @@ use Kinetis\Vector\Fields\Money;
 use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\VectorResource;
 
-#[Resource(entity: OrderLine::class, slug: 'order-lines', label: 'Order lines', group: 'Sales', icon: 'mdi-format-list-numbered')]
+#[Resource(entity: OrderLine::class, label: 'Order lines', group: 'Sales', icon: 'mdi-format-list-numbered')]
 final class OrderLineResource extends VectorResource
 {
     public function fields(): array

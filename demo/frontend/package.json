@@ -7,8 +7,7 @@
         "build": "nuxt build",
         "generate": "nuxt generate",
         "preview": "nuxt preview",
-        "postinstall": "nuxt prepare",
-        "generate:hosted": "NUXT_APP_BASE_URL=/vector/ui/ nuxt generate && rm -rf ../../packages/vector/resources/dist && cp -R .output/public ../../packages/vector/resources/dist"
+        "postinstall": "nuxt prepare"
     },
     "dependencies": {
         "@kinetis/vector-ui": "workspace:*",

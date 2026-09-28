@@ -113,6 +113,16 @@ final class VectorRegistryTest extends TestCase
         (new ResourceCompiler($metadata, [$wrong::class]))->compile();
     }
 
+    public function testAnExplicitSlugIsNotNormalized(): void
+    {
+        $metadata = MetadataRegistry::fromArray(new DiscoveryContext(dirname(__DIR__, 2))->compiled(OrmMetadata::class));
+        $resource = new #[Resource(OrderLine::class, slug: 'order_lines')] class extends VectorResource {};
+
+        $this->expectException(ResourceCompileException::class);
+        $this->expectExceptionMessage('slug "order_lines" must be lower-case letters, digits and dashes');
+        new ResourceCompiler($metadata, [$resource::class]);
+    }
+
     public function testThePublishedFormHidesEveryColumnName(): void
     {
         $registry = VectorRegistry::fromArray(VectorRegistry::compile(new DiscoveryContext(dirname(__DIR__, 2))));

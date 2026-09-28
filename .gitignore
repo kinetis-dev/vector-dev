@@ -12,6 +12,7 @@ node_modules/
 .output/
 .data/
 /demo/frontend/dist
+/packages/vector-ui/hosted/dist
 /demo/e2e/test-results/
 /demo/e2e/playwright-report/
 /docs/_build/

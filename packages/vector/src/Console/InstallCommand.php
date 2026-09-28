@@ -62,8 +62,8 @@ final readonly class InstallCommand
 
         $migrations = $root . '/migrations';
 
-        if (!is_dir($migrations)) {
-            fwrite(STDERR, "No migrations/ directory at {$root}; install kinetis/migrations first.\n");
+        if (!is_dir($migrations) && !mkdir($migrations, 0755) && !is_dir($migrations)) {
+            fwrite(STDERR, "Could not create {$migrations}.\n");
 
             return 1;
         }
@@ -150,7 +150,7 @@ final readonly class InstallCommand
     private function publishUi(string $dist, string $target): int
     {
         if (!is_file($dist . '/index.html')) {
-            echo "No built UI in {$dist}; the hosted admin stays unpublished (build it with `pnpm generate:hosted`).\n";
+            echo "No hosted admin bundle in {$dist}: a source install of kinetis/vector has none; released packages ship it. The hosted admin stays unpublished unless VECTOR_UI_DIR points at a separately built bundle. Migrations and the API work without it.\n";
 
             return 0;
         }
