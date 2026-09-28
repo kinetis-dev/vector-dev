@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "831386acfdc8b7fb2196d7a811d834a1",
+    "content-hash": "0024a444852740b6c0741e42ca8928b5",
     "packages": [
         {
             "name": "amphp/amp",
@@ -5022,16 +5022,16 @@
         },
         {
             "name": "kinetis/mcp-docs",
-            "version": "v1.8.0",
+            "version": "v1.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/mcp-docs.git",
-                "reference": "2e844ce509aab55a83a1cbd98ec9acb68e3d9359"
+                "reference": "e05f4f961858bbd15a8ad5f961462ea2a3e83889"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/mcp-docs/zipball/2e844ce509aab55a83a1cbd98ec9acb68e3d9359",
-                "reference": "2e844ce509aab55a83a1cbd98ec9acb68e3d9359",
+                "url": "https://api.github.com/repos/kinetis-dev/mcp-docs/zipball/e05f4f961858bbd15a8ad5f961462ea2a3e83889",
+                "reference": "e05f4f961858bbd15a8ad5f961462ea2a3e83889",
                 "shasum": ""
             },
             "require": {
@@ -5067,28 +5067,28 @@
             "description": "A standalone Model Context Protocol server exposing the Kinetis documentation over stdio: a tool that returns a bounded line window of a page, which is how a page is read, a tool that reports the lines of one page containing a literal string, and the same pages whole as MCP resources. Framework-agnostic: it depends on kinetis/mcp-protocol alone and contributes no application bootstrap.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/mcp-docs/issues",
-                "source": "https://github.com/kinetis-dev/mcp-docs/tree/v1.8.0"
+                "source": "https://github.com/kinetis-dev/mcp-docs/tree/v1.9.0"
             },
-            "time": "2026-09-24T08:59:54+00:00"
+            "time": "2026-09-28T20:53:42+00:00"
         },
         {
             "name": "kinetis/orbitron",
-            "version": "v1.11.1",
+            "version": "v1.11.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/orbitron.git",
-                "reference": "3cd27a93dc0a384e394c100066ff8461d28a69b0"
+                "reference": "f9ea7c5f46b65cccddf58b44bc240415a72825d6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/orbitron/zipball/3cd27a93dc0a384e394c100066ff8461d28a69b0",
-                "reference": "3cd27a93dc0a384e394c100066ff8461d28a69b0",
+                "url": "https://api.github.com/repos/kinetis-dev/orbitron/zipball/f9ea7c5f46b65cccddf58b44bc240415a72825d6",
+                "reference": "f9ea7c5f46b65cccddf58b44bc240415a72825d6",
                 "shasum": ""
             },
             "require": {
                 "composer-runtime-api": "^2.0",
-                "kinetis/framework": "^1.19.0",
-                "kinetis/mcp-docs": "^1.8.0",
+                "kinetis/framework": "^1.21.1",
+                "kinetis/mcp-docs": "^1.9.0",
                 "kinetis/mcp-protocol": "^1.1.0",
                 "php": "^8.4"
             },
@@ -5124,9 +5124,9 @@
             "description": "A development-only application construction harness for Kinetis: a CLI and a standalone MCP server that hand any coding agent a portable Kinetis context document, the Kinetis documentation pages as MCP resources, as bounded line windows and through a literal search of one page, the installed kinetis/* package inventory, a bounded live read of one installed package's own source, a literal search inside one such file or across a bounded directory tree of such a package, and a listing of one directory of such a package (MCP only), a deterministic verification of the project's Composer layout, and one previewable health-endpoint scaffold, with no model of its own.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/orbitron/issues",
-                "source": "https://github.com/kinetis-dev/orbitron/tree/v1.11.1"
+                "source": "https://github.com/kinetis-dev/orbitron/tree/v1.11.2"
             },
-            "time": "2026-09-24T20:24:37+00:00"
+            "time": "2026-09-28T20:53:42+00:00"
         },
         {
             "name": "marc-mabe/php-enum",
