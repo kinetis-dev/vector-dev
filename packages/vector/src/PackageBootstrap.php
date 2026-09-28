@@ -8,6 +8,8 @@ use Kinetis\Config\Config;
 use Kinetis\Container\AppScope;
 use Kinetis\Container\PackageBootstrapInterface;
 use Kinetis\Runtime\ProjectRoot;
+use Kinetis\Vector\Auth\PasswordHasherInterface;
+use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Database\Connections;
 use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\Vector\Files\VectorStorage;
@@ -46,6 +48,18 @@ final readonly class PackageBootstrap implements PackageBootstrapInterface
         $app->instance(VectorQueue::class, VectorQueue::fromConfig($app, $config));
         // Uploaded files for file and image fields: the application's filesystem, or VECTOR_STORAGE_CONNECTION's.
         $app->instance(VectorStorage::class, VectorStorage::fromConfig($app, $config));
+        // A hashed password field needs the application's hasher, which its bootstrap.php binds after this runs:
+        // the first unit of work checks, so a missing binding fails closed with its reason rather than storing plaintext.
+        $registry = $app->get(VectorRegistry::class);
+
+        if ($registry instanceof VectorRegistry && ($hashed = self::fieldsHashedByTheApplication($registry)) !== []) {
+            $app->onRequestScopeCreated(static function () use ($app, $hashed): void {
+                if (!$app->has(PasswordHasherInterface::class)) {
+                    throw new \LogicException(implode(', ', $hashed) . ' hashes passwords through ' . PasswordHasherInterface::class . ', but the application binds no implementation on AppScope; bind its hasher in bootstrap.php.');
+                }
+            });
+        }
+
         // The labels' translations: read once, request-neutral.
         if (!$app->has(TranslatorInterface::class)) {
             $directory = trim($config->string('VECTOR_TRANSLATIONS_DIR', ''));
@@ -57,5 +71,27 @@ final readonly class PackageBootstrap implements PackageBootstrapInterface
 
             $app->instance(TranslatorInterface::class, MessagesTranslator::fromDirectories($directories));
         }
+    }
+
+    /**
+     * The `resource.field` names of the password fields hashed through
+     * the interface the application binds; one naming its own hasher class
+     * is built by the request container and is not listed.
+     *
+     * @return list<string>
+     */
+    private static function fieldsHashedByTheApplication(VectorRegistry $registry): array
+    {
+        $names = [];
+
+        foreach ($registry->resources() as $slug => $descriptor) {
+            foreach ($descriptor->fields() as $name => $field) {
+                if (($field['props']['hasher'] ?? null) === PasswordHasherInterface::class) {
+                    $names[] = "{$slug}.{$name}";
+                }
+            }
+        }
+
+        return $names;
     }
 }

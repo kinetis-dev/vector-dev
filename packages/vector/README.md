@@ -194,7 +194,7 @@ identifier, a `softDeletes()` property that is not a nullable
 | Class | Type | Notes |
 |---|---|---|
 | `Id` | `id` | Read-only, sortable, never on a form. |
-| `Text`, `Email`, `Url`, `Password`, `Slug`, `Color` | `string` … `color` | String columns; `searchable()` allowed. `Slug::from('name')`. `Email` must be an address and `Url` an absolute http(s) URL (the admin shows it as a link), unless the field declares an e-mail, URL or pattern rule of its own; `Password` stores what is written, so the resource's `create()`/`apply()` hashes it. |
+| `Text`, `Email`, `Url`, `Password`, `Slug`, `Color` | `string` … `color` | String columns; `searchable()` allowed. `Slug::from('name')`. `Email` must be an address and `Url` an absolute http(s) URL (the admin shows it as a link), unless the field declares an e-mail, URL or pattern rule of its own; `Password` stores what is written, so the resource's `create()`/`apply()` hashes it — or it is `hashed()`: the value is hashed through the application's `Kinetis\\Vector\\Auth\\PasswordHasherInterface`, bound on `AppScope` in `bootstrap.php` (the first request refuses when nothing binds it), or through the implementation `hashed(OtherHasher::class)` names for a table hashed differently; an empty value on a form keeps the stored hash. |
 | `Textarea`, `Json` | `text`, `json` | Wide inputs; JSON is a string column. |
 | `RichText` | `richtext` | Long-form content edited in a word-processor-like editor and stored as its JSON document; see [Rich text](#rich-text). |
 | `Markdown` | `markdown` | Markdown source for technical content, edited WYSIWYG (with a source view) and shown rendered and sanitized; `toolbar([...])`. |
@@ -612,8 +612,8 @@ A `#[Settings]` class extending `SettingsGroup` declares `fields()` and
 `canManage()`, and may override `validate(array $values)` for a rule
 across its fields — a request-time check, like `canManage()`, whose
 violations refuse the save; values are stored in `vector_settings` and
-edited on the UI's settings page through the same registry as a form. `Branding` and
-`Languages` ship with Vector. A setting is a value, never markup.
+edited on the UI's settings page through the same registry as a form. `Branding`,
+`Languages` and `Jobs` (background jobs) ship with Vector. A setting is a value, never markup.
 
 ### Languages and translated labels
 
@@ -745,6 +745,15 @@ backend redelivers on its own does not run again; a failure is final and
 reported on the row. A queued action must still tolerate a chunk running
 twice, because a chunk's flush and the progress written after it are two
 statements.
+
+A job moves its own row, so a worker that dies mid-way leaves the row
+`running`. A running row that has reported no progress for the minutes
+the **Background jobs** settings group allows (30 until an admin changes
+it) is answered as `stalled` — the jobs page shows it so and stops
+polling — and `kinetis vector:jobs:reap`, run now and then by a
+scheduler, marks such rows failed with the reason. The row itself stays
+`running` until the reaper closes it, so a job that is in fact still
+running finishes as usual.
 
 ### XLSX exports
 

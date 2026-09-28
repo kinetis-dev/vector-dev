@@ -463,6 +463,12 @@ final readonly class ResourceDescriptor
             unset($field['computed']['method']);
         }
 
+        if (isset($field['props']['hasher'])) {
+            // the hasher is the server's; the form only learns that an empty value keeps the stored one
+            unset($field['props']['hasher']);
+            $field['props']['hashed'] = true;
+        }
+
         if (isset($field['richtext'])) {
             unset($field['richtext']['textField'], $field['textColumn'], $field['searchColumn']);
         }

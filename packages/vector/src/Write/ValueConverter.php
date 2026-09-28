@@ -12,6 +12,7 @@ use Kinetis\Orm\Date;
 use Kinetis\Orm\EntityManagerRegistry;
 use Kinetis\Validation\Constraint;
 use Kinetis\Validation\Violation;
+use Kinetis\Vector\Auth\PasswordHasherInterface;
 use Kinetis\Vector\Fields\KeyValue;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Registry\VectorRegistry;
@@ -57,8 +58,41 @@ final readonly class ValueConverter
             'manyToMany' => $this->relatedList($field, $raw),
             'keyValue' => $this->keyValue($field, $raw),
             'currency' => self::currency($field, $raw),
+            'password' => $this->password($field, $raw),
             default => $this->scalar($field, $raw),
         };
+    }
+
+    /**
+     * Whether a submitted value means "leave the stored password alone":
+     * an empty value for a hashed field, which a form sends when the
+     * admin typed nothing into it.
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function keepsStoredPassword(array $field, mixed $raw): bool
+    {
+        return $field['type'] === 'password' && isset($field['props']['hasher']) && ($raw === null || $raw === '');
+    }
+
+    /**
+     * @param array<string, mixed> $field
+     * @throws InputViolation
+     */
+    private function password(array $field, mixed $raw): string
+    {
+        $plain = is_string($raw) ? $raw : throw self::mismatch('a string');
+        $hasher = $field['props']['hasher'] ?? null;
+
+        if (!is_string($hasher)) {
+            return $plain;
+        }
+
+        $service = $this->scope->get($hasher);
+
+        return $service instanceof PasswordHasherInterface
+            ? $service->hash($plain)
+            : throw new \LogicException("{$hasher} did not resolve to a PasswordHasherInterface; bind the application's hasher on AppScope in bootstrap.php.");
     }
 
     /**
