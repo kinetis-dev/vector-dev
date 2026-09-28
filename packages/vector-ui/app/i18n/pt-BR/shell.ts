@@ -46,6 +46,7 @@ export default {
         submit: 'Entrar',
         invalidEmail: 'Digite um endereço de e-mail válido',
         welcome: 'Bem-vindo de volta, {name}.',
+        signedOutIdle: 'Você foi desconectado após {minutes} minutos de inatividade. Entre novamente para continuar de onde parou.',
     },
     home: {
         title: 'Painel',

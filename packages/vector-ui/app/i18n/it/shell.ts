@@ -46,6 +46,7 @@ export default {
         submit: 'Accedi',
         invalidEmail: 'Inserisci un indirizzo e-mail valido',
         welcome: 'Ti diamo il bentornato, {name}.',
+        signedOutIdle: 'Sei stato disconnesso dopo {minutes} minuti di inattività. Accedi di nuovo per riprendere da dove eri rimasto.',
     },
     home: {
         title: 'Dashboard',

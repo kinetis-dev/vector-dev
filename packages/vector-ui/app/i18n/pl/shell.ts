@@ -46,6 +46,7 @@ export default {
         submit: 'Zaloguj się',
         invalidEmail: 'Podaj prawidłowy adres e-mail',
         welcome: 'Witaj ponownie, {name}.',
+        signedOutIdle: 'Sesja została zakończona po {minutes} minutach bezczynności. Zaloguj się ponownie, aby wrócić do przerwanej pracy.',
     },
     home: {
         title: 'Pulpit',

@@ -46,6 +46,7 @@ export default {
         submit: 'ログイン',
         invalidEmail: '有効なメールアドレスを入力してください',
         welcome: 'おかえりなさい、{name} さん。',
+        signedOutIdle: '{minutes} 分間操作がなかったためサインアウトしました。もう一度サインインすると、続きから再開できます。',
     },
     home: {
         title: 'ダッシュボード',

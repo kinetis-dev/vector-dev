@@ -46,6 +46,7 @@ export default {
         submit: 'Iniciar sessão',
         invalidEmail: 'Insira um endereço de e-mail válido',
         welcome: 'Bem-vindo de volta, {name}.',
+        signedOutIdle: 'A sessão terminou após {minutes} minutos de inatividade. Inicie sessão novamente para continuar onde estava.',
     },
     home: {
         title: 'Painel',

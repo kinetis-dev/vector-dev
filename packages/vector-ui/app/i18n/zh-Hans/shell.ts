@@ -46,6 +46,7 @@ export default {
         submit: '登录',
         invalidEmail: '请输入有效的电子邮件地址',
         welcome: '欢迎回来，{name}。',
+        signedOutIdle: '由于 {minutes} 分钟内没有操作，你已被登出。重新登录即可从上次离开的地方继续。',
     },
     home: {
         title: '仪表盘',

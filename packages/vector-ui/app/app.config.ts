@@ -19,6 +19,8 @@ export default defineAppConfig({
         usersResource: null as string | null,
         // The UI's language before the descriptor names the user's, when neither the hosted shell nor this browser does.
         locale: 'en',
+        // Minutes without a pointer, key, touch or scroll after which the admin signs the user out; 0 never does.
+        idleMinutes: 30,
         // Messages an application adds or overrides, by locale and area: { de: { common: { save: 'Speichern' } } }.
         messages: {} as Record<string, Record<string, unknown>>,
         // Custom pages at /p/{name}: { stock: { title: 'Stock', icon: 'mdi-warehouse', component: 'StockPage' } },
@@ -38,6 +40,7 @@ declare module 'nuxt/schema' {
             widgets?: Record<string, string>
             usersResource?: string | null
             locale?: string
+            idleMinutes?: number
             messages?: Record<string, Record<string, unknown>>
             pages?: Record<string, { title: string, icon?: string, group?: string, component: string }>
         }
@@ -52,6 +55,7 @@ declare module 'nuxt/schema' {
             widgets: Record<string, string>
             usersResource: string | null
             locale: string
+            idleMinutes: number
             messages: Record<string, Record<string, unknown>>
             pages: Record<string, { title: string, icon?: string, group?: string, component: string }>
         }

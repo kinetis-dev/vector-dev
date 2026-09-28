@@ -46,6 +46,7 @@ export default {
         submit: 'Aanmelden',
         invalidEmail: 'Voer een geldig e-mailadres in',
         welcome: 'Welkom terug, {name}.',
+        signedOutIdle: 'U bent na {minutes} minuten zonder activiteit afgemeld. Meld u opnieuw aan om verder te gaan waar u gebleven was.',
     },
     home: {
         title: 'Dashboard',

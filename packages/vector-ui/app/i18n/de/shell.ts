@@ -46,6 +46,7 @@ export default {
         submit: 'Anmelden',
         invalidEmail: 'Geben Sie eine gültige E-Mail-Adresse ein',
         welcome: 'Willkommen zurück, {name}.',
+        signedOutIdle: 'Sie wurden nach {minutes} Minuten ohne Aktivität abgemeldet. Melden Sie sich erneut an, um dort weiterzumachen, wo Sie aufgehört haben.',
     },
     home: {
         title: 'Dashboard',

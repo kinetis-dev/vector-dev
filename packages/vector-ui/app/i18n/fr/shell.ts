@@ -46,6 +46,7 @@ export default {
         submit: 'Se connecter',
         invalidEmail: 'Saisissez une adresse e-mail valide',
         welcome: 'Ravi de vous revoir, {name}.',
+        signedOutIdle: 'Vous avez été déconnecté après {minutes} minutes d’inactivité. Reconnectez-vous pour reprendre où vous en étiez.',
     },
     home: {
         title: 'Tableau de bord',
