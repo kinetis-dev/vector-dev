@@ -26,6 +26,12 @@ logout URLs, the session's CSRF token, the response's script nonce,
 branding and extension URLs. An anonymous visitor is redirected to
 `VECTOR_LOGIN_URL`; without a published bundle the shell answers 503.
 
+The application also decides how long a session may last in all. The
+reference app's refresh endpoint keeps the end the sign-in set, twelve
+hours later, so a tab that renews itself still signs in again by then;
+the layer's own idle timeout (`vector.idleMinutes`, 30 by default) ends
+a session nobody is using before that, in both modes.
+
 The application composes the `vector` and `vector-shell` groups from
 its session middleware (a thin subclass of `SessionMiddleware`) and an
 authentication middleware that reads the session, verifies the CSRF
