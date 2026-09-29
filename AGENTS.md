@@ -36,10 +36,10 @@ the client, or granted approval. Do this before anything else on that
 turn.
 
 While they are not yet listed, a request for setup help or to read
-these instructions may still be answered from this file and the
-project's `README.md`; every other request, and all application work,
-stays blocked, and the next turn checks again before going any
-further — do not assume a prior turn's absence still holds.
+these instructions may still be answered from this file, the project's
+`README.md` and `docs/coding-agents.md`; every other request, and all
+application work, stays blocked, and the next turn checks again before
+going any further — do not assume a prior turn's absence still holds.
 
 The order matters, because starting the server has one: it runs in a
 disposable container derived from this project's `app` service, the
@@ -111,7 +111,7 @@ application change. Instead:
 - name the step that failed and quote the exact error or the document's
   `code` values;
 - walk the user through the matching entry under "Diagnostics" in
-  `README.md`;
+  `docs/coding-agents.md`;
 - wait for the user.
 
 Never present an ungrounded answer as a grounded one. Working from
@@ -205,12 +205,13 @@ Once Orbitron is ready, every task runs the same way:
    they belong, and the documentation still matches the behavior.
 
 At a material milestone — a feature finished, a dependency added, a
-route or contract changed — re-read this project's `README.md` framing
-and correct application-specific claims the work made demonstrably false,
-such as its routes, dependencies or runtime behavior. Preserve the
-reusable Kinetis and Orbitron setup reference unless the implementation
-invalidated it. This is a correctness pass, not permission to rewrite it
-for style.
+route or contract changed — re-read this project's `README.md` and the
+manual's `docs/demo.md` and `docs/contributing.md` framing, and correct
+application-specific claims the work made demonstrably false, such as
+its routes, dependencies or runtime behavior. Preserve the reusable
+Kinetis and Orbitron setup reference in `docs/coding-agents.md` unless
+the implementation invalidated it. This is a correctness pass, not
+permission to rewrite it for style.
 
 ## Scaffolding
 

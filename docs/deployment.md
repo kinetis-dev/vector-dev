@@ -78,8 +78,11 @@ php vendor/bin/kinetis build
 ```
 
 In production the descriptor is not re-read from source on each boot;
-rebuild after changing a resource. Run a queue worker for Vector's jobs
-({doc}`jobs`).
+rebuild after changing a resource. Build the compiled cache inside the
+release or image itself: an existing valid `.kinetis-cache/compiled.php`
+is used as it is, without comparing it to the source that produced it
+(see [Caching](https://kinetis.dev/docs/caching.html)). Run a queue
+worker for Vector's jobs ({doc}`jobs`).
 
 ## See also
 

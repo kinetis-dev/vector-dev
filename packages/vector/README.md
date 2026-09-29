@@ -707,7 +707,7 @@ drop it, and the schema publishes the answer as
 ## The REST contract
 
 Every route is under `/vector` in the `vector` middleware group; the
-full table is in the root [README](../../README.md#the-admin-api) and
+full table is in the manual's [REST API](../../docs/rest-api.md) page and
 the contract page in [`docs/rest-contract.md`](docs/rest-contract.md).
 In short: `GET /vector/schema` (the descriptor, per-identity overlay,
 `ETag`), `GET /vector/r/{resource}` under the list grammar, show,
