@@ -137,10 +137,12 @@ docker compose exec --user www-data app vendor/bin/kinetis demo:seed
 ```
 
 Open `http://localhost:3000` and sign in as `admin@vector.local` with
-the password `password`.
+the password `password`. {doc}`demo` covers the services, the hosted
+admin and the seed data.
 
 ## See also
 
 - {doc}`core-concepts` — how the pieces fit together.
 - {doc}`resources` — everything a resource declares.
 - {doc}`using-the-admin` — the admin from a user's side.
+- {doc}`demo` — the demo application in full.

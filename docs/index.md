@@ -104,6 +104,7 @@ Everything a resource class declares, from fields to badges.
 Home <self>
 getting-started
 core-concepts
+demo
 ```
 
 ```{toctree}
@@ -177,4 +178,13 @@ reference
 rest-api
 configuration
 limits
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: Working on Vector
+:hidden:
+
+contributing
+coding-agents
 ```
