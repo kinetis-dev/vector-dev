@@ -12,7 +12,6 @@ use Kinetis\Http\Attributes\Post;
 use Kinetis\Http\Middleware\SecurityHeadersMiddleware;
 use Kinetis\Http\Responses\HtmlResponse;
 use Kinetis\Http\Responses\RedirectResponse;
-use Kinetis\Session\Middleware\CsrfMiddleware;
 use Kinetis\Session\Middleware\SessionMiddleware;
 use Kinetis\Session\Session;
 use Kinetis\Vector\Ui\VectorUi;
@@ -24,11 +23,13 @@ use Psr\Http\Message\ServerRequestInterface;
  * a redirect into the hosted admin. What a Twig or Latte application
  * would render from a template, rendered here inline to keep the demo
  * to one file. Its inline style carries the request's CSP nonce, which
- * the application's SECURITY_CSP asks for.
+ * the application's SECURITY_CSP asks for. A form left open until its
+ * session expired comes back here with a notice, not the CSRF check's
+ * JSON (WebCsrfMiddleware).
  */
 #[Hidden]
 #[Middleware(SessionMiddleware::class)]
-#[Middleware(CsrfMiddleware::class)]
+#[Middleware(WebCsrfMiddleware::class)]
 final readonly class WebLoginController
 {
     public function __construct(
@@ -44,7 +45,10 @@ final readonly class WebLoginController
             return RedirectResponse::to(VectorUi::PATH, 303);
         }
 
-        return $this->page($request, null);
+        $notice = $this->session->flashed(WebCsrfMiddleware::NOTICE);
+        $email = $this->session->flashed(WebCsrfMiddleware::EMAIL);
+
+        return $this->page($request, null, notice: is_string($notice) ? $notice : null, email: is_string($email) ? $email : '');
     }
 
     #[Post('/login')]
@@ -64,7 +68,7 @@ final readonly class WebLoginController
             if ($user === null) {
                 $this->attempts->failed($data->email, $address);
 
-                return $this->page($request, 'Invalid credentials.');
+                return $this->page($request, 'Invalid credentials.', email: $data->email);
             }
 
             $this->attempts->succeeded($data->email, $address);
@@ -89,12 +93,14 @@ final readonly class WebLoginController
     }
 
     /** @param array<string, string> $headers */
-    private function page(ServerRequestInterface $request, ?string $error, int $status = 401, array $headers = []): ResponseInterface
+    private function page(ServerRequestInterface $request, ?string $error, int $status = 401, array $headers = [], ?string $notice = null, string $email = ''): ResponseInterface
     {
         $nonce = $request->getAttribute(SecurityHeadersMiddleware::NONCE_ATTRIBUTE);
         $nonceAttribute = is_string($nonce) ? ' nonce="' . htmlspecialchars($nonce, ENT_QUOTES, 'UTF-8') . '"' : '';
         $token = htmlspecialchars($this->session->csrfToken(), ENT_QUOTES, 'UTF-8');
-        $alert = $error === null ? '' : '<p class="error">' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8') . '</p>';
+        $alert = $error === null ? '' : '<p class="error" role="alert">' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8') . '</p>';
+        $info = $notice === null ? '' : '<p class="notice" role="status">' . htmlspecialchars($notice, ENT_QUOTES, 'UTF-8') . '</p>';
+        $emailValue = htmlspecialchars($email, ENT_QUOTES, 'UTF-8');
 
         return HtmlResponse::create(<<<HTML
             <!doctype html>
@@ -110,15 +116,17 @@ final readonly class WebLoginController
                     input { width: 100%; padding: .6rem; border: 1px solid #cfd8dc; border-radius: 8px; box-sizing: border-box; }
                     button { margin-top: 1.25rem; width: 100%; padding: .7rem; border: 0; border-radius: 8px; background: #1F5F8B; color: #fff; font-size: 1rem; }
                     .error { color: #c62828; margin: .5rem 0 0; }
+                    .notice { background: #e3f2fd; color: #0d47a1; border-radius: 8px; padding: .6rem .75rem; margin: .5rem 0 0; font-size: .9rem; }
                 </style>
             </head>
             <body>
                 <form method="post" action="/login">
                     <h1>Vector Demo</h1>
                     <p>Sign in to the admin (hosted mode)</p>
+                    {$info}
                     <input type="hidden" name="_token" value="{$token}">
                     <label for="email">E-mail</label>
-                    <input id="email" name="email" type="email" autocomplete="username" required>
+                    <input id="email" name="email" type="email" autocomplete="username" value="{$emailValue}" required>
                     <label for="password">Password</label>
                     <input id="password" name="password" type="password" autocomplete="current-password" required>
                     {$alert}
