@@ -519,7 +519,7 @@ database of its own on the stack's Redis):
 | `POST /auth/login` | `{email, password}` → a 15-minute `accessToken` and a single-use `refreshToken` (12 hours), with `expiresIn`, `refreshExpiresIn` and `user`. |
 | `POST /auth/refresh` | `{refreshToken}` → a new pair in the same shape; the redeemed token is refused from then on, and the user is reloaded so a changed role applies. |
 | `POST /auth/logout` | `{refreshToken}` → `204`; the refresh token is revoked. |
-| `POST /login` | The hosted sign-in form, throttled the same way. |
+| `POST /login` | The hosted sign-in form, throttled the same way. A form left open until its session expired carries a token the new session never issued: instead of the CSRF check's JSON, the browser is sent back to the form (`303`) with a notice and the e-mail it typed, and signs in from there. |
 
 Failed attempts go through the framework's `AttemptThrottle`, counted
 per e-mail *from one client address* and per address — never per e-mail
