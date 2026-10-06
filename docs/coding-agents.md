@@ -15,10 +15,12 @@ instructions, and nothing else.
 
 1. **Complete the stack's initial setup**, `docker compose up --build -d`,
    so the `app` image exists and its vendor volume is populated. The MCP
-   server runs in a disposable container built from that image.
+   server runs in a disposable container built from that image. The
+   launcher can do this part itself on a fresh clone (below), but its
+   first launch then takes as long as the build and the install.
 2. **Reload, restart or reconnect the client** when the MCP configuration
    arrived or changed after the session started, or when an earlier
-   launch was attempted before step 1 completed.
+   launch failed before step 1 completed.
 3. **Approve the project-local `orbitron` server** under your client's
    own policy ([Trust and approval](#trust-and-approval)).
 4. The agent reads `kinetis://orbitron/context` and
@@ -46,11 +48,17 @@ step fails it stops, names the step, quotes the error and points you to
   Nuxt, Vuetify and Vue documentation servers for frontend work.
 
 `bin/orbitron-mcp` runs `vendor/bin/kinetis-orbitron-mcp` through
-`docker compose run --rm -T --no-deps --entrypoint php` on the `app`
+`docker compose --progress quiet run --rm -T --no-deps --entrypoint sh`
+on the `app`
 service: a one-off container from `app`'s image, sharing its project and
-vendor mounts but not its lifetime. `--entrypoint php` skips the
-entrypoint's `composer install`, and `--no-deps` starts no other
-service. Restarting, recreating or rebuilding
+vendor mounts but not its lifetime. `--entrypoint sh` skips the
+entrypoint's `composer install` on every launch, and `--no-deps` starts
+no other service. On a fresh clone the launcher sets itself up: it
+copies a missing `backend/.env` from `backend/.env.example` (set
+`JWT_SECRET` in it before the app itself boots), and when the vendor
+volume has never been populated it runs `composer install` under the
+entrypoint's own `vendor/.install.lock`, with its output on stderr, so
+it never writes the tree while `app` does. Restarting, recreating or rebuilding
 `app` leaves a session connected. The container sees every checkout as
 `/workspace/demo/backend`, so the launcher passes the host path in
 `KINETIS_ORBITRON_CHECKOUT_ROOT`, which `orbitron_inspect` reports as
@@ -106,10 +114,11 @@ host checkout. See
 
 ## Diagnostics
 
-**The stack has not completed its initial setup.** The launcher needs
-the `app` image and a populated vendor volume; before that,
-`vendor/bin/kinetis-orbitron-mcp` does not exist. Bring the stack up,
-then restart the client:
+**The server fails to start on a fresh clone.** Its first launch
+builds the `app` image when it is absent and installs the dependencies
+into an empty vendor volume, and a client whose server start-up timeout
+is shorter reports it as failed. Bring the stack up, then restart the
+client:
 
 ```console
 docker compose up --build -d
