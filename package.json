@@ -11,6 +11,12 @@
         "generate": "pnpm --filter frontend generate",
         "generate:hosted": "NUXT_APP_BASE_URL=/vector/ui/ pnpm --filter @kinetis/vector-ui exec nuxt generate hosted && rm -rf packages/vector/resources/dist && cp -R packages/vector-ui/hosted/.output/public packages/vector/resources/dist",
         "typecheck": "pnpm --filter @kinetis/vector-ui typecheck",
+        "lint": "eslint .",
         "test": "pnpm --filter @kinetis/vector-ui test"
+    },
+    "devDependencies": {
+        "@nuxt/eslint-config": "^1.17.0",
+        "eslint": "^10.12.0",
+        "typescript": "~6.0.3"
     }
 }

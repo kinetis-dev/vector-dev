@@ -56,6 +56,8 @@ function remove(index: number) {
 
 function set(index: number, name: string, value: unknown) {
     model.value = rows.value.map((row, i) => (i === index ? { ...row, [name]: value } : row))
+    // The form owns the server errors and lets each input clear its own.
+    // eslint-disable-next-line vue/no-mutating-props
     if (props.serverErrors) delete props.serverErrors[`${props.field.name}.${index}.${name}`]
 }
 

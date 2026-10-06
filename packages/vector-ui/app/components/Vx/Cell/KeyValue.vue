@@ -12,14 +12,14 @@ const { t } = useVectorT()
     <span v-if="!entries.length" class="text-disabled">{{ t('common.none') }}</span>
     <v-table v-else-if="context === 'show'" density="compact">
         <tbody>
-            <tr v-for="[key, value] in entries" :key="key">
+            <tr v-for="[key, text] in entries" :key="key">
                 <th scope="row" class="text-medium-emphasis font-weight-regular">{{ key }}</th>
-                <td>{{ value }}</td>
+                <td>{{ text }}</td>
             </tr>
         </tbody>
     </v-table>
     <span v-else class="d-inline-flex flex-wrap align-center ga-1">
-        <v-chip v-for="[key, value] in entries.slice(0, 3)" :key="key" size="x-small" label>{{ key }}: {{ value }}</v-chip>
+        <v-chip v-for="[key, text] in entries.slice(0, 3)" :key="key" size="x-small" label>{{ key }}: {{ text }}</v-chip>
         <span v-if="entries.length > 3" class="text-caption text-medium-emphasis">{{ t('fields.keyValue.more', { count: entries.length - 3 }) }}</span>
     </span>
 </template>

@@ -235,6 +235,9 @@ end).
 `pnpm typecheck` runs `vue-tsc --strict` over the layer, its tests
 included.
 
+`pnpm lint` runs ESLint over the layer with the repository's flat
+config (`eslint.config.mjs` at the monorepo root, `@nuxt/eslint-config`).
+
 `pnpm test` runs the layer's Vitest suite in `test/nuxt/`: each file
 runs inside a Nuxt app built from this layer (`@nuxt/test-utils`,
 happy-dom), so auto-imports, app config, the i18n plugin, Vuetify and

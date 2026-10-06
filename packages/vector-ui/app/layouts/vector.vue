@@ -179,8 +179,8 @@ const pageGroups = computed(() => {
             </v-btn>
             <VxInbox />
             <v-menu v-if="language.locales.value.length > 1">
-                <template #activator="{ props: menu }">
-                    <v-btn v-bind="menu" icon="mdi-translate" variant="text" :aria-label="t('shell.language', { name: currentLanguage?.name ?? language.current.value })" />
+                <template #activator="{ props }">
+                    <v-btn v-bind="props" icon="mdi-translate" variant="text" :aria-label="t('shell.language', { name: currentLanguage?.name ?? language.current.value })" />
                 </template>
                 <v-list density="compact" :aria-label="t('shell.language', { name: currentLanguage?.name ?? language.current.value })">
                     <!-- each in its own name (and script direction), with its name in the current language beneath -->

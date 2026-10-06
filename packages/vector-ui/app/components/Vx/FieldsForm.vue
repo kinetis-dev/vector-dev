@@ -20,6 +20,8 @@ const states = computed<Record<string, VectorFieldState>>(() => Object.fromEntri
 const shownFields = computed(() => props.fields.filter(f => states.value[f.name]?.visible !== false))
 
 function set(name: string, value: unknown) {
+    // The parent owns the values object and hands it down to be filled in.
+    // eslint-disable-next-line vue/no-mutating-props
     props.values[name] = value
     emit('clear', name)
 }

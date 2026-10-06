@@ -41,7 +41,7 @@ export function useVectorImpersonation() {
                     await api('/vector/impersonate', { method: 'DELETE' }).catch(() => undefined)
                     if (previous.token && previous.user) auth.adopt(previous.token, Math.max(1, Math.round((previous.expiresAt - Date.now()) / 1000)), previous.user)
                     await load(true)
-                    throw new Error(vt('shell.impersonation.noAccess', { name: subject.name }))
+                    throw new Error(vt('shell.impersonation.noAccess', { name: subject.name }), { cause: error })
                 }
 
                 throw error

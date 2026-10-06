@@ -6,11 +6,12 @@
     "scripts": {
         "test": "playwright test",
         "report": "playwright show-report --host 0.0.0.0",
-        "typecheck": "tsc -p ."
+        "typecheck": "tsc -p .",
+        "lint": "eslint ."
     },
     "devDependencies": {
         "@playwright/test": "1.63.0",
         "@types/node": "^22.0.0",
-        "typescript": "^5.8.0"
+        "typescript": "~6.0.3"
     }
 }

@@ -20,6 +20,8 @@ export const RICH_TEXT_FEATURES = ['bold', 'italic', 'underline', 'strike', 'cod
 
 /** Links go to http(s), mailto or a relative place — the server's rule. */
 export function allowedHref(href: string): boolean {
+    // Control characters and spaces are what hide a scheme, so they are stripped on purpose.
+    // eslint-disable-next-line no-control-regex
     const compact = href.replace(/[\u0000- \u007F]+/g, '')
     const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(compact)
     return scheme === null || ['http', 'https', 'mailto'].includes(scheme[1]!.toLowerCase())

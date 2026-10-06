@@ -70,6 +70,7 @@ a person using the demo do not disturb each other. See
 ```console
 docker compose exec app vendor/bin/phpstan analyse
 docker compose exec app vendor/bin/kinetis build
+docker compose exec node pnpm lint
 docker compose exec node pnpm --filter frontend generate
 ```
 
@@ -79,6 +80,14 @@ which outlives every request a worker handles; `NoBlockingIoRule` flags
 a call that blocks the event loop instead of yielding. They catch two
 specific mistakes; they do not prove a change is correct on a persistent
 worker.
+
+`pnpm lint` runs ESLint over every TypeScript and Vue file in the
+workspace: the UI layer and its hosted app, the demo frontend and the
+end-to-end suite. One flat config at the repository root,
+`eslint.config.mjs`, uses `@nuxt/eslint-config` on its own, so linting
+needs no `nuxt prepare`. Each package also has its own `pnpm lint`
+against that config. TypeScript is pinned to `~6.0.3` because
+typescript-eslint supports TypeScript only below 6.1.
 
 ## See also
 

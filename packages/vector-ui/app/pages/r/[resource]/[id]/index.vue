@@ -126,7 +126,7 @@ async function restore() {
                 :can-update="response.permissions.update"
                 @changed="refresh()"
             />
-            <VxResourceAudit :resource="resource" :id="id" :can-update="response.permissions.update" @reverted="refresh()" />
+            <VxResourceAudit :id="id" :resource="resource" :can-update="response.permissions.update" @reverted="refresh()" />
         </template>
 
         <VxActionDialog
