@@ -1,4 +1,4 @@
-import { expect, test } from '../support/fixtures'
+import { expect, test, unique } from '../support/fixtures'
 import type { Page } from '@playwright/test'
 
 // Each user's language: switched from the app bar, remembered as their
@@ -29,7 +29,17 @@ test('switching language translates the admin and is remembered', async ({ admin
     }
 })
 
-test('the dashboard and its widgets change language without a reload', async ({ admin: page, api }) => {
+test('the dashboard and its widgets change language without a reload', async ({ admin: page, api, cleanup }) => {
+    // the seed dates its orders from the day it ran: a paid order of this week is this test's own
+    const number = unique('ORD-E2E').replace(' ', '-')
+    const [customer] = await api.search('customers', '')
+    const [product] = await api.search('products', '')
+    await api.create('orders', {
+        number, customer: customer!.id, status: 'paid', currency: 'EUR', placedAt: new Date().toISOString(),
+        lines: [{ product: product!.id, quantity: 1, unitPriceCents: 100 }],
+    })
+    cleanup.byName('orders', number)
+
     try {
         await page.goto('')
         const main = page.getByRole('main')

@@ -17,6 +17,31 @@ final class WidgetsTest extends VectorTestCase
         self::assertArrayNotHasKey('class', $page['data']['widgets'][0]);
         self::assertSame('7d', array_key_first($page['data']['widgets'][0]['ranges']));
 
+        // the seed dates its orders from the day it ran, so the revenue in range is this test's own order
+        $orderId = $this->placePaidOrderNow();
+
+        try {
+            $this->assertTheCardsCompute();
+        } finally {
+            $this->client->delete("/vector/r/orders/{$orderId}", headers: $this->adminHeaders())->assertStatus(204);
+        }
+    }
+
+    private function placePaidOrderNow(): int
+    {
+        $first = fn (string $resource): int => (int) ($this->client->get("/vector/r/{$resource}", query: ['perPage' => 1], headers: $this->adminHeaders())->assertOk()->json()['data'][0]['id'] ?? 0);
+        $order = $this->client->post('/vector/r/orders', body: [
+            'number' => 'ORD-WIDGET-' . bin2hex(random_bytes(3)), 'customer' => $first('customers'), 'status' => 'paid', 'currency' => 'EUR',
+            'placedAt' => gmdate('Y-m-d\TH:i:s\Z'),
+            'lines' => [['product' => $first('products'), 'quantity' => 1, 'unitPriceCents' => 100]],
+        ], headers: $this->adminHeaders())->assertCreated()->json();
+        self::assertIsArray($order);
+
+        return (int) $order['data']['id'];
+    }
+
+    private function assertTheCardsCompute(): void
+    {
         $stat = $this->client->get('/vector/dashboards/main/widgets/revenue-stat', query: ['range' => '1y'], headers: $this->adminHeaders())->assertOk()->json();
         self::assertIsArray($stat);
         self::assertSame('stat', $stat['data']['type']);
