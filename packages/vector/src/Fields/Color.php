@@ -11,12 +11,14 @@ final class Color extends Field
 {
     public const string PATTERN = '/^#[0-9A-Fa-f]{6}$/D';
 
+    #[\Override]
     public function type(): string
     {
         return 'color';
     }
 
     /** @return array<string, mixed> */
+    #[\Override]
     public function toArray(): array
     {
         $patterned = array_any($this->rules, static fn (array $rule): bool => $rule[0] === Regex::class);

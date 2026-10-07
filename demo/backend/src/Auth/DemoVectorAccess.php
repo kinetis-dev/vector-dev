@@ -15,6 +15,7 @@ use Kinetis\Vector\Auth\VectorAccessInterface;
  */
 final readonly class DemoVectorAccess implements VectorAccessInterface
 {
+    #[\Override]
     public function canAccessVector(CurrentUserInterface $user): bool
     {
         return $user instanceof DemoActor && $user->isAdmin;

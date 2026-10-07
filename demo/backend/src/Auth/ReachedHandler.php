@@ -15,6 +15,7 @@ final class ReachedHandler implements RequestHandlerInterface
 
     public function __construct(private readonly RequestHandlerInterface $inner) {}
 
+    #[\Override]
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         $this->reached = true;

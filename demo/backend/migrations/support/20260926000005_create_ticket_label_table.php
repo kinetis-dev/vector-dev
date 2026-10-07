@@ -9,6 +9,7 @@ use Kinetis\Persistence\Contract\PostgresLink;
 // The support desk, on the PostgreSQL connection "support".
 return new class implements Migration
 {
+    #[\Override]
     public function up(MysqlLink|PostgresLink $db): void
     {
         $db->execute(<<<'SQL'
@@ -20,6 +21,7 @@ return new class implements Migration
             SQL);
     }
 
+    #[\Override]
     public function down(MysqlLink|PostgresLink $db): void
     {
         $db->execute('DROP TABLE ticket_label');

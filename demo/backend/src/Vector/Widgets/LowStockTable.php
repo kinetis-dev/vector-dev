@@ -24,31 +24,37 @@ final class LowStockTable extends VectorWidget
         private readonly VectorRegistry $registry,
     ) {}
 
+    #[\Override]
     public function label(): string
     {
         return 'Low stock';
     }
 
+    #[\Override]
     public function type(): string
     {
         return self::TABLE;
     }
 
+    #[\Override]
     public function icon(): string
     {
         return 'mdi-package-variant-closed-remove';
     }
 
+    #[\Override]
     public function ranges(): array
     {
         return [];
     }
 
+    #[\Override]
     public function width(): int
     {
         return 6;
     }
 
+    #[\Override]
     public function calculate(WidgetRequest $request): WidgetResult
     {
         $threshold = (int) ($this->settings->values($this->registry->settingsGroup('store'))['lowStockThreshold'] ?? 10);

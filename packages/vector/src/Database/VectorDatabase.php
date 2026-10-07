@@ -103,7 +103,7 @@ final class VectorDatabase
                 : throw new \LogicException("\"{$id}\" is bound to " . get_debug_type($link) . '; Vector needs a MysqlLink or PostgresLink.');
         }
 
-        $key = $this->connection === 'default' ? 'DB_CONNECTION' : Config::scopedKey('DB_CONNECTION', $this->connection);
+        $key = Config::scopedKey('DB_CONNECTION', $this->connection);
 
         if ($this->config->get($key) === null) {
             throw new \LogicException("VECTOR_DB_CONNECTION names the connection \"{$this->connection}\", but {$key} is not set.");

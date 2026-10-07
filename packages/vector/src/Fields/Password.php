@@ -16,11 +16,13 @@ use Kinetis\Vector\Auth\PasswordHasherInterface;
  */
 final class Password extends Field
 {
+    #[\Override]
     public static function make(string $name, ?string $label = null): static
     {
         return parent::make($name, $label)->onlyOnForms();
     }
 
+    #[\Override]
     public function type(): string
     {
         return 'password';

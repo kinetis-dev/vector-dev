@@ -13,26 +13,31 @@ use Kinetis\Vector\Fields\Number;
 /** A queued action: changes prices by a percentage in chunks, in a worker, however many products are selected. */
 final class RepriceProducts extends VectorAction
 {
+    #[\Override]
     public function label(): string
     {
         return 'Reprice';
     }
 
+    #[\Override]
     public function icon(): string
     {
         return 'mdi-percent-outline';
     }
 
+    #[\Override]
     public function queued(): bool
     {
         return true;
     }
 
+    #[\Override]
     public function chunkSize(): int
     {
         return 50;
     }
 
+    #[\Override]
     public function fields(): array
     {
         return [
@@ -43,11 +48,13 @@ final class RepriceProducts extends VectorAction
         ];
     }
 
+    #[\Override]
     public function confirmation(): string
     {
         return 'Reprice the selected products? Prices are rounded to the cent.';
     }
 
+    #[\Override]
     public function handle(ActionRequest $request): ActionResponse
     {
         $percent = $request->field('percent');

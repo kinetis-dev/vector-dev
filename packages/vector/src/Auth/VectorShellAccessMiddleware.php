@@ -29,6 +29,7 @@ final readonly class VectorShellAccessMiddleware implements MiddlewareInterface
         private VectorUi $ui,
     ) {}
 
+    #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         if (!$this->scope->isRegistered(CurrentUserInterface::class)) {

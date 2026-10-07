@@ -39,6 +39,7 @@ use Kinetis\Vector\VectorResource;
 #[Resource(entity: Product::class, group: 'Catalog', icon: 'mdi-package-variant', title: 'name')]
 final class ProductResource extends VectorResource
 {
+    #[\Override]
     public function fields(): array
     {
         return [
@@ -78,42 +79,50 @@ final class ProductResource extends VectorResource
         ];
     }
 
+    #[\Override]
     public function badge(): Badge
     {
         return Badge::count(['status' => 'active', 'stock' => ['lte' => 10]], 'warning', 'active products low on stock');
     }
 
+    #[\Override]
     public function searchSubtitle(): string
     {
         return 'sku';
     }
 
+    #[\Override]
     public function searchImage(): string
     {
         return 'imageKey';
     }
 
+    #[\Override]
     public function defaultSort(): array
     {
         return ['-createdAt'];
     }
 
     /** Small on purpose: an export of the whole catalogue shows the queued path. */
+    #[\Override]
     public function exportLimit(): int
     {
         return 100;
     }
 
+    #[\Override]
     public function softDeletes(): string
     {
         return 'deletedAt';
     }
 
+    #[\Override]
     public function actions(): array
     {
         return [PublishProducts::class, ArchiveProducts::class, AdjustStock::class, RepriceProducts::class, CatalogSummary::class];
     }
 
+    #[\Override]
     public function widgets(): array
     {
         return [ProductsByStatus::class];

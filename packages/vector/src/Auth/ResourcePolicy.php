@@ -15,62 +15,73 @@ use Kinetis\Http\CurrentUserInterface;
  */
 abstract class ResourcePolicy implements ResourcePolicyInterface
 {
+    #[\Override]
     public function viewAny(CurrentUserInterface $user): bool|AuthorizationResponse
     {
         return true;
     }
 
     /** @param array<string, mixed> $record */
+    #[\Override]
     public function view(CurrentUserInterface $user, array $record): bool|AuthorizationResponse
     {
         return true;
     }
 
+    #[\Override]
     public function create(CurrentUserInterface $user): bool|AuthorizationResponse
     {
         return true;
     }
 
     /** @param array<string, mixed> $record */
+    #[\Override]
     public function update(CurrentUserInterface $user, array $record): bool|AuthorizationResponse
     {
         return true;
     }
 
     /** @param array<string, mixed> $record */
+    #[\Override]
     public function delete(CurrentUserInterface $user, array $record): bool|AuthorizationResponse
     {
         return true;
     }
 
     /** @param array<string, mixed> $record */
+    #[\Override]
     public function restore(CurrentUserInterface $user, array $record): bool|AuthorizationResponse
     {
         return $this->delete($user, $record);
     }
 
     /** @param array<string, mixed> $record */
+    #[\Override]
     public function forceDelete(CurrentUserInterface $user, array $record): bool|AuthorizationResponse
     {
         return $this->delete($user, $record);
     }
 
+    #[\Override]
     public function export(CurrentUserInterface $user): bool|AuthorizationResponse
     {
         return true;
     }
 
+    #[\Override]
     public function runAction(CurrentUserInterface $user, string $action): bool|AuthorizationResponse
     {
         return true;
     }
 
     /** Whether the user may make a shared view the one this resource's list opens with for everyone. */
+    #[\Override]
     public function setDefaultView(CurrentUserInterface $user): bool|AuthorizationResponse
     {
         return true;
     }
 
+    #[\Override]
     public function viewField(CurrentUserInterface $user, string $field): bool|AuthorizationResponse
     {
         return true;
@@ -80,6 +91,7 @@ abstract class ResourcePolicy implements ResourcePolicyInterface
      * @param array<string, mixed> $record
      * @param array<string, mixed> $related
      */
+    #[\Override]
     public function attach(CurrentUserInterface $user, array $record, string $relation, array $related): bool|AuthorizationResponse
     {
         return $this->update($user, $record);
@@ -89,6 +101,7 @@ abstract class ResourcePolicy implements ResourcePolicyInterface
      * @param array<string, mixed> $record
      * @param array<string, mixed> $related
      */
+    #[\Override]
     public function detach(CurrentUserInterface $user, array $record, string $relation, array $related): bool|AuthorizationResponse
     {
         return $this->update($user, $record);

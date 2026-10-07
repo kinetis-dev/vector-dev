@@ -84,14 +84,18 @@ final class WidgetsTest extends VectorTestCase
     {
         $this->client->get('/vector/settings/store', headers: $this->adminHeaders())->assertOk()->assertJsonPath('data.values.lowStockThreshold', 10);
         $this->client->request('PUT', '/vector/settings/store', body: ['storeName' => 'Vector Demo Store', 'lowStockThreshold' => 0], headers: $this->adminHeaders())->assertOk();
-        $table = $this->client->get('/vector/dashboards/main/widgets/low-stock-table', headers: $this->adminHeaders())->assertOk()->json();
-        self::assertIsArray($table);
 
-        foreach ($table['data']['rows'] as $row) {
-            self::assertSame(0, $row['stock']);
+        try {
+            $table = $this->client->get('/vector/dashboards/main/widgets/low-stock-table', headers: $this->adminHeaders())->assertOk()->json();
+            self::assertIsArray($table);
+
+            foreach ($table['data']['rows'] as $row) {
+                self::assertSame(0, $row['stock']);
+            }
+
+            self::assertStringContainsString('lte]=0', $table['data']['link']);
+        } finally {
+            $this->client->request('PUT', '/vector/settings/store', body: ['storeName' => 'Vector Demo Store', 'lowStockThreshold' => 10], headers: $this->adminHeaders())->assertOk();
         }
-
-        self::assertStringContainsString('lte]=0', $table['data']['link']);
-        $this->client->request('PUT', '/vector/settings/store', body: ['storeName' => 'Vector Demo Store', 'lowStockThreshold' => 10], headers: $this->adminHeaders())->assertOk();
     }
 }

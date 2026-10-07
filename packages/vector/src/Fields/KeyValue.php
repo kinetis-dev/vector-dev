@@ -13,6 +13,7 @@ final class KeyValue extends Field
 {
     public const int KEY_LENGTH = 100;
 
+    #[\Override]
     public function type(): string
     {
         return 'keyValue';

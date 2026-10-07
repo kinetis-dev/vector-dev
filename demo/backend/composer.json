@@ -52,6 +52,24 @@
             "App\\Tests\\": "tests/"
         }
     },
+    "scripts": {
+        "psalm": "psalm --no-progress",
+        "psalm:taint": "@php -d zend.assertions=-1 vendor/bin/psalm --taint-analysis --no-progress --report=psalm.sarif --report-show-info=false",
+        "infection": [
+            "Composer\\Config::disableProcessTimeout",
+            "infection --threads=1 --only-covering-test-cases --no-progress"
+        ],
+        "infection:vector": [
+            "Composer\\Config::disableProcessTimeout",
+            "infection --configuration=infection.vector.json5 --threads=1 --no-progress"
+        ]
+    },
+    "scripts-descriptions": {
+        "psalm": "Psalm over the demo, packages/vector/src and the migrations",
+        "psalm:taint": "Psalm taint analysis over the same trees; writes psalm.sarif",
+        "infection": "Mutation testing over the demo's src/, gated on its measured MSI",
+        "infection:vector": "Mutation testing over Vector's Registry and Query; slow, writes to the seeded MySQL"
+    },
     "config": {
         "sort-packages": true,
         "allow-plugins": {

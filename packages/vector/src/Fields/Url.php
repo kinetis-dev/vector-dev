@@ -14,12 +14,14 @@ use Kinetis\Vector\Validation\WebUrl;
  */
 final class Url extends Field
 {
+    #[\Override]
     public function type(): string
     {
         return 'url';
     }
 
     /** @return array<string, mixed> */
+    #[\Override]
     public function toArray(): array
     {
         $own = array_any($this->rules, static fn (array $rule): bool => in_array($rule[0], [WebUrl::class, UrlConstraint::class, Regex::class], true));

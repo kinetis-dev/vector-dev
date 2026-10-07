@@ -20,6 +20,7 @@ use Kinetis\Vector\VectorResource;
 #[Resource(entity: Agent::class, group: 'Support', icon: 'mdi-headset', title: 'name')]
 final class AgentResource extends VectorResource
 {
+    #[\Override]
     public function fields(): array
     {
         return [

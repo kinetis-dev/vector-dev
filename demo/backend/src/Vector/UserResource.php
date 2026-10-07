@@ -27,11 +27,13 @@ use Kinetis\Vector\Write\WriteContext;
 #[Resource(entity: User::class, group: 'Access', icon: 'mdi-shield-account-outline', title: 'name')]
 final class UserResource extends VectorResource
 {
+    #[\Override]
     public function policy(): string
     {
         return UserPolicy::class;
     }
 
+    #[\Override]
     public function fields(): array
     {
         return [
@@ -45,11 +47,13 @@ final class UserResource extends VectorResource
         ];
     }
 
+    #[\Override]
     public function searchSubtitle(): string
     {
         return 'email';
     }
 
+    #[\Override]
     public function beforeUpdate(object $entity, WriteContext $context): void
     {
         if (!$entity instanceof User || $entity->isAdmin()) {
@@ -65,6 +69,7 @@ final class UserResource extends VectorResource
         }
     }
 
+    #[\Override]
     public function beforeDelete(object $entity, WriteContext $context): void
     {
         if ($entity instanceof User && $entity->isAdmin() && $this->otherAdmins($entity, $context) === 0) {

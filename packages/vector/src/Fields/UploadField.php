@@ -49,6 +49,7 @@ abstract class UploadField extends Field
     }
 
     /** @return array<string, mixed> */
+    #[\Override]
     public function toArray(): array
     {
         $array = parent::toArray();

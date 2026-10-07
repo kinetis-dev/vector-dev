@@ -17,32 +17,38 @@ final class OrdersTrend extends VectorWidget
 {
     public function __construct(private readonly SqlLink $db) {}
 
+    #[\Override]
     public function label(): string
     {
         return 'Orders per day';
     }
 
+    #[\Override]
     public function type(): string
     {
         return self::TREND;
     }
 
+    #[\Override]
     public function width(): int
     {
         return 6;
     }
 
+    #[\Override]
     public function cacheSeconds(): int
     {
         return 60;
     }
 
     /** The same series for every admin: no user, no scope in the query. */
+    #[\Override]
     public function cacheShared(): bool
     {
         return true;
     }
 
+    #[\Override]
     public function calculate(WidgetRequest $request): WidgetResult
     {
         $rows = (new Query($this->db instanceof MysqlLink || $this->db instanceof PostgresLink ? $this->db : throw new \LogicException('Unsupported link.')))

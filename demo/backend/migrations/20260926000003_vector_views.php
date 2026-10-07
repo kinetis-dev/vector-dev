@@ -11,6 +11,7 @@ use Kinetis\Persistence\Contract\PostgresLink;
 // can be the default of everyone without one of their own.
 return new class implements Migration
 {
+    #[\Override]
     public function up(MysqlLink|PostgresLink $db): void
     {
         $db->execute(<<<'SQL'
@@ -31,6 +32,7 @@ return new class implements Migration
             SQL);
     }
 
+    #[\Override]
     public function down(MysqlLink|PostgresLink $db): void
     {
         $db->execute('DROP TABLE vector_views');

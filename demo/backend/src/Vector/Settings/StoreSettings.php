@@ -14,21 +14,25 @@ use Kinetis\Vector\Settings\SettingsGroup;
 #[Settings]
 final class StoreSettings extends SettingsGroup
 {
+    #[\Override]
     public function name(): string
     {
         return 'store';
     }
 
+    #[\Override]
     public function label(): string
     {
         return 'Store';
     }
 
+    #[\Override]
     public function icon(): string
     {
         return 'mdi-storefront-outline';
     }
 
+    #[\Override]
     public function fields(): array
     {
         return [

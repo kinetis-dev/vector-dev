@@ -20,16 +20,19 @@ use Kinetis\Vector\Fields\Url;
 #[Settings]
 final class Branding extends SettingsGroup
 {
+    #[\Override]
     public function label(): string
     {
         return 'Branding';
     }
 
+    #[\Override]
     public function icon(): string
     {
         return 'mdi-palette-outline';
     }
 
+    #[\Override]
     public function fields(): array
     {
         return [

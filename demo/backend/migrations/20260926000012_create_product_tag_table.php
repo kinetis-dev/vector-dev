@@ -8,6 +8,7 @@ use Kinetis\Persistence\Contract\PostgresLink;
 
 return new class implements Migration
 {
+    #[\Override]
     public function up(MysqlLink|PostgresLink $db): void
     {
         $db->execute(<<<'SQL'
@@ -21,6 +22,7 @@ return new class implements Migration
             SQL);
     }
 
+    #[\Override]
     public function down(MysqlLink|PostgresLink $db): void
     {
         $db->execute('DROP TABLE product_tag');

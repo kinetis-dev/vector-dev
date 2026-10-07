@@ -14,26 +14,31 @@ final class OpenTicketsStat extends VectorWidget
 {
     public function __construct(private readonly EntityManagerRegistry $managers) {}
 
+    #[\Override]
     public function label(): string
     {
         return 'New tickets';
     }
 
+    #[\Override]
     public function type(): string
     {
         return self::STAT;
     }
 
+    #[\Override]
     public function icon(): string
     {
         return 'mdi-lifebuoy';
     }
 
+    #[\Override]
     public function width(): int
     {
         return 3;
     }
 
+    #[\Override]
     public function calculate(WidgetRequest $request): WidgetResult
     {
         $count = fn (\DateTimeImmutable $from, \DateTimeImmutable $to): int => $this->managers->manager('support')->builder()

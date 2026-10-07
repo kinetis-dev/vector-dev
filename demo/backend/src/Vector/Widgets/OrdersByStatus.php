@@ -19,21 +19,25 @@ final class OrdersByStatus extends VectorWidget
 
     public function __construct(private readonly SqlLink $db) {}
 
+    #[\Override]
     public function label(): string
     {
         return 'Orders by status';
     }
 
+    #[\Override]
     public function type(): string
     {
         return self::PARTITION;
     }
 
+    #[\Override]
     public function width(): int
     {
         return 3;
     }
 
+    #[\Override]
     public function calculate(WidgetRequest $request): WidgetResult
     {
         $rows = (new Query($this->db instanceof MysqlLink || $this->db instanceof PostgresLink ? $this->db : throw new \LogicException('Unsupported link.')))

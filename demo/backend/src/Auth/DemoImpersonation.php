@@ -29,11 +29,13 @@ final readonly class DemoImpersonation implements ImpersonationInterface
         private DemoActorResolver $users,
     ) {}
 
+    #[\Override]
     public function canImpersonate(CurrentUserInterface $user): bool
     {
         return $user instanceof DemoActor && $user->isAdmin;
     }
 
+    #[\Override]
     public function describe(string $targetId): ?array
     {
         $target = $this->users->resolve($targetId);
@@ -41,6 +43,7 @@ final readonly class DemoImpersonation implements ImpersonationInterface
         return $target instanceof DemoActor ? ['id' => $target->id(), 'name' => $target->displayName()] : null;
     }
 
+    #[\Override]
     public function start(CurrentUserInterface $actor, string $targetId): array
     {
         $target = $this->users->resolve($targetId);
@@ -65,6 +68,7 @@ final readonly class DemoImpersonation implements ImpersonationInterface
         return $this->token($target, $actor);
     }
 
+    #[\Override]
     public function stop(CurrentUserInterface $impersonated): array
     {
         $impersonatorId = $impersonated instanceof DemoActor ? $impersonated->impersonatorId() : null;

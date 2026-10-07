@@ -18,6 +18,7 @@ final class ConflictException extends VectorException
         return new self('This ' . $resource . ' record changed since that entry (' . implode(', ', $fields) . '). Revert those changes first, or edit it by hand.');
     }
 
+    #[\Override]
     public function httpStatus(): int
     {
         return 409;

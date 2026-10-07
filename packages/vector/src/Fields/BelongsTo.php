@@ -9,6 +9,7 @@ final class BelongsTo extends RelationField
     /** @var array{field: string, on: string}|null */
     private ?array $dependsOn = null;
 
+    #[\Override]
     public function type(): string
     {
         return 'belongsTo';
@@ -28,6 +29,7 @@ final class BelongsTo extends RelationField
     }
 
     /** @return array<string, mixed> */
+    #[\Override]
     public function toArray(): array
     {
         $array = parent::toArray();

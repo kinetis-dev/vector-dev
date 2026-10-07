@@ -9,16 +9,19 @@ final class HasMany extends RelationField
     /** @var array{fields: list<string>|null, min: int, max: int}|null */
     private ?array $repeater = null;
 
+    #[\Override]
     public static function to(string $name, string $resource, ?string $label = null): static
     {
         return parent::to($name, $resource, $label)->hideFromForms();
     }
 
+    #[\Override]
     public function type(): string
     {
         return 'hasMany';
     }
 
+    #[\Override]
     public function mapsColumn(): bool
     {
         return false;
@@ -43,6 +46,7 @@ final class HasMany extends RelationField
     }
 
     /** @return array<string, mixed> */
+    #[\Override]
     public function toArray(): array
     {
         return [...parent::toArray(), 'repeater' => $this->repeater];

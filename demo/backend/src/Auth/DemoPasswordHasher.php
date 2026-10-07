@@ -13,6 +13,7 @@ use Kinetis\Vector\Auth\PasswordHasherInterface;
  */
 final readonly class DemoPasswordHasher implements PasswordHasherInterface
 {
+    #[\Override]
     public function hash(string $password): string
     {
         return password_hash($password, PASSWORD_DEFAULT);

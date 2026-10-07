@@ -15,26 +15,31 @@ final class CatalogSummary extends VectorAction
 {
     public function __construct(private readonly SqlLink $db) {}
 
+    #[\Override]
     public function label(): string
     {
         return 'Download catalog summary';
     }
 
+    #[\Override]
     public function icon(): string
     {
         return 'mdi-file-chart-outline';
     }
 
+    #[\Override]
     public function standalone(): bool
     {
         return true;
     }
 
+    #[\Override]
     public function showOnDetail(): bool
     {
         return false;
     }
 
+    #[\Override]
     public function handle(ActionRequest $request): ActionResponse
     {
         $link = $this->db;

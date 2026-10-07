@@ -18,6 +18,7 @@ use Kinetis\Vector\VectorResource;
 #[Resource(entity: OrderLine::class, label: 'Order lines', group: 'Sales', icon: 'mdi-format-list-numbered')]
 final class OrderLineResource extends VectorResource
 {
+    #[\Override]
     public function fields(): array
     {
         return [

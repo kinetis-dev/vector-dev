@@ -16,6 +16,7 @@ final readonly class DemoActorResolver implements ActorResolverInterface
 {
     public function __construct(private SqlLink $db) {}
 
+    #[\Override]
     public function resolve(string $actorId): ?CurrentUserInterface
     {
         if (preg_match('/^[1-9][0-9]{0,17}$/', $actorId) !== 1) {

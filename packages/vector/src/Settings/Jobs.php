@@ -20,16 +20,19 @@ use Kinetis\Vector\Jobs\StalledJobs;
 #[Settings]
 final class Jobs extends SettingsGroup
 {
+    #[\Override]
     public function label(): string
     {
         return 'Background jobs';
     }
 
+    #[\Override]
     public function icon(): string
     {
         return 'mdi-tray-full';
     }
 
+    #[\Override]
     public function fields(): array
     {
         return [

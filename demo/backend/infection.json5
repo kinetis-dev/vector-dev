@@ -1,10 +1,31 @@
 {
+    // Mutation testing over the demo's own src/, the whole suite against
+    // the seeded databases (docs/contributing.md):
+    //   docker compose exec app composer infection
+    // One thread: the tests share those databases, so concurrent mutants
+    // would fail each other's tests and count as killed. A killed mutant
+    // can leave the rows its test would have removed.
+    //
+    // Measured 2026-10-06 (--threads=1 --only-covering-test-cases):
+    // 665 mutants, 500 killed, 165 escaped, 0 skipped — MSI 75.19%,
+    // covered MSI 75.19% (mutation coverage 100%). The same mutants run
+    // with whole covering test classes killed 5 more, so the floors sit
+    // two points under the measurement.
+    //
+    // The timeout is above the full suite's ~75 s: nearly every test
+    // signs in, so the login code's covering tests add up to more than
+    // the default 10 s, and Infection skips (does not score) a mutant
+    // whose covering tests exceed it.
     "$schema": "vendor/infection/infection/resources/schema.json",
     "source": {
         "directories": [
             "src"
         ]
     },
+    "timeout": 120,
+    "logs": { "text": "infection.log", "summary": "infection.summary.log" },
+    "minMsi": 73,
+    "minCoveredMsi": 73,
     "mutators": {
         "@default": true
     }

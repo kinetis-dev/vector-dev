@@ -81,6 +81,49 @@ a call that blocks the event loop instead of yielding. They catch two
 specific mistakes; they do not prove a change is correct on a persistent
 worker.
 
+```console
+docker compose exec app composer psalm          # Psalm, plain
+docker compose exec app composer psalm:taint    # Psalm, taint analysis; writes backend/psalm.sarif
+```
+
+Psalm covers the demo's `src/` and `migrations/` and
+`packages/vector/src`, at its level 7 (Psalm's 1 is its strictest).
+It runs twice on purpose: `--taint-analysis` reports only taint issues,
+so it cannot replace the plain run. The taint run needs
+`zend.assertions=-1`, which the script sets. Request input reaches this
+code through PSR-7 and the framework's hydration, and SQL runs through
+Kinetis's own links. Psalm knows neither as a taint source or sink, so a
+clean taint run only covers flows from PHP's own sources to PHP's own
+sinks. Overriding and implementing methods carry `#[\Override]`, and
+the plain run enforces it.
+
+## Mutation testing
+
+```console
+docker compose exec app composer infection          # the demo's src/, about 70 minutes
+docker compose exec app composer infection:vector   # Vector's Registry and Query
+```
+
+Infection runs the PHPUnit suite against each mutant and fails below the
+`minMsi` and `minCoveredMsi` floors in `backend/infection.json5` and
+`backend/infection.vector.json5`. Each config records the scores the
+floors were set from. Both runs are slow and write to the seeded
+databases, so run them one at a time, never beside PHPUnit or the
+end-to-end suite, and on one thread. A killed mutant stops its test
+before the test puts its rows back, so afterwards expect missing order
+lines, changed product prices and stock, a leftover `hosted-test` tag,
+and, in Vector's own tables, a store `lowStockThreshold` of 0 and saved
+product views that make later runs of `ActionsAndSettingsTest` fail.
+Reseed before the next PHPUnit run; the reseed leaves Vector's tables
+alone, so put those two back by hand as well:
+
+```console
+docker compose exec --user www-data app vendor/bin/kinetis demo:seed --fresh
+```
+
+The reports go to `backend/infection.log` and
+`backend/infection.vector.log`, each with a `.summary.log` beside it.
+
 `pnpm lint` runs ESLint over every TypeScript and Vue file in the
 workspace: the UI layer and its hosted app, the demo frontend and the
 end-to-end suite. One flat config at the repository root,

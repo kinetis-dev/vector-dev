@@ -14,6 +14,7 @@ use Kinetis\Vector\VectorResource;
 #[Resource(entity: Label::class, group: 'Support', icon: 'mdi-label-outline', title: 'name')]
 final class LabelResource extends VectorResource
 {
+    #[\Override]
     public function fields(): array
     {
         return [

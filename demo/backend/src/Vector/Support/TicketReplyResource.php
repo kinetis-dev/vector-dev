@@ -17,6 +17,7 @@ use Kinetis\Vector\VectorResource;
 #[Resource(entity: TicketReply::class, slug: 'ticket-replies', label: 'Ticket replies', group: 'Support', icon: 'mdi-reply-outline', title: 'author')]
 final class TicketReplyResource extends VectorResource
 {
+    #[\Override]
     public function fields(): array
     {
         return [

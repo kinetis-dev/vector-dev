@@ -28,6 +28,7 @@ final readonly class VectorAccessMiddleware implements MiddlewareInterface
         private VectorAccessInterface $access,
     ) {}
 
+    #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         // every answer of the admin API — a refusal included — is about one account; a shared browser or proxy keeps none of it

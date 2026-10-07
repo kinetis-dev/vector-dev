@@ -40,6 +40,7 @@ use Kinetis\Vector\VectorResource;
 #[Resource(entity: Ticket::class, group: 'Support', icon: 'mdi-lifebuoy', title: 'subject')]
 final class TicketResource extends VectorResource
 {
+    #[\Override]
     public function fields(): array
     {
         return [
@@ -82,31 +83,37 @@ final class TicketResource extends VectorResource
         ];
     }
 
+    #[\Override]
     public function badge(): Badge
     {
         return Badge::count(['status' => 'open'], 'info', 'open tickets');
     }
 
+    #[\Override]
     public function searchSubtitle(): string
     {
         return 'number';
     }
 
+    #[\Override]
     public function defaultSort(): array
     {
         return ['-createdAt'];
     }
 
+    #[\Override]
     public function softDeletes(): string
     {
         return 'deletedAt';
     }
 
+    #[\Override]
     public function actions(): array
     {
         return [EscalateTickets::class];
     }
 
+    #[\Override]
     public function widgets(): array
     {
         return [TicketsByStatus::class];

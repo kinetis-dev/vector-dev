@@ -15,6 +15,7 @@ use Kinetis\Vector\VectorResource;
 #[Resource(entity: Tag::class, group: 'Catalog', icon: 'mdi-tag-outline', title: 'name')]
 final class TagResource extends VectorResource
 {
+    #[\Override]
     public function fields(): array
     {
         return [

@@ -17,6 +17,7 @@ final class Markdown extends Field
     /** @var list<string> */
     private array $toolbar = self::TOOLBAR;
 
+    #[\Override]
     public function type(): string
     {
         return 'markdown';
@@ -40,6 +41,7 @@ final class Markdown extends Field
         return $this;
     }
 
+    #[\Override]
     public function toArray(): array
     {
         return [...parent::toArray(), 'markdown' => ['toolbar' => $this->toolbar]];

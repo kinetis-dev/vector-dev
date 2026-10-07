@@ -14,16 +14,19 @@ use Kinetis\Vector\Fields\Textarea;
 /** A dialog with a required number and a note; refuses to take stock below zero. */
 final class AdjustStock extends VectorAction
 {
+    #[\Override]
     public function label(): string
     {
         return 'Adjust stock';
     }
 
+    #[\Override]
     public function icon(): string
     {
         return 'mdi-package-variant-plus';
     }
 
+    #[\Override]
     public function fields(): array
     {
         return [
@@ -32,6 +35,7 @@ final class AdjustStock extends VectorAction
         ];
     }
 
+    #[\Override]
     public function handle(ActionRequest $request): ActionResponse
     {
         $delta = $request->field('delta');

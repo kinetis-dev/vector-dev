@@ -14,26 +14,31 @@ use Kinetis\Vector\Auth\ResourcePolicy;
  */
 final class UserPolicy extends ResourcePolicy
 {
+    #[\Override]
     public function viewAny(CurrentUserInterface $user): bool
     {
         return true;
     }
 
+    #[\Override]
     public function view(CurrentUserInterface $user, array $record): bool
     {
         return true;
     }
 
+    #[\Override]
     public function create(CurrentUserInterface $user): AuthorizationResponse
     {
         return AuthorizationResponse::deny('Users register through the application, not the admin.');
     }
 
+    #[\Override]
     public function update(CurrentUserInterface $user, array $record): bool
     {
         return true;
     }
 
+    #[\Override]
     public function delete(CurrentUserInterface $user, array $record): bool|AuthorizationResponse
     {
         return (string) ($record['id'] ?? '') === (string) $user->id()

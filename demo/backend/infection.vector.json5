@@ -2,9 +2,16 @@
     // Mutation testing over the two units the plan singles out: the
     // registry compiler and the list grammar. Runs the tests that
     // exercise them against the seeded MySQL, so it is slow by design:
-    //   docker compose exec app vendor/bin/infection --configuration=infection.vector.json5 --threads=4
-    // A killed mutant can leave the rows its test would have removed; clean the
-    // demo tables (or reseed with demo:seed --fresh) before the next plain run.
+    //   docker compose exec app composer infection:vector
+    // One thread, for the same reason as infection.json5. A killed mutant
+    // can leave the rows its test would have removed; clean the demo
+    // tables (or reseed with demo:seed --fresh) before the next plain run.
+    //
+    // Measured 2026-10-06 (--threads=1, this config's 60 s timeout):
+    // 1353 mutants, 920 killed, 1 syntax error, 2 timed out, 430 escaped,
+    // 0 not covered — MSI 68.22%, covered MSI 68.22% (mutation coverage
+    // 100%). The floors sit two points under the measurement, room for
+    // the two timeouts and a few borderline mutants to go the other way.
     "$schema": "vendor/infection/infection/resources/schema.json",
     "source": {
         "directories": ["../../packages/vector/src/Registry", "../../packages/vector/src/Query"],
@@ -14,5 +21,7 @@
     "testFrameworkOptions": "--filter 'VectorRegistryTest|ListGrammarTest|SchemaControllerTest|ResourceControllerTest|ActionsAndSettingsTest'",
     "timeout": 60,
     "logs": { "text": "infection.vector.log", "summary": "infection.vector.summary.log" },
+    "minMsi": 66,
+    "minCoveredMsi": 66,
     "mutators": { "@default": true }
 }

@@ -17,26 +17,31 @@ final class ProductsByStatus extends VectorWidget
 {
     public function __construct(private readonly SqlLink $db) {}
 
+    #[\Override]
     public function type(): string
     {
         return self::PROGRESS;
     }
 
+    #[\Override]
     public function label(): string
     {
         return 'Published';
     }
 
+    #[\Override]
     public function ranges(): array
     {
         return [];
     }
 
+    #[\Override]
     public function width(): int
     {
         return 4;
     }
 
+    #[\Override]
     public function calculate(WidgetRequest $request): WidgetResult
     {
         $query = (new Query($this->db instanceof MysqlLink || $this->db instanceof PostgresLink ? $this->db : throw new \LogicException('Unsupported link.')))

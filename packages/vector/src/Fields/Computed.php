@@ -36,11 +36,13 @@ final class Computed extends Field
     /** @var list<array{value: string|int, label: string, color: string|null}> */
     private array $options = [];
 
+    #[\Override]
     public function type(): string
     {
         return 'computed';
     }
 
+    #[\Override]
     public function mapsColumn(): bool
     {
         return false;
@@ -109,6 +111,7 @@ final class Computed extends Field
         return $this;
     }
 
+    #[\Override]
     public function toArray(): array
     {
         $array = [...parent::toArray(), 'computed' => ['as' => $this->as, 'from' => $this->from, 'method' => $this->method]];

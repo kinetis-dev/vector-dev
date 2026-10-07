@@ -6,6 +6,7 @@ namespace Kinetis\Vector\Fields;
 
 final class Number extends Field
 {
+    #[\Override]
     public function type(): string
     {
         return 'number';

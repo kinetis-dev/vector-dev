@@ -41,6 +41,7 @@ final readonly class VectorAuthMiddleware implements MiddlewareInterface
         private JwtAuthenticator $jwt,
     ) {}
 
+    #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $token = AuthorizationToken68Parser::parse($request, 'Bearer');

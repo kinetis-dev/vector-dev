@@ -23,16 +23,19 @@ final readonly class DemoActor implements CurrentUserInterface, VectorShellUserI
         public ?string $impersonatorName = null,
     ) {}
 
+    #[\Override]
     public function id(): int
     {
         return $this->id;
     }
 
+    #[\Override]
     public function displayName(): string
     {
         return $this->name;
     }
 
+    #[\Override]
     public function impersonatorId(): ?int
     {
         return $this->impersonator;

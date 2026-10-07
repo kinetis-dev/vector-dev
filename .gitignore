@@ -19,6 +19,8 @@ node_modules/
 .pnpm-store/
 /packages/vector/resources/dist/
 /demo/backend/public/vector/
+/demo/backend/infection.log
+/demo/backend/infection.summary.log
 /demo/backend/infection.vector.log
 /demo/backend/infection.vector.summary.log
 # Claude Code runtime state

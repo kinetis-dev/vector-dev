@@ -11,6 +11,7 @@ use Kinetis\Persistence\Contract\PostgresLink;
 // (and as whom), what, which records, when.
 return new class implements Migration
 {
+    #[\Override]
     public function up(MysqlLink|PostgresLink $db): void
     {
         $db->execute(<<<'SQL'
@@ -28,6 +29,7 @@ return new class implements Migration
         $db->execute('CREATE INDEX vector_action_events_actor_index ON vector_action_events (actor_id, created_at)');
     }
 
+    #[\Override]
     public function down(MysqlLink|PostgresLink $db): void
     {
         $db->execute('DROP TABLE vector_action_events');

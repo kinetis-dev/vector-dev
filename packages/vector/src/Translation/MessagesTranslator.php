@@ -48,6 +48,7 @@ final readonly class MessagesTranslator implements TranslatorInterface
         return new self($messages);
     }
 
+    #[\Override]
     public function translate(string $key, string $locale, array $parameters = []): ?string
     {
         $message = $this->messages[$locale][$key] ?? $this->messages[strtok($locale, '-') ?: $locale][$key] ?? null;

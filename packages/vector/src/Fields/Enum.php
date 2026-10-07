@@ -18,6 +18,7 @@ final class Enum extends Field
     /** @var class-string<BackedEnum>|null */
     private ?string $enum = null;
 
+    #[\Override]
     public function type(): string
     {
         return 'enum';
@@ -56,6 +57,7 @@ final class Enum extends Field
         return $this;
     }
 
+    #[\Override]
     public function toArray(): array
     {
         $options = [];

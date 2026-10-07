@@ -28,6 +28,7 @@ use Kinetis\Vector\Widgets\WidgetCache;
  */
 final readonly class PackageBootstrap implements PackageBootstrapInterface
 {
+    #[\Override]
     public function register(AppScope $app, Config $config): void
     {
         $root = $app->get(ProjectRoot::class);

@@ -26,6 +26,7 @@ use Kinetis\Vector\Write\WriteContext;
 #[Resource(entity: Order::class, group: 'Sales', icon: 'mdi-cart-outline', title: 'number')]
 final class OrderResource extends VectorResource
 {
+    #[\Override]
     public function fields(): array
     {
         return [
@@ -46,16 +47,19 @@ final class OrderResource extends VectorResource
         ];
     }
 
+    #[\Override]
     public function defaultSort(): array
     {
         return ['-placedAt'];
     }
 
+    #[\Override]
     public function beforeCreate(object $entity, WriteContext $context): void
     {
         $this->total($entity, $context);
     }
 
+    #[\Override]
     public function beforeUpdate(object $entity, WriteContext $context): void
     {
         $this->total($entity, $context);

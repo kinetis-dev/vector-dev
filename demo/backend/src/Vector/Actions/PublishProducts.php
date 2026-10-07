@@ -16,16 +16,19 @@ use Kinetis\Vector\Fields\DateTime;
 /** Activates the selected products through the entity's own method, with a dialog for the release date. */
 final class PublishProducts extends VectorAction
 {
+    #[\Override]
     public function label(): string
     {
         return 'Publish';
     }
 
+    #[\Override]
     public function icon(): string
     {
         return 'mdi-rocket-launch-outline';
     }
 
+    #[\Override]
     public function fields(): array
     {
         return [
@@ -34,11 +37,13 @@ final class PublishProducts extends VectorAction
         ];
     }
 
+    #[\Override]
     public function confirmation(): string
     {
         return 'Publish the selected products? They become visible to customers.';
     }
 
+    #[\Override]
     public function handle(ActionRequest $request): ActionResponse
     {
         $releasedAt = $request->field('releasedAt') ?? new DateTimeImmutable('now', new DateTimeZone('UTC'));

@@ -42,6 +42,7 @@ abstract class RelationField extends Field
     }
 
     /** @return array<string, mixed> */
+    #[\Override]
     public function toArray(): array
     {
         return [

@@ -16,11 +16,13 @@ use Kinetis\Vector\Widgets\VectorDashboard;
 #[Dashboard]
 final class MainDashboard extends VectorDashboard
 {
+    #[\Override]
     public function label(): string
     {
         return 'Overview';
     }
 
+    #[\Override]
     public function widgets(): array
     {
         return [RevenueStat::class, OrdersByStatus::class, OpenTicketsStat::class, OrdersTrend::class, LowStockTable::class];

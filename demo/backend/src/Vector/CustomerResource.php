@@ -12,6 +12,7 @@ use Kinetis\Vector\VectorResource;
 final class CustomerResource extends VectorResource
 {
     /** Two customers may share a name; a search result and a choice list tell them apart by e-mail. */
+    #[\Override]
     public function searchSubtitle(): string
     {
         return 'email';

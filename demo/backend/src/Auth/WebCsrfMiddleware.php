@@ -34,6 +34,7 @@ final readonly class WebCsrfMiddleware implements MiddlewareInterface
         private RequestScope $scope,
     ) {}
 
+    #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $probe = new ReachedHandler($handler);

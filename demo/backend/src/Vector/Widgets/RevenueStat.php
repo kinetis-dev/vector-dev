@@ -17,37 +17,44 @@ final class RevenueStat extends VectorWidget
 {
     public function __construct(private readonly SqlLink $db) {}
 
+    #[\Override]
     public function label(): string
     {
         return 'Revenue';
     }
 
+    #[\Override]
     public function type(): string
     {
         return self::STAT;
     }
 
+    #[\Override]
     public function icon(): string
     {
         return 'mdi-cash-multiple';
     }
 
+    #[\Override]
     public function width(): int
     {
         return 3;
     }
 
+    #[\Override]
     public function cacheSeconds(): int
     {
         return 60;
     }
 
     /** The same total for every admin: no user, no scope in the query. */
+    #[\Override]
     public function cacheShared(): bool
     {
         return true;
     }
 
+    #[\Override]
     public function calculate(WidgetRequest $request): WidgetResult
     {
         $sum = fn (\DateTimeImmutable $from, \DateTimeImmutable $to): int => (int) ($this->query()->table('orders')

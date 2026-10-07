@@ -13,6 +13,7 @@ use Kinetis\Vector\Exception\VectorException;
  */
 final class JobFailedException extends VectorException
 {
+    #[\Override]
     public function httpStatus(): int
     {
         return 422;

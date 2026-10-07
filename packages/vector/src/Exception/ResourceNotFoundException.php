@@ -11,6 +11,7 @@ final class ResourceNotFoundException extends VectorException
         return new self("No resource is registered as \"{$slug}\".");
     }
 
+    #[\Override]
     public function httpStatus(): int
     {
         return 404;

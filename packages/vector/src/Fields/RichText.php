@@ -37,6 +37,7 @@ final class RichText extends Field
 
     private bool $storesHtml = false;
 
+    #[\Override]
     public function type(): string
     {
         return 'richtext';
@@ -98,6 +99,7 @@ final class RichText extends Field
         return $this;
     }
 
+    #[\Override]
     public function toArray(): array
     {
         return [

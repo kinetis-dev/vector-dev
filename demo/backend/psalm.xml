@@ -1,12 +1,17 @@
 <?xml version="1.0"?>
 <!--
-    errorLevel="8" is Psalm's loosest, most-permissive level (1
-    is Psalm's strictest) — the opposite direction from PHPStan's own
-    `level: 8` in phpstan.neon, which IS PHPStan's strictest level. The two
-    `8`s are not comparable strictness settings despite the shared number.
+    Psalm counts the other way from PHPStan: 1 is its strictest level and 8
+    its loosest, while `level: 8` in phpstan.neon IS PHPStan's strictest.
+    The two numbers are not comparable. 7 is where these trees are clean;
+    6 stops on a false positive (RelationField::to() sets a property on
+    what static::make() returns, which Psalm types as the parent Field).
+
+    Psalm runs twice, on purpose: plainly (`composer psalm`), and with
+    taint analysis (`composer psalm:taint`), which reports taint issues
+    only and so cannot replace the plain run.
 -->
 <psalm
-    errorLevel="8"
+    errorLevel="7"
     resolveFromConfigFile="true"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns="https://getpsalm.org/schema/config"
@@ -16,6 +21,8 @@
 >
     <projectFiles>
         <directory name="src" />
+        <directory name="../../packages/vector/src" />
+        <directory name="migrations" />
         <ignoreFiles>
             <directory name="vendor" />
         </ignoreFiles>

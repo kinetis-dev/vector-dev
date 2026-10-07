@@ -11,6 +11,7 @@ final class RecordNotFoundException extends VectorException
         return new self("No {$resource} record has the identifier \"{$id}\".");
     }
 
+    #[\Override]
     public function httpStatus(): int
     {
         return 404;

@@ -37,30 +37,31 @@ final class ActionsAndSettingsTest extends VectorTestCase
         self::assertIsArray($draft);
         $id = (int) $draft['id'];
 
-        $this->client->post('/vector/r/products/actions/adjust-stock', body: ['ids' => [$id], 'fields' => ['delta' => 5, 'note' => 'restock']], headers: $this->adminHeaders())
-            ->assertOk()
-            ->assertJsonPath('type', 'message')
-            ->assertJsonPath('affected', 1);
-        self::assertSame((int) $draft['stock'] + 5, (int) (new Query($link))->table('products')->where('id', '=', $id)->value('stock'));
-
-        // an action that declines flushes nothing and answers 422
-        $this->client->post('/vector/r/products/actions/adjust-stock', body: ['ids' => [$id], 'fields' => ['delta' => -100000]], headers: $this->adminHeaders())
-            ->assertStatus(422)
-            ->assertJsonPath('type', 'danger');
-        $stock = (int) (new Query($link))->table('products')->where('id', '=', $id)->value('stock');
-        self::assertSame((int) $draft['stock'] + 5, $stock, 'the declined action changed nothing');
-
-        // the dialog is validated like a form
-        $this->client->post('/vector/r/products/actions/adjust-stock', body: ['ids' => [$id], 'fields' => ['delta' => 'x', 'bogus' => 1]], headers: $this->adminHeaders())
-            ->assertValidationError('delta')
-            ->assertValidationError('bogus');
-        $this->client->post('/vector/r/products/actions/adjust-stock', body: ['ids' => [$id], 'fields' => []], headers: $this->adminHeaders())
-            ->assertValidationError('delta');
-
-        // "all matching": every draft product with this sku prefix — put every one of them back afterwards
+        // every adjustment below lands on draft products — put every one of them back afterwards
         $touched = (new Query($link))->table('products')->select('id', 'stock')->where('status', '=', 'draft')->get(); // a superset of what q matches
 
         try {
+            $this->client->post('/vector/r/products/actions/adjust-stock', body: ['ids' => [$id], 'fields' => ['delta' => 5, 'note' => 'restock']], headers: $this->adminHeaders())
+                ->assertOk()
+                ->assertJsonPath('type', 'message')
+                ->assertJsonPath('affected', 1);
+            self::assertSame((int) $draft['stock'] + 5, (int) (new Query($link))->table('products')->where('id', '=', $id)->value('stock'));
+
+            // an action that declines flushes nothing and answers 422
+            $this->client->post('/vector/r/products/actions/adjust-stock', body: ['ids' => [$id], 'fields' => ['delta' => -100000]], headers: $this->adminHeaders())
+                ->assertStatus(422)
+                ->assertJsonPath('type', 'danger');
+            $stock = (int) (new Query($link))->table('products')->where('id', '=', $id)->value('stock');
+            self::assertSame((int) $draft['stock'] + 5, $stock, 'the declined action changed nothing');
+
+            // the dialog is validated like a form
+            $this->client->post('/vector/r/products/actions/adjust-stock', body: ['ids' => [$id], 'fields' => ['delta' => 'x', 'bogus' => 1]], headers: $this->adminHeaders())
+                ->assertValidationError('delta')
+                ->assertValidationError('bogus');
+            $this->client->post('/vector/r/products/actions/adjust-stock', body: ['ids' => [$id], 'fields' => []], headers: $this->adminHeaders())
+                ->assertValidationError('delta');
+
+            // "all matching": every draft product with this sku prefix
             $this->client->post('/vector/r/products/actions/adjust-stock', body: ['all' => ['filter' => ['status' => 'draft'], 'q' => 'SKU-000'], 'fields' => ['delta' => 1]], headers: $this->adminHeaders())
                 ->assertOk()
                 ->assertJsonPath('type', 'message');

@@ -16,21 +16,25 @@ final class TicketsByStatus extends VectorWidget
 
     public function __construct(private readonly EntityManagerRegistry $managers) {}
 
+    #[\Override]
     public function label(): string
     {
         return 'Tickets by status';
     }
 
+    #[\Override]
     public function type(): string
     {
         return self::PARTITION;
     }
 
+    #[\Override]
     public function width(): int
     {
         return 6;
     }
 
+    #[\Override]
     public function calculate(WidgetRequest $request): WidgetResult
     {
         $rows = $this->managers->manager('support')->builder()

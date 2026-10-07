@@ -19,16 +19,19 @@ use Kinetis\Vector\Translation\Locales;
 #[Settings]
 final class Languages extends SettingsGroup
 {
+    #[\Override]
     public function label(): string
     {
         return 'Languages';
     }
 
+    #[\Override]
     public function icon(): string
     {
         return 'mdi-translate';
     }
 
+    #[\Override]
     public function fields(): array
     {
         $fields = [];
@@ -44,6 +47,7 @@ final class Languages extends SettingsGroup
         return $fields;
     }
 
+    #[\Override]
     public function validate(array $values): array
     {
         $default = is_string($values['default'] ?? null) ? $values['default'] : Language::English->value;

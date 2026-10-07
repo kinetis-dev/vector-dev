@@ -6,6 +6,7 @@ namespace Kinetis\Vector\Fields;
 
 final class Date extends Field
 {
+    #[\Override]
     public function type(): string
     {
         return 'date';

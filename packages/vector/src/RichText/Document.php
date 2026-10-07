@@ -62,7 +62,7 @@ final readonly class Document
     ];
 
     /** Block nodes: their text ends a line in the plain-text projection. */
-    private const array BLOCKS = ['paragraph', 'heading', 'blockquote', 'codeBlock', 'listItem', 'tableRow', 'horizontalRule'];
+    private const array BLOCKS = ['paragraph', 'heading', 'blockquote', 'codeBlock', 'listItem', 'horizontalRule'];
 
     /** @param list<NodeSpec> $extensions */
     public function __construct(private array $extensions = []) {}

@@ -46,6 +46,7 @@ final class Currency extends Field
         return self::MINOR_UNITS[strtoupper($code)] ?? 2;
     }
 
+    #[\Override]
     public function type(): string
     {
         return 'currency';
@@ -64,6 +65,7 @@ final class Currency extends Field
     }
 
     /** @return array<string, mixed> */
+    #[\Override]
     public function toArray(): array
     {
         return [
