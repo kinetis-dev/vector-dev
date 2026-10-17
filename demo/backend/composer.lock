@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a1ec11fa3cdef80c3e566c0ef1dc3b1e",
+    "content-hash": "f8417ea34a5c6605e855b86c22f0be8d",
     "packages": [
         {
             "name": "amphp/amp",
@@ -1455,16 +1455,16 @@
         },
         {
             "name": "kinetis/framework",
-            "version": "v1.21.2",
+            "version": "v1.22.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/framework.git",
-                "reference": "8db161617216479c06c5f97af7be41b518515760"
+                "reference": "61adecc1110df74e3acb2c3abecc6fd40b4ce9ee"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/framework/zipball/8db161617216479c06c5f97af7be41b518515760",
-                "reference": "8db161617216479c06c5f97af7be41b518515760",
+                "url": "https://api.github.com/repos/kinetis-dev/framework/zipball/61adecc1110df74e3acb2c3abecc6fd40b4ce9ee",
+                "reference": "61adecc1110df74e3acb2c3abecc6fd40b4ce9ee",
                 "shasum": ""
             },
             "require": {
@@ -1517,9 +1517,9 @@
             "description": "The Runtime-Aware PHP Framework",
             "support": {
                 "issues": "https://github.com/kinetis-dev/framework/issues",
-                "source": "https://github.com/kinetis-dev/framework/tree/v1.21.2"
+                "source": "https://github.com/kinetis-dev/framework/tree/v1.22.0"
             },
-            "time": "2026-10-17T09:35:54+00:00"
+            "time": "2026-10-17T19:01:38+00:00"
         },
         {
             "name": "kinetis/mcp",
@@ -2120,23 +2120,23 @@
         },
         {
             "name": "kinetis/storage",
-            "version": "v1.2.3",
+            "version": "v1.2.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/storage.git",
-                "reference": "d3eebe83a11c1518cdfba4258ba8a1ebdad26756"
+                "reference": "b20c398df37128a0f04844bbf7a0a686487195a7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/storage/zipball/d3eebe83a11c1518cdfba4258ba8a1ebdad26756",
-                "reference": "d3eebe83a11c1518cdfba4258ba8a1ebdad26756",
+                "url": "https://api.github.com/repos/kinetis-dev/storage/zipball/b20c398df37128a0f04844bbf7a0a686487195a7",
+                "reference": "b20c398df37128a0f04844bbf7a0a686487195a7",
                 "shasum": ""
             },
             "require": {
                 "amphp/byte-stream": "^2.1.2",
                 "amphp/file": "^3.2.0",
-                "kinetis/framework": "^1.11.2",
-                "league/flysystem": "^3.35.2",
+                "kinetis/framework": "^1.21.1",
+                "league/flysystem": "^3.35.3",
                 "league/mime-type-detection": "^1.17.0",
                 "php": "^8.4"
             },
@@ -2173,9 +2173,9 @@
             "description": "File storage for Kinetis, built on League\\Flysystem — local storage through an Amp\\File-backed adapter whose driver calls suspend the Fiber; remote backends (S3, etc.) live in kinetis/storage-s3.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/storage/issues",
-                "source": "https://github.com/kinetis-dev/storage/tree/v1.2.3"
+                "source": "https://github.com/kinetis-dev/storage/tree/v1.2.4"
             },
-            "time": "2026-09-15T21:24:11+00:00"
+            "time": "2026-10-06T14:37:11+00:00"
         },
         {
             "name": "kinetis/vector",
@@ -2183,12 +2183,12 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector",
-                "reference": "93134d9bc51b172699333c4046e12781718e84ec"
+                "reference": "8720addc84d943905907f57b9471a778d7fe6b9b"
             },
             "require": {
                 "kinetis/authorization": "^1.0.4",
                 "kinetis/database-bridge": "^1.4.0",
-                "kinetis/framework": "^1.21.2",
+                "kinetis/framework": "^1.22.0",
                 "kinetis/mcp": "^1.8.0",
                 "kinetis/mcp-protocol": "^1.1.0",
                 "kinetis/migrations": "^1.4.0",
@@ -2418,20 +2418,21 @@
         },
         {
             "name": "league/uri",
-            "version": "7.8.1",
+            "version": "7.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/uri.git",
-                "reference": "08cf38e3924d4f56238125547b5720496fac8fd4"
+                "reference": "fcc872a3d872aa13f935e0cd1887b9abb06da07f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/uri/zipball/08cf38e3924d4f56238125547b5720496fac8fd4",
-                "reference": "08cf38e3924d4f56238125547b5720496fac8fd4",
+                "url": "https://api.github.com/repos/thephpleague/uri/zipball/fcc872a3d872aa13f935e0cd1887b9abb06da07f",
+                "reference": "fcc872a3d872aa13f935e0cd1887b9abb06da07f",
                 "shasum": ""
             },
             "require": {
-                "league/uri-interfaces": "^7.8.1",
+                "ext-mbstring": "*",
+                "league/uri-interfaces": "^7.9.0",
                 "php": "^8.1",
                 "psr/http-factory": "^1"
             },
@@ -2504,7 +2505,7 @@
                 "docs": "https://uri.thephpleague.com",
                 "forum": "https://thephpleague.slack.com",
                 "issues": "https://github.com/thephpleague/uri-src/issues",
-                "source": "https://github.com/thephpleague/uri/tree/7.8.1"
+                "source": "https://github.com/thephpleague/uri/tree/7.9.0"
             },
             "funding": [
                 {
@@ -2512,20 +2513,20 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-03-15T20:22:25+00:00"
+            "time": "2026-10-16T15:19:33+00:00"
         },
         {
             "name": "league/uri-interfaces",
-            "version": "7.8.1",
+            "version": "7.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/uri-interfaces.git",
-                "reference": "85d5c77c5d6d3af6c54db4a78246364908f3c928"
+                "reference": "eb5f6d24e6a4fe0a8e9c78ded4eb1dfff1404f58"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/uri-interfaces/zipball/85d5c77c5d6d3af6c54db4a78246364908f3c928",
-                "reference": "85d5c77c5d6d3af6c54db4a78246364908f3c928",
+                "url": "https://api.github.com/repos/thephpleague/uri-interfaces/zipball/eb5f6d24e6a4fe0a8e9c78ded4eb1dfff1404f58",
+                "reference": "eb5f6d24e6a4fe0a8e9c78ded4eb1dfff1404f58",
                 "shasum": ""
             },
             "require": {
@@ -2588,7 +2589,7 @@
                 "docs": "https://uri.thephpleague.com",
                 "forum": "https://thephpleague.slack.com",
                 "issues": "https://github.com/thephpleague/uri-src/issues",
-                "source": "https://github.com/thephpleague/uri-interfaces/tree/7.8.1"
+                "source": "https://github.com/thephpleague/uri-interfaces/tree/7.9.0"
             },
             "funding": [
                 {
@@ -2596,7 +2597,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-03-08T20:05:35+00:00"
+            "time": "2026-10-16T15:19:33+00:00"
         },
         {
             "name": "nyholm/psr7",

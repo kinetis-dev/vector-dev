@@ -7,7 +7,7 @@
         "php": "^8.4",
         "kinetis/authorization": "^1.0.4",
         "kinetis/database-bridge": "^1.4.0",
-        "kinetis/framework": "^1.21.2",
+        "kinetis/framework": "^1.22.0",
         "kinetis/mcp": "^1.8.0",
         "kinetis/mcp-protocol": "^1.1.0",
         "kinetis/migrations": "^1.4.0",
