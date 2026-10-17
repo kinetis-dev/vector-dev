@@ -98,8 +98,12 @@ bin/benchmark          # Vector's list endpoints on both runtimes
   every request is a `500` (`frankenphp_handle_request() called while
   not in worker mode`). The check reads the worker file from Caddy's own
   configuration and names that cause.
-- **The extensions.** `app` and `frankenphp` load the same extensions at
-  the same versions, on the same PHP version.
+- **The extensions.** `app` and `frankenphp` load the same extensions,
+  Zend extensions such as OPcache included, at the same versions, on the
+  same PHP version.
+- **OPcache.** PHP-FPM behind nginx and the FrankenPHP worker run with
+  the same OPcache setting, as each one reports it through
+  `GET /_demo/runtime` (the CLI has a setting of its own).
 - **(a) Worker mode.** It sends many requests to `GET /_demo/runtime`.
   That endpoint reports the boot that answered and how many requests
   that boot has served. Fewer boots than requests, with climbing counts,

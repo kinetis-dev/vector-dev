@@ -1,7 +1,7 @@
 #!/bin/sh
 # Proves the frankenphp service runs the application the way Kinetis's
 # primary runtime should: the right worker script, the same PHP
-# extensions as app (PHP-FPM), requests served by persistent worker
+# extensions as app (PHP-FPM), Zend extensions and OPcache included, requests served by persistent worker
 # threads rather than classic mode, the native database drivers, and request isolation across many
 # interleaved requests on the same threads. The details are in
 # check-frankenphp.php, which runs in the app container against the
@@ -55,16 +55,18 @@ else
 fi
 
 # The PHP version, then every loaded extension and the version of each
-# one PECL installs (a bundled one reports PHP's own version). The
-# Dockerfile pins the PHP minor for both bases, not the patch each base
-# image ships, so a patch drift between them fails here too.
-inventory='echo "PHP ", PHP_VERSION, "\n"; $e = get_loaded_extensions(); sort($e); foreach ($e as $x) { $v = phpversion($x); echo $x, $v === PHP_VERSION ? "" : " $v", "\n"; }'
+# one PECL installs (a bundled one reports PHP's own version), then every
+# Zend extension (OPcache, a debugger) with its version: plain
+# get_loaded_extensions() leaves those out. The Dockerfile pins the PHP
+# minor for both bases, not the patch each base image ships, so a patch
+# drift between them fails here too.
+inventory='echo "PHP ", PHP_VERSION, "\n"; foreach ([false, true] as $zend) { $e = get_loaded_extensions($zend); sort($e); foreach ($e as $x) { $v = phpversion($x); echo $zend ? "zend " : "", $x, $v === PHP_VERSION ? "" : " $v", "\n"; } }'
 
-echo "Extensions: app (PHP-FPM) and frankenphp load the same set"
+echo "Extensions: app (PHP-FPM) and frankenphp load the same set, Zend extensions included"
 app=$(docker compose exec -T app php -r "$inventory")
 frankenphp=$(docker compose exec -T frankenphp php -r "$inventory")
 if [ "$app" = "$frankenphp" ]; then
-    echo "  ok    $(printf '%s\n' "$app" | head -1), $(printf '%s\n' "$app" | tail -n +2 | grep -c .) extensions, identical, versions included"
+    echo "  ok    $(printf '%s\n' "$app" | head -1), $(printf '%s\n' "$app" | tail -n +2 | grep -vc '^zend ') extensions and $(printf '%s\n' "$app" | grep -c '^zend ') Zend extension(s) ($(printf '%s\n' "$app" | sed -n 's/^zend //p' | paste -sd, -)), identical, versions included"
     extensions=0
 else
     echo "  FAIL  the two images differ:"
@@ -74,6 +76,23 @@ else
     extensions=1
 fi
 
+# OPcache as each web SAPI runs it (the CLI has its own opcache.enable_cli):
+# GET /_demo/runtime reports opcache_get_status() from PHP-FPM behind nginx
+# and from a FrankenPHP worker.
+opcache_of() {
+    docker compose exec -T app php -r '$d = json_decode((string) @file_get_contents($argv[1]), true); echo is_array($d) && is_bool($d["opcache"] ?? null) ? ($d["opcache"] ? "enabled" : "disabled") : "unknown";' "$1"
+}
+echo "OPcache: PHP-FPM and the FrankenPHP worker run with the same setting"
+fpm_opcache=$(opcache_of http://nginx:8080/_demo/runtime)
+worker_opcache=$(opcache_of http://frankenphp:8081/_demo/runtime)
+if [ "$fpm_opcache" = "$worker_opcache" ] && [ "$fpm_opcache" != unknown ]; then
+    echo "  ok    $fpm_opcache under both"
+    opcache=0
+else
+    echo "  FAIL  PHP-FPM: $fpm_opcache, FrankenPHP worker: $worker_opcache"
+    opcache=1
+fi
+
 status=0
 docker compose exec -T app php /workspace/demo/bin/check-frankenphp.php --threads="${threads:-12}" "$@" || status=$?
 
@@ -81,4 +100,9 @@ if [ "$status" -ne 0 ] && docker compose logs --no-log-prefix --since 5m franken
     echo "frankenphp's log: \"frankenphp_handle_request() called while not in worker mode\" — $cause"
 fi
 
-[ "$workers" -eq 0 ] && [ "$extensions" -eq 0 ] && [ "$status" -eq 0 ]
+if [ "$workers" -ne 0 ] || [ "$extensions" -ne 0 ] || [ "$opcache" -ne 0 ]; then
+    # check-frankenphp.php's own verdict above covers only (a) to (c)
+    echo "FAIL: the worker, extension or OPcache check above failed"
+    exit 1
+fi
+exit "$status"

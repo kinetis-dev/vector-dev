@@ -18,7 +18,8 @@ use Revolt\EventLoop;
  * What runtime served this request, for bin/check-frankenphp: the boot
  * that answered it and how many requests that boot has served (more
  * than one only under a persistent worker), the database clients
- * DB_DRIVER=auto built (native or PDO) and the event-loop driver.
+ * DB_DRIVER=auto built (native or PDO), the event-loop driver, and whether
+ * OPcache is enabled for the serving SAPI.
  * Development only. Under any other APP_ENV, RuntimeGate answers every
  * method on this path with the Kernel's own 404 for an unmatched path
  * before routing runs, so this controller is never constructed and its
@@ -51,6 +52,15 @@ final readonly class RuntimeController
                 $this->vector->connection => $this->vector->link()::class,
             ],
             'eventLoop' => EventLoop::getDriver()::class,
+            'opcache' => self::opcacheEnabled(),
         ], 200, ['Cache-Control' => 'no-store']);
+    }
+
+    /** Whether OPcache caches this SAPI's scripts: what this server runs with, not the CLI's ini. */
+    private static function opcacheEnabled(): bool
+    {
+        $status = function_exists('opcache_get_status') ? opcache_get_status(false) : false;
+
+        return is_array($status) && ($status['opcache_enabled'] ?? false) === true;
     }
 }

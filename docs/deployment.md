@@ -108,7 +108,9 @@ Markdown; run it alone, with nothing else using the stack.
 26.7.1, Docker Engine 29.8.2 (Docker Desktop). The Docker VM has 16
 CPUs and 9.7 GiB.
 
-**Configuration.** PHP 8.4.26 in both images, with opcache.
+**Configuration.** PHP 8.4.26 in both images. OPcache is enabled under
+both web SAPIs, as `bin/check-frankenphp` reports it for this
+configuration ("enabled under both").
 
 - FrankenPHP 1.13.1 in worker mode: 12 worker threads, with
   `DB_MAX_CONNECTIONS=4` (MySQL) and `DB_ADMIN_MAX_CONNECTIONS=2` and
