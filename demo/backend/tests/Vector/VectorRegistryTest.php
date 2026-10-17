@@ -32,7 +32,7 @@ final class VectorRegistryTest extends TestCase
         self::assertSame(['main'], array_keys($data['dashboards']));
         self::assertSame(['branding', 'jobs', 'languages', 'store'], array_keys($data['settings']));
         self::assertSame(
-            ['agents', 'categories', 'customer-profiles', 'customers', 'labels', 'order-lines', 'orders', 'products', 'support-teams', 'tags', 'ticket-replies', 'tickets', 'users'],
+            ['agents', 'categories', 'customer-profiles', 'customers', 'labels', 'order-lines', 'orders', 'products', 'profiles', 'support-teams', 'tags', 'ticket-replies', 'tickets', 'users'],
             array_keys($data['resources']),
         );
 

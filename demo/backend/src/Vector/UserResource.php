@@ -23,8 +23,11 @@ use Kinetis\Vector\Write\WriteContext;
  * keep the admin reachable: nobody demotes themself, and the last admin
  * is neither demoted nor deleted — both would lock everyone out until
  * someone reaches the database.
+ *
+ * ProfileResource is a second resource over the same entity; this one is
+ * the relation target, so a relation to a user links here.
  */
-#[Resource(entity: User::class, group: 'Access', icon: 'mdi-shield-account-outline', title: 'name')]
+#[Resource(entity: User::class, group: 'Access', icon: 'mdi-shield-account-outline', title: 'name', relationTarget: true)]
 final class UserResource extends VectorResource
 {
     #[\Override]

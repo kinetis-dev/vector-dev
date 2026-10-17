@@ -12,7 +12,7 @@ body[data-theme="dark"] article[role="main"] section > p > strong:only-child { c
 
 **Declare resources over your entities. Get an admin API, a complete admin UI and MCP tools from the same definition.**
 
-- A resource class per entity: fields, filters, actions and widgets.
+- Resource classes over your entities: fields, filters, actions and widgets.
 - A REST admin API that enforces your policies on every request.
 - A Nuxt and Vuetify admin UI that renders whatever the API describes.
 - Background jobs for large exports, imports and bulk actions.
