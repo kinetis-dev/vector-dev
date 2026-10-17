@@ -10,6 +10,13 @@ parameters:
         - bootstrap.php
         - public/index.php
         - tests
+    ignoreErrors:
+        # Liveness-test setup and its lock holder, outside the observed operation.
+        -
+            identifier: kinetis.blockingCall
+            paths:
+                - tests/Vector/LoopLivenessTest.php
+                - tests/Fixtures/hold-products-lock.php
 
 services:
     -
