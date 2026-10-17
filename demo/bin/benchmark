@@ -1,0 +1,158 @@
+#!/bin/sh
+# The list benchmark: Vector's list endpoints under FrankenPHP worker
+# mode (frankenphp:8081) and, for comparison, nginx and PHP-FPM
+# (nginx:8080), with the statements each request sends. The load comes
+# from oha in a container on the Compose network (the `bench` profile),
+# so nothing but Docker is needed on the host. Prints a Markdown report;
+# docs/deployment.md records one run. A measurement, not a gate.
+#
+#   bin/benchmark [--seed=N]
+#
+# --seed=N first replaces the demo data with `demo:seed --fresh
+# --scale=N` (the recorded run uses 20). Without it the benchmark reads
+# whatever is seeded. Afterwards, `demo:seed --fresh` restores the
+# stock data set the test suite expects.
+#
+# BENCH_DURATION (default 20s) and BENCH_CONCURRENCY (default 32) set
+# each measured run; a 5-second run at the same concurrency warms each
+# endpoint first.
+#
+# Statements per request, averaged over 20 sequential requests, counted
+# by the database servers themselves — the way the test suite's
+# countStatements() reads MySQL's own counter, but per account rather
+# than per session, since a worker's pooled connections outlive any one
+# request: MySQL's performance_schema statement summary for the
+# application's account (DB_USER), text statements and prepared-
+# statement executions, without protocol commands (prepare, close,
+# quit); PostgreSQL's pg_stat_statements calls in vector_admin and
+# vector_support. Nothing else may use the stack while this runs.
+set -eu
+cd "$(dirname "$0")/.."
+
+seed=
+for argument in "$@"; do
+    case "$argument" in
+        --seed=*) seed=${argument#--seed=} ;;
+        *) echo "Unknown argument: $argument" >&2; exit 2 ;;
+    esac
+done
+
+duration=${BENCH_DURATION:-20s}
+concurrency=${BENCH_CONCURRENCY:-32}
+counted=20
+
+if [ -n "$seed" ]; then
+    echo "Seeding: demo:seed --fresh --scale=$seed" >&2
+    docker compose exec -T --user www-data app vendor/bin/kinetis demo:seed --fresh --scale="$seed" >&2
+fi
+
+php() {
+    docker compose exec -T app php "$@"
+}
+
+# A fresh access token for the seeded admin (they live fifteen minutes).
+token() {
+    php -r '
+        $c = curl_init("http://frankenphp:8081/auth/login");
+        curl_setopt_array($c, [CURLOPT_POSTFIELDS => json_encode(["email" => "admin@vector.local", "password" => "password"]),
+            CURLOPT_HTTPHEADER => ["Content-Type: application/json"], CURLOPT_RETURNTRANSFER => true]);
+        echo json_decode((string) curl_exec($c), true)["accessToken"] ?? exit(1);
+    '
+}
+
+mysql_statements() {
+    docker compose exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -N -e "
+        SELECT COALESCE(SUM(COUNT_STAR), 0) FROM performance_schema.events_statements_summary_by_user_by_event_name
+        WHERE USER = '"'"'$MYSQL_USER'"'"' AND (EVENT_NAME LIKE '"'"'statement/sql/%'"'"' OR EVENT_NAME = '"'"'statement/com/Execute'"'"')" 2>/dev/null'
+}
+
+postgres_statements() {
+    docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres -tAc "
+        SELECT COALESCE(SUM(s.calls), 0) FROM pg_stat_statements s JOIN pg_database d ON d.oid = s.dbid
+        WHERE d.datname IN ('"'vector_admin', 'vector_support'"')"'
+}
+
+# Waits until neither server's counter moves for two seconds: PHP-FPM
+# goes on working through requests nginx queued after oha has stopped
+# waiting for them, and those statements are not the next count's.
+settle() {
+    last=
+    for _ in $(seq 1 60); do
+        now="$(mysql_statements) $(postgres_statements)"
+        [ "$now" = "$last" ] && return 0
+        last=$now
+        sleep 2
+    done
+}
+
+# the counter view; the library itself is loaded by the postgres service's command
+docker compose exec -T postgres sh -c 'psql -q -U "$POSTGRES_USER" -d postgres -c "CREATE EXTENSION IF NOT EXISTS pg_stat_statements"' >&2
+
+oha() {
+    docker compose --profile bench run --rm --no-deps oha --no-tui "$@"
+}
+
+frankenphp_version=$(docker compose exec -T frankenphp frankenphp version | awk '{print $2}')
+php_version=$(docker compose exec -T frankenphp php -r 'echo PHP_VERSION;')
+threads=$(docker compose exec -T frankenphp printenv FRANKENPHP_WORKERS)
+fpm_children=$(docker compose exec -T app sh -c "sed -n 's/^pm.max_children = //p' /usr/local/etc/php-fpm.d/www.conf")
+docker_host=$(docker info --format '{{.NCPU}} CPUs, {{printf "%.1f" (div (div .MemTotal 1048576) 1024.0)}} GiB, {{.OperatingSystem}} {{.ServerVersion}}' 2>/dev/null || docker info --format '{{.NCPU}} CPUs, {{.OperatingSystem}} {{.ServerVersion}}')
+rows=$(docker compose exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -N "$MYSQL_DATABASE" -e "SELECT (SELECT COUNT(*) FROM products), (SELECT COUNT(*) FROM orders), (SELECT COUNT(*) FROM customers)" 2>/dev/null')
+tickets=$(docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d vector_support -tAc "SELECT COUNT(*) FROM tickets"')
+
+echo "## List benchmark, $(date -u +%Y-%m-%d)"
+echo
+echo "- Docker host: $docker_host"
+echo "- FrankenPHP $frankenphp_version, PHP $php_version, worker mode, $threads worker threads; PHP-FPM pm.max_children = $fpm_children, behind nginx"
+echo "- Data: $(echo "$rows" | awk '{print $1 " products, " $2 " orders, " $3 " customers"}') (MySQL); $tickets tickets (PostgreSQL)"
+echo "- One at a time: the median of $counted sequential requests on one connection. Under load: oha, $concurrency connections for $duration per endpoint and runtime, after a 5 s warm-up. Signed in as the admin (bearer token); statements are per request, counted by the servers"
+echo
+echo "| Endpoint | Runtime | One at a time: p50 ms | Under load: requests/s | p50 ms | p90 ms | p99 ms | Failed | MySQL statements | PostgreSQL statements |"
+echo "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|"
+
+# label|path — the query strings already percent-encoded for oha
+while IFS='|' read -r label path <&3; do
+    [ -n "$label" ] || continue
+
+    for runtime in frankenphp nginx; do
+        case "$runtime" in
+            frankenphp) url="http://frankenphp:8081$path"; name="FrankenPHP worker" ;;
+            nginx) url="http://nginx:8080$path"; name="nginx + PHP-FPM" ;;
+        esac
+
+        bearer="Authorization: Bearer $(token)"
+
+        # statements: sequential requests, after one that opens what it opens
+        settle
+        oha -n 1 -c 1 -H "$bearer" "$url" >/dev/null 2>&1
+        mysql_before=$(mysql_statements)
+        postgres_before=$(postgres_statements)
+        sequential=$(oha -n "$counted" -c 1 --output-format json -H "$bearer" "$url" 2>/dev/null \
+            | php -r 'printf("%.1f", json_decode(stream_get_contents(STDIN), true)["latencyPercentiles"]["p50"] * 1000);')
+        mysql_after=$(mysql_statements)
+        postgres_after=$(postgres_statements)
+        mysql=$(awk -v a="$mysql_before" -v b="$mysql_after" -v n="$counted" 'BEGIN { printf "%.1f", (b - a) / n }')
+        postgres=$(awk -v a="$postgres_before" -v b="$postgres_after" -v n="$counted" 'BEGIN { printf "%.1f", (b - a) / n }')
+
+        oha -z 5s -c "$concurrency" -H "$bearer" "$url" >/dev/null 2>&1
+        oha -z "$duration" -c "$concurrency" --output-format json -H "$bearer" "$url" 2>/dev/null \
+            | php -r '
+                $d = json_decode(stream_get_contents(STDIN), true);
+                $p = $d["latencyPercentiles"];
+                $codes = $d["statusCodeDistribution"] ?? [];
+                // oha cancels the requests in flight when the duration ends: not failures
+                $errors = array_diff_key($d["errorDistribution"] ?? [], ["aborted due to deadline" => true]);
+                $failed = array_sum(array_filter($codes, static fn ($n, $code): bool => $code < 200 || $code >= 300, ARRAY_FILTER_USE_BOTH))
+                    + array_sum($errors);
+                printf("| %s | %s | %s | %.0f | %.1f | %.1f | %.1f | %d | %s | %s |\n", $argv[1], $argv[2], $argv[5],
+                    $d["summary"]["requestsPerSec"], $p["p50"] * 1000, $p["p90"] * 1000, $p["p99"] * 1000, $failed, $argv[3], $argv[4]);
+            ' -- "$label" "$name" "$mysql" "$postgres" "$sequential"
+    done
+done 3<<'ENDPOINTS'
+Products, default list|/vector/r/products
+Products, sorted by price then name|/vector/r/products?sort=-priceCents,name
+Products, filtered (featured, stock ≤ 50)|/vector/r/products?filter%5BisFeatured%5D=true&filter%5Bstock%5D%5Blte%5D=50
+Products, searched ("wireless")|/vector/r/products?q=wireless
+Orders, sorted by customer (BelongsTo)|/vector/r/orders?sort=customer
+Tickets on PostgreSQL (team, assignee)|/vector/r/tickets?sort=-createdAt
+ENDPOINTS

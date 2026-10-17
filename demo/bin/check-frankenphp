@@ -1,0 +1,34 @@
+#!/bin/sh
+# Proves the frankenphp service runs the application the way Kinetis's
+# primary runtime should: the same PHP extensions as app (PHP-FPM),
+# requests served by persistent worker threads rather than classic mode,
+# the native database drivers, and request isolation across many
+# interleaved requests on the same threads. The details are in
+# check-frankenphp.php, which runs in the app container against the
+# frankenphp service. Needs a migrated, seeded stack (docs/demo.md).
+#
+#   bin/check-frankenphp [--rounds=N] [--concurrency=N] [--wrong-expectation]
+#
+# Exits nonzero when any check fails. Run it from anywhere.
+set -eu
+cd "$(dirname "$0")/.."
+
+echo "Extensions: app (PHP-FPM) and frankenphp load the same set"
+app=$(docker compose exec -T app php -m)
+frankenphp=$(docker compose exec -T frankenphp php -m)
+if [ "$app" = "$frankenphp" ]; then
+    echo "  ok    $(printf '%s\n' "$app" | grep -c '^[a-zA-Z]') extensions, identical"
+    extensions=0
+else
+    echo "  FAIL  the two images differ:"
+    printf '%s\n' "$app" > "${TMPDIR:-/tmp}/check-frankenphp-app.txt"
+    printf '%s\n' "$frankenphp" > "${TMPDIR:-/tmp}/check-frankenphp-frankenphp.txt"
+    diff "${TMPDIR:-/tmp}/check-frankenphp-app.txt" "${TMPDIR:-/tmp}/check-frankenphp-frankenphp.txt" | sed 's/^/        /' || true
+    extensions=1
+fi
+
+threads=$(docker compose exec -T frankenphp printenv FRANKENPHP_WORKERS)
+status=0
+docker compose exec -T app php /workspace/demo/bin/check-frankenphp.php --threads="$threads" "$@" || status=$?
+
+[ "$extensions" -eq 0 ] && [ "$status" -eq 0 ]

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Auth\DemoActorResolver;
 use App\Auth\DemoPasswordHasher;
 use App\Auth\DemoVectorAccess;
+use App\Http\Diagnostics\RuntimeProbe;
 use Kinetis\AuthJwt\JwtAuthenticator;
 use Kinetis\AuthJwt\JwtIssuer;
 use Kinetis\AuthJwt\JwtSigningKey;
@@ -38,6 +39,9 @@ return static function (AppScope $app, Config $config): void {
 
     // Background jobs run as the admin who started them: this rebuilds that identity in the worker.
     $app->bind(ActorResolverInterface::class, DemoActorResolver::class);
+
+    // One per boot, for the development-only runtime diagnostic (App\Http\Diagnostics).
+    $app->bind(RuntimeProbe::class, shared: true);
 
     // Standalone mode: the admin UI is served from its own origin.
     $origin = $config->required('VECTOR_UI_ORIGIN');
