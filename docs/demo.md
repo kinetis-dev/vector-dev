@@ -116,8 +116,11 @@ bin/benchmark          # Vector's list endpoints on both runtimes
 
 `GET /_demo/runtime` lives in the demo application
 (`src/Http/Diagnostics/`) and answers only under `APP_ENV=development`.
-Under any other value it returns the Kernel's own `404` for an unmatched
-path, byte for byte, and the OpenAPI document never lists it.
+Under any other value, a request to that path with any HTTP method gets
+the Kernel's own `404` for an unmatched path: the same status, headers
+and body. `RuntimeGate` answers it before routing runs, so no method
+gets the `405` that would confirm the route exists. The OpenAPI document
+never lists it.
 
 ### Threads and database connections
 

@@ -6,7 +6,6 @@ namespace App\Http\Diagnostics;
 
 use Kinetis\Http\Attributes\Get;
 use Kinetis\Http\Attributes\Hidden;
-use Kinetis\Http\Responses\ErrorResponse;
 use Kinetis\Http\Responses\JsonResponse;
 use Kinetis\Persistence\Contract\MysqlLink;
 use Kinetis\Runtime\AppEnvironment;
@@ -20,9 +19,11 @@ use Revolt\EventLoop;
  * that answered it and how many requests that boot has served (more
  * than one only under a persistent worker), the database clients
  * DB_DRIVER=auto built (native or PDO) and the event-loop driver.
- * Development only: under any other APP_ENV it answers the Kernel's own
- * 404 for an unmatched path, byte for byte, so it cannot be told from a
- * route that does not exist.
+ * Development only. Under any other APP_ENV, RuntimeGate answers every
+ * method on this path with the Kernel's own 404 for an unmatched path
+ * before routing runs, so this controller is never constructed and its
+ * database dependencies are never resolved there. The check below is a
+ * fallback for a deployment that restricts middleware discovery.
  */
 #[Hidden]
 final readonly class RuntimeController
@@ -34,11 +35,11 @@ final readonly class RuntimeController
         private VectorDatabase $vector,
     ) {}
 
-    #[Get('/_demo/runtime')]
+    #[Get(RuntimeGate::PATH)]
     public function runtime(ServerRequestInterface $request): ResponseInterface
     {
         if ($this->environment !== AppEnvironment::Development) {
-            return ErrorResponse::create(404, sprintf('No route matches path "%s".', $request->getUri()->getPath()));
+            return RuntimeGate::notFound($request->getUri()->getPath());
         }
 
         return JsonResponse::create([
