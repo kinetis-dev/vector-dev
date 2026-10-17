@@ -1,0 +1,35 @@
+# FrankenPHP in worker mode: each worker thread boots the application
+# once and serves request after request. Plain HTTP on 8081, for local
+# development; no certificates, no admin endpoint.
+{
+	skip_install_trust
+	auto_https off
+	admin off
+
+	frankenphp {
+		# The worker must run the same script php_server below routes to,
+		# public/index.php. Any other file fails, not quietly: a script
+		# that never calls frankenphp_handle_request() keeps FrankenPHP
+		# from starting, and one that does leaves public/index.php on the
+		# regular threads, where Kinetis still picks its FrankenPHP
+		# adapter and every request is a 500 ("called while not in worker
+		# mode"). bin/check-frankenphp names the cause.
+		#
+		# Each thread builds its own database pools: threads × the pool
+		# widths in docker-compose.yml must stay under MySQL's and
+		# PostgreSQL's max_connections. docs/demo.md has the sums.
+		worker {
+			file {$FRANKENPHP_WORKER_FILE:/workspace/demo/backend/public/index.php}
+			num {$FRANKENPHP_WORKERS:12}
+		}
+	}
+}
+
+:8081 {
+	root /workspace/demo/backend/public
+
+	# Static files (the extensions, the logo) are served directly; every
+	# other request goes to public/index.php, as nginx's try_files does
+	# for PHP-FPM. Kinetis bounds the body itself (MAX_BODY_SIZE).
+	php_server
+}

@@ -38,6 +38,25 @@ Every call answers a `VectorResponse` with chaining assertions —
 `assertPermission`, `assertHasField`, `assertQueued` and more. `raw()`
 is the framework's `TestResponse`, for anything else.
 
+## Waiting on the database without blocking
+
+On a persistent worker, a request that waits on the database has to
+yield to the event loop, so the worker can keep serving other requests.
+The demo proves this for Vector's list, show, update and action
+requests in `demo/backend/tests/Vector/LoopLivenessTest.php`, with the
+framework's `LoopLiveness::turnedDuring()`.
+
+PHPUnit gets a blocking PDO connection by default, so the test sets
+`DB_DRIVER`, `DB_ADMIN_DRIVER` and `DB_SUPPORT_DRIVER` to `native` in
+`configOverrides()`. A local database answers too fast to show anything,
+so a separate process (`tests/Fixtures/hold-products-lock.php`) holds
+`LOCK TABLES products WRITE` for 300 ms while each request runs. The
+request's own statements wait on that lock through the connection Vector
+uses. Each path also runs on `pdo`, where the same request must report
+that the loop did *not* turn, so the proof can fail. The blocking setup
+stays outside the observed request, and only those two files get the
+PHPStan `kinetis.blockingCall` ignore.
+
 ## See also
 
 - {doc}`authorization` — what to assert about.

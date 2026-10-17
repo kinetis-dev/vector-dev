@@ -7,17 +7,21 @@
 name: vector
 
 x-php: &php
-  # One image for app and worker, so a rebuild can never leave one of
-  # them on the previous extensions.
-  image: vector-php
+  # One image for app and worker, and the frankenphp service's built from
+  # the same Dockerfile and extension recipe (docker/php-extensions.sh),
+  # so a rebuild can never leave one of them on the previous extensions.
+  image: vector-php-fpm
   build:
     context: .
     dockerfile: docker/Dockerfile
+    target: fpm
   working_dir: /workspace/demo/backend
   volumes:
     - ..:/workspace
     - vendor:/workspace/demo/backend/vendor
     - storage:/var/lib/vector-storage
+    # the file session store, shared so one browser session holds on 8080 and 8081
+    - sessions:/tmp/kinetis-sessions
   env_file: backend/.env
   depends_on:
     mysql:
@@ -44,6 +48,47 @@ services:
     stop_signal: SIGTERM
     stop_grace_period: 60s
 
+  # The same application under FrankenPHP worker mode, Kinetis's primary
+  # runtime, on its own port: each of its threads boots the application
+  # once and serves request after request, on the native non-blocking
+  # database drivers (DB_DRIVER=auto selects them here). nginx and
+  # PHP-FPM on 8080 are unchanged. A worker keeps the code it booted
+  # with: after editing PHP, `docker compose restart frankenphp`.
+  frankenphp:
+    <<: *php
+    image: vector-php-frankenphp
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: frankenphp
+    environment:
+      # Worker threads (docker/Caddyfile). Every thread builds its own
+      # pool per connection, so threads × pool width is the connection
+      # budget: 12 × 4 = 48 MySQL connections of max_connections 151, and
+      # 12 × (2 + 2) = 48 PostgreSQL connections (admin + support) of 100,
+      # leaving room for PHP-FPM, the queue worker, migrations and the
+      # test suite. Raise one, recompute the other; docs/demo.md.
+      FRANKENPHP_WORKERS: "12"
+      DB_MAX_CONNECTIONS: "4"
+      DB_ADMIN_MAX_CONNECTIONS: "2"
+      DB_SUPPORT_MAX_CONNECTIONS: "2"
+      # mysqli waits through select(), which cannot see a descriptor
+      # numbered above 1024: connections opened at boot get low numbers
+      # and keep them, before any client socket exists.
+      DB_WARM_CONNECTIONS: "4"
+    ports:
+      - "8081:8081"
+    healthcheck:
+      # A worker answered through the Kernel: the token API refuses an
+      # anonymous GET /auth/me with 401. It needs neither the hosted
+      # bundle nor a seeded database, and it starts no session, which a
+      # probe of the sign-in page would, every 5 s.
+      test: ["CMD-SHELL", "[ \"$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8081/auth/me)\" = 401 ]"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+
   nginx:
     image: nginx:alpine
     volumes:
@@ -59,8 +104,11 @@ services:
   # Vector's own tables (the named connection "admin",
   # VECTOR_DB_CONNECTION=admin), vector_support the support-desk domain
   # (the named connection "support"). The shop domain stays on MySQL.
+  # pg_stat_statements counts the statements each client sends, which
+  # bin/benchmark reports per request.
   postgres:
     image: postgres:17-alpine
+    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements"]
     environment:
       POSTGRES_DB: ${DB_ADMIN_NAME:-vector_admin}
       POSTGRES_USER: ${DB_ADMIN_USER:-vector}
@@ -155,9 +203,20 @@ services:
       node:
         condition: service_started
 
+  # The load generator for bin/benchmark: not started by `up`.
+  oha:
+    image: ghcr.io/hatoo/oha:1.16.0
+    profiles: [bench]
+    depends_on:
+      nginx:
+        condition: service_started
+      frankenphp:
+        condition: service_healthy
+
 volumes:
   vendor:
   storage:
+  sessions:
   mysql:
   postgres:
   redis:
