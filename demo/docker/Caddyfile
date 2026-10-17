@@ -17,7 +17,7 @@
 		#
 		# Each thread builds its own database pools: threads × the pool
 		# widths in docker-compose.yml must stay under MySQL's and
-		# PostgreSQL's max_connections. docs/deployment.md has the sums.
+		# PostgreSQL's max_connections. docs/demo.md has the sums.
 		worker {
 			file {$FRANKENPHP_WORKER_FILE:/workspace/demo/backend/public/index.php}
 			num {$FRANKENPHP_WORKERS:12}

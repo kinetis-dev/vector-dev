@@ -67,7 +67,7 @@ services:
       # budget: 12 × 4 = 48 MySQL connections of max_connections 151, and
       # 12 × (2 + 2) = 48 PostgreSQL connections (admin + support) of 100,
       # leaving room for PHP-FPM, the queue worker, migrations and the
-      # test suite. Raise one, recompute the other; docs/deployment.md.
+      # test suite. Raise one, recompute the other; docs/demo.md.
       FRANKENPHP_WORKERS: "12"
       DB_MAX_CONNECTIONS: "4"
       DB_ADMIN_MAX_CONNECTIONS: "2"

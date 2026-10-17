@@ -45,6 +45,18 @@ docker compose exec --user www-data app vendor/bin/kinetis demo:seed
 Open [http://localhost:3000](http://localhost:3000) and sign in as
 `admin@vector.local` with the password `password`.
 
+The API answers on `:8080` through nginx and PHP-FPM, and on `:8081`
+through FrankenPHP in worker mode, Kinetis's primary runtime: the same
+application, built from the same Dockerfile and extension recipe. A
+worker keeps the code it booted with, so run
+`docker compose restart frankenphp` after editing PHP.
+`bin/check-frankenphp` proves worker mode, the native drivers and request
+isolation there, and `bin/benchmark` compares the two runtimes. Its 12
+threads' database pools are sized against MySQL's and PostgreSQL's
+connection limits, and the image carries ext-event and a pinned ext-uv;
+[The demo application](docs/demo.md) has the arithmetic and the
+reasons.
+
 ## Documentation
 
 The user manual is in [`docs/`](docs). Start with

@@ -11,11 +11,13 @@ seeded.
 packages/vector/            kinetis/vector: registry, REST API, jobs, MCP tools, migration stubs
 packages/vector-ui/         @kinetis/vector-ui, the Nuxt layer; its Vitest suite in test/nuxt/
   hosted/                   the hosted bundle's build entry: the layer alone
-demo/docker-compose.yml     the stack: app, worker, nginx, mysql, postgres, redis, node, and e2e on demand
-demo/docker/                the PHP image, nginx and php.ini
+demo/docker-compose.yml     the stack: app, worker, nginx, frankenphp, mysql, postgres, redis, node; e2e and oha on demand
+demo/docker/                the PHP images (PHP-FPM and FrankenPHP) and their shared extension recipe, nginx, the Caddyfile, php.ini
+demo/bin/                   check-frankenphp and benchmark, for the FrankenPHP worker service
 demo/backend/               the demo application, kinetis/vector installed from ../../packages/vector
   src/Auth/                 both sign-ins, their throttling, the vector and mcp group middleware, impersonation
   src/Console/              demo:seed
+  src/Http/Diagnostics/     GET /_demo/runtime, the development-only runtime report bin/check-frankenphp reads
   src/Domain/               the shop's entities, on MySQL; Support/ the support desk's, on PostgreSQL
   src/Vector/               the demo's resources, actions, widgets, dashboards and settings groups
   migrations/               the shop, the queue table and Vector's tables for MySQL
@@ -53,10 +55,26 @@ docker compose exec -e VECTOR_TEST_DB_CONNECTION=default app vendor/bin/phpunit 
 docker compose exec node pnpm test                                                # the UI layer: Vitest, no server
 docker compose exec node pnpm typecheck                                           # vue-tsc over the layer and its tests
 docker compose run --rm e2e                                                       # the admin in a browser, both modes
+bin/check-frankenphp                                                              # the application under FrankenPHP worker mode
 ```
 
 PHPUnit runs with Vector's tables on PostgreSQL, where `backend/.env`
-puts them, and again on MySQL.
+puts them, and again on MySQL. It handles its requests in-process and
+goes through neither web server. `bin/check-frankenphp` covers the
+running worker on `:8081`: worker mode, the drivers it selected, and
+request isolation across interleaved principals on the same threads
+({doc}`demo`).
+`frankenphp` keeps the code it booted with, so run
+`docker compose restart frankenphp` after a PHP change, before checking
+it.
+
+`bin/benchmark` replaces the demo data when given `--seed=N` and needs
+the stack to itself. Run it alone, then restore the stock data set
+before PHPUnit:
+
+```console
+docker compose exec --user www-data app vendor/bin/kinetis demo:seed --fresh
+```
 
 The end-to-end suite needs the hosted bundle published
 ({doc}`demo`) and writes to the demo databases, so run it on its own,

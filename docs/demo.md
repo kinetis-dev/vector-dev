@@ -32,6 +32,7 @@ from `demo/`.
 | Service | Address | What it is |
 |---|---|---|
 | `nginx`, `app` | `localhost:8080` | The API: nginx and PHP-FPM. `/openapi` in development. |
+| `frankenphp` | `localhost:8081` | The same application under FrankenPHP worker mode, Kinetis's primary runtime: 12 worker threads on the native database drivers. |
 | `node` | `localhost:3000` | The standalone admin: `nuxt dev` for `demo/frontend`. |
 | `worker` | — | `queue:work --queue=default,vector`: the application's jobs first, then Vector's. |
 | `mysql` | `localhost:3306` | The shop, and the SQL queue table the test suite uses. `vector` / `vector`. |
@@ -40,16 +41,131 @@ from `demo/`.
 
 The repository is mounted at `/workspace`. `demo/backend/vendor/` and
 the `node_modules/` directories are named volumes. Uploaded files live
-on the private `storage` volume, shared by `app` and `worker` and never
-served by nginx. Request bodies may be up to 12 MB (`MAX_BODY_SIZE` and
+on the private `storage` volume, shared by `app`, `worker` and
+`frankenphp` and never served by nginx or Caddy. The file sessions are a
+volume too, so one browser session holds on both ports. Request bodies may be up to 12 MB (`MAX_BODY_SIZE` and
 nginx's `client_max_body_size`).
 
-A PHP change applies on the next request, and the admin UI hot-reloads.
+A PHP change applies on the next request on `:8080`, and the admin UI
+hot-reloads. `:8081` keeps the code each worker thread booted with, so
+restart it after editing PHP, and after `vector:install`:
+
+```console
+docker compose restart frankenphp
+```
+
 PHP errors go to the log, not into responses:
 
 ```console
-docker compose logs -f app
+docker compose logs -f app          # PHP-FPM
+docker compose logs -f frankenphp   # FrankenPHP
 ```
+
+## FrankenPHP worker mode
+
+`frankenphp` runs the same `public/index.php` as PHP-FPM, from the same
+mounts and `backend/.env`, but each of its worker threads boots the
+application once and then serves request after request. `DB_DRIVER=auto`
+selects the native non-blocking MySQL and PostgreSQL clients there, and
+PDO under PHP-FPM, the queue worker and the CLI. Its Caddyfile is
+`docker/Caddyfile`.
+
+`app`, `worker` and `frankenphp` are built from one `docker/Dockerfile`.
+PHP-FPM's PHP and FrankenPHP's are separate builds (one thread-safe, one
+not), so a compiled extension cannot move between them. Both targets
+run the same recipe instead, `docker/php-extensions.sh`. The PHP minor
+version and the FrankenPHP release are set once, at the top of the
+Dockerfile, and one `docker compose build` rebuilds every PHP image.
+
+Two scripts check and measure it:
+
+```console
+bin/check-frankenphp   # the worker, the extensions, worker mode, the drivers and request isolation
+bin/benchmark          # Vector's list endpoints on both runtimes; see Deployment, "Performance"
+```
+
+`bin/check-frankenphp` exits nonzero when any check fails:
+
+- **The worker script.** It must be `public/index.php`, the script
+  `php_server` routes every request to. Any other worker script fails
+  loudly, not by falling back to classic mode. A script that never calls
+  `frankenphp_handle_request()` stops FrankenPHP from starting at all.
+  One that does call it leaves `public/index.php` on FrankenPHP's
+  regular threads, where Kinetis still picks its FrankenPHP adapter and
+  every request is a `500` (`frankenphp_handle_request() called while
+  not in worker mode`). The check reads the worker file from Caddy's own
+  configuration and names that cause.
+- **The extensions.** `app` and `frankenphp` load the same extensions at
+  the same versions, on the same PHP version.
+- **(a) Worker mode.** It sends many requests to `GET /_demo/runtime`.
+  That endpoint reports the boot that answered and how many requests
+  that boot has served. Fewer boots than requests, with climbing counts,
+  is a persistent worker. Classic mode boots once per request.
+- **(b) The native drivers.** The same document names the database
+  clients `DB_DRIVER=auto` built and the event-loop driver.
+- **(c) Request isolation.** Four principals (two admins, the editor
+  and an anonymous caller) are interleaved at random, many requests in
+  flight at once, for 25 rounds on the same threads. Every response must
+  be its own principal's: the identity, the admin access, and the
+  per-record `delete` permission, which differs between the two admins
+  because nobody may delete their own account. `--wrong-expectation`
+  inverts one expected value, to show that this check can fail.
+
+`GET /_demo/runtime` lives in the demo application
+(`src/Http/Diagnostics/`) and answers only under `APP_ENV=development`.
+Under any other value it returns the Kernel's own `404` for an unmatched
+path, byte for byte, and the OpenAPI document never lists it.
+
+### Threads and database connections
+
+Each worker thread runs `bootstrap.php` and builds its own pool for each
+connection it uses. The `frankenphp` service sizes them in
+`docker-compose.yml`. Each named connection has its own key and no
+fallback to the default's; the default width is 8.
+
+| Connection | Database | Per thread | 12 threads |
+|---|---|---:|---:|
+| `default` | MySQL | `DB_MAX_CONNECTIONS=4` | 48 |
+| `admin` (Vector's tables) | PostgreSQL | `DB_ADMIN_MAX_CONNECTIONS=2` | 24 |
+| `support` (the support desk) | PostgreSQL | `DB_SUPPORT_MAX_CONNECTIONS=2` | 24 |
+
+PDO holds one connection per connection used, per process: up to 5
+PHP-FPM children (`pm.max_children`, the image's default) and the queue
+worker.
+
+- **MySQL**, `max_connections` = 151: 12 × 4 = 48 for FrankenPHP,
+  + 5 × 1 for PHP-FPM, + 1 for the queue worker = 54. That leaves 97 for
+  migrations, `demo:seed` and the test suite.
+- **PostgreSQL**, `max_connections` = 100: 12 × (2 + 2) = 48 for
+  FrankenPHP, + 5 × 2 for PHP-FPM, + 2 for the queue worker = 60. That
+  leaves 40 for the CLI and the tests.
+
+mysqli waits through `select()`, which cannot see a descriptor numbered
+above 1024. `DB_WARM_CONNECTIONS=4` opens each thread's whole MySQL pool
+at boot, before any client socket exists, so its descriptors stay low.
+The 48 mysqli connections in the one FrankenPHP process sit far below
+that ceiling. Raise the threads (`FRANKENPHP_WORKERS`) or a pool width,
+and redo both sums.
+
+### The event loop: ext-uv and ext-event
+
+Without a loop extension, Revolt uses `select()` too. Under FrankenPHP
+the Go server's client sockets share the process's descriptor table with
+the PostgreSQL and Redis clients' watchers, and a loaded worker passes
+descriptor 1024. Kinetis's runtime guide therefore requires a loop
+extension in a worker image. Both images carry two:
+
+- **ext-event 3.1.6**, the stable driver the guide requires. It is the
+  one Revolt uses if uv is ever dropped.
+- **ext-uv 0.3.0**, which Revolt prefers when both are loaded. Its only
+  release is a beta, so it is pinned to the exact version the guide
+  names, rather than the floating `uv-beta` the image installed before.
+  It is kept because it is also kinetis/storage's native file driver:
+  amphp/file does filesystem I/O through uv only when the loop runs on
+  uv, and otherwise sends every call to a pool of helper processes.
+
+`bin/check-frankenphp` reports the driver in use, which is
+`Revolt\EventLoop\Driver\UvDriver`, and fails on the `select()` driver.
 
 ## The hosted admin
 
@@ -61,12 +177,20 @@ once:
 ```console
 docker compose exec node pnpm generate:hosted
 docker compose exec app vendor/bin/kinetis vector:install
-docker compose restart app
+docker compose restart app frankenphp
 ```
 
-Then open `http://localhost:8080/vector/ui`. A sign-in form left open
-until its session expired comes back with a notice and the e-mail typed,
-not an error, and signs in from there.
+Then open `http://localhost:8080/vector/ui`, or
+`http://localhost:8081/vector/ui` for the same admin under FrankenPHP.
+There the restart matters: until it, a worker keeps answering `503`
+with the page it booted without. A sign-in form left open until its
+session expired comes back with a notice and the e-mail typed, not an
+error, and signs in from there.
+
+The hosted admin is same-origin on either port. It signs in with the
+session cookie, so it needs no CORS. `VECTOR_UI_ORIGIN` names the
+standalone admin's origin (`localhost:3000`), which calls the API on
+`:8080` with a bearer token. That is unchanged.
 
 ## Seed data
 
@@ -74,7 +198,15 @@ not an error, and signs in from there.
 restarting the shop's identifiers at 1 and clearing Vector's audit trail
 and action log; `--scale=N` multiplies the row counts. Product images
 are stored in Vector's storage as an upload would store them, so run the
-seed as `www-data`, the user the application runs as.
+seed as `www-data`, the user the application runs as. At large scales
+the seed needs more than the CLI's 128 MiB:
+
+```console
+docker compose exec --user www-data app php -d memory_limit=1G vendor/bin/kinetis demo:seed --fresh --scale=20
+```
+
+The test suite expects the stock data set. Put it back with
+`demo:seed --fresh` (scale 1) after a benchmark or a scaled seed.
 
 | Account | Password | Signs in as |
 |---|---|---|

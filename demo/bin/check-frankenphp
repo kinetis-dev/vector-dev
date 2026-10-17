@@ -54,11 +54,17 @@ else
     workers=1
 fi
 
+# The PHP version, then every loaded extension and the version of each
+# one PECL installs (a bundled one reports PHP's own version). The
+# Dockerfile pins the PHP minor for both bases, not the patch each base
+# image ships, so a patch drift between them fails here too.
+inventory='echo "PHP ", PHP_VERSION, "\n"; $e = get_loaded_extensions(); sort($e); foreach ($e as $x) { $v = phpversion($x); echo $x, $v === PHP_VERSION ? "" : " $v", "\n"; }'
+
 echo "Extensions: app (PHP-FPM) and frankenphp load the same set"
-app=$(docker compose exec -T app php -m)
-frankenphp=$(docker compose exec -T frankenphp php -m)
+app=$(docker compose exec -T app php -r "$inventory")
+frankenphp=$(docker compose exec -T frankenphp php -r "$inventory")
 if [ "$app" = "$frankenphp" ]; then
-    echo "  ok    $(printf '%s\n' "$app" | grep -c '^[a-zA-Z]') extensions, identical"
+    echo "  ok    $(printf '%s\n' "$app" | head -1), $(printf '%s\n' "$app" | tail -n +2 | grep -c .) extensions, identical, versions included"
     extensions=0
 else
     echo "  FAIL  the two images differ:"
