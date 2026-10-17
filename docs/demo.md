@@ -81,8 +81,11 @@ Two scripts check and measure it:
 
 ```console
 bin/check-frankenphp   # the worker, the extensions, worker mode, the drivers and request isolation
-bin/benchmark          # Vector's list endpoints on both runtimes; see Deployment, "Performance"
+bin/benchmark          # Vector's list endpoints on both runtimes
 ```
+
+[Deployment, "Performance"](deployment.md#performance) records one run of
+`bin/benchmark`, with the machine and the settings it ran on.
 
 `bin/check-frankenphp` exits nonzero when any check fails:
 
