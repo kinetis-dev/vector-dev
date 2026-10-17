@@ -79,8 +79,11 @@ services:
     ports:
       - "8081:8081"
     healthcheck:
-      # the sign-in page, through the worker: unauthenticated /vector/ui redirects there
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8081/vector/ui"]
+      # A worker answered through the Kernel: the token API refuses an
+      # anonymous GET /auth/me with 401. It needs neither the hosted
+      # bundle nor a seeded database, and it starts no session, which a
+      # probe of the sign-in page would, every 5 s.
+      test: ["CMD-SHELL", "[ \"$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8081/auth/me)\" = 401 ]"]
       interval: 5s
       timeout: 5s
       retries: 30

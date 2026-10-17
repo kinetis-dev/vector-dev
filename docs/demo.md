@@ -192,8 +192,9 @@ docker compose restart app frankenphp
 
 Then open `http://localhost:8080/vector/ui`, or
 `http://localhost:8081/vector/ui` for the same admin under FrankenPHP.
-There the restart matters: until it, a worker keeps answering `503`
-with the page it booted without. A sign-in form left open until its
+There the restart matters: a worker that booted before the bundle was
+published keeps answering a signed-in visitor `503` until it restarts.
+An anonymous visitor is redirected to the sign-in page either way. A sign-in form left open until its
 session expired comes back with a notice and the e-mail typed, not an
 error, and signs in from there.
 
