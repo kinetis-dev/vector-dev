@@ -181,19 +181,20 @@ foreach (['admin' => 'admin@vector.local', 'e2e' => 'e2e@vector.local', 'editor'
 
 /**
  * What each principal must see, by path: the status and, for a 200, the
- * fields of the document that identify whose response it is.
+ * fields of the document that identify whose response it is. Ids, not
+ * display names: the test suite renames the seeded editor.
  *
  * @var array<string, array{token: ?string, expect: array<string, array{0: int, 1: array<string, mixed>}>}> $principals
  */
 $principals = [
     'admin' => ['token' => $tokens['admin'], 'expect' => [
-        '/vector/me' => [200, ['id' => 1, 'name' => 'Vector Admin', 'impersonator' => null]],
+        '/vector/me' => [200, ['id' => 1, 'impersonator' => null]],
         '/vector/r/users/1' => [200, ['data.id' => 1, 'permissions.delete' => $wrongExpectation]],
         '/vector/r/users/3' => [200, ['data.id' => 3, 'permissions.delete' => true]],
         '/auth/me' => [200, ['id' => '1', 'vector' => true]],
     ]],
     'e2e' => ['token' => $tokens['e2e'], 'expect' => [
-        '/vector/me' => [200, ['id' => 3, 'name' => 'E2E Admin', 'impersonator' => null]],
+        '/vector/me' => [200, ['id' => 3, 'impersonator' => null]],
         '/vector/r/users/1' => [200, ['data.id' => 1, 'permissions.delete' => true]],
         '/vector/r/users/3' => [200, ['data.id' => 3, 'permissions.delete' => false]],
         '/auth/me' => [200, ['id' => '3', 'vector' => true]],
@@ -202,7 +203,7 @@ $principals = [
         '/vector/me' => [403, []],
         '/vector/r/users/1' => [403, []],
         '/vector/r/users/3' => [403, []],
-        '/auth/me' => [200, ['id' => '2', 'name' => 'Demo Editor', 'vector' => false]],
+        '/auth/me' => [200, ['id' => '2', 'vector' => false]],
     ]],
     'anonymous' => ['token' => null, 'expect' => [
         '/vector/me' => [401, []],
