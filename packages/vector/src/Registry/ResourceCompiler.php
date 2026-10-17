@@ -47,7 +47,7 @@ final class ResourceCompiler
     /** @var array<class-string<VectorResource>, array{attribute: Resource, slug: string}> */
     private array $resources = [];
 
-    /** @var array<string, string> entity class => slug */
+    /** @var array<string, string> entity class => the slug a relation to it links to: its only resource, or the one marked relationTarget */
     private array $slugByEntity = [];
 
     /**
@@ -228,6 +228,9 @@ final class ResourceCompiler
             $this->entities[$entity['class']] = $entity;
         }
 
+        /** @var array<class-string, non-empty-list<class-string<VectorResource>>> $byEntity entity class => its resources, in discovery order */
+        $byEntity = [];
+
         foreach ($classes as $class) {
             $attribute = (new ReflectionClass($class))->getAttributes(Resource::class)[0] ?? null;
 
@@ -254,12 +257,26 @@ final class ResourceCompiler
                 }
             }
 
-            if (isset($this->slugByEntity[$resource->entity])) {
-                throw ResourceCompileException::resource($class, "{$resource->entity} already has a resource");
+            $this->resources[$class] = ['attribute' => $resource, 'slug' => $slug];
+            $byEntity[$resource->entity][] = $class;
+        }
+
+        // A relation that names no resource of its own links to the
+        // entity's only resource, or to the one marked relationTarget.
+        foreach ($byEntity as $entityClass => $over) {
+            $marked = array_values(array_filter($over, fn (string $class): bool => $this->resources[$class]['attribute']->relationTarget));
+
+            if (count($over) > 1 && count($marked) !== 1) {
+                throw new ResourceCompileException(sprintf(
+                    '%s has %d resources (%s), and %s; mark exactly one #[Resource(relationTarget: true)] for the relations to it to link to.',
+                    $entityClass,
+                    count($over),
+                    implode(', ', $over),
+                    $marked === [] ? 'none is the relation target' : 'more than one is the relation target (' . implode(', ', $marked) . ')',
+                ));
             }
 
-            $this->resources[$class] = ['attribute' => $resource, 'slug' => $slug];
-            $this->slugByEntity[$resource->entity] = $slug;
+            $this->slugByEntity[$entityClass] = $this->resources[$marked[0] ?? $over[0]]['slug'];
         }
     }
 

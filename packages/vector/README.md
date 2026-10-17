@@ -124,7 +124,7 @@ authorization](#authentication-and-authorization)):
 ## Resources
 
 A resource is a class extending `Kinetis\Vector\VectorResource` carrying
-`#[Resource(entity: ...)]`:
+`#[Resource(entity: ...)]`; an entity may have more than one (below):
 
 ```php
 use Kinetis\Vector\Attributes\Resource;
@@ -200,7 +200,21 @@ a sortable field without a column, a searchable field that is not a
 string column, a filterable collection, a summary on a non-numeric
 column, a `defaultSort` over a non-sortable field, an unadministered
 identifier, a `softDeletes()` property that is not a nullable
-`DateTimeImmutable`, and a duplicate field, action or widget name.
+`DateTimeImmutable`, a duplicate field, action or widget name, a slug
+already taken, and an entity with several resources but not exactly one
+relation target.
+
+An entity may have several resources, each with its own `slug`: a second
+view of the same rows with its own fields, policy, scope, actions and
+audit trail, all keyed by its slug. When it has several, exactly one is
+marked `#[Resource(entity: User::class, relationTarget: true)]`;
+otherwise compilation fails, naming the entity and every resource over
+it. A relation that names its resource class links to that resource; a
+derived relation, which names none, links to the entity's only resource
+or to its relation target. A resource's hooks run for its own requests
+only, so a second resource that must not delete what the first guards in
+`beforeDelete()` refuses it in its policy. The demo's `profiles` is a
+second resource over `users`.
 
 ### Field catalogue
 

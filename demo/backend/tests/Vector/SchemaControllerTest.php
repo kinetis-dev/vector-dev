@@ -21,7 +21,7 @@ final class SchemaControllerTest extends VectorTestCase
         $document = $response->json();
         self::assertIsArray($document);
         self::assertSame(
-            ['agents', 'categories', 'customer-profiles', 'customers', 'labels', 'order-lines', 'orders', 'products', 'support-teams', 'tags', 'ticket-replies', 'tickets', 'users'],
+            ['agents', 'categories', 'customer-profiles', 'customers', 'labels', 'order-lines', 'orders', 'products', 'profiles', 'support-teams', 'tags', 'ticket-replies', 'tickets', 'users'],
             array_keys($document['resources']),
         );
         self::assertSame(['Access', 'Catalog', 'Sales', 'Support'], array_column($document['menu'], 'label'));

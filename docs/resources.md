@@ -1,6 +1,6 @@
 # Resources
 
-A resource makes one `kinetis/orm` entity administrable. It is a class
+A resource makes a `kinetis/orm` entity administrable. It is a class
 extending `Kinetis\Vector\VectorResource` with a `#[Resource]` attribute,
 discovered anywhere under your application namespace.
 
@@ -40,6 +40,38 @@ breadcrumbs, relations and search. `slug` overrides the URL name; by
 default the mapped table name is used with underscores replaced by dashes.
 `label` and `labelSingular` override the display names derived from the
 class.
+
+## Several resources over one entity
+
+An entity may have more than one resource: a second view of the same
+rows with its own fields, policy, scope and actions, such as the demo's
+`profiles` beside `users`. Each needs its own `slug`, since the default
+one, the table name, can only be taken once. Each is a resource in its
+own right: its policy, writes, audit trail, jobs, MCP tools and menu
+entry are keyed by its slug.
+
+A relation that names its resource, `BelongsTo::to('owner',
+ProfileResource::class)`, links to that one. A relation that names none
+— a field derived from the entity's mapping — links to the entity's
+relation target: its only resource, or, when it has several, the one
+marked `relationTarget: true`:
+
+```php
+#[Resource(entity: User::class, title: 'name', relationTarget: true)]
+final class UserResource extends VectorResource { /* ... */ }
+
+#[Resource(entity: User::class, slug: 'profiles', title: 'name')]
+final class ProfileResource extends VectorResource { /* ... */ }
+```
+
+Compilation fails when an entity with several resources marks none of
+them, or more than one, naming the entity and every resource over it.
+An entity with a single resource needs no mark.
+
+A resource's hooks and policy govern its own requests only. The demo's
+`UserResource` refuses to delete the last admin in `beforeDelete()`,
+which a delete through `profiles` would not run, so `profiles` refuses
+create and delete in its policy instead.
 
 ## Derived or declared fields
 
@@ -114,7 +146,8 @@ property, a relation to an unregistered resource, a sortable field
 without a column, a searchable field that is not a string column, a
 filterable collection, a summary over a non-numeric column, a default
 sort over a field that is not sortable, a bad `softDeletes()` property,
-and duplicate field, action or widget names.
+duplicate field, action or widget names, a slug already taken, and an
+entity with several resources but not exactly one `relationTarget`.
 
 ## Listing what compiled
 
@@ -138,6 +171,7 @@ labels             Labels             Support  App\Domain\Support\Label        A
 order-lines        Order lines        Sales    App\Domain\OrderLine            App\Vector\OrderLineResource            default
 orders             Orders             Sales    App\Domain\Order                App\Vector\OrderResource                default
 products           Products           Catalog  App\Domain\Product              App\Vector\ProductResource              default
+profiles           Profiles           Access   App\Domain\User                 App\Vector\ProfileResource              default
 support-teams      Teams              Support  App\Domain\Support\Team         App\Vector\Support\TeamResource         support
 tags               Tags               Catalog  App\Domain\Tag                  App\Vector\TagResource                  default
 ticket-replies     Ticket replies     Support  App\Domain\Support\TicketReply  App\Vector\Support\TicketReplyResource  support
