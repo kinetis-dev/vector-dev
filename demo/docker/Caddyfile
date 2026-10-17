@@ -8,9 +8,12 @@
 
 	frankenphp {
 		# The worker must run the same script php_server below routes to,
-		# public/index.php. Any other file leaves every request on the
-		# classic, boot-per-request path with no error to say so.
-		# bin/check-frankenphp is what notices.
+		# public/index.php. Any other file fails, not quietly: a script
+		# that never calls frankenphp_handle_request() keeps FrankenPHP
+		# from starting, and one that does leaves public/index.php on the
+		# regular threads, where Kinetis still picks its FrankenPHP
+		# adapter and every request is a 500 ("called while not in worker
+		# mode"). bin/check-frankenphp names the cause.
 		#
 		# Each thread builds its own database pools: threads × the pool
 		# widths in docker-compose.yml must stay under MySQL's and

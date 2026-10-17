@@ -1,8 +1,8 @@
 #!/bin/sh
 # Proves the frankenphp service runs the application the way Kinetis's
-# primary runtime should: the same PHP extensions as app (PHP-FPM),
-# requests served by persistent worker threads rather than classic mode,
-# the native database drivers, and request isolation across many
+# primary runtime should: the right worker script, the same PHP
+# extensions as app (PHP-FPM), requests served by persistent worker
+# threads rather than classic mode, the native database drivers, and request isolation across many
 # interleaved requests on the same threads. The details are in
 # check-frankenphp.php, which runs in the app container against the
 # frankenphp service. Needs a migrated, seeded stack (docs/demo.md).
@@ -12,6 +12,47 @@
 # Exits nonzero when any check fails. Run it from anywhere.
 set -eu
 cd "$(dirname "$0")/.."
+
+# php_server sends every request to public/index.php, so that is the
+# script the worker must run. Any other worker script fails, never
+# quietly: one that returns without calling frankenphp_handle_request()
+# stops FrankenPHP from starting at all, and one that does call it leaves
+# public/index.php on FrankenPHP's regular threads, where Kinetis still
+# picks its FrankenPHP adapter (frankenphp_handle_request() exists) and
+# every request fails with "called while not in worker mode" — a 500.
+routed=/workspace/demo/backend/public/index.php
+cause="likely cause: the worker script (docker/Caddyfile worker.file, FRANKENPHP_WORKER_FILE) is not $routed"
+
+echo "Worker: frankenphp runs $routed in worker mode"
+if [ -z "$(docker compose ps -q --status running frankenphp)" ]; then
+    log=$(docker compose logs --no-log-prefix --tail 300 frankenphp 2>&1)
+    error=$(printf '%s\n' "$log" | grep '"level":"error"' | grep -o '"msg":"[^"]*"' | tail -1 || true)
+    # FrankenPHP 1.13.1 sometimes crashes (exit 139) before logging that
+    # error; the restart warnings before it name the worker either way.
+    failed=$(printf '%s\n' "$log" | grep '"worker script has failed on restart"' | grep -o '"worker":"[^"]*"' | tail -1 | cut -d'"' -f4 || true)
+    echo "  FAIL  the frankenphp service is not running${error:+ — its last error: $error}"
+    if [ -n "$failed" ]; then
+        echo "        $cause: $failed returned without ever calling frankenphp_handle_request(), on every thread, until FrankenPHP stopped"
+    else
+        echo "        start it with \`docker compose up -d frankenphp\` and read \`docker compose logs frankenphp\`"
+    fi
+    echo
+    echo "FAIL"
+    exit 1
+fi
+
+# the configuration Caddy runs, its env placeholders resolved
+adapted=$(docker compose exec -T frankenphp frankenphp adapt --config /etc/frankenphp/Caddyfile 2>/dev/null)
+worker=$(printf '%s' "$adapted" | sed -n 's/.*"workers":\[{"file_name":"\([^"]*\)".*/\1/p')
+threads=$(printf '%s' "$adapted" | sed -n 's/.*"workers":\[{[^}]*"num":\([0-9]*\).*/\1/p')
+if [ "$worker" = "$routed" ]; then
+    echo "  ok    ${threads:-?} worker threads on $worker"
+    workers=0
+else
+    echo "  FAIL  the worker runs ${worker:-(none)}, but php_server routes every request to $routed"
+    echo "        $cause: requests run outside worker mode and fail with a 500"
+    workers=1
+fi
 
 echo "Extensions: app (PHP-FPM) and frankenphp load the same set"
 app=$(docker compose exec -T app php -m)
@@ -27,8 +68,11 @@ else
     extensions=1
 fi
 
-threads=$(docker compose exec -T frankenphp printenv FRANKENPHP_WORKERS)
 status=0
-docker compose exec -T app php /workspace/demo/bin/check-frankenphp.php --threads="$threads" "$@" || status=$?
+docker compose exec -T app php /workspace/demo/bin/check-frankenphp.php --threads="${threads:-12}" "$@" || status=$?
 
-[ "$extensions" -eq 0 ] && [ "$status" -eq 0 ]
+if [ "$status" -ne 0 ] && docker compose logs --no-log-prefix --since 5m frankenphp 2>&1 | grep -q 'called while not in worker mode'; then
+    echo "frankenphp's log: \"frankenphp_handle_request() called while not in worker mode\" — $cause"
+fi
+
+[ "$workers" -eq 0 ] && [ "$extensions" -eq 0 ] && [ "$status" -eq 0 ]
