@@ -98,7 +98,9 @@ frankenphp_version=$(docker compose exec -T frankenphp frankenphp version | awk 
 php_version=$(docker compose exec -T frankenphp php -r 'echo PHP_VERSION;')
 threads=$(docker compose exec -T frankenphp printenv FRANKENPHP_WORKERS)
 fpm_children=$(docker compose exec -T app sh -c "sed -n 's/^pm.max_children = //p' /usr/local/etc/php-fpm.d/www.conf")
-docker_host=$(docker info --format '{{.NCPU}} CPUs, {{printf "%.1f" (div (div .MemTotal 1048576) 1024.0)}} GiB, {{.OperatingSystem}} {{.ServerVersion}}' 2>/dev/null || docker info --format '{{.NCPU}} CPUs, {{.OperatingSystem}} {{.ServerVersion}}')
+# the Docker VM's CPUs and memory (Go templates have no arithmetic, so awk converts bytes to GiB)
+docker_host=$(docker info --format '{{.NCPU}} {{.MemTotal}} {{.OperatingSystem}} {{.ServerVersion}}' \
+    | awk '{ cpus = $1; gib = $2 / 1073741824; $1 = $2 = ""; sub(/^ +/, ""); printf "%d CPUs, %.1f GiB, %s", cpus, gib, $0 }')
 rows=$(docker compose exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -N "$MYSQL_DATABASE" -e "SELECT (SELECT COUNT(*) FROM products), (SELECT COUNT(*) FROM orders), (SELECT COUNT(*) FROM customers)" 2>/dev/null')
 tickets=$(docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d vector_support -tAc "SELECT COUNT(*) FROM tickets"')
 
