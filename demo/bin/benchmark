@@ -43,7 +43,9 @@ counted=20
 
 if [ -n "$seed" ]; then
     echo "Seeding: demo:seed --fresh --scale=$seed" >&2
-    docker compose exec -T --user www-data app vendor/bin/kinetis demo:seed --fresh --scale="$seed" >&2
+    # The seeder flushes each table in one unit of work, which outgrows
+    # the CLI's 128 MiB at --scale=20.
+    docker compose exec -T --user www-data app php -d memory_limit=1G vendor/bin/kinetis demo:seed --fresh --scale="$seed" >&2
 fi
 
 php() {
