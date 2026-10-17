@@ -12,6 +12,7 @@ use Kinetis\Persistence\Contract\MysqlLink;
 use Kinetis\Runtime\AppEnvironment;
 use Kinetis\Vector\Database\VectorDatabase;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 use Revolt\EventLoop;
 
 /**
@@ -19,7 +20,9 @@ use Revolt\EventLoop;
  * that answered it and how many requests that boot has served (more
  * than one only under a persistent worker), the database clients
  * DB_DRIVER=auto built (native or PDO) and the event-loop driver.
- * Development only: anywhere else it answers 404, as an unknown route.
+ * Development only: under any other APP_ENV it answers the Kernel's own
+ * 404 for an unmatched path, byte for byte, so it cannot be told from a
+ * route that does not exist.
  */
 #[Hidden]
 final readonly class RuntimeController
@@ -32,10 +35,10 @@ final readonly class RuntimeController
     ) {}
 
     #[Get('/_demo/runtime')]
-    public function runtime(): ResponseInterface
+    public function runtime(ServerRequestInterface $request): ResponseInterface
     {
         if ($this->environment !== AppEnvironment::Development) {
-            return ErrorResponse::create(404, 'Not Found');
+            return ErrorResponse::create(404, sprintf('No route matches path "%s".', $request->getUri()->getPath()));
         }
 
         return JsonResponse::create([
