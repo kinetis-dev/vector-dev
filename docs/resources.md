@@ -116,6 +116,50 @@ filterable collection, a summary over a non-numeric column, a default
 sort over a field that is not sortable, a bad `softDeletes()` property,
 and duplicate field, action or widget names.
 
+## Listing what compiled
+
+`vector:list` compiles the registry afresh, as `kinetis build` would,
+and prints its resources, settings groups and dashboards; it reads and
+writes no cache. A compile error fails it with the same message. The
+labels are the declared ones, before translation, and every resource is
+listed whatever its policy: what a given user sees is
+`GET /vector/schema` or the MCP tool `vector_describe`. In the demo:
+
+```console
+$ vendor/bin/kinetis vector:list
+Resources:
+Slug               Label              Group    Entity                          Resource                                Connection
+-----------------  -----------------  -------  ------------------------------  --------------------------------------  ----------
+agents             Agents             Support  App\Domain\Support\Agent        App\Vector\Support\AgentResource        support
+categories         Categories         Catalog  App\Domain\Category             App\Vector\CategoryResource             default
+customer-profiles  Customer profiles  Sales    App\Domain\CustomerProfile      App\Vector\CustomerProfileResource      default
+customers          Customers          Sales    App\Domain\Customer             App\Vector\CustomerResource             default
+labels             Labels             Support  App\Domain\Support\Label        App\Vector\Support\LabelResource        support
+order-lines        Order lines        Sales    App\Domain\OrderLine            App\Vector\OrderLineResource            default
+orders             Orders             Sales    App\Domain\Order                App\Vector\OrderResource                default
+products           Products           Catalog  App\Domain\Product              App\Vector\ProductResource              default
+support-teams      Teams              Support  App\Domain\Support\Team         App\Vector\Support\TeamResource         support
+tags               Tags               Catalog  App\Domain\Tag                  App\Vector\TagResource                  default
+ticket-replies     Ticket replies     Support  App\Domain\Support\TicketReply  App\Vector\Support\TicketReplyResource  support
+tickets            Tickets            Support  App\Domain\Support\Ticket       App\Vector\Support\TicketResource       support
+users              Users              Access   App\Domain\User                 App\Vector\UserResource                 default
+
+Settings groups:
+Name       Label            Class
+---------  ---------------  ---------------------------------
+branding   Branding         Kinetis\Vector\Settings\Branding
+jobs       Background jobs  Kinetis\Vector\Settings\Jobs
+languages  Languages        Kinetis\Vector\Settings\Languages
+store      Store            App\Vector\Settings\StoreSettings
+
+Dashboards:
+Name  Label     Class
+----  --------  -----------------------------------
+main  Overview  App\Vector\Dashboards\MainDashboard
+```
+
+A resource in no navigation group shows `—` in the Group column.
+
 ## See also
 
 - {doc}`fields` — the field catalogue.

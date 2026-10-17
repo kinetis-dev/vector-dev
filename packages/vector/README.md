@@ -36,6 +36,15 @@ install from source has no bundle: the command says so and still
 succeeds, and the hosted shell is served only when `VECTOR_UI_DIR`
 points at a separately built one.
 
+`vector:list` prints what Vector compiles — its resources, settings
+groups and dashboards — from a fresh scan, as `routes:list` does for
+routes; it reads and writes no cache, and a compile error fails it with
+the registry's own message. It shows the compiled registry, with labels
+before translation and every resource whatever its policy; what a given
+user sees is `GET /vector/schema` or the MCP tool `vector_describe`.
+The manual's [Resources](../../docs/resources.md#listing-what-compiled)
+page shows its output for the demo.
+
 ### Multi-database applications
 
 An entity may live on a named connection
