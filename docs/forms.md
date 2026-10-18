@@ -33,14 +33,20 @@ public function fields(): array
   elsewhere in `fields()`. A tab may hold sections; a section holds only
   fields. A field left at the top level keeps its place.
 - `columns(1..4)` sets a section's grid (two by default);
-  `->columnSpan(1|2|'full')` on a field sets its width.
+  `->columnSpan(1|2|'full')` on a field sets its width, or the UI picks
+  one by its type. A field declaring `columnSpan()` gives the resource a
+  layout even without sections.
 - `collapsible()` lets a section fold; `collapsed()` starts it folded.
 - The show page uses the same layout, with the fields it shows.
 
-Layout only groups: validation, lists and writes are unchanged. A field
-a user may not see leaves the layout, and a section or tab it empties
-disappears. When a save is refused, the form opens the section and
-switches to the tab holding the field in error, and marks the tab.
+Layout only groups: validation, serialization, filters and writes are
+unchanged. The compiler flattens it to the same field list and
+publishes it apart, as the descriptor's `layout` ({doc}`rest-api`). A
+field a user may not see leaves the layout, and a section or tab it
+empties disappears. A name the resource does not declare, or one placed
+twice, fails the build. When a save is refused, the form opens the
+section and switches to the tab holding the field in error, and marks
+the tab.
 
 ## Conditions
 
@@ -62,6 +68,10 @@ evaluates them again on the stored record overlaid with the request. A
 hidden or disabled field's submitted value is ignored; a field whose
 `requiredWhen` holds must end up non-empty.
 
+A condition on a field the form does not have, or on the field itself,
+fails the build. A collection can only be tested with `null` or
+`nnull`.
+
 ## Relation choices
 
 A relation input searches the target's title. When the target declares
@@ -80,9 +90,16 @@ BelongsTo::to('assignee', AgentResource::class)->dependsOn('team'),
 ```
 
 The assignee input waits until a team is chosen and clears itself when
-the team changes. The server refuses a choice outside the team. Use
-`dependsOn('team', on: 'squad')` when the target's property is named
-differently.
+the team changes. Use `dependsOn('team', on: 'squad')` when the target's
+property is named differently.
+
+The options endpoint narrows by `depends[team]=…`; without that
+parameter it searches every record, as a list filter does. A write that
+changes the choice or the team must keep the choice among the agents the
+options would offer; otherwise the choice is refused with
+`invalid_choice`. Unchanged values are not re-checked, so records stored
+before the rule still save. A dependency on a field the form lacks, or
+on a property the target does not map, fails the build.
 
 ## Repeaters
 
@@ -94,24 +111,39 @@ HasMany::to('lines', OrderLineResource::class)
 ```
 
 The whole list is sent with the parent and written in one transaction:
-a row with an `id` updates that child, a row without one creates it, and
-a child left out is deleted. Each row is validated, authorized, hooked
-and audited as the child resource would be; a violation names its row.
-The parent's hooks run after the rows are in place, so a total can be
-recomputed there.
 
-A repeater must be over an owned relation and include every field a new
-row requires; the child may not soft-delete. Repeaters are not written
-in bulk, inline or by import.
+```json
+{"lines": [{"id": 7, "quantity": 3}, {"product": 4, "quantity": 1, "unitPriceCents": 1200}]}
+```
+
+- a row with an `id` updates that child;
+- a row without one creates a child pointing at the parent;
+- a child left out is deleted.
+
+Each row is validated as the child resource validates a record, and a
+violation names its row (`lines/1/quantity`). The child's policy
+authorizes each create, update and delete; its hooks run and its audit
+trail records each change, as if the child had been written on its own.
+The parent's hooks run after the rows are in place, so a total can be
+recomputed there. `GET /vector/r/{resource}/{id}/{relation}/rows`
+returns the current rows for an edit form.
+
+Compilation refuses a repeater that is over a relation that is not
+owned, that leaves out a child field a new row requires, whose child
+resource soft-deletes, or that carries conditions. Repeaters are not
+written in bulk, inline or by import.
 
 ## Inline editing
 
 `inlineEditable()` lets the list edit a field in its cell. Edits across
-rows are saved together as one changeset, in one transaction. Each
-record is authorized, validated and hooked as a normal update, and
-checked against the version it was listed at: one stale record refuses
-the whole changeset. Text, number, money, boolean, enum, date,
-datetime and belongs-to fields qualify.
+rows are saved together as one changeset with
+`POST /vector/r/{resource}/changes`, flushed in one transaction. Each
+record is authorized, validated and hooked as a `PATCH` would be, and
+checked against the `_version` it was listed at: one stale record
+answers `409` for the whole changeset. A violation's path is
+`changes/{index}/{field}`. Only simple, editable fields qualify: text,
+email, url, slug, color, number, money, boolean, enum, date, datetime
+and belongs-to. Anything else fails the build.
 
 ## Optimistic locking
 

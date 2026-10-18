@@ -17,11 +17,13 @@ is validated, hooked and audited.
 
 An agent lists the resources, then describes the one it works with, so
 its context holds one resource's detail rather than all of them. For
-each field, `vector_describe` states:
+each field, `vector_describe` (`Kinetis\Vector\Mcp\ResourceDescription`)
+states:
 
 - **`writable`**: whether a create, an update, both or neither may write it.
 - **`required`**: whether a create must send it. This is the writer's own
-  rule, so a create with just the required fields succeeds.
+  rule (`RecordInput::requiredOnCreate()`), so a create with just the
+  required fields succeeds.
 - **`rules`, `options`, `default`, `unique`**: what a value must satisfy.
 - **`format`**: what a value looks like, where the type alone doesn't
   say (a date, a rich-text document, a list of ids).
@@ -44,12 +46,49 @@ plain JSON objects, shaped as in the REST API.
 ## Serving them
 
 - **Over HTTP**, at `POST /mcp`: your authentication middleware joins the
-  `mcp` group, as it joins `vector`.
-- **Over stdio**, with `kinetis mcp:serve`: the tools need an
-  authenticated identity, so without one they fail closed.
+  `mcp` group, as it joins `vector` (below).
+- **Over stdio**, with `kinetis mcp:serve`: the tools inject
+  `CurrentUserInterface`, so without an authenticated identity they fail
+  closed. The HTTP `mcp` group does not run over stdio.
 
-Either way, Vector's access policy decides whether the identity may use
-the admin at all, as it does for the UI.
+Either way, the tools ask `VectorAccessInterface` whether the identity
+may use the admin at all, as the `vector` group does for the UI.
+
+## `POST /mcp` answers 401 to everyone
+
+In bearer-token mode, when your authentication middleware is in the
+`vector` group only, `POST /mcp` answers `401 Unauthenticated.` to every
+caller, admins with a valid token included, while the same token works
+on `/vector/…`.
+
+`kinetis/mcp` closes the endpoint by default. Its
+`Kinetis\Mcp\Http\McpIdentityGuardMiddleware` is the last member of the
+`mcp` middleware group (priority 0), and it answers `401` unless
+something earlier in that group registered a
+`Kinetis\Http\CurrentUserInterface` on the request scope. Your
+authentication middleware in the `vector` group does not run for
+`/mcp`: it has to join the `mcp` group as well.
+
+```php
+#[AsMiddlewareGroup('vector', priority: 50)]
+#[AsMiddlewareGroup('vector-shell', priority: 50)] // hosted mode only
+#[AsMiddlewareGroup('mcp', priority: 50)]          // POST /mcp
+final readonly class AdminAuthMiddleware implements MiddlewareInterface { /* … */ }
+```
+
+The demo's `App\Auth\VectorAuthMiddleware` carries exactly these three
+attributes. In production, rebuild the compiled cache (`kinetis build`)
+after the change, so the compiled `mcp` group carries the middleware
+({doc}`deployment`).
+
+```{warning}
+Do not set `MCP_HTTP_PUBLIC=true` to make the 401 go away. It serves
+`/mcp` to unauthenticated callers: the guard lets every request through
+whether or not an identity is registered, so any tool of yours that
+needs no identity becomes public, and Vector's own still have no
+identity to run as. Put the authentication middleware in the `mcp`
+group instead.
+```
 
 ## See also
 

@@ -68,6 +68,17 @@ request isolation across interleaved principals on the same threads
 `docker compose restart frankenphp` after a PHP change, before checking
 it.
 
+The UI layer's Vitest suite is in `packages/vector-ui/test/nuxt/`. Each
+file runs inside a Nuxt app built from the layer (`@nuxt/test-utils`,
+happy-dom), so auto-imports, app config, the i18n plugin, Vuetify and
+Pinia behave as they do in the admin. It covers the formatters and
+client rules, the API client in both authentication modes, the auth
+store, the schema and resource clients, and the generated form
+(`VxResourceForm`) with its 422 mapping. API calls go to endpoints the
+test registers (`test/nuxt/endpoints.ts`); nothing needs a server.
+`pnpm typecheck` runs `vue-tsc` in strict mode over the layer, its tests
+included.
+
 `bin/benchmark` replaces the demo data when given `--seed=N` and needs
 the stack to itself. Run it alone, then restore the stock data set
 before PHPUnit:

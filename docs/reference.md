@@ -10,6 +10,6 @@ when you need the precise shape, key or bound.
 - {doc}`limits` — the bounds Vector enforces and the guarantees it
   keeps.
 
-The package's own README and `docs/` in the repository hold the same
-contracts in developer form, alongside the descriptor's JSON schema
-(`packages/vector/resources/schema/descriptor.schema.json`).
+The descriptor's JSON schema ships in the package, at
+`packages/vector/resources/schema/descriptor.schema.json`; the installed
+source is the authority for anything these pages do not settle.

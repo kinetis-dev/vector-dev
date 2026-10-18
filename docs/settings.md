@@ -30,8 +30,9 @@ named and shown. Saving validates the group like a form and replaces its
 values, in Vector's `vector_settings` table.
 
 A rule that spans several fields goes in `validate()`, which runs when
-the group is saved, after each field passed its own rules; any violation
-it returns refuses the save:
+the group is saved, after each field passed its own rules. Like
+`canManage()`, it is a request-time check; any violation it returns
+refuses the save:
 
 ```php
 public function validate(array $values): array
@@ -42,13 +43,18 @@ public function validate(array $values): array
 }
 ```
 
-## Branding and Languages
+## Built-in groups
 
-Vector ships two groups. **Branding**: the admin's title, logo URL,
-primary colours for the light and dark themes, default theme and footer
-line. It applies at runtime, over the UI's built-in theme, without a
-rebuild. **Languages**: which languages users may pick, and the default
-({doc}`languages`).
+Vector ships three groups:
+
+- **Branding**: the admin's title, logo URL, primary colours for the
+  light and dark themes, default theme and footer line. It applies at
+  runtime, over the UI's built-in theme, without a rebuild.
+- **Languages**: which languages users may pick, and the default
+  ({doc}`languages`).
+- **Background jobs**: after how many minutes without a progress report
+  a running job counts as stalled, 30 until an admin changes it
+  ({doc}`jobs`).
 
 A setting is always a value, rendered escaped; it is never markup or
 script. Adding script to the admin is a deployment decision, made with

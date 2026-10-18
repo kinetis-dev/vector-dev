@@ -83,7 +83,8 @@ so on. Declaring `fields()` replaces derivation entirely. See
 
 ## Definition methods
 
-These run once, at compile time, and return plain data:
+These run once, at compile time, on an instance built without
+arguments, and return plain data:
 
 | Method | Declares |
 |---|---|
@@ -126,8 +127,11 @@ public function badge(): Badge
 }
 ```
 
-The filter uses the list grammar and must name filterable fields. A user
-who may not list the resource, or see a filtered field, gets no badge.
+The filter uses the list grammar and must name filterable fields, with
+operators they take. It is counted with the resource's scope and soft
+deletion applied. The UI polls `GET /vector/badges` every minute and
+after each navigation. A user who may not list the resource, or see a
+filtered field, gets no badge.
 
 ## Global search
 
@@ -142,12 +146,16 @@ not see its field.
 ## Checked at build
 
 Compilation refuses, naming the class and field: a field that maps no
-property, a relation to an unregistered resource, a sortable field
-without a column, a searchable field that is not a string column, a
-filterable collection, a summary over a non-numeric column, a default
-sort over a field that is not sortable, a bad `softDeletes()` property,
+property, a `#[BelongsTo]` declared without `BelongsTo::to()`, a
+relation to an unregistered resource, a sortable field without a
+column, a searchable field that is not a string column, a filterable
+collection, a summary over a non-numeric column, a default sort over a
+field that is not sortable, an unadministered identifier, a
+`softDeletes()` property that is not a nullable `DateTimeImmutable`,
 duplicate field, action or widget names, a slug already taken, and an
 entity with several resources but not exactly one `relationTarget`.
+The pages on {doc}`fields` and {doc}`forms` list what each feature
+refuses besides.
 
 ## Listing what compiled
 

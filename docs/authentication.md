@@ -27,6 +27,18 @@ final readonly class AdminAuthMiddleware implements MiddlewareInterface { /* …
 Register nothing when no credential is present: the API then answers
 `401`, and the hosted shell redirects to your login page.
 
+## The `mcp` middleware group
+
+The MCP tools over HTTP, `POST /mcp`, are served by `kinetis/mcp` in its
+own `mcp` middleware group, which the `vector` group's members do not
+join on their own. Its last member, `McpIdentityGuardMiddleware`,
+answers `401` unless a middleware earlier in the group registered a
+`CurrentUserInterface`. With your authentication middleware in `vector`
+only, every caller of `POST /mcp` — admins included — gets `401`. Add
+`#[AsMiddlewareGroup('mcp', priority: 50)]` to it, as above, and do not
+set `MCP_HTTP_PUBLIC` as a workaround: that opens the endpoint to
+callers without an identity. See {doc}`mcp`.
+
 ## The `vector-shell` middleware group
 
 Hosted mode's shell page, `GET /vector/ui` and every deep link under it,
@@ -50,16 +62,18 @@ The standalone UI signs in with `POST {apiBase}/auth/login`, sending
 ```
 
 It then sends `Authorization: Bearer <token>` on every request and keeps
-the tokens for the browser tab only (never in `localStorage`).
+the tokens for the browser tab only: in memory, mirrored to
+`sessionStorage` for reloads, never in `localStorage`.
 
 `refreshToken` is optional. When your login answers one, the UI renews
-the session itself: with under two minutes left on the access token, and
-once more when the API answers `401`, it calls `POST {apiBase}/auth/refresh`
-with `{"refreshToken"}` and expects the same answer as the login; **Sign
+the session itself, one renewal at a time: with under two minutes left
+on the access token, and once more when the API answers `401` (the
+request is then repeated), it calls `POST {apiBase}/auth/refresh` with
+`{"refreshToken"}` and expects the same answer as the login; **Sign
 out** calls `POST {apiBase}/auth/logout` with `{"refreshToken"}` to revoke
 it. When the renewal is refused, or there is no refresh token, the UI
-signs out when the access token expires. An impersonation token is never
-renewed. `kinetis/auth-jwt` issues and verifies access tokens, and its
+signs out when the access token expires, and a `401` goes to `/login`.
+An impersonation token is never renewed. `kinetis/auth-jwt` issues and verifies access tokens, and its
 `RefreshTokenStore` keeps single-use refresh tokens in a Redis cache.
 
 ## Protecting the sign-in
@@ -89,15 +103,41 @@ allowing the `Authorization`, `Content-Type`, `X-CSRF-Token` and
 
 ## Hosted: the session cookie
 
-The hosted UI rides your application's session. It sends the session
-cookie with every request, and the `X-CSRF-Token` it was given on every
-unsafe method; your middleware verifies it. An anonymous visitor to
-`/vector/ui` is redirected to `VECTOR_LOGIN_URL`; **Sign out** posts to
-`VECTOR_LOGOUT_URL` with the CSRF token. Vector adds no login page; keep
-your own.
+The hosted UI rides your application's session. The layer knows it is
+hosted from the `window.__VECTOR__` configuration the shell page
+injects, and is then in *cookie mode*: a same-origin API with
+`credentials: same-origin`, the session cookie on every request, and the
+`X-CSRF-Token` it was given on every unsafe method; your middleware
+verifies it. A `401` sends the browser to `VECTOR_LOGIN_URL`, as an
+anonymous visitor to `/vector/ui` is redirected there; **Sign out**
+posts to `VECTOR_LOGOUT_URL` with the CSRF token. Impersonation reloads
+the page in this mode.
+
+Your session middleware (a thin subclass of `SessionMiddleware`) and an
+authentication middleware that reads the session, verifies the CSRF
+token on unsafe methods and registers the user join both the `vector`
+and `vector-shell` groups. A monolith on a view adapter keeps its own
+login page; Vector adds none.
 
 A user object may implement `VectorShellUserInterface` to give the shell
 a display name.
+
+## How long a session lasts
+
+A session does not end on its own otherwise: the UI renews the token
+before it runs out and polls badges and the inbox, so an open tab would
+stay signed in for as long as it is open. The layer's `app.config`
+`vector.idleMinutes` (30 by default; 0 turns it off) ends it, in both
+modes, when nobody has used the admin — no pointer, key, touch or
+scroll — for that long. Bearer mode revokes the refresh token and opens
+the login page with a notice and the way back to the page that was
+open; cookie mode posts the application's logout form. A tab that comes
+back into view after sleeping is checked at that moment too.
+
+How long a session may last in all is your application's rule. The
+demo's refresh endpoint keeps the end the sign-in set, twelve hours
+later, however often the tab renewed, so a tab still signs in again by
+then.
 
 ## One API, both modes
 

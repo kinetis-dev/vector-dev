@@ -33,6 +33,10 @@ turn the layout right to left.
 Until you choose, the admin is in the default language the administrator
 set; your browser's language plays no part.
 
+Every list of languages — the menu, the switches, the default's options
+— follows `Kinetis\Vector\Translation\Locales::SHIPPED`, which is kept in
+that order; a test fails when a language is added out of place.
+
 ## Which languages are offered
 
 An administrator decides, under **Settings → Languages**: one switch per
@@ -70,12 +74,38 @@ are flattened with dots. A regional tag falls back to its language
 (`pt-BR` reads `pt.php`). The files are read once, when the worker
 starts.
 
-To use your framework's own translator instead, bind
+Vector binds a `MessagesTranslator` over its own `translations/` (the
+labels of its built-in settings groups, machine-translated like the UI's
+catalogs) and your `VECTOR_TRANSLATIONS_DIR`. To use your framework's
+own translator instead, bind
 `Kinetis\Vector\Translation\TranslatorInterface` in your application.
 
-Translation happens when the admin asks for its descriptor, so the
-compiled registry stays in your labels' own words. Record values are
-data and are never translated.
+Translation happens at response time — the descriptor, settings groups,
+dashboards and widget results — so the compiled registry stays in your
+labels' own words. The MCP schema resource is translated for the
+user's preference too. Record values are data and are never translated.
+
+Validation messages are not translated yet: the framework's and
+Vector's own arrive in English.
+
+## In the UI
+
+The layer ships English (the base and the fallback, key by key) and the
+catalogs above, with the codes `pt` (European) and `pt-BR`, and
+`zh-Hans` for Simplified Chinese. The descriptor's `i18n` names the
+user's language and the languages on offer. The language menu names
+each in itself with its name in the current language beneath
+(`languageName()`, from `Intl.DisplayNames`), and switching calls
+`useVectorLocale().choose(code)`, which stores the user's `locale`
+preference and reloads the descriptor.
+
+Before the descriptor loads, the UI starts in the hosted shell's
+language, else the one this browser last used, else `app.config`
+`vector.locale`. Applying a language switches the catalog, Vuetify's
+component strings, the `Intl` formatting of dates, numbers and money,
+and `<html lang dir>`. Hebrew and Arabic render right to left, and the
+layer's own components use logical spacing (`ms-`/`me-`) so they
+mirror.
 
 ## Changing the UI's messages
 
@@ -101,14 +131,16 @@ window.Vector.defineMessages('de', { common: { save: 'Sichern' } })
 ```
 
 The English catalog in the layer's `app/i18n/en/` names every key; every
-shipped locale mirrors it, and a key a locale lacks falls back to
-English. Messages use `{name}` placeholders and are never rendered as
-HTML. A message that depends on a count lists its language's own forms,
-separated by `|`, in the order zero, one, two, few, many, other — only
-the ones that language has for whole numbers: two in English and German
-(`1 change | {count} changes`), three in Hebrew and in Russian, one in
-Japanese. A two-form override you add is read the English way in any
-language.
+shipped locale mirrors it — a test holds each to the same keys and
+placeholders — and a key a locale lacks falls back to English. Messages
+use `{name}` placeholders and are never rendered as HTML. A message that
+depends on a count lists its language's own forms, separated by `|`, in
+CLDR order — zero, one, two, few, many, other — only the ones that
+language has for whole numbers (`pluralCategories()`): two in English
+and German (`1 change | {count} changes`), three in Hebrew (one, two,
+other) and in Russian (one, few, many), one in Japanese, six in Arabic.
+`pluralRule()` picks the form by the browser's `Intl.PluralRules`. A
+two-form override you add is read the English way in any language.
 
 ## See also
 
