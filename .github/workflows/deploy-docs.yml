@@ -9,7 +9,6 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write
   contents: read
 
 # One deployment at a time, never cancelled: a cancelled `s3 sync
@@ -23,6 +22,10 @@ jobs:
   deploy:
     name: Build and deploy docs
     runs-on: ubuntu-latest
+    # The OIDC token for the AWS role, on this job only.
+    permissions:
+      id-token: write
+      contents: read
     # No `environment:` here, on purpose. The role's OIDC trust policy
     # names exactly
     #   repo:kinetis-dev@315982197/vector-dev@1390337970:ref:refs/heads/main

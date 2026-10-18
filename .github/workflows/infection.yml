@@ -108,7 +108,10 @@ jobs:
       - name: Infection
         # The thresholds are infection.vector.json5's own minMsi and
         # minCoveredMsi, measured against this suite; this step passes
-        # none of its own.
+        # none of its own. Nor does it set pcov.directory, unlike
+        # sonarqube.yml: the image leaves that ini setting empty, and
+        # Infection then sets it for its initial run to the common base
+        # of the config's source directories, packages/vector/src.
         run: .github/scripts/php composer infection:vector
 
       - name: Infection report

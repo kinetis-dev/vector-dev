@@ -16,7 +16,7 @@ use Kinetis\Orm\EntityManager;
 final readonly class Credentials
 {
     /** A hash of nothing anyone types, verified when no user matches. */
-    private const string NOBODY = '$2y$12$JCS6ZLnPylNira9TpQfC3OXIndCNiulFltYb7OorU3FDlPYWET84G';
+    private const string NOBODY = '$2y$12$JCS6ZLnPylNira9TpQfC3OXIndCNiulFltYb7OorU3FDlPYWET84G'; // nosemgrep: generic.secrets.security.detected-bcrypt-hash.detected-bcrypt-hash
 
     public function __construct(private EntityManager $entities) {}
 

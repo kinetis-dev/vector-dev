@@ -10,13 +10,6 @@
 # var-in-href rule's XSS concern doesn't apply here.
 docs/_templates/page.html
 
-# Credentials::NOBODY is a bcrypt hash of nothing anyone types, verified
-# when no user matches the e-mail so a failed sign-in takes the same time
-# whether the account exists or not. It guards no account and is not a
-# credential; the generic bcrypt-hash rule can't tell that from a leaked
-# one by its shape.
-demo/backend/src/Auth/Credentials.php
-
 # The end-to-end test that a Markdown reply renders safely: the <script>
 # tag in its fixture is the hostile input it stores on purpose, to assert
 # the admin strips it. Never served as a page.
