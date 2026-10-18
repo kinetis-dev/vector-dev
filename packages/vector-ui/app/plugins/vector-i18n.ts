@@ -1,4 +1,5 @@
 import { createI18n } from 'vue-i18n'
+import type { VectorI18n } from '#vector/app/utils/translate'
 import { bundledMessages, isRtl, pluralRule, rtlLanguages, vuetifyLocale } from '#vector/app/i18n'
 
 /**
@@ -47,7 +48,8 @@ export default defineNuxtPlugin({
         }
 
         nuxtApp.vueApp.use(i18n)
-        setVectorI18n(i18n as Parameters<typeof setVectorI18n>[0])
+        const vectorI18n = i18n as VectorI18n
+        setVectorI18n(vectorI18n)
         setFormatLocale(locale)
 
         if (import.meta.client) {
@@ -69,6 +71,6 @@ export default defineNuxtPlugin({
             }
         })
 
-        return { provide: { vectorI18n: i18n } }
+        return { provide: { vectorI18n } }
     },
 })

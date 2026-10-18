@@ -1,0 +1,81 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/*
+ * Recreates, migrates and seeds the databases of parallel
+ * mutation-testing workers 1..N (tests/worker-stores.php), the way the
+ * base databases are prepared: `kinetis migrate`, then `kinetis
+ * demo:seed`, under the worker's settings. They are scratch databases:
+ * each run drops what a previous one left, Vector's own tables included.
+ *
+ *     php bin/provision-test-workers 4
+ *
+ * The MySQL database is created, and granted to DB_USER, as root with
+ * MYSQL_ROOT_PASSWORD, by default DB_PASSWORD as in docker-compose.yml.
+ * The PostgreSQL databases are created by DB_ADMIN_USER and
+ * DB_SUPPORT_USER, which the postgres image makes superusers. The Redis
+ * databases are left as they are, like the base ones.
+ */
+
+$root = dirname(__DIR__);
+require $root . '/vendor/autoload.php';
+
+Kinetis\Config\EnvFile::safeLoad($root);
+
+$count = $argv[1] ?? '';
+
+if (preg_match('/^[1-7]$/', $count) !== 1) {
+    fwrite(STDERR, "Usage: php bin/provision-test-workers <workers, 1 to 7>\n");
+    exit(2);
+}
+
+$env = static fn (string $key, ?string $default = null): string => (string) (getenv($key) ?: $default ?? throw new RuntimeException("{$key} is not set."));
+
+$stores = (require $root . '/tests/worker-stores.php');
+$options = [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION];
+
+$mysql = new PDO(
+    "mysql:host={$env('DB_HOST')};port={$env('DB_PORT', '3306')}",
+    $env('MYSQL_ROOT_USER', 'root'),
+    $env('MYSQL_ROOT_PASSWORD', $env('DB_PASSWORD')),
+    $options,
+);
+$postgres = static fn (string $prefix): PDO => new PDO(
+    "pgsql:host={$env("{$prefix}_HOST")};port={$env("{$prefix}_PORT", '5432')};dbname=postgres",
+    $env("{$prefix}_USER"),
+    $env("{$prefix}_PASSWORD"),
+    $options,
+);
+$admin = $postgres('DB_ADMIN');
+$support = $postgres('DB_SUPPORT');
+
+// every worker's names are derived from the base settings before any is applied
+$workers = [];
+
+foreach (range(1, (int) $count) as $worker) {
+    $workers[$worker] = $stores((string) $worker);
+}
+
+foreach ($workers as $worker => $settings) {
+    fwrite(STDOUT, "Worker {$worker}: {$settings['DB_NAME']}, {$settings['DB_ADMIN_NAME']}, {$settings['DB_SUPPORT_NAME']}, Redis {$settings['REDIS_DATABASE']} and {$settings['REDIS_JOBS_DATABASE']}\n");
+
+    $mysql->exec("DROP DATABASE IF EXISTS `{$settings['DB_NAME']}`");
+    $mysql->exec("CREATE DATABASE `{$settings['DB_NAME']}`");
+    $mysql->exec("GRANT ALL PRIVILEGES ON `{$settings['DB_NAME']}`.* TO " . $mysql->quote($env('DB_USER')) . "@'%'");
+
+    foreach ([[$admin, $settings['DB_ADMIN_NAME'], 'DB_ADMIN_USER'], [$support, $settings['DB_SUPPORT_NAME'], 'DB_SUPPORT_USER']] as [$pdo, $name, $owner]) {
+        $pdo->exec("DROP DATABASE IF EXISTS \"{$name}\" WITH (FORCE)");
+        $pdo->exec("CREATE DATABASE \"{$name}\" OWNER \"{$env($owner)}\"");
+    }
+
+    foreach ([['migrate'], ['demo:seed']] as $command) {
+        $process = proc_open([PHP_BINARY, 'vendor/bin/kinetis', ...$command], [STDIN, STDOUT, STDERR], $pipes, $root, [...getenv(), ...$settings]);
+
+        if ($process === false || proc_close($process) !== 0) {
+            fwrite(STDERR, 'Worker ' . $worker . ': kinetis ' . implode(' ', $command) . " failed.\n");
+            exit(1);
+        }
+    }
+}

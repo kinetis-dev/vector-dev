@@ -18,6 +18,7 @@ A Nuxt application extends `@kinetis/vector-ui`, points
 at the API, and is generated as a static site:
 
 ```console
+pnpm nuxt dev         # development
 pnpm nuxt generate    # .output/public, for any web server
 ```
 
@@ -35,12 +36,38 @@ vendor/bin/kinetis vector:install
 publishes the bundle a released `kinetis/vector` package ships to
 `public/vector/ui` (`VECTOR_UI_DIR`). A source install has no bundle;
 the command says so and exits successfully, since the migrations and the
-API need none. Vector
-then answers `GET /vector/ui` and every deep link under it with the
-bundle's page and one inline script carrying the configuration: the API
-base, the login and logout URLs, the session's CSRF token, branding and
-extension URLs. An anonymous visitor is redirected to `VECTOR_LOGIN_URL`;
-until a bundle is published, the page answers `503`.
+API need none; the hosted shell is then served only when `VECTOR_UI_DIR`
+points at a separately built bundle. A released package's bundle is
+built with `NUXT_APP_BASE_URL=/vector/ui/`.
+
+The bundle carries a manifest, `vector-bundle.json`: the package and
+version that built it, the source commit, the descriptor version it
+speaks and the SHA-256 of every file. `vector:install` checks the bundle
+against it before writing anything, and refuses it with exit 1, one line
+naming the cause and the remedy, and no migration or file written, when:
+
+- the manifest is missing or malformed, or lists no `index.html`;
+- it was built for another package or descriptor version;
+- on a released package, it was built for another version;
+- a listed file is missing or changed, or a file is not listed.
+
+A `resources/dist` holding a manifest but no `index.html` is a damaged
+bundle, refused rather than treated as absent. On a released package,
+reinstall `kinetis/vector` to restore the bundle it shipped; in a
+checkout, rebuild it or delete it. `pnpm generate:hosted` builds the
+bundle into
+`packages/vector/resources/dist` with a development version,
+`dev-<short commit>`, which `vector:install` publishes and names; the
+release build passes `--version=<x.y.z>`, which must equal
+`kinetis/vector`'s version in `packages.manifest.json`.
+
+Vector's `ShellController` then answers `GET /vector/ui` and every deep
+link under it with the bundle's `index.html` plus one inline script,
+`window.__VECTOR__`, carrying the configuration: the API base, the base
+path, cookie mode, the login and logout URLs, the session's CSRF token,
+the response's script nonce, branding and extension URLs. An anonymous
+visitor is redirected to `VECTOR_LOGIN_URL`; until a bundle is
+published, the page answers `503`.
 
 To host your own build of the UI, generate it with
 `NUXT_APP_BASE_URL=/vector/ui/` and point `VECTOR_UI_DIR` at it.
@@ -48,11 +75,16 @@ To host your own build of the UI, generate it with
 ## Content Security Policy
 
 The hosted shell runs under a strict policy with no exceptions. Every
-file is same-origin, every inline script carries the response's nonce,
-Vuetify's style element carries it too, and the icon font is bundled.
+bundle file is same-origin, every inline script tag carries the
+response's nonce (the bundle's own, the config script, the deployer's
+`VECTOR_SHELL_HEAD`), Vuetify's runtime style element carries it too,
+and the icon font is bundled.
 
-Put `{nonce}` in the framework's `SECURITY_CSP` and the shell uses the
-nonce of each request:
+The nonce is the application's. Put `{nonce}` in the framework's
+`SECURITY_CSP` and its security headers put a fresh nonce on every
+request, the shell writes that nonce on its tags, and the application's
+one policy covers the shell like any other page. The demo's
+`.env.example` ships:
 
 ```text
 SECURITY_CSP="default-src 'self'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'nonce-{nonce}'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
@@ -63,10 +95,12 @@ nonce, and the admin shows images it fetches as `data:` URLs, which
 `img-src 'self' data:` admits (a `blob:` URL would need `blob:` in the
 policy).
 
-`VECTOR_SHELL_CSP` gives the shell a policy of its own instead, with the
-same `{nonce}` placeholder. `VECTOR_SHELL_HEAD` appends a raw fragment
-before `</head>` — the deployer's way, and the only way, to add script
-to the page.
+`VECTOR_SHELL_CSP` gives the shell a policy of its own instead, sent in
+place of the application's, with `{nonce}` replaced by the same nonce;
+set it only when the shell needs a different policy. With neither set,
+the page draws a nonce of its own and carries no policy.
+`VECTOR_SHELL_HEAD` appends a raw fragment before `</head>` — deployment
+configuration, and the only way to add script to the page.
 
 ## Production
 

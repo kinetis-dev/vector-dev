@@ -9,7 +9,8 @@ import os
 project = "Kinetis Vector"
 copyright = "2026, Alon Noy"
 author = "Alon Noy"
-release = "0.1.0-dev"
+# No release or version: kinetis/vector and @kinetis/vector-ui version
+# independently (packages.manifest.json), so no one number describes the docs.
 
 extensions = [
     "myst_parser",

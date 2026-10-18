@@ -1,0 +1,219 @@
+name: Infection
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/vector/**'
+      - 'demo/backend/**'
+      - 'demo/docker/**'
+      - '.github/scripts/php'
+      - '.github/workflows/infection.yml'
+  pull_request:
+    paths:
+      - 'packages/vector/**'
+      - 'demo/backend/**'
+      - 'demo/docker/**'
+      - '.github/scripts/php'
+      - '.github/workflows/infection.yml'
+
+permissions:
+  contents: read
+
+# One run per branch at a time: a superseded PR push cancels the older
+# run outright; on main nothing is cancelled, but stacked pushes queue
+# as at most one pending run instead of piling up behind each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  # See ci.yml: the job's own token for what the Composer cache misses.
+  COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ secrets.GITHUB_TOKEN }}"}}'
+  # ResourceCompiler.php alone is too many mutants for one job, and
+  # --filter goes no finer than a file, so its two shards split it by
+  # mutator: one runs only these, the other every mutator of the config
+  # but these. Measured 2026-10-18: 295 of the file's 589 mutants.
+  SPLIT_MUTATORS: Identical,MatchArmRemoval,LogicalNot,LogicalAnd,LogicalAndNegation,LogicalAndAllSubExprNegation,LogicalAndSingleSubExprNegation,LogicalOr,LogicalOrNegation,LogicalOrAllSubExprNegation,LogicalOrSingleSubExprNegation
+
+jobs:
+  infection:
+    name: Mutation testing (${{ matrix.shard.name }})
+    runs-on: ubuntu-latest
+    # The mutants are split by source file over parallel jobs, each with
+    # four threads over the PHPUnit tests that exercise its files and
+    # each worker on databases of its own (see infection.vector.json5).
+    # A runner has four CPUs, so more threads in one job would only
+    # queue; a shard of its own is what makes the run shorter.
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # files is Infection's --filter: bare file names, unique under
+        # the config's source directories. Together the shards cover
+        # every file infection.vector.json5 mutates; a file added there
+        # needs a shard here. mutators is all, split (only
+        # SPLIT_MUTATORS) or rest (all but SPLIT_MUTATORS). Each floor
+        # applies to its own shard.
+        # Each floor sits about two points under its shard's covered MSI
+        # as measured 2026-10-18 (run 39166062216, identical over two
+        # attempts): 64.7%, 65.3%, 47.7% and 51.0%. Mutation coverage is
+        # 100%, so MSI and covered MSI coincide.
+        shard:
+          - { name: ResourceCompiler logic and identity, files: ResourceCompiler.php, mutators: split, minMsi: 62, minCoveredMsi: 62 }
+          - { name: ResourceCompiler other mutators, files: ResourceCompiler.php, mutators: rest, minMsi: 63, minCoveredMsi: 63 }
+          - { name: ResourceService, files: ResourceService.php, mutators: all, minMsi: 45, minCoveredMsi: 45 }
+          - { name: ListRequest and the other compilers, files: 'ListRequest.php,XlsxWriter.php,LayoutCompiler.php,SettingsCompiler.php,WidgetCompiler.php', mutators: all, minMsi: 49, minCoveredMsi: 49 }
+    # The same services as ci.yml's PHP job: the mutated tests boot the
+    # demo against them, the initial run on the base databases and each
+    # Infection worker on its own (demo/backend/tests/worker-stores.php).
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: vector
+          MYSQL_USER: vector
+          MYSQL_PASSWORD: vector
+          MYSQL_ROOT_PASSWORD: vector
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pvector"
+          --health-interval=5s --health-timeout=3s --health-retries=20
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: vector_admin
+          POSTGRES_USER: vector
+          POSTGRES_PASSWORD: vector
+        options: >-
+          --health-cmd="pg_isready -U vector -d vector_admin"
+          --health-interval=5s --health-timeout=3s --health-retries=20
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=3s --health-retries=20
+    env:
+      VECTOR_PHP_IMAGE: vector-php:8.4
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Decide whether the mutated units changed
+        # A pull request skips the run unless it changed the mutated
+        # sources, their configuration or this workflow, relative to the
+        # base branch; the paths above only decide whether the workflow
+        # starts. A selected run mutates the whole set: the floors are
+        # measured against all of it and say nothing about a subset
+        # picked from a diff. The two-dot diff against the base tip is
+        # exact because the PR checkout is the merge commit onto that
+        # tip. Every push to main runs in full.
+        id: scope
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            git fetch --no-tags --depth=1 origin "$BASE_REF"
+            if ! git diff --diff-filter=AM --name-only "origin/$BASE_REF" -- \
+                packages/vector/src/Registry packages/vector/src/Query \
+                demo/backend/infection.vector.json5 .github/workflows/infection.yml | grep -q .; then
+              echo "Registry, Query and the mutation setup are unchanged; skipping."
+              echo "run=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "run=true" >> "$GITHUB_OUTPUT"
+
+      - name: Join the service network
+        if: steps.scope.outputs.run == 'true'
+        # .github/scripts/php runs on the network GitHub created for this
+        # job's services, where they answer to their keys as host names.
+        run: echo "VECTOR_CI_NETWORK=${{ job.services.mysql.network }}" >> "$GITHUB_ENV"
+
+      - name: Cache Composer downloads
+        if: steps.scope.outputs.run == 'true'
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/composer-cache
+          key: composer-${{ hashFiles('demo/backend/composer.lock') }}
+          restore-keys: composer-
+
+      - name: Build the demo's PHP image
+        if: steps.scope.outputs.run == 'true'
+        # pcov, Infection's coverage driver, is already part of the
+        # demo's extension recipe (demo/docker/php-extensions.sh), so
+        # nothing is installed on top of the image the stack runs.
+        run: docker build -q --build-arg PHP_VERSION=8.4 --target fpm -t "$VECTOR_PHP_IMAGE" -f demo/docker/Dockerfile demo
+
+      - name: Install dependencies
+        if: steps.scope.outputs.run == 'true'
+        run: .github/scripts/php composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare the demo databases
+        if: steps.scope.outputs.run == 'true'
+        # As in ci.yml's PHP job.
+        run: |
+          cp demo/backend/.env.example demo/backend/.env
+          secret="$(openssl rand -hex 32)"
+          echo "::add-mask::$secret"
+          echo "JWT_SECRET=$secret" >> "$GITHUB_ENV"
+          docker exec "${{ job.services.postgres.id }}" psql -U vector -d vector_admin -c 'CREATE DATABASE vector_support OWNER vector'
+
+      - name: Migrate and seed
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          .github/scripts/php vendor/bin/kinetis migrate
+          .github/scripts/php vendor/bin/kinetis demo:seed
+
+      - name: Provision the Infection workers' databases
+        if: steps.scope.outputs.run == 'true'
+        # One MySQL and two PostgreSQL databases per worker, migrated and
+        # seeded like the base ones above, and two Redis databases; four
+        # workers, matching composer infection:vector's --threads=4.
+        run: .github/scripts/php composer infection:workers
+
+      - name: Infection
+        if: steps.scope.outputs.run == 'true'
+        # The shard's files and floors override infection.vector.json5's
+        # minMsi and minCoveredMsi, which stay the floors of a whole run.
+        # This step does not set pcov.directory, unlike
+        # sonarqube.yml: the image leaves that ini setting empty, and
+        # Infection then sets it for its initial run to the common base
+        # of the config's source directories, packages/vector/src.
+        # --mutators replaces the config's mutators rather than narrowing
+        # them, so the rest shard runs a copy of the config with
+        # SPLIT_MUTATORS switched off: a mutator in neither list still
+        # runs there. A later --configuration overrides the script's.
+        env:
+          SHARD_FILES: ${{ matrix.shard.files }}
+          SHARD_MUTATORS: ${{ matrix.shard.mutators }}
+          MIN_MSI: ${{ matrix.shard.minMsi }}
+          MIN_COVERED_MSI: ${{ matrix.shard.minCoveredMsi }}
+        run: |
+          args=("--filter=$SHARD_FILES" "--min-msi=$MIN_MSI" "--min-covered-msi=$MIN_COVERED_MSI")
+          case "$SHARD_MUTATORS" in
+            all) ;;
+            split) args+=("--mutators=$SPLIT_MUTATORS") ;;
+            rest)
+              # After @default: a false entry unsets only what came before.
+              off="$(printf ', "%s": false' ${SPLIT_MUTATORS//,/ })"
+              sed "s/\"mutators\": { \"@default\": true }/\"mutators\": { \"@default\": true${off} }/" \
+                demo/backend/infection.vector.json5 > demo/backend/infection.vector.rest.json5
+              grep -q '"Identical": false' demo/backend/infection.vector.rest.json5
+              args+=(--configuration=infection.vector.rest.json5)
+              ;;
+            *) echo "Unknown mutators: $SHARD_MUTATORS"; exit 1 ;;
+          esac
+          .github/scripts/php composer infection:vector -- "${args[@]}"
+
+      - name: Infection report
+        if: always() && steps.scope.outputs.run == 'true'
+        run: cat demo/backend/infection.vector.summary.log 2>/dev/null || true
+
+      # The full log lists every escaped mutant, so two runs of a shard can
+      # be diffed for mutants whose kill depends on the run.
+      - name: Upload the Infection log
+        if: always() && steps.scope.outputs.run == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: infection-log-${{ strategy.job-index }}
+          path: demo/backend/infection.vector*.log
+          if-no-files-found: ignore

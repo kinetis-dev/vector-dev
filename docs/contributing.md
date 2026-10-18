@@ -68,6 +68,17 @@ request isolation across interleaved principals on the same threads
 `docker compose restart frankenphp` after a PHP change, before checking
 it.
 
+The UI layer's Vitest suite is in `packages/vector-ui/test/nuxt/`. Each
+file runs inside a Nuxt app built from the layer (`@nuxt/test-utils`,
+happy-dom), so auto-imports, app config, the i18n plugin, Vuetify and
+Pinia behave as they do in the admin. It covers the formatters and
+client rules, the API client in both authentication modes, the auth
+store, the schema and resource clients, and the generated form
+(`VxResourceForm`) with its 422 mapping. API calls go to endpoints the
+test registers (`test/nuxt/endpoints.ts`); nothing needs a server.
+`pnpm typecheck` runs `vue-tsc` in strict mode over the layer, its tests
+included.
+
 `bin/benchmark` replaces the demo data when given `--seed=N` and needs
 the stack to itself. Run it alone, then restore the stock data set
 before PHPUnit:
@@ -118,6 +129,7 @@ the plain run enforces it.
 ## Mutation testing
 
 ```console
+docker compose exec app composer infection:workers  # the workers' databases, first
 docker compose exec app composer infection          # the demo's src/, about 70 minutes
 docker compose exec app composer infection:vector   # Vector's Registry and Query
 ```
@@ -125,19 +137,30 @@ docker compose exec app composer infection:vector   # Vector's Registry and Quer
 Infection runs the PHPUnit suite against each mutant and fails below the
 `minMsi` and `minCoveredMsi` floors in `backend/infection.json5` and
 `backend/infection.vector.json5`. Each config records the scores the
-floors were set from. Both runs are slow and write to the seeded
-databases, so run them one at a time, never beside PHPUnit or the
-end-to-end suite, and on one thread. A killed mutant stops its test
-before the test puts its rows back, so afterwards expect missing order
+floors were set from.
+
+The mutated tests write to the databases, so each Infection worker runs
+on stores of its own. Infection numbers its worker processes in
+`TEST_TOKEN`, and when that is set `backend/tests/bootstrap.php` points
+worker N at the MySQL database `vector_N`, the PostgreSQL databases
+`vector_admin_N` and `vector_support_N`, Redis databases 2N (the cache)
+and 2N+1 (the jobs queue) and a temporary directory of its own
+(`backend/tests/worker-stores.php`). `composer infection:workers` drops,
+recreates, migrates and seeds those databases for workers 1 to 4, as root
+on MySQL; run it before each mutation-testing run. Without
+`TEST_TOKEN` (PHPUnit on its own, and Infection's initial run of the
+suite) the tests use the base databases as before.
+
+`infection:vector` runs four workers.
+`infection` runs one, on worker 1's stores: its whole suite includes
+tests that share state outside them. Neither run touches the base
+databases beyond what PHPUnit itself does, but both still need them
+seeded, so run them one at a time, never beside PHPUnit or the
+end-to-end suite. A killed mutant stops its test before the test puts its
+rows back, so afterwards a worker's databases can hold missing order
 lines, changed product prices and stock, a leftover `hosted-test` tag,
 and, in Vector's own tables, a store `lowStockThreshold` of 0 and saved
-product views that make later runs of `ActionsAndSettingsTest` fail.
-Reseed before the next PHPUnit run; the reseed leaves Vector's tables
-alone, so put those two back by hand as well:
-
-```console
-docker compose exec --user www-data app vendor/bin/kinetis demo:seed --fresh
-```
+product views; `composer infection:workers` starts them over.
 
 The reports go to `backend/infection.log` and
 `backend/infection.vector.log`, each with a `.summary.log` beside it.
@@ -149,6 +172,38 @@ end-to-end suite. One flat config at the repository root,
 needs no `nuxt prepare`. Each package also has its own `pnpm lint`
 against that config. TypeScript is pinned to `~6.0.3` because
 typescript-eslint supports TypeScript only below 6.1.
+
+## Continuous integration
+
+The workflows in `.github/workflows/` run on pushes to `main` and on
+pull requests, each for the paths it covers:
+
+- `ci.yml` — on PHP 8.4 and 8.5, in the demo's own PHP image with
+  MySQL, PostgreSQL and Redis as services: `composer validate --strict`
+  for both `composer.json` files, `composer audit`, the PHPUnit suite
+  (both placements of Vector's tables, as above), PHPStan and both Psalm
+  runs; `pnpm lint`, `pnpm typecheck`, `pnpm test` and
+  `pnpm test:scripts`; and the strict build of this manual.
+- `monorepo-validate.yml` — `node scripts/validate-monorepo.mjs`: no
+  `App\` reference under `packages/`.
+- `versions.yml` — `node scripts/validate-versions.mjs`: a pull request
+  that changes files under `packages/vector` bumps `vector` in
+  `packages.manifest.json` by one step, with `node scripts/bump.mjs`. One
+  that changes files under `packages/vector-ui` bumps both `vector-ui`
+  and `vector`, since the hosted bundle built from the UI ships inside
+  `kinetis/vector`; see {doc}`releasing`.
+- `infection.yml` — `composer infection:workers`, then
+  `composer infection:vector`, when Vector's Registry or Query or the
+  mutation setup changes; the mutated files are split over three
+  parallel jobs, each passing `--filter` and floors of its own.
+- `sonarqube.yml` — the PHPUnit suite under pcov, its coverage of
+  `packages/vector/src` reported to SonarQube Cloud with its quality
+  gate.
+- `semgrep.yml` — Semgrep SAST; `.semgrepignore` lists the reviewed
+  false positives.
+
+`deploy-docs.yml` publishes this manual to `kinetis.dev/vector/docs/`
+when `docs/` changes on `main`.
 
 ## See also
 

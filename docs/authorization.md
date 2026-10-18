@@ -39,7 +39,17 @@ A denial with a message shows that message to the user.
 | `attach`, `detach` | Adding and removing one record in a many-to-many; both follow `update` unless overridden. |
 | `setDefaultView` | Making a shared view everyone's default. |
 
-A resource without a policy allows everything to every admitted user.
+A resource without a policy uses `AllowAllPolicy`: every user the
+access policy admits may do everything.
+
+## Listing and reaching
+
+A user `viewAny()` refuses cannot reach a record by identifier either:
+show, audit, files, related lists and writes all answer `403`, as the
+list does. A relation value — a belongs-to choice, a many-to-many list —
+must name a record the target resource's `scope()` lists for the
+writer; one outside it answers `not_found`, the same as one that does
+not exist.
 
 ## Row scope
 
@@ -58,8 +68,8 @@ public function scope(Query $query, CurrentUserInterface $user): Query
 
 `viewField($user, $field)` hides a field from a user completely: it
 leaves their descriptor, every record, the audit trail, exports and MCP
-results, and a filter, sort, column or written value naming it is
-refused as unknown.
+results, and a filter, sort, grouping, column or written value naming
+it is refused as unknown. Search no longer reaches it.
 
 ```php
 public function viewField(CurrentUserInterface $user, string $field): bool
@@ -71,6 +81,25 @@ public function viewField(CurrentUserInterface $user, string $field): bool
 The primary key cannot be hidden; a hidden title field falls back to
 the key. Hiding a field that a new record requires makes creating
 impossible for that user, and the descriptor says so.
+
+## Membership
+
+`attach($user, $record, $relation, $related)` and `detach(...)` decide
+adding and removing one record in a many-to-many relation; both follow
+`update` unless overridden. They decide the
+`POST …/{id}/{relation}/attach` and `…/detach` endpoints the UI's
+relation panels use, and an update that writes the whole list: every id
+it adds is an attach, every id it drops a detach, and one refusal
+refuses the update.
+
+## Everyone's default view
+
+A saved view that is shared can also be flagged `resourceDefault`. The
+list then opens with it for every user who has no default view of their
+own. A resource has at most one such view: flagging another view clears
+the first. `setDefaultView($user)` decides who may set the flag, or save
+a view that keeps it. Anyone may drop it, and the schema publishes the
+answer as `permissions.setDefaultView`.
 
 ## Per-record permissions
 

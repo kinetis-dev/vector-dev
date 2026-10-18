@@ -10,6 +10,47 @@ use Kinetis\QueryBuilder\Query;
 /** Actions, bulk selections, saved views, preferences and settings. */
 final class ActionsAndSettingsTest extends VectorTestCase
 {
+    /** The seeded admin's preferences these tests set, and every one of the other admin's, whose list they assert empty. */
+    private const array PREFERENCES = ['1' => ['columns.products', 'density'], '42' => null];
+
+    /** @var array{settings: list<array<string, mixed>>, views: list<array<string, mixed>>, preferences: list<array<string, mixed>>} */
+    private array $aside = ['settings' => [], 'views' => [], 'preferences' => []];
+
+    /**
+     * A test that fails midway leaves its branding, saved view or
+     * preferences behind, and under mutation testing every later mutant
+     * on that worker would then fail on them rather than on what it
+     * changed. So each test starts from none of them, and what was there
+     * is put back afterwards, as VectorTestCase does for the Languages.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->aside['settings'] = $this->vectorQuery()->table('vector_settings')->where('group', '=', 'branding')->get();
+        $this->aside['views'] = $this->vectorQuery()->table('vector_views')->where('resource', '=', 'products')->get();
+        $this->aside['preferences'] = [];
+
+        foreach (self::PREFERENCES as $owner => $keys) {
+            $this->aside['preferences'] = [...$this->aside['preferences'], ...$this->preferences((string) $owner, $keys)->get()];
+        }
+
+        $this->clearAside();
+    }
+
+    protected function tearDown(): void
+    {
+        $this->clearAside();
+
+        foreach ([['vector_settings', 'settings'], ['vector_views', 'views'], ['vector_preferences', 'preferences']] as [$table, $key]) {
+            if ($this->aside[$key] !== []) {
+                $this->vectorQuery()->table($table)->insert($this->aside[$key]);
+            }
+        }
+
+        parent::tearDown();
+    }
+
     public function testTheDescriptorPublishesActionsAndTheShowPageFiltersThemPerRecord(): void
     {
         $schema = $this->client->get('/vector/schema/products', headers: $this->adminHeaders())->assertOk()->json();
@@ -37,8 +78,8 @@ final class ActionsAndSettingsTest extends VectorTestCase
         self::assertIsArray($draft);
         $id = (int) $draft['id'];
 
-        // every adjustment below lands on draft products — put every one of them back afterwards
-        $touched = (new Query($link))->table('products')->select('id', 'stock')->where('status', '=', 'draft')->get(); // a superset of what q matches
+        // every adjustment below lands on draft products — put every product back afterwards, should a broken filter widen it
+        $touched = (new Query($link))->table('products')->select('id', 'stock')->get();
 
         try {
             $this->client->post('/vector/r/products/actions/adjust-stock', body: ['ids' => [$id], 'fields' => ['delta' => 5, 'note' => 'restock']], headers: $this->adminHeaders())
@@ -81,7 +122,20 @@ final class ActionsAndSettingsTest extends VectorTestCase
         $archived = (new Query($link))->table('products')->select('id')->where('status', '=', 'archived')->orderBy('id', 'ASC')->first();
         self::assertIsArray($archived);
         $this->client->post('/vector/r/products/actions/archive-products', body: ['ids' => [(int) $archived['id']]], headers: $this->adminHeaders())->assertStatus(403);
-        $this->client->post('/vector/r/order-lines/batch', body: ['action' => 'delete', 'all' => ['filter' => []]], headers: $this->adminHeaders())->assertStatus(403);
+
+        // the seeded order lines outnumber the bulk limit, which is what refuses this; deleted, every later run would pass it
+        $lines = (new Query($link))->table('order_lines')->get();
+
+        try {
+            $this->client->post('/vector/r/order-lines/batch', body: ['action' => 'delete', 'all' => ['filter' => []]], headers: $this->adminHeaders())->assertStatus(403);
+        } finally {
+            $left = array_map('intval', (new Query($link))->table('order_lines')->pluck('id'));
+            $gone = array_values(array_filter($lines, static fn (array $line): bool => !in_array((int) $line['id'], $left, true)));
+
+            if ($gone !== []) {
+                (new Query($link))->table('order_lines')->insert($gone);
+            }
+        }
 
         $events = $this->vectorQuery()->table('vector_action_events')->where('action', '=', 'action:adjust-stock')->count();
         self::assertGreaterThanOrEqual(2, $events);
@@ -167,6 +221,24 @@ final class ActionsAndSettingsTest extends VectorTestCase
 
         $this->client->get('/vector/settings/nope', headers: $this->adminHeaders())->assertNotFound();
         $this->vectorQuery()->table('vector_settings')->where('group', '=', 'branding')->delete();
+    }
+
+    private function clearAside(): void
+    {
+        $this->vectorQuery()->table('vector_settings')->where('group', '=', 'branding')->delete();
+        $this->vectorQuery()->table('vector_views')->where('resource', '=', 'products')->delete();
+
+        foreach (self::PREFERENCES as $owner => $keys) {
+            $this->preferences((string) $owner, $keys)->delete();
+        }
+    }
+
+    /** @param list<string>|null $keys null: every one of the owner's */
+    private function preferences(string $owner, ?array $keys): Query
+    {
+        $query = $this->vectorQuery()->table('vector_preferences')->where('owner_id', '=', $owner);
+
+        return $keys === null ? $query : $query->whereIn('key', $keys);
     }
 
     private function link(): MysqlLink

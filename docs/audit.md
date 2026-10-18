@@ -17,14 +17,16 @@ Action runs are also logged, once per run, in `vector_action_events`.
 
 - each field of the entry the user may see and edit gets its earlier
   value;
-- the write goes through the update path: policy, validation, conditions
-  and hooks all apply;
+- the write goes through the update path: policy, validation,
+  conditions, dependent choices and hooks all apply;
 - it is pinned to the record's current version, and recorded as a
   `revert`.
 
 If any of those fields changed since the entry, the revert answers `409`
 and writes nothing, so it never overwrites a later edit. Collections and
-read-only fields are left alone; other events cannot be reverted.
+read-only fields are left alone. Other events (`create`, `delete`,
+`attach`, actions) cannot be reverted and are refused with
+`not_revertable`.
 
 ## Impersonation
 

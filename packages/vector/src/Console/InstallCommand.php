@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Kinetis\Vector\Console;
 
+use Composer\InstalledVersions;
 use Kinetis\Config\Config;
 use Kinetis\Console\Attributes\Command;
 use Kinetis\Console\CommandArguments;
 use Kinetis\Runtime\ProjectRoot;
 use Kinetis\Vector\Database\VectorDatabase;
+use Kinetis\Vector\Ui\HostedBundle;
 use Kinetis\Vector\Ui\VectorUi;
 
 /**
@@ -26,12 +28,32 @@ use Kinetis\Vector\Ui\VectorUi;
  * `mysql` or `pgsql`. Nothing is overwritten; run `kinetis migrate`
  * afterwards. A named connection also needs `VECTOR_DB_CONNECTION=<name>`
  * in the application's configuration, which this command prints.
+ *
+ * The hosted UI is published only when `resources/dist` matches its
+ * manifest, `vector-bundle.json` (see HostedBundle): a bundle another
+ * version or descriptor contract built, or one whose files changed after
+ * the build, is refused with exit 1 before any migration is published,
+ * and nothing is copied.
  */
 final readonly class InstallCommand
 {
 
     #[Command('vector:install', description: "Publishes Vector's migrations and hosted UI. --connection=<name> puts Vector's tables on a named connection.", bootstrap: false)]
     public function install(CommandArguments $arguments): int
+    {
+        return $this->installFrom($arguments, dirname(__DIR__, 2) . '/resources/dist', self::release(self::installedVersion()));
+    }
+
+    /**
+     * The command, with the bundle directory and the installed release
+     * given rather than read from the package and from Composer.
+     *
+     * @internal public so tests can install a fixture bundle as a release
+     *           install would; install() is the command
+     *
+     * @param ?string $release the installed release, null for a dev install
+     */
+    public function installFrom(CommandArguments $arguments, string $dist, ?string $release): int
     {
         $root = ProjectRoot::detect(dirname(__DIR__));
         $config = Config::fromEnvironment();
@@ -58,6 +80,20 @@ final readonly class InstallCommand
                 : "{$key} is \"{$dialect}\"; Vector supports mysql and pgsql.\n");
 
             return 1;
+        }
+
+        // The bundle is verified before anything is written, so a refused
+        // one leaves no partial install behind.
+        $bundle = null;
+
+        if (is_file($dist . '/index.html') || is_file($dist . '/' . HostedBundle::MANIFEST)) {
+            try {
+                $bundle = HostedBundle::verify($dist, $release);
+            } catch (\UnexpectedValueException $e) {
+                fwrite(STDERR, $e->getMessage() . "\n");
+
+                return 1;
+            }
         }
 
         $migrations = $root . '/migrations';
@@ -114,7 +150,7 @@ final readonly class InstallCommand
                 : "Set VECTOR_DB_CONNECTION={$connection} in the application's configuration so Vector uses these tables.\n";
         }
 
-        return $this->publishUi(dirname(__DIR__, 2) . '/resources/dist', $root . '/public' . VectorUi::PATH);
+        return $this->publishUi($dist, $root . '/public' . VectorUi::PATH, $bundle, $release);
     }
 
     /**
@@ -143,16 +179,52 @@ final readonly class InstallCommand
     }
 
     /**
+     * The installed kinetis/vector version as Composer records it, or
+     * null when Composer does not know the package as installed.
+     */
+    private static function installedVersion(): ?string
+    {
+        try {
+            return InstalledVersions::getPrettyVersion(HostedBundle::PACKAGE);
+        } catch (\OutOfBoundsException) {
+            return null;
+        }
+    }
+
+    /**
+     * The release an installed version names, without its leading "v",
+     * or null for a dev install — a path repository or a branch — whose
+     * bundle is whatever the last local build left.
+     *
+     * @internal public so tests can cover the mapping; install() is the command
+     */
+    public static function release(?string $prettyVersion): ?string
+    {
+        if ($prettyVersion === null || str_contains($prettyVersion, 'dev')) {
+            return null;
+        }
+
+        return str_starts_with($prettyVersion, 'v') ? substr($prettyVersion, 1) : $prettyVersion;
+    }
+
+    /**
      * Copies the built admin bundle into the web root, replacing what an
      * earlier install left there, so the shell always references files
-     * that exist.
+     * that exist. $bundle is the verified bundle in $dist, null when
+     * there is none; the manifest itself stays out of the web root.
+     *
+     * @param ?string $release the installed release, null for a dev install
      */
-    private function publishUi(string $dist, string $target): int
+    private function publishUi(string $dist, string $target, ?HostedBundle $bundle, ?string $release): int
     {
-        if (!is_file($dist . '/index.html')) {
+        if ($bundle === null) {
             echo "No hosted admin bundle in {$dist}: a source install of kinetis/vector has none; released packages ship it. The hosted admin stays unpublished unless VECTOR_UI_DIR points at a separately built bundle. Migrations and the API work without it.\n";
 
             return 0;
+        }
+
+        if ($release === null) {
+            echo "Publishing a development build of the admin UI: version {$bundle->version}, built from {$bundle->source}.\n";
         }
 
         $files = 0;
@@ -160,6 +232,11 @@ final readonly class InstallCommand
 
         foreach ($iterator as $item) {
             $relative = substr((string) $item->getPathname(), strlen($dist) + 1);
+
+            if ($relative === HostedBundle::MANIFEST) {
+                continue;
+            }
+
             $destination = $target . '/' . $relative;
 
             if ($item->isDir()) {

@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Runs one command in demo/backend inside the demo's own PHP image, as
+# the CI, Infection and SonarQube workflows do:
+#
+#     .github/scripts/php vendor/bin/phpunit
+#
+# The image is demo/docker/Dockerfile's `fpm` target, built by the
+# calling job as $VECTOR_PHP_IMAGE, so CI runs on exactly the extensions
+# the stack runs on (pdo_mysql, mysqli, pdo_pgsql, pgsql, sockets, intl,
+# zip, pcov, uv, event) rather than a second list kept in step by hand.
+#
+# The repository is mounted at /workspace, as docker-compose.yml mounts
+# it: Composer installs kinetis/vector from the path repository as a
+# relative symlink to ../../packages/vector, which resolves only with the
+# whole checkout mounted. The image's entrypoint (a composer install,
+# the stack's session and storage directories) is skipped; each job runs
+# its own install step.
+#
+# The container joins the job's service network, $VECTOR_CI_NETWORK,
+# where GitHub names each service container after its key — mysql,
+# postgres, redis — the host names docker-compose.yml gives the same
+# services. So backend/.env.example's hosts resolve as they do in the
+# stack, and so do the tests that name a server themselves. Uploads go
+# to a scratch directory, the stack's storage volume being absent.
+# JWT_SECRET and VECTOR_TEST_DB_CONNECTION pass through only when the
+# job sets them.
+#
+# GIT_CONFIG_* works around "detected dubious ownership": the container
+# runs as root, the checkout belongs to the runner's user, and Composer
+# calls git for the path repository.
+set -euo pipefail
+
+exec docker run --rm \
+    --network "${VECTOR_CI_NETWORK:?the job names its service network first}" \
+    -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
+    -e COMPOSER_AUTH -e COMPOSER_CACHE_DIR=/tmp/composer-cache \
+    -e JWT_SECRET -e VECTOR_TEST_DB_CONNECTION \
+    -e FILESYSTEM_ROOT=/tmp/vector-storage \
+    -v "$GITHUB_WORKSPACE":/workspace \
+    -v "$RUNNER_TEMP/composer-cache":/tmp/composer-cache \
+    -w /workspace/demo/backend \
+    --entrypoint "" \
+    "${VECTOR_PHP_IMAGE:?the job builds the PHP image first}" "$@"

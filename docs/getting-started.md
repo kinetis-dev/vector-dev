@@ -15,9 +15,16 @@ vendor/bin/kinetis migrate
 
 `vector:install` publishes Vector's migrations — settings, preferences,
 saved views, the action log, the audit trail, jobs and notifications —
-for MySQL or PostgreSQL, as your connection's `DB_CONNECTION` says. It
-also publishes the hosted UI bundle when the package ships one. It is
-idempotent: run it again after every upgrade, then `migrate`.
+for MySQL or PostgreSQL, as your connection's `DB_CONNECTION` says
+(`mysql` or `pgsql`). There is one migration per table, each under its
+own timestamp: `vector_settings`, `vector_preferences`, `vector_views`,
+`vector_action_events`, `vector_audit`, `vector_jobs` and
+`vector_notifications`. It also copies the hosted UI bundle a released
+package ships into `public/vector/ui`; an install from source has none,
+and the command says so and still succeeds ({doc}`deployment`). It is
+idempotent. A later change to Vector's tables ships as a new migration
+with a later timestamp, so run it again after every upgrade, then
+`migrate`.
 
 To keep Vector's tables on a database of their own, see
 {doc}`databases`.

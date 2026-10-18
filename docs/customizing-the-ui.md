@@ -8,7 +8,10 @@ does the job.
 2. **Runtime extensions.** ES modules the admin loads at startup, adding
    cells, inputs, widget renderers and pages. JavaScript, no rebuild.
 3. **Your own build.** A Nuxt application extending the layer,
-   overriding any of its files.
+   overriding any of its files (Nuxt layer semantics: the same path in
+   your application wins), registering global components named in
+   `app.config`, and generating its own bundle; in hosted mode, point
+   `VECTOR_UI_DIR` at it ({doc}`deployment`).
 
 ## Application config
 
@@ -32,8 +35,10 @@ export default defineAppConfig({
 ## Cells, inputs and widget renderers
 
 Three registries decide what renders a value: **cells** (lists and
-record pages), **inputs** (forms) and **widget renderers**. For a field,
-the lookup order is:
+record pages, the layer's `VxCell/*`), **inputs** (forms, `VxInput/*`)
+and **widget renderers** (`VxWidget/*`). The `app.config` overrides are
+globally registered component names, keyed by field type, by a field's
+`component` name or by widget type. For a field, the lookup order is:
 
 1. an `app.config` override by the field's `component('name')`;
 2. a runtime extension registered under that name;
@@ -70,6 +75,9 @@ export default function ({ vue, vuetify, defineCell }) {
 Number::make('stock')->component('stock-level'),
 ```
 
+An extension is served under `public/`, same-origin or CORS-enabled. The
+demo's `public/vector-extensions/stock-level.js` is this one.
+
 `window.Vector` also offers `defineInput`, `defineWidget`, `definePage`,
 `defineMessages`, `defineRichTextExtension`, `api` (the admin's API
 client, with its credentials), `notify`, `navigate`, `t` (the admin's
@@ -96,7 +104,10 @@ export default function ({ tiptap, defineRichTextExtension }) {
 $app->instance(Document::class, (new Document())->extend(new NodeSpec('callout', ['tone'])));
 ```
 
-A field then lists `callout` in its `features()`. The server accepts the
+Bind the extended `Document` in `bootstrap.php`. A `NodeSpec` may name
+its own HTML renderer for `Document::toHtml()`
+(`new NodeSpec('callout', ['tone'], renderer: CalloutNode::class)`). A
+field then lists `callout` in its `features()`. The server accepts the
 node only once registered, so both sides agree.
 
 ## Custom pages
@@ -119,11 +130,30 @@ export default function ({ vue, definePage }) {
 }
 ```
 
-`group` places the page under a menu section; without one it goes under
-*Pages*. The component receives `vector`, with `api`, `notify` and
-`navigate`. An endpoint the page calls is your own code: put it in the
-`vector` middleware group (`#[Middleware('@vector')]`) and the admin's
-authentication and access policy apply to it.
+`group` places the page under a menu section (a resource group's name,
+or its own); without one it goes under *Pages*. The component receives
+one prop, `vector`, with `api` (the admin's API client, carrying the
+bearer token or the session cookie and CSRF token),
+`notify.success/error` and `navigate(path)`. An application extending
+the layer can instead list the page in `app.config` `vector.pages`,
+naming a component it registered globally:
+`{ stock: { title: 'Stock', icon: 'mdi-warehouse', component: 'StockPage' } }`.
+
+An endpoint the page calls is your own code: put it in the `vector`
+middleware group (`#[Middleware('@vector')]`) and the admin's
+authentication and access policy apply to it as to Vector's own
+routes.
+
+## Forms in your own pages
+
+`VxResourceForm` is the generated form. It tracks unsaved changes
+(`dirty`, exposed with `reset()`), and with `variants` — as the create
+and edit pages use it — offers the save variants (back to the record,
+continue editing, add another), remembers the last one as the user
+preference `form.saveVariant`, and saves with <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>S</kbd>.
+`saved` emits the record and the variant. The pages guard leaving a
+changed form through `useLeaveGuard()`, the same confirm dialog the
+list's unsaved inline edits use.
 
 ## Theming
 

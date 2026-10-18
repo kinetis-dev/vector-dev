@@ -1,14 +1,39 @@
 {
     "name": "@kinetis/vector-ui",
-    "version": "0.1.0",
+    "version": "0.9.0",
     "description": "The Kinetis Vector admin UI, as a Nuxt layer on Vuetify.",
+    "keywords": [
+        "kinetis",
+        "vector",
+        "admin",
+        "nuxt",
+        "nuxt-layer",
+        "vuetify"
+    ],
+    "homepage": "https://kinetis.dev/vector/docs/",
+    "bugs": {
+        "url": "https://github.com/kinetis-dev/vector-dev/issues"
+    },
     "license": "MIT",
+    "author": "Alon Noy",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/kinetis-dev/vector-dev.git",
+        "directory": "packages/vector-ui"
+    },
     "type": "module",
     "main": "./nuxt.config.ts",
     "files": [
         "nuxt.config.ts",
-        "app"
+        "app",
+        "README.md",
+        "LICENSE",
+        "CHANGELOG.md"
     ],
+    "publishConfig": {
+        "access": "public",
+        "provenance": true
+    },
     "scripts": {
         "prepare": "nuxt prepare",
         "typecheck": "nuxt prepare && vue-tsc --noEmit",

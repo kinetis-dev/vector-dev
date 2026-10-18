@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f8417ea34a5c6605e855b86c22f0be8d",
+    "content-hash": "7f4b19927f2a8dbe34518e75c94f2125",
     "packages": [
         {
             "name": "amphp/amp",
@@ -2183,9 +2183,10 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector",
-                "reference": "8720addc84d943905907f57b9471a778d7fe6b9b"
+                "reference": "88ec79fe985639b78b27e7a7e3f8b517413d15a9"
             },
             "require": {
+                "composer-runtime-api": "^2.0",
                 "kinetis/authorization": "^1.0.4",
                 "kinetis/database-bridge": "^1.4.0",
                 "kinetis/framework": "^1.22.0",
@@ -2223,7 +2224,26 @@
             "license": [
                 "MIT"
             ],
+            "authors": [
+                {
+                    "name": "Alon Noy"
+                }
+            ],
             "description": "A schema-driven admin platform for Kinetis applications: a compiled resource registry, a REST admin API and MCP tools over kinetis/orm entities.",
+            "homepage": "https://kinetis.dev/vector/docs/",
+            "keywords": [
+                "admin",
+                "admin-panel",
+                "crud",
+                "kinetis",
+                "mcp",
+                "orm"
+            ],
+            "support": {
+                "docs": "https://kinetis.dev/vector/docs/",
+                "issues": "https://github.com/kinetis-dev/vector-dev/issues",
+                "source": "https://github.com/kinetis-dev/vector-dev"
+            },
             "transport-options": {
                 "relative": true
             }

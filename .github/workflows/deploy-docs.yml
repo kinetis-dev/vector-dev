@@ -1,0 +1,64 @@
+name: Deploy Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/deploy-docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deployment at a time, never cancelled: a cancelled `s3 sync
+# --delete` would leave the site half old, half new. A later push waits
+# and then publishes its own build over this one.
+concurrency:
+  group: deploy-docs
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy docs
+    runs-on: ubuntu-latest
+    # The OIDC token for the AWS role, on this job only.
+    permissions:
+      id-token: write
+      contents: read
+    # No `environment:` here, on purpose. The role's OIDC trust policy
+    # names exactly
+    #   repo:kinetis-dev@315982197/vector-dev@1390337970:ref:refs/heads/main
+    # and a job that declares an environment presents
+    # `...:environment:<name>` as its subject instead, which the role
+    # refuses. workflow_dispatch from any branch but main is refused the
+    # same way.
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build Sphinx docs
+        run: |
+          docker run --rm -v "$PWD/docs":/docs -w /docs python:3.12-slim \
+            sh -c "pip install -q -r requirements.txt && sphinx-build -W --keep-going -b html . _build/html"
+
+      # The role allows only what this job does: ListBucket under the
+      # vector/docs/ prefix, Put/Get/Delete on kinetis.dev/vector/docs/*,
+      # and invalidation on the kinetis.dev distribution.
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::227129576823:role/github-actions-vector-docs-deploy
+          aws-region: eu-west-1
+
+      # A destination prefix, not the bucket root: `aws s3 sync --delete`
+      # only ever deletes keys under the given destination, so this never
+      # touches anything outside vector/docs/ — the rest of kinetis.dev,
+      # Kinetis's own docs/ included, belongs to other deployments.
+      - name: Sync to S3
+        run: |
+          aws s3 sync docs/_build/html s3://kinetis.dev/vector/docs/ --delete \
+            --exclude ".doctrees/*" --exclude ".buildinfo"
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation --distribution-id E3SMHJBBV2860Z --paths '/vector/docs/*'

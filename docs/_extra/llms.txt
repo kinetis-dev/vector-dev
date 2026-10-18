@@ -51,6 +51,7 @@ from first install to the reference.
 ## Integrations
 
 - [MCP tools](https://kinetis.dev/vector/docs/mcp.html): The admin's services as Model Context Protocol tools for AI agents.
+- [Agent guide](https://kinetis.dev/vector/docs/agent-guide.html): Routing for an AI coding agent in an application that installs kinetis/vector, served as kinetis://docs/vector: the installed-package gate, the version boundary, task routing, correctness boundaries and a verification checklist.
 - [Testing your admin](https://kinetis.dev/vector/docs/testing.html): Driving the REST API from the application's own test suite.
 
 ## Reference
@@ -58,3 +59,7 @@ from first install to the reference.
 - [REST API](https://kinetis.dev/vector/docs/rest-api.html): Every route, envelope, wire value, the list grammar and errors.
 - [Configuration](https://kinetis.dev/vector/docs/configuration.html): Every environment key and UI setting.
 - [Limits and guarantees](https://kinetis.dev/vector/docs/limits.html): Bounds, guarantees and known limits.
+
+## Working on Vector
+
+- [Releasing](https://kinetis.dev/vector/docs/releasing.html): Independent versions in packages.manifest.json, bumped in the pull request with scripts/bump.mjs and checked by versions.yml; release on merge to main to the mirror kinetis-dev/vector and npm; the mirror's history rule, one-time setup and recovery.

@@ -23,5 +23,6 @@ node_modules/
 /demo/backend/infection.summary.log
 /demo/backend/infection.vector.log
 /demo/backend/infection.vector.summary.log
+/demo/backend/infection.vector.rest.json5
 # Claude Code runtime state
 .claude/scheduled_tasks.lock

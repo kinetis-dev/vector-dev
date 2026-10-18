@@ -1,0 +1,248 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# One run per branch at a time: a superseded PR push cancels the older
+# run outright; on main nothing is cancelled, but stacked pushes queue
+# as at most one pending run instead of piling their whole job matrix
+# behind each other's.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  # The Composer cache below removes almost every download; this covers
+  # what is left — a cold cache, or a lock file that just changed. The
+  # job's own ephemeral token lifts the anonymous codeload.github.com
+  # rate limit. No secret to provision.
+  COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ secrets.GITHUB_TOKEN }}"}}'
+
+jobs:
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # dorny/paths-filter lists a pull request's files through the API.
+      pull-requests: read
+    outputs:
+      php: ${{ steps.filter.outputs.php }}
+      node: ${{ steps.filter.outputs.node }}
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      # dorny/paths-filter needs a real checkout for a push trigger (it
+      # diffs against the previous commit with plain git there, while a
+      # pull_request uses the API) — fetch-depth: 0 so that commit is
+      # present even for a multi-commit push.
+      - uses: actions/checkout@v7
+        if: github.event_name == 'push'
+        with:
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            php:
+              - 'packages/vector/**'
+              - 'demo/backend/**'
+              - 'demo/docker/**'
+              - '.github/scripts/php'
+              - '.github/workflows/ci.yml'
+            node:
+              - 'packages/vector-ui/**'
+              - 'demo/frontend/**'
+              - 'demo/e2e/**'
+              - 'scripts/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'eslint.config.mjs'
+              - '.github/workflows/ci.yml'
+            docs:
+              - 'docs/**'
+              - '.github/workflows/ci.yml'
+
+  php:
+    needs: changes
+    # Every push to main runs both stacks whatever it touched, so main's
+    # own CI status always speaks for the code at that commit. Pull
+    # requests keep the path filter.
+    if: github.event_name == 'push' || needs.changes.outputs.php == 'true'
+    name: PHP ${{ matrix.php-version }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # the Psalm SARIF upload to code scanning
+      security-events: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # composer.json requires ^8.4; demo/docker/Dockerfile defaults to
+        # 8.4 and builds on 8.5 with the same extension recipe.
+        php-version: ['8.4', '8.5']
+    # The suite boots the demo against its seeded databases, as it does
+    # in the Compose stack: the shop on MySQL, Vector's own tables and
+    # the support desk on PostgreSQL, the queue and cache on Redis. Same
+    # images, databases and credentials as demo/docker-compose.yml and
+    # demo/backend/.env.example, under the Compose service names as host
+    # names (see .github/scripts/php).
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: vector
+          MYSQL_USER: vector
+          MYSQL_PASSWORD: vector
+          MYSQL_ROOT_PASSWORD: vector
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pvector"
+          --health-interval=5s --health-timeout=3s --health-retries=20
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: vector_admin
+          POSTGRES_USER: vector
+          POSTGRES_PASSWORD: vector
+        options: >-
+          --health-cmd="pg_isready -U vector -d vector_admin"
+          --health-interval=5s --health-timeout=3s --health-retries=20
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=3s --health-retries=20
+    env:
+      VECTOR_PHP_IMAGE: vector-php:${{ matrix.php-version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Join the service network
+        # .github/scripts/php runs on the network GitHub created for this
+        # job's services, where they answer to their keys as host names.
+        run: echo "VECTOR_CI_NETWORK=${{ job.services.mysql.network }}" >> "$GITHUB_ENV"
+
+      - name: Cache Composer downloads
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/composer-cache
+          key: composer-${{ hashFiles('demo/backend/composer.lock') }}
+          restore-keys: composer-
+
+      - name: Build the demo's PHP image
+        # The fpm target of the stack's own Dockerfile, so CI runs on the
+        # extensions the demo runs on; see .github/scripts/php.
+        run: docker build -q --build-arg PHP_VERSION=${{ matrix.php-version }} --target fpm -t "$VECTOR_PHP_IMAGE" -f demo/docker/Dockerfile demo
+
+      - name: Validate composer.json
+        run: |
+          .github/scripts/php composer validate --strict ../../packages/vector/composer.json
+          .github/scripts/php composer validate --strict
+
+      - name: Install dependencies
+        run: .github/scripts/php composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Composer audit
+        run: .github/scripts/php composer audit
+
+      - name: Prepare the demo databases
+        # backend/.env.example is the configuration the suite expects,
+        # its hosts the services' names. The JWT secret is
+        # this run's own: bootstrap.php requires one of at least 32 bytes.
+        # The support desk's database is the one docker/postgres creates
+        # at the stack's first start; a service container runs no init
+        # scripts.
+        run: |
+          cp demo/backend/.env.example demo/backend/.env
+          secret="$(openssl rand -hex 32)"
+          echo "::add-mask::$secret"
+          echo "JWT_SECRET=$secret" >> "$GITHUB_ENV"
+          docker exec "${{ job.services.postgres.id }}" psql -U vector -d vector_admin -c 'CREATE DATABASE vector_support OWNER vector'
+
+      - name: Migrate and seed
+        run: |
+          .github/scripts/php vendor/bin/kinetis migrate
+          .github/scripts/php vendor/bin/kinetis demo:seed
+
+      - name: PHPUnit (Vector's tables on PostgreSQL)
+        run: .github/scripts/php vendor/bin/phpunit
+
+      - name: PHPUnit (Vector's tables on MySQL)
+        env:
+          VECTOR_TEST_DB_CONNECTION: default
+        run: .github/scripts/php vendor/bin/phpunit
+
+      - name: PHPStan
+        run: .github/scripts/php vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
+      # Two Psalm passes, deliberately: --taint-analysis reports taint
+      # issues only, suppressing every ordinary issue type — a plain run
+      # is what catches those.
+      - name: Psalm
+        run: .github/scripts/php composer psalm
+
+      - name: Psalm (taint analysis)
+        # writes demo/backend/psalm.sarif
+        run: .github/scripts/php composer psalm:taint
+
+      - name: Upload Psalm SARIF to code scanning
+        # Soft-fails rather than reddening the run over a dashboard step
+        # when code scanning is unavailable for the repository.
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: demo/backend/psalm.sarif
+          category: psalm-php${{ matrix.php-version }}
+
+  node:
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.node == 'true'
+    name: Node
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # pnpm's version comes from package.json's packageManager field.
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          # package.json's engines floor, and the demo's node:22 service
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: ESLint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Vitest
+        run: pnpm test
+
+      - name: Script tests
+        run: pnpm test:scripts
+
+  docs:
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    name: Docs build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build Sphinx docs
+        run: |
+          docker run --rm -v "$PWD/docs":/docs -w /docs python:3.12-slim \
+            sh -c "pip install -q -r requirements.txt && sphinx-build -W --keep-going -b html . _build/html"

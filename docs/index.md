@@ -166,6 +166,7 @@ databases
 :hidden:
 
 mcp
+agent-guide
 testing
 ```
 
@@ -187,4 +188,5 @@ limits
 
 contributing
 coding-agents
+releasing
 ```

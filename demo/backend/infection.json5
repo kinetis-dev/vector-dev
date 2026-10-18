@@ -1,10 +1,14 @@
 {
     // Mutation testing over the demo's own src/, the whole suite against
-    // the seeded databases (docs/contributing.md):
+    // seeded databases (docs/contributing.md):
     //   docker compose exec app composer infection
-    // One thread: the tests share those databases, so concurrent mutants
-    // would fail each other's tests and count as killed. A killed mutant
-    // can leave the rows its test would have removed.
+    // One thread. The base databases serve only the initial run: each
+    // mutant runs on worker 1's own stores (tests/worker-stores.php,
+    // keyed on Infection's TEST_TOKEN), so run `composer infection:workers`
+    // before each run: a killed mutant can leave the rows its test would
+    // have removed, and it starts them over. More threads would not be
+    // isolated: VectorRedisQueueTest, for one, names its own Redis database,
+    // which every worker would share.
     //
     // Measured 2026-10-06 (--threads=1 --only-covering-test-cases):
     // 665 mutants, 500 killed, 165 escaped, 0 skipped — MSI 75.19%,

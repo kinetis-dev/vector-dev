@@ -20,8 +20,7 @@ export function useVectorLocale() {
     const current = computed(() => String(nuxtApp.$vectorI18n.global.locale.value))
 
     function apply(code: string): void {
-        const i18n = nuxtApp.$vectorI18n.global as unknown as { locale: { value: string } }
-        i18n.locale.value = code
+        nuxtApp.$vectorI18n.global.locale.value = code
         setFormatLocale(code)
 
         const vuetify = nuxtApp.$vuetify as { locale?: { current: { value: string }, messages: { value: Record<string, unknown> } } } | undefined

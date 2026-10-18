@@ -1,0 +1,59 @@
+name: Versions
+
+# Holds packages.manifest.json — the one place each product's version is
+# written — to scripts/version-policy.mjs: every version is canonical 0.x,
+# vector-ui's package.json and each CHANGELOG agree with it, and a product
+# whose files changed is bumped exactly one step (scripts/bump.mjs, in the
+# pull request). release.yml publishes whatever version lands on main, so
+# this is what keeps every published version reachable. The rules are
+# scripts/validate-versions.mjs, tested by pnpm test:scripts.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A newer push to a pull request supersedes the older run; on main every
+# run finishes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  versions:
+    name: Check the versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # On a pull request, the branch itself rather than its merge
+          # commit, judged against its merge base with the target: the
+          # pull request's own change, whatever main did since.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # The base can be arbitrarily far back on a multi-commit branch
+          # or push; a base this checkout cannot read fails the check
+          # rather than skipping it.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Check packages.manifest.json against the tree and its history
+        # Exactly one base is set: the pull request's base and head, or
+        # what main pointed to before this push (all zeros on a branch's
+        # first push, which skips the history check).
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+        run: |
+          if [ -n "$PR_BASE_SHA" ]; then
+            base="$(git merge-base "$PR_BASE_SHA" "$PR_HEAD_SHA")"
+            node scripts/validate-versions.mjs --base="$base"
+          else
+            node scripts/validate-versions.mjs
+          fi
