@@ -172,10 +172,12 @@ pull requests, each for the paths it covers:
   (both placements of Vector's tables, as above), PHPStan and both Psalm
   runs; `pnpm lint`, `pnpm typecheck`, `pnpm test` and
   `pnpm test:scripts`; and the strict build of this manual.
-- `monorepo-validate.yml` — `node scripts/validate-monorepo.mjs`: the
-  shared version in `packages/vector-ui/package.json` against the newest
-  release each package's `CHANGELOG.md` records, and no `App\`
-  reference under `packages/`.
+- `monorepo-validate.yml` — `node scripts/validate-monorepo.mjs`: no
+  `App\` reference under `packages/`.
+- `versions.yml` — `node scripts/validate-versions.mjs`: a pull request
+  that changes files under `packages/vector` or `packages/vector-ui`
+  bumps that package's version in `packages.manifest.json` by one step,
+  with `node scripts/bump.mjs`; see {doc}`releasing`.
 - `infection.yml` — `composer infection:vector`, when the PHP side
   changes.
 - `sonarqube.yml` — the PHPUnit suite under pcov, its coverage of

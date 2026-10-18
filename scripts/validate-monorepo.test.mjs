@@ -4,36 +4,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { after, before, test } from 'node:test'
-import { appReferences, releasedVersion, versionProblems } from './validate-monorepo.mjs'
-
-const unreleased = '# Changelog\n\n## [Unreleased]\n\n### Added\n\n- Everything.\n'
-const released = version => `# Changelog\n\n## [Unreleased]\n\n## [${version}] - 2026-11-01\n\n### Added\n\n- Everything.\n\n## [0.0.1] - 2026-01-01\n`
-
-test('the newest released heading, skipping Unreleased', () => {
-    assert.equal(releasedVersion(unreleased), null)
-    assert.equal(releasedVersion(released('0.9.0')), '0.9.0')
-    assert.equal(releasedVersion('## [unreleased]\n## [1.0.0-rc.1]\n'), '1.0.0-rc.1')
-})
-
-test('nothing released yet: nothing to compare', () => {
-    assert.deepEqual(versionProblems('0.1.0', { 'a.md': unreleased, 'b.md': unreleased }), [])
-})
-
-test('both CHANGELOGs at the package.json version', () => {
-    assert.deepEqual(versionProblems('0.9.0', { 'a.md': released('0.9.0'), 'b.md': released('0.9.0') }), [])
-})
-
-test('a version that disagrees fails, naming the file', () => {
-    const problems = versionProblems('0.9.1', { 'a.md': released('0.9.0'), 'b.md': released('0.9.1') })
-
-    assert.equal(problems.length, 1)
-    assert.match(problems[0], /^a\.md's newest release is 0\.9\.0, but packages\/vector-ui\/package\.json's version is 0\.9\.1/)
-})
-
-test('a package.json version that is not SemVer fails', () => {
-    assert.match(versionProblems('v0.9.0', {})[0], /is not SemVer/)
-    assert.match(versionProblems(undefined, {})[0], /is not SemVer/)
-})
+import { appReferences } from './validate-monorepo.mjs'
 
 let dir
 
