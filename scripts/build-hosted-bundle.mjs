@@ -8,8 +8,10 @@
 //     node scripts/build-hosted-bundle.mjs                  a dev build: version dev-<short sha>
 //     node scripts/build-hosted-bundle.mjs --version=0.9.0  a release build
 //
-// A release version must be SemVer and equal packages/vector-ui's
-// package.json version: both packages share one version.
+// A release version must be canonical X.Y.Z and equal kinetis/vector's
+// version in packages.manifest.json: the bundle ships inside that package,
+// and on a released install `vector:install` refuses a bundle built for any
+// version but the installed kinetis/vector's.
 import { execFileSync, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
@@ -17,6 +19,7 @@ import { cp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { parseVersion } from './version-policy.mjs'
 
 export const MANIFEST = 'vector-bundle.json'
 export const PACKAGE = 'kinetis/vector'
@@ -25,10 +28,7 @@ const root = fileURLToPath(new URL('..', import.meta.url))
 const dist = path.join(root, 'packages/vector/resources/dist')
 const output = path.join(root, 'packages/vector-ui/hosted/.output/public')
 const registry = path.join(root, 'packages/vector/src/Registry/VectorRegistry.php')
-const uiPackage = path.join(root, 'packages/vector-ui/package.json')
-
-// semver.org's own pattern
-const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
+const versions = path.join(root, 'packages.manifest.json')
 
 /** The requested release version, or null for a dev build. */
 export function parseArgs(argv) {
@@ -51,12 +51,12 @@ export function resolveVersion(requested, packageVersion, source) {
         return `dev-${source.slice(0, 12)}`
     }
 
-    if (!SEMVER.test(requested)) {
-        throw new Error(`--version=${requested} is not a SemVer version (x.y.z, no leading v).`)
+    if (parseVersion(requested) === null) {
+        throw new Error(`--version=${requested} is not a canonical X.Y.Z version (no leading v, no prerelease).`)
     }
 
     if (requested !== packageVersion) {
-        throw new Error(`--version=${requested} differs from packages/vector-ui/package.json's version ${packageVersion}; both packages release one shared version.`)
+        throw new Error(`--version=${requested} differs from kinetis/vector's version ${packageVersion} in packages.manifest.json; the bundle ships in that release.`)
     }
 
     return requested
@@ -154,7 +154,7 @@ async function main() {
     const { version: requested } = parseArgs(process.argv.slice(2))
     const source = await headCommit(root)
 
-    const { version: packageVersion } = JSON.parse(await readFile(uiPackage, 'utf8'))
+    const packageVersion = JSON.parse(await readFile(versions, 'utf8')).packages.vector.version
     const version = resolveVersion(requested, packageVersion, source)
     const descriptor = descriptorVersion(await readFile(registry, 'utf8'))
 

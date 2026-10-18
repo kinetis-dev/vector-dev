@@ -47,12 +47,12 @@ test('a dev build is versioned by the short commit', () => {
     assert.equal(resolveVersion(null, '0.9.0', source), 'dev-0123456789ab')
 })
 
-test('a release version must be SemVer and the shared package version', () => {
+test("a release version must be canonical X.Y.Z and kinetis/vector's manifest version", () => {
     assert.equal(resolveVersion('0.9.0', '0.9.0', source), '0.9.0')
-    assert.equal(resolveVersion('1.0.0-rc.1', '1.0.0-rc.1', source), '1.0.0-rc.1')
-    assert.throws(() => resolveVersion('v0.9.0', 'v0.9.0', source), /not a SemVer version/)
-    assert.throws(() => resolveVersion('0.9', '0.9', source), /not a SemVer version/)
-    assert.throws(() => resolveVersion('0.9.1', '0.9.0', source), /differs from packages\/vector-ui\/package.json/)
+    assert.throws(() => resolveVersion('1.0.0-rc.1', '1.0.0-rc.1', source), /not a canonical X\.Y\.Z version/)
+    assert.throws(() => resolveVersion('v0.9.0', 'v0.9.0', source), /not a canonical X\.Y\.Z version/)
+    assert.throws(() => resolveVersion('0.9', '0.9', source), /not a canonical X\.Y\.Z version/)
+    assert.throws(() => resolveVersion('0.9.1', '0.9.0', source), /differs from kinetis\/vector's version 0\.9\.0 in packages\.manifest\.json/)
 })
 
 test('arguments: --version only', () => {

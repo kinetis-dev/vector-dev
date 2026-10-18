@@ -1,0 +1,14 @@
+{
+    "packages": {
+        "vector": {
+            "name": "kinetis/vector",
+            "path": "packages/vector",
+            "version": "0.9.0"
+        },
+        "vector-ui": {
+            "name": "@kinetis/vector-ui",
+            "path": "packages/vector-ui",
+            "version": "0.9.0"
+        }
+    }
+}

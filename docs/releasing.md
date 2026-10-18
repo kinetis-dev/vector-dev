@@ -1,133 +1,174 @@
 # Releasing
 
-One tag releases both products at one shared version: a `vX.Y.Z` tag on
-`kinetis-dev/vector-dev` publishes `packages/vector` to the mirror
-[`kinetis-dev/vector`](https://github.com/kinetis-dev/vector), which
-Packagist serves as `kinetis/vector`, and `packages/vector-ui` to npm as
-`@kinetis/vector-ui`. The workflow is `.github/workflows/release.yml`;
-every rule it applies is in `scripts/release.mjs`, tested by
-`pnpm test:scripts`.
+Vector ships two products, each at its own version:
 
-## Cutting a release
+- `packages/vector`, published to the mirror
+  [`kinetis-dev/vector`](https://github.com/kinetis-dev/vector), which
+  Packagist serves as `kinetis/vector`;
+- `packages/vector-ui`, published to npm as `@kinetis/vector-ui`.
 
-1. **Bump the version.** Set `packages/vector-ui/package.json`'s
-   `version` to the release, such as `0.9.0`. It is the one place the
-   shared version is written: `packages/vector/composer.json` has none,
-   since Packagist reads it from the tag.
-2. **Write both CHANGELOG sections.** Move what `## [Unreleased]` holds
-   into a `## [0.9.0] - <date>` section in both
-   `packages/vector/CHANGELOG.md` and `packages/vector-ui/CHANGELOG.md`.
-   The two sections are the GitHub Release's notes; a release with
-   either one missing or empty is refused before anything is built.
-3. **Merge to main.** A release only comes from a commit on `main`.
-4. **Rehearse.** Under *Actions → Release → Run workflow*, run it from
-   `main` with the tag you are about to push, such as `v0.9.0`, and
-   **dry run** on (the default). The tag does not exist yet — pushing it
-   is the release — so the rehearsal runs at `main`'s head as if it were
-   tagged: it checks the version and both sections, splits the package,
-   builds the hosted bundle, makes the release commit, reads the mirror
-   and says what it would push, and lists what npm would receive. It
-   writes nothing.
-5. **Tag** the commit you rehearsed:
-   `git tag v0.9.0 <commit> && git push origin v0.9.0`. The push runs
-   the release.
+`packages.manifest.json` at the repository root holds each product's
+version and is the one place it is decided. A product is bumped in the
+pull request that changes it, and merging that pull request to `main`
+releases it: `.github/workflows/release.yml` publishes every version the
+manifest names that is not out yet. The `vector-dev` repository itself is
+never tagged; the only tag a release makes is `vX.Y.Z` on the mirror.
+Every rule is in `scripts/version-policy.mjs`,
+`scripts/validate-versions.mjs`, `scripts/bump.mjs` and
+`scripts/release.mjs`, tested by `pnpm test:scripts`.
 
-A dispatch with dry run off publishes too, but only when run from the
-tag itself (*Use workflow from: v0.9.0*), so the npm environment's tag
-rule and npm's provenance both see the tag.
+## Versions
 
-### What the tag must be
+A version is `X.Y.Z` with no prerelease or build suffix, and no
+component has a leading zero. Both products stay on the `0.x` line: the
+major version is pinned to 0 by `PINNED_MAJOR` in
+`scripts/version-policy.mjs`, and moving to 1.0.0 is a deliberate change
+of that constant. Within the line a product moves exactly one step at a
+time:
 
-- `vX.Y.Z` or `vX.Y.Z-<prerelease>`, such as `v0.9.0` or `v1.0.0-rc.1`;
-- the tag minus its `v` equals `packages/vector-ui`'s version at the
-  tagged commit;
-- the tagged commit is on `origin/main`;
-- both CHANGELOGs carry a non-empty `## [X.Y.Z]` section.
+| Bump | From | To | For |
+|---|---|---|---|
+| `patch` | `0.m.p` | `0.m.(p+1)` | a fix |
+| `minor` | `0.m.p` | `0.(m+1).0` | a new capability, or a breaking change |
 
-## What the workflow does
+One step at a time keeps every version reachable: since every version
+that lands on `main` is published, a jump from `0.9.1` to `0.9.3` would
+leave `0.9.2` unpublished while its changes ship inside `0.9.3`.
+
+## Bumping in the pull request
+
+A pull request that changes anything under `packages/vector` or
+`packages/vector-ui` bumps that product once:
+
+```console
+node scripts/bump.mjs vector patch
+node scripts/bump.mjs vector-ui minor
+```
+
+`bump.mjs` moves the product's version in `packages.manifest.json` one
+step. For `vector-ui` it also writes the version into
+`packages/vector-ui/package.json`. `packages/vector/composer.json` has
+no version, and must not get one: Packagist reads it from the mirror's
+tag. It turns the product's `## [Unreleased]` CHANGELOG section into
+`## [X.Y.Z] - <today>` under a fresh, empty `## [Unreleased]`. It
+refuses an empty `Unreleased` section, since that section becomes the
+release's notes. Write the CHANGELOG entry first, then bump.
+
+A product needs one bump per pull request, whatever the number of
+commits: the versions check measures the branch against its merge base
+as one change. If another pull request bumped the same product first,
+rebase onto `main` and bump again from its version.
+
+### The versions check
+
+`.github/workflows/versions.yml` runs
+`node scripts/validate-versions.mjs` on every pull request and on every
+push to `main`. Run it locally the same way. `--base=<ref>` names the
+commit to compare against; it defaults to `HEAD^`.
+
+- **Consistency**, on the tree: every manifest version parses and is on
+  the `0.x` line; `packages/vector-ui/package.json` carries the
+  manifest's name and version; `packages/vector/composer.json` carries
+  its name and no version; and each product's CHANGELOG has a
+  `## [<version>]` section.
+- **History**, against the base (the pull request's merge base with its
+  target, or what `main` pointed to before a push):
+  - a product with files changed under its path has its version bumped;
+  - a version that moved, moved exactly one step;
+  - a product with nothing changed keeps its version.
+
+  The base and the head are compared end to end, so a version skipped
+  across several commits fails even when each commit moved one step.
+  With no base to compare against — the repository's first commit, a
+  branch's first push, or a base that has no manifest yet — the history
+  check is skipped, and the output says so.
+
+## Releasing on merge
+
+Each push to `main` runs the release:
 
 | Job | Does |
 |---|---|
-| Verify the tag | Applies the rules above, and decides the npm dist-tag. |
-| Split, bundle and push the mirror | Splits `packages/vector`, builds the hosted bundle with `scripts/build-hosted-bundle.mjs --version=X.Y.Z`, makes the release commit, and pushes the mirror's `main` and tag. |
-| Publish @kinetis/vector-ui | After the mirror push: `npm publish --provenance` from `packages/vector-ui`, in the `npm-release` environment. |
-| Create the GitHub Release | After npm: the tag's release on `vector-dev`, its notes the two CHANGELOG sections. |
+| Decide what this round publishes | Reads the manifest, `package.json` and both CHANGELOGs at the pushed commit and checks them again. Asks the mirror whether tag `v<version>` exists for `kinetis/vector`, and npm whether `@kinetis/vector-ui@<version>` exists. Puts each release's notes, its CHANGELOG section, on the run's summary page. |
+| Split, bundle and push the mirror | Only when `kinetis/vector`'s version is not on the mirror yet. Splits `packages/vector`, builds the hosted bundle with `scripts/build-hosted-bundle.mjs --version=X.Y.Z` (the bundle carries `kinetis/vector`'s version, which `vector:install` checks it against), makes the release commit, and pushes the mirror's `main` and its `vX.Y.Z` tag. |
+| Publish @kinetis/vector-ui | Only when `@kinetis/vector-ui`'s version is not on npm yet. Runs `npm publish --provenance --tag latest` from `packages/vector-ui`, in the `npm-release` environment. |
 
-A dry run replaces the last two with a rehearsal job (`npm pack
---dry-run` and `npm publish --dry-run`), and the mirror push with a line
-saying what it would push. Releases run one at a time, and a running
-release is never cancelled midway. A pending one can be replaced:
-GitHub keeps at most one pending run of this workflow and a newer
-queued run cancels the one already waiting, so two tags pushed while a
-release runs leave only the later one queued, and a rehearsal can
-displace a pending real release (see [Recovery](#recovery)).
+A push that changes no version publishes nothing and succeeds. The two
+products are independent: one can be published without the other, and a
+failure in one does not stop the other.
+
+The plan refuses to publish:
+
+- from a commit `origin/main` does not contain, or from any ref but
+  `main`;
+- a version whose CHANGELOG section is missing or empty, or whose
+  `package.json` disagrees with the manifest;
+- a version whose predecessor is not published. The version must be one
+  step above the highest version already out. The exception is a
+  product's very first release, when nothing is out yet.
+
+Every npm release is `latest`. Versions have no prerelease form, so
+nothing needs keeping off it, and no dist-tag needs moving by hand. No
+GitHub Release is created: `vector-dev` has no tags to attach one to.
+The notes live in the CHANGELOGs, which ship with both packages, and on
+the run's summary page.
+
+### Rehearsing
+
+Under *Actions → Release → Run workflow*, run the workflow with **dry
+run** on, which is the default. It can run from any branch, so a pull
+request can be rehearsed before it merges. The rehearsal:
+
+- makes the same plan, reading the mirror anonymously;
+- splits the package, builds the bundle and makes the release commit;
+- reads the mirror and says what it would push, and runs `npm pack
+  --dry-run` and `npm publish --dry-run`.
+
+It writes nothing. A step a real run would refuse is reported instead,
+such as a commit that is not on `main` yet. A dispatch with dry run off
+publishes like a push, but only when run from `main`.
 
 ### The mirror's history
 
 The mirror carries two kinds of commit, and keeps them apart:
 
-- **`main` is the pure split, S.** `git subtree split
-  --prefix=packages/vector` of the tagged commit. A split is derived
+- **`main` is the pure split, S.** It is `git subtree split
+  --prefix=packages/vector` of the released commit. A split is derived
   from the monorepo's own commits, metadata included, so the same source
-  always gives the same S, and each release's S descends from the last
-  one's: `main` only ever fast-forwards. `dev-main` carries no hosted
+  always gives the same S. Each release's S descends from the last
+  one's, so `main` only ever fast-forwards. `dev-main` carries no hosted
   bundle, so `vector:install` from it publishes the migrations and says
   there is no bundle, as a source install does.
-- **The tag points at the release commit, R.** One commit whose only
-  parent is S and whose tree is S's plus `resources/dist/` — the hosted
-  bundle and its manifest, which the monorepo itself ignores. Every
-  tagged release on Packagist ships the bundle; no bundle ever enters
-  `main`'s history.
+- **The tag points at the release commit, R.** R's only parent is S, and
+  its tree is S's plus `resources/dist/`: the hosted bundle and its
+  manifest, which the monorepo itself ignores. Every tagged release on
+  Packagist ships the bundle; no bundle ever enters `main`'s history.
 
 R is authored and committed by `kinetis-release <noreply@kinetis.dev>`,
 a disposable identity, at the source commit's own date.
-
-### npm dist-tags
-
-| Version | dist-tag |
-|---|---|
-| `0.x.y` | `next` |
-| any prerelease (`-rc.1`, `-beta.2`) | `next` |
-| `1.0.0` and later | `latest` |
-
-The npm registry requires a `latest` dist-tag, so the package's very
-first publish also sets `latest`, even under `--tag next`. Later 0.x
-releases move only `next`, so a bare `pnpm add @kinetis/vector-ui` keeps
-resolving to that first release until 1.0.0, while
-`@kinetis/vector-ui@next` gets the newest. After each 0.x release,
-either move `latest` by hand:
-
-```console
-npm dist-tag add @kinetis/vector-ui@0.9.1 latest
-```
-
-from a maintainer account authenticated with a token or two-factor
-authentication — the workflow cannot, since trusted publishing's OIDC
-credential can only publish, not change dist-tags — or accept the stale
-`latest`. From 1.0.0 the workflow publishes with `latest`, and this goes
-away. A prerelease is also marked as one on GitHub.
 
 ## One-time setup
 
 **GitHub (`kinetis-dev/vector-dev`).**
 
-- The repository secret `RELEASE_DEPLOY_TOKEN`: a fine-grained personal
-  access token with *Contents: read and write* on `kinetis-dev/vector`
-  only. The workflow hands it to the mirror push alone, as the password
-  for the username `x-access-token`, through a credential helper that is
-  removed afterwards.
+- The repository secret `RELEASE_DEPLOY_TOKEN` is a fine-grained
+  personal access token with *Contents: read and write* on
+  `kinetis-dev/vector` only. The workflow hands it, through a credential
+  helper that is removed afterwards, as the password for the username
+  `x-access-token`. Only two operations get it: the plan's read of the
+  mirror's tags, and the mirror push.
 - An environment named `npm-release`, under *Settings → Environments*,
-  with *Deployment branches and tags* limited to the tag pattern `v*`.
+  with *Deployment branches and tags* limited to the branch `main`.
 
-**npm (`@kinetis/vector-ui`).** Trusted publishing — npm exchanging the
-workflow's OIDC token for a one-time credential — can only be set up on
-a package that exists, so the first publish is the exception:
+**npm (`@kinetis/vector-ui`).** Trusted publishing, where npm exchanges
+the workflow's OIDC token for a one-time credential, can only be set up
+on a package that exists. The first publish is the exception:
 
 1. Create a granular access token that can publish to the `@kinetis`
    scope, with a short expiry, and put it on the `npm-release`
    environment as the secret `NPM_TOKEN`.
-2. Push the first tag. The publish step uses the token when `NPM_TOKEN`
-   is set, and OIDC otherwise.
+2. Merge the first release to `main`. The publish step uses the token
+   when `NPM_TOKEN` is set, and OIDC otherwise.
 3. On npmjs.com, under the package's *Settings → Trusted publishing*,
    add a GitHub Actions publisher: organization `kinetis-dev`,
    repository `vector-dev`, workflow `release.yml`, environment
@@ -140,49 +181,55 @@ a package that exists, so the first publish is the exception:
 Afterwards the token branch of the publish step can be deleted; it is
 marked in the workflow.
 
-**Packagist (`kinetis/vector`).** After the first mirror push, so the
-repository has a `composer.json` to read:
+**Packagist (`kinetis/vector`).** Do this after the first mirror push,
+so the repository has a `composer.json` to read:
 
 1. Submit `https://github.com/kinetis-dev/vector` on packagist.org.
-2. On the mirror, add the GitHub webhook Packagist's *Your profile →
-   Show API Token* page describes (payload URL
-   `https://packagist.org/api/github?username=<your username>`, content
-   type `application/json`, the API token as the secret), so each push
-   updates the package at once.
+2. On the mirror, add the GitHub webhook that Packagist's *Your profile
+   → Show API Token* page describes, so each push updates the package at
+   once:
+   - payload URL `https://packagist.org/api/github?username=<your username>`;
+   - content type `application/json`;
+   - the API token as the secret.
 
 ## Recovery
 
 Re-running is safe; every step either finishes what is left or stops
 before writing.
 
-- **The mirror** is written in one atomic push of `main` and the tag.
-  A rerun reads it first: a `main` already at S and a tag already
-  holding this release are left alone. `main` moves only forward, under
-  a lease naming the `main` it read, and the push is refused if the
-  source tag has moved since the run started.
+- **The plan** asks again what is published, so a re-run skips whatever
+  an earlier attempt already got out.
+- **The mirror** is written in one atomic push of `main` and the tag. A
+  rerun reads it first: a `main` already at S and a tag already holding
+  this release are left alone. `main` moves only forward, under a lease
+  naming the `main` it read. The push is refused if `origin`'s `main` no
+  longer contains the released commit (it was force-pushed past it), or
+  if the manifest at that commit does not state the version being
+  pushed. A `main` that has moved on to a newer version does not stop
+  the push: the newer version needs this one published first.
 - **The hosted bundle** is not reproducible byte for byte: each Nuxt
   build draws a random build id. A rerun that rebuilds it therefore
-  makes a different R; when the mirror's tag is already this release —
-  its parent is S and it differs from S only under `resources/dist/` —
+  makes a different R. When the mirror's tag is already this release
+  (its parent is S and it differs from S only under `resources/dist/`),
   the published one stands and the run carries on. A tag holding
   anything else fails the run: two contents cannot both be one version,
   and which one stands is for a person to decide.
 - **npm** is skipped when the version is already published.
-- **The GitHub Release** is skipped when it already exists.
 - **A release shown as cancelled while pending** was replaced by a newer
-  queued run before it started. Re-run it from its tag: dispatch the
-  workflow with that tag and dry run off, from the tag itself (*Use
-  workflow from: vX.Y.Z*), or re-run the cancelled run. Do not dispatch
-  a rehearsal while a release is running or queued: it can displace the
-  pending release.
+  queued run before it started. Nothing is lost while the manifest
+  still states that version, because the next run publishes it. If a
+  later merge bumped the product again first, the next run refuses its
+  version for a missing predecessor. Re-run the cancelled run, which
+  publishes its own commit's versions, then re-run the refused one. Do
+  not dispatch a rehearsal while a release is running or queued: it can
+  displace the pending release.
 
 Prefer *Re-run failed jobs*: it keeps the jobs that succeeded, and their
-outputs, as they were. A tag pushed by mistake, before anything was
-published, is fixed by deleting it on `vector-dev` and tagging again.
-Once the mirror or npm has the version, publish a new version instead:
-neither Packagist nor npm lets one version change.
+outputs, as they were. Once the mirror or npm has a version, publish a
+new version rather than changing it: neither Packagist nor npm lets one
+version change.
 
 ## See also
 
-- {doc}`contributing` — the tests and checks a release commit passes.
-- {doc}`deployment` — what the hosted bundle and its manifest guarantee.
+- {doc}`contributing`: the tests and checks a release commit passes.
+- {doc}`deployment`: what the hosted bundle and its manifest guarantee.

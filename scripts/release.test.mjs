@@ -8,35 +8,9 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
 import {
-    changelogSection, checkVersion, distTag, npmPublished, publicationPlan, publishMirror,
-    releaseCommit, releaseNotes, split, verify, versionFromTag,
+    changelogSection, npmPublished, npmPublishedVersions, plan, productPlan, publicationPlan, publishMirror,
+    releaseCommit, split,
 } from './release.mjs'
-
-test('a tag is vX.Y.Z or vX.Y.Z-prerelease', () => {
-    assert.equal(versionFromTag('v0.9.0'), '0.9.0')
-    assert.equal(versionFromTag('v1.0.0-rc.1'), '1.0.0-rc.1')
-
-    for (const malformed of ['0.9.0', 'v0.9', 'v0.9.0.1', 'v0.9.0-', 'v0.9.0+build', 'release-0.9.0', 'v0.9.0 ', '']) {
-        assert.throws(() => versionFromTag(malformed), /is not a release tag/, malformed)
-    }
-})
-
-test("the tag's version must be packages/vector-ui's", () => {
-    assert.equal(checkVersion('v0.9.0', '0.9.0'), '0.9.0')
-    assert.throws(() => checkVersion('v0.9.1', '0.9.0'), /releases 0\.9\.1, but packages\/vector-ui\/package\.json is at 0\.9\.0/)
-    assert.throws(() => checkVersion('v1.0.0', '1.0.0-rc.1'), /is at 1\.0\.0-rc\.1/)
-    assert.throws(() => checkVersion('0.9.0', '0.9.0'), /is not a release tag/)
-})
-
-test('dist-tag: next for 0.x and prereleases, latest from 1.0.0', () => {
-    assert.equal(distTag('0.9.0'), 'next')
-    assert.equal(distTag('0.10.3'), 'next')
-    assert.equal(distTag('0.9.0-rc.1'), 'next')
-    assert.equal(distTag('1.0.0-rc.1'), 'next')
-    assert.equal(distTag('1.0.0'), 'latest')
-    assert.equal(distTag('2.3.4'), 'latest')
-    assert.equal(distTag('2.0.0-beta.2'), 'next')
-})
 
 const changelog = `# Changelog
 
@@ -64,16 +38,26 @@ test("a CHANGELOG section is the version's own, up to the next heading", () => {
 
 test('a missing or empty CHANGELOG section fails', () => {
     assert.throws(() => changelogSection(changelog, '0.9.1', 'packages/vector/CHANGELOG.md'), /packages\/vector\/CHANGELOG\.md has no "## \[0\.9\.1\]" section/)
-    // 0.9.0 is not 0.9.0-rc.1, nor 0x9x0
-    assert.throws(() => changelogSection(changelog, '0.9.0-rc.1'), /no "## \[0\.9\.0-rc\.1\]" section/)
+    // 0.9.0 is not 0x9x0
     assert.throws(() => changelogSection('## [0x9x0]\n\n- x\n', '0.9.0'), /no "## \[0\.9\.0\]" section/)
     assert.throws(() => changelogSection('## [0.9.0]\n\n## [0.1.0]\n- x\n', '0.9.0'), /section is empty/)
 })
 
-test('the release notes carry both sections, and fail when either is missing', () => {
-    const notes = releaseNotes('0.9.0', { vector: changelog, ui: changelog })
-    assert.match(notes, /^## kinetis\/vector\n\n### Added\n\n- Everything\.\n\n## @kinetis\/vector-ui\n\n### Added/)
-    assert.throws(() => releaseNotes('0.9.0', { vector: changelog, ui: '## [Unreleased]\n' }), /packages\/vector-ui\/CHANGELOG\.md has no/)
+test('plan: a published version is done; an unpublished one goes out after its predecessor', () => {
+    const product = 'kinetis/vector'
+    assert.deepEqual(productPlan({ product, version: '0.9.0', published: true, publishedVersions: ['0.9.0'] }), { publish: false, notice: 'kinetis/vector 0.9.0 is already published; nothing to do.' })
+    assert.equal(productPlan({ product, version: '0.9.1', published: false, publishedVersions: ['0.9.0'] }).publish, true)
+    assert.equal(productPlan({ product, version: '0.10.0', published: false, publishedVersions: ['0.9.0', '0.9.3'] }).publish, true)
+})
+
+test('plan: the first release of a product needs no predecessor', () => {
+    assert.deepEqual(productPlan({ product: '@kinetis/vector-ui', version: '0.9.0', published: false, publishedVersions: [] }), { publish: true, notice: '@kinetis/vector-ui 0.9.0 is its first release.' })
+})
+
+test('plan: a version whose predecessor is not published is refused', () => {
+    assert.throws(() => productPlan({ product: 'kinetis/vector', version: '0.9.2', published: false, publishedVersions: ['0.9.0'] }),
+        /kinetis\/vector 0\.9\.2 does not follow what is published \(highest 0\.9\.0\): version jumped from 0\.9\.0 to 0\.9\.2/)
+    assert.throws(() => productPlan({ product: 'kinetis/vector', version: '0.9.1', published: false, publishedVersions: ['0.9.0', '0.9.2'] }), /lower than 0\.9\.2/)
 })
 
 test('npm: published, not yet, or no answer', () => {
@@ -81,6 +65,14 @@ test('npm: published, not yet, or no answer', () => {
     assert.equal(npmPublished('0.9.0', () => ({ status: 0, stdout: '' })), false)
     assert.equal(npmPublished('0.9.0', () => ({ status: 1, stdout: '', stderr: 'npm error code E404\n' })), false)
     assert.throws(() => npmPublished('0.9.0', () => ({ status: 1, stdout: '', stderr: 'npm error code ETIMEDOUT\n' })), /Could not ask npm/)
+})
+
+test("npm: every published version, none before the first publish", () => {
+    assert.deepEqual(npmPublishedVersions(() => ({ status: 0, stdout: '["0.9.0","0.9.1"]\n' })), ['0.9.0', '0.9.1'])
+    // one version: npm prints a bare string
+    assert.deepEqual(npmPublishedVersions(() => ({ status: 0, stdout: '"0.9.0"\n' })), ['0.9.0'])
+    assert.deepEqual(npmPublishedVersions(() => ({ status: 1, stdout: '', stderr: 'npm error code E404\n' })), [])
+    assert.throws(() => npmPublishedVersions(() => ({ status: 1, stdout: '', stderr: 'npm error code EAI_AGAIN\n' })), /Could not ask npm which versions/)
 })
 
 const S = 'a'.repeat(40)
@@ -114,6 +106,13 @@ test('mirror plan: the same release from an earlier bundle build is done, and st
 const hasGit = spawnSync('git', ['--version']).status === 0
 const run = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim()
 
+const manifest = (vector, ui = '0.9.0') => `${JSON.stringify({
+    packages: {
+        'vector': { name: 'kinetis/vector', path: 'packages/vector', version: vector },
+        'vector-ui': { name: '@kinetis/vector-ui', path: 'packages/vector-ui', version: ui },
+    },
+}, null, 4)}\n`
+
 test('the release commit and the mirror push, end to end on scratch repositories', { skip: !hasGit && 'git is not installed' }, () => {
     const scratch = mkdtempSync(path.join(tmpdir(), 'vector-release-test-'))
 
@@ -127,11 +126,11 @@ test('the release commit and the mirror push, end to end on scratch repositories
         run(repo, 'config', 'user.email', 'test@example.com')
         writeFileSync(path.join(repo, '.gitignore'), '/packages/vector/resources/dist/\n')
         writeFileSync(path.join(repo, 'packages/vector/src/A.php'), '<?php\n')
+        writeFileSync(path.join(repo, 'packages.manifest.json'), manifest('0.9.0'))
         writeFileSync(path.join(repo, 'README.md'), 'monorepo\n')
         run(repo, 'add', '.')
         run(repo, 'commit', '--quiet', '-m', 'First')
-        run(repo, 'tag', 'v0.9.0')
-        // origin, for the tag re-check: the repository itself
+        // origin, for the source re-check: the repository itself
         run(repo, 'remote', 'add', 'origin', repo)
 
         const source = run(repo, 'rev-parse', 'HEAD')
@@ -152,16 +151,17 @@ test('the release commit and the mirror push, end to end on scratch repositories
         assert.throws(() => releaseCommit(repo, { version: '0.9.1', source, split: s }), /is the bundle 0\.9\.0/)
 
         const log = () => {}
-        assert.deepEqual(publishMirror(repo, { tag: 'v0.9.0', source, split: s, release: r, mirror, log }), { main: true, tag: true, notices: [] })
+        assert.deepEqual(publishMirror(repo, { version: '0.9.0', source, split: s, release: r, mirror, log }), { main: true, tag: true, notices: [] })
         assert.equal(run(mirror, 'rev-parse', 'refs/heads/main'), s)
         assert.equal(run(mirror, 'rev-parse', 'refs/tags/v0.9.0'), r)
-        assert.deepEqual(publishMirror(repo, { tag: 'v0.9.0', source, split: s, release: r, mirror, log }).main, false, 'a rerun is a no-op')
+        assert.deepEqual(publishMirror(repo, { version: '0.9.0', source, split: s, release: r, mirror, log }).main, false, 'a rerun is a no-op')
+        assert.deepEqual(run(repo, 'tag', '--list'), '', 'the monorepo gets no tag')
 
         // A rerun whose bundle build came out different: the published tag stands.
         writeFileSync(path.join(dist, 'index.html'), '<!doctype html><!-- another buildId -->')
         const rebuilt = releaseCommit(repo, { version: '0.9.0', source, split: s })
         assert.notEqual(rebuilt, r)
-        assert.deepEqual(publishMirror(repo, { tag: 'v0.9.0', source, split: s, release: rebuilt, mirror, log }), { main: false, tag: false, notices: [
+        assert.deepEqual(publishMirror(repo, { version: '0.9.0', source, split: s, release: rebuilt, mirror, log }), { main: false, tag: false, notices: [
             `The mirror's main is already ${s}.`,
             `The mirror's tag (${r}) is this release from an earlier build of the hosted bundle; that build stands.`,
         ] })
@@ -172,44 +172,63 @@ test('the release commit and the mirror push, end to end on scratch repositories
         run(repo, 'add', '.')
         run(repo, 'commit', '--quiet', '-m', 'Changed source')
         run(repo, 'push', '--quiet', '--force', mirror, `${releaseCommit(repo, { version: '0.9.0', source, split: split(repo, run(repo, 'rev-parse', 'HEAD')) })}:refs/tags/v0.9.0`)
-        assert.throws(() => publishMirror(repo, { tag: 'v0.9.0', source, split: s, release: r, mirror, log }), /tree differs/)
+        assert.throws(() => publishMirror(repo, { version: '0.9.0', source, split: s, release: r, mirror, log }), /tree differs/)
         run(repo, 'push', '--quiet', '--force', mirror, `${r}:refs/tags/v0.9.0`)
         run(repo, 'reset', '--quiet', '--hard', 'HEAD^')
         writeFileSync(path.join(dist, 'index.html'), '<!doctype html>')
 
-        // A moved source tag stops a write.
+        // The version must be the one the manifest at the source states.
+        assert.throws(() => publishMirror(repo, { version: '0.9.1', source, split: s, release: r, mirror, log }), /the manifest at [0-9a-f]{40} states kinetis\/vector 0\.9\.0, not 0\.9\.1; refusing to write the mirror/)
+
+        // A source origin's main no longer contains (main force-pushed past it) stops a write.
         writeFileSync(path.join(repo, 'packages/vector/src/B.php'), '<?php\n')
+        writeFileSync(path.join(repo, 'packages.manifest.json'), manifest('0.9.1'))
         run(repo, 'add', '.')
         run(repo, 'commit', '--quiet', '-m', 'Second')
         const later = run(repo, 'rev-parse', 'HEAD')
-        run(repo, 'tag', 'v0.9.1')
         const s2 = split(repo, later)
-        assert.throws(() => publishMirror(repo, { tag: 'v0.9.1', source, split: s2, release: s2, mirror, log }), /now resolves to/)
+        run(repo, 'reset', '--quiet', '--hard', source)
+        assert.throws(() => publishMirror(repo, { version: '0.9.1', source: later, split: s2, release: s2, mirror, log }), /origin's main \([0-9a-f]{40}\) no longer contains [0-9a-f]{40}; refusing to write the mirror/)
         // A rehearsal says so instead, and writes nothing.
         const said = []
-        publishMirror(repo, { tag: 'v0.9.1', source, split: s2, release: s2, mirror, dryRun: true, log: line => said.push(line) })
-        assert.match(said.join('\n'), /a real run would refuse[\s\S]*Dry run: would run git push --atomic --force-with-lease=refs\/heads\/main:/)
+        publishMirror(repo, { version: '0.9.1', source: later, split: s2, release: s2, mirror, dryRun: true, log: line => said.push(line) })
+        assert.match(said.join('\n'), /no longer contains[\s\S]*a real run would refuse[\s\S]*Dry run: would run git push --atomic --force-with-lease=refs\/heads\/main:/)
         assert.equal(run(mirror, 'rev-parse', 'refs/heads/main'), s)
+        run(repo, 'reset', '--quiet', '--hard', later)
 
         // A later release fast-forwards main.
         writeFileSync(path.join(dist, 'vector-bundle.json'), JSON.stringify({ version: '0.9.1', source: later }))
         const r2 = releaseCommit(repo, { version: '0.9.1', source: later, split: s2 })
-        publishMirror(repo, { tag: 'v0.9.1', source: later, split: s2, release: r2, mirror, log })
+        publishMirror(repo, { version: '0.9.1', source: later, split: s2, release: r2, mirror, log })
         assert.equal(run(mirror, 'rev-parse', 'refs/heads/main'), s2)
         assert.equal(run(mirror, 'rev-parse', 'refs/heads/main^'), s)
+        assert.equal(run(mirror, 'rev-parse', 'refs/tags/v0.9.1'), r2)
 
-        // Rerunning the older release leaves main where it is.
-        assert.equal(publishMirror(repo, { tag: 'v0.9.0', source, split: s, release: r, mirror, log }).main, false)
+        // Rerunning the older release, with main moved on to a newer version, still
+        // passes the source guard and leaves main where it is.
+        assert.equal(publishMirror(repo, { version: '0.9.0', source, split: s, release: r, mirror, log }).main, false)
         assert.equal(run(mirror, 'rev-parse', 'refs/heads/main'), s2)
     } finally {
         rmSync(scratch, { recursive: true, force: true })
     }
 })
 
-test('verify reads the tagged commit, and a release only comes from main', { skip: !hasGit && 'git is not installed' }, () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'vector-release-verify-'))
+const npmAt = versions => ({
+    npmView: () => ({ status: 0, stdout: '' }),
+    npmVersionsView: () => (versions.length === 0 ? { status: 1, stdout: '', stderr: 'npm error code E404\n' } : { status: 0, stdout: JSON.stringify(versions) }),
+})
+
+test('plan reads the source commit, the mirror and npm, and a real release only comes from main', { skip: !hasGit && 'git is not installed' }, () => {
+    const scratch = mkdtempSync(path.join(tmpdir(), 'vector-release-plan-'))
 
     try {
+        const repo = path.join(scratch, 'vector-dev')
+        const mirror = path.join(scratch, 'mirror.git')
+        run(scratch, 'init', '--quiet', '--initial-branch=main', repo)
+        run(scratch, 'init', '--quiet', '--bare', mirror)
+        run(repo, 'config', 'user.name', 'Test')
+        run(repo, 'config', 'user.email', 'test@example.com')
+
         const commit = (files, message) => {
             for (const [file, contents] of Object.entries(files)) {
                 mkdirSync(path.dirname(path.join(repo, file)), { recursive: true })
@@ -218,54 +237,77 @@ test('verify reads the tagged commit, and a release only comes from main', { ski
 
             run(repo, 'add', '.')
             run(repo, 'commit', '--quiet', '-m', message)
+
+            return run(repo, 'rev-parse', 'HEAD')
         }
+        const at = (vector, ui) => ({
+            'packages.manifest.json': manifest(vector, ui),
+            'packages/vector/composer.json': JSON.stringify({ name: 'kinetis/vector' }),
+            'packages/vector/CHANGELOG.md': changelog.replace('[0.9.0]', `[${vector}]`),
+            'packages/vector-ui/package.json': JSON.stringify({ name: '@kinetis/vector-ui', version: ui }),
+            'packages/vector-ui/CHANGELOG.md': changelog.replace('[0.9.0]', `[${ui}]`),
+        })
+        const sync = () => run(repo, 'fetch', '--quiet', 'origin')
+        const log = () => {}
 
-        run(repo, 'init', '--quiet', '--initial-branch=main')
-        run(repo, 'config', 'user.name', 'Test')
-        run(repo, 'config', 'user.email', 'test@example.com')
-        commit({
-            'packages/vector-ui/package.json': JSON.stringify({ version: '0.9.0' }),
-            'packages/vector/CHANGELOG.md': changelog,
-            'packages/vector-ui/CHANGELOG.md': changelog,
-        }, 'Release 0.9.0')
-        run(repo, 'tag', 'v0.9.0')
-        run(repo, 'tag', 'v0.9.1')
-        // The checkout's own package.json moves on; the tag's is what counts.
-        commit({ 'packages/vector-ui/package.json': JSON.stringify({ version: '1.0.0' }) }, 'Bump')
+        const first = commit(at('0.9.0', '0.9.0'), 'Versions')
         run(repo, 'remote', 'add', 'origin', repo)
-        run(repo, 'fetch', '--quiet', 'origin')
+        sync()
 
-        const result = verify(repo, { tag: 'v0.9.0', ref: 'refs/tags/v0.9.0', dryRun: false })
-        assert.equal(result.version, '0.9.0')
-        assert.equal(result.distTag, 'next')
-        assert.equal(result.source, run(repo, 'rev-parse', 'v0.9.0^{commit}'))
+        // The first release of both: nothing on the mirror, npm answers E404.
+        const result = plan(repo, { source: first, ref: 'refs/heads/main', dryRun: false, mirror, log, ...npmAt([]) })
+        assert.deepEqual(result, {
+            source: first,
+            vector: { version: '0.9.0', publish: true, notes: '### Added\n\n- Everything.' },
+            ui: { version: '0.9.0', publish: true, notes: '### Added\n\n- Everything.' },
+        })
 
-        assert.throws(() => verify(repo, { tag: 'v0.9.1', ref: 'refs/tags/v0.9.1', dryRun: false }), /releases 0\.9\.1, but packages\/vector-ui\/package\.json is at 0\.9\.0/)
-        assert.throws(() => verify(repo, { tag: 'v0.9', ref: 'refs/tags/v0.9', dryRun: false }), /is not a release tag/)
-        assert.throws(() => verify(repo, { tag: 'v0.9.0', ref: 'refs/heads/main', dryRun: false }), /runs from the tag itself/)
-        assert.equal(verify(repo, { tag: 'v0.9.0', ref: 'refs/heads/main', dryRun: true }).version, '0.9.0')
-        assert.throws(() => verify(repo, { tag: 'v0.9.2', dryRun: true }), /does not exist/)
-        // A rehearsal before the tag runs at the dispatched commit; a real run never does.
-        const head = run(repo, 'rev-parse', 'v0.9.0^{commit}')
-        run(repo, 'tag', '-d', 'v0.9.0')
-        assert.equal(verify(repo, { tag: 'v0.9.0', dryRun: true, head, log: () => {} }).source, head)
-        assert.throws(() => verify(repo, { tag: 'v0.9.0', ref: 'refs/heads/main', dryRun: false, head }), /runs from the tag itself/)
-        assert.throws(() => verify(repo, { tag: 'v0.9.0', ref: 'refs/tags/v0.9.0', dryRun: false, head }), /does not exist/)
-        run(repo, 'tag', 'v0.9.0', head)
+        // Both out: a no-op round.
+        run(repo, 'push', '--quiet', mirror, `${first}:refs/tags/v0.9.0`)
+        const published = { npmView: () => ({ status: 0, stdout: '0.9.0\n' }), npmVersionsView: () => ({ status: 0, stdout: '"0.9.0"' }) }
+        const done = plan(repo, { source: first, ref: 'refs/heads/main', dryRun: false, mirror, log, ...published })
+        assert.equal(done.vector.publish, false)
+        assert.equal(done.ui.publish, false)
+        assert.equal(done.vector.notes, null)
 
-        // A tag on a branch that never reached main.
-        run(repo, 'checkout', '--quiet', '-b', 'side', 'v0.9.0')
-        commit({ 'packages/vector-ui/package.json': JSON.stringify({ version: '0.9.3' }), 'packages/vector/CHANGELOG.md': changelog.replace('[0.9.0]', '[0.9.3]'), 'packages/vector-ui/CHANGELOG.md': changelog.replace('[0.9.0]', '[0.9.3]') }, 'Side')
-        run(repo, 'tag', 'v0.9.3')
-        assert.throws(() => verify(repo, { tag: 'v0.9.3', dryRun: true }), /is not on origin\/main/)
+        // vector-ui bumped alone: only it goes out.
+        const second = commit(at('0.9.0', '0.9.1'), 'vector-ui 0.9.1')
+        sync()
+        const uiOnly = plan(repo, { source: second, ref: 'refs/heads/main', dryRun: false, mirror, log, ...npmAt(['0.9.0']) })
+        assert.equal(uiOnly.vector.publish, false)
+        assert.deepEqual(uiOnly.ui, { version: '0.9.1', publish: true, notes: '### Added\n\n- Everything.' })
 
-        // A missing CHANGELOG section fails verify.
+        // vector at 0.9.2 while the mirror has only 0.9.0: its predecessor is missing.
+        const skipped = commit(at('0.9.2', '0.9.1'), 'vector 0.9.2, 0.9.1 never published')
+        sync()
+        assert.throws(() => plan(repo, { source: skipped, ref: 'refs/heads/main', dryRun: false, mirror, log, ...npmAt(['0.9.0']) }), /kinetis\/vector 0\.9\.2 does not follow what is published \(highest 0\.9\.0\)/)
+        // ...and the same for npm.
+        run(repo, 'push', '--quiet', mirror, `${skipped}:refs/tags/v0.9.1`)
+        assert.throws(() => plan(repo, { source: skipped, ref: 'refs/heads/main', dryRun: false, mirror, log, ...npmAt(['0.8.0']) }), /@kinetis\/vector-ui 0\.9\.1 does not follow what is published \(highest 0\.8\.0\)/)
+
+        // A real run publishes from main only; a rehearsal runs anywhere.
+        assert.throws(() => plan(repo, { source: second, ref: 'refs/heads/feature', dryRun: false, mirror, log, ...npmAt([]) }), /runs from main \(refs\/heads\/main\), not refs\/heads\/feature/)
+        run(repo, 'checkout', '--quiet', '-b', 'feature', second)
+        const side = commit(at('0.9.0', '0.9.2'), 'Not on main')
         run(repo, 'checkout', '--quiet', 'main')
-        commit({ 'packages/vector-ui/package.json': JSON.stringify({ version: '1.0.0' }), 'packages/vector/CHANGELOG.md': changelog.replace('[0.9.0]', '[1.0.0]') }, 'Only one section')
-        run(repo, 'tag', 'v1.0.0')
-        run(repo, 'fetch', '--quiet', 'origin')
-        assert.throws(() => verify(repo, { tag: 'v1.0.0', dryRun: true }), /packages\/vector-ui\/CHANGELOG\.md has no "## \[1\.0\.0\]" section/)
+        sync()
+        assert.throws(() => plan(repo, { source: side, ref: 'refs/heads/main', dryRun: false, mirror, log, ...npmAt(['0.9.1']) }), /is not on origin\/main; a release only comes from main/)
+        const said = []
+        assert.equal(plan(repo, { source: side, ref: 'refs/heads/feature', dryRun: true, mirror, log: line => said.push(line), ...npmAt(['0.9.1']) }).ui.publish, true)
+        assert.match(said.join('\n'), /is not on origin\/main; rehearsing it anyway/)
+
+        // An inconsistent source, an empty section and no manifest are refused before anything is read.
+        const mismatch = commit({ ...at('0.9.0', '0.9.1'), 'packages/vector-ui/package.json': JSON.stringify({ name: '@kinetis/vector-ui', version: '0.9.0' }) }, 'Mismatch')
+        sync()
+        assert.throws(() => plan(repo, { source: mismatch, ref: 'refs/heads/main', dryRun: false, mirror, log, ...npmAt(['0.9.0']) }), /inconsistent:\nvector-ui: packages\/vector-ui\/package\.json is at 0\.9\.0, the manifest at 0\.9\.1/)
+        const empty = commit({ ...at('0.9.0', '0.9.1'), 'packages/vector-ui/CHANGELOG.md': '## [Unreleased]\n\n## [0.9.1] - 2026-10-19\n\n## [0.9.0]\n\n- x\n' }, 'Empty notes')
+        sync()
+        assert.throws(() => plan(repo, { source: empty, ref: 'refs/heads/main', dryRun: false, mirror, log, ...npmAt(['0.9.0']) }), /packages\/vector-ui\/CHANGELOG\.md's "## \[0\.9\.1\]" section is empty/)
+        run(repo, 'rm', '--quiet', 'packages.manifest.json')
+        run(repo, 'commit', '--quiet', '-m', 'No manifest')
+        sync()
+        assert.throws(() => plan(repo, { source: run(repo, 'rev-parse', 'HEAD'), ref: 'refs/heads/main', dryRun: false, mirror, log, ...npmAt([]) }), /carries no packages\.manifest\.json/)
     } finally {
-        rmSync(repo, { recursive: true, force: true })
+        rmSync(scratch, { recursive: true, force: true })
     }
 })

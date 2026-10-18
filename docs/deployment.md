@@ -59,7 +59,7 @@ bundle into
 `packages/vector/resources/dist` with a development version,
 `dev-<short commit>`, which `vector:install` publishes and names; the
 release build passes `--version=<x.y.z>`, which must equal
-`packages/vector-ui`'s version.
+`kinetis/vector`'s version in `packages.manifest.json`.
 
 Vector's `ShellController` then answers `GET /vector/ui` and every deep
 link under it with the bundle's `index.html` plus one inline script,

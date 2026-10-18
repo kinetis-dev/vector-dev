@@ -1,34 +1,37 @@
 #!/usr/bin/env node
-// The release logic .github/workflows/release.yml runs: one v* tag
-// releases packages/vector to the mirror kinetis-dev/vector (Packagist's
-// kinetis/vector) and packages/vector-ui to npm (@kinetis/vector-ui), at
-// one shared version.
+// The release logic .github/workflows/release.yml runs on every push to
+// main: each product whose version in packages.manifest.json is not yet
+// published goes out — packages/vector to the mirror kinetis-dev/vector
+// (Packagist's kinetis/vector), packages/vector-ui to npm
+// (@kinetis/vector-ui). The two version independently; the vector-dev
+// monorepo itself carries no tags.
 //
-//     node scripts/release.mjs verify --tag=v0.9.0 [--ref=refs/tags/v0.9.0] [--dry-run [--head=<sha>]]
-//     node scripts/release.mjs notes --version=0.9.0
+//     node scripts/release.mjs plan --source=<sha> [--ref=refs/heads/main] [--mirror=<url>] [--dry-run]
+//     node scripts/release.mjs notes --product=<vector|vector-ui> --version=0.9.0
 //     node scripts/release.mjs split --source=<sha>
 //     node scripts/release.mjs release-commit --version=0.9.0 --source=<sha> --split=<sha>
 //     node scripts/release.mjs npm-published --version=0.9.0
-//     node scripts/release.mjs publish-mirror --tag=v0.9.0 --source=<sha> --split=<sha> --release=<sha> [--mirror=<url>] [--dry-run]
+//     node scripts/release.mjs publish-mirror --version=0.9.0 --source=<sha> --split=<sha> --release=<sha> [--mirror=<url>] [--dry-run]
 //
 // The mirror's history rule. The mirror's main is the pure subtree split
 // S of packages/vector: `git subtree split` derives every commit from the
 // monorepo commit it comes from, metadata included, so S is a function of
 // the source history and each release's S descends from the last one's —
 // main only ever fast-forwards, and dev-main carries no hosted bundle.
-// The version tag points at R, one release commit whose only parent is S
-// and whose tree is S's plus resources/dist (the hosted bundle, which the
-// monorepo gitignores). So every tagged release ships the bundle, and no
-// bundle ever enters main's history.
+// The version tag v<version> points at R, one release commit whose only
+// parent is S and whose tree is S's plus resources/dist (the hosted
+// bundle, which the monorepo gitignores). So every tagged release ships
+// the bundle, and no bundle ever enters main's history. That tag, on the
+// mirror, is the only tag a release makes.
 //
 // What makes a rerun safe, after tools/release-publish.php in kinetis:
 //
 // - R is deterministic too: it is authored and committed by a fixed,
 //   disposable release identity at the source commit's own committer
 //   date, so the same source and the same bundle bytes give the same R.
-// - The mirror is only written while the source tag still resolves to
-//   the commit this run released; a tag moved since is a different
-//   release, and the run fails before writing.
+// - The mirror is only written while origin's main still contains the
+//   source commit, and the manifest at that commit states this version;
+//   see sourceProblem().
 // - main is written under an explicit lease naming the main this run
 //   read (empty: it must not exist yet), and only forward: a main that
 //   moved between the read and the push fails the push, and a split that
@@ -52,11 +55,17 @@ import { appendFileSync, chmodSync, mkdtempSync, readFileSync, rmSync, writeFile
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { MANIFEST_FILE, changelogHeading, checkConsistency, manifestAt } from './validate-versions.mjs'
+import { highestVersion, parseVersion, transitionProblem } from './version-policy.mjs'
 
 export const MIRROR = 'https://github.com/kinetis-dev/vector.git'
 export const PREFIX = 'packages/vector'
 export const DIST = 'resources/dist'
 export const MANIFEST = 'vector-bundle.json'
+export const NPM_PACKAGE = '@kinetis/vector-ui'
+
+/** The manifest key of each published product. */
+export const PRODUCTS = { vector: 'vector', ui: 'vector-ui' }
 
 /** Who the disposable release commit is authored by, as in kinetis's release-publish.php. */
 export const RELEASE_IDENTITY = { name: 'kinetis-release', email: 'noreply@kinetis.dev' }
@@ -64,53 +73,9 @@ export const RELEASE_IDENTITY = { name: 'kinetis-release', email: 'noreply@kinet
 const DEPLOY_CREDENTIAL_VARIABLE = 'RELEASE_DEPLOY_TOKEN'
 const DEPLOY_CREDENTIAL_USERNAME = 'x-access-token'
 
-const TAG = /^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/
 const SHA = /^[0-9a-f]{40}$/
 
 const root = fileURLToPath(new URL('..', import.meta.url))
-
-/** The version a release tag names: vX.Y.Z or vX.Y.Z-prerelease, nothing else. */
-export function versionFromTag(tag) {
-    if (typeof tag !== 'string' || !TAG.test(tag)) {
-        throw new Error(`"${tag}" is not a release tag: expected vX.Y.Z or vX.Y.Z-<prerelease>, such as v0.9.0 or v1.0.0-rc.1.`)
-    }
-
-    return tag.slice(1)
-}
-
-/** The tag's version, which must be packages/vector-ui's: both packages release one shared version. */
-export function checkVersion(tag, packageVersion) {
-    const version = versionFromTag(tag)
-
-    if (version !== packageVersion) {
-        throw new Error(`${tag} releases ${version}, but packages/vector-ui/package.json is at ${packageVersion}; bump the version first, then tag.`)
-    }
-
-    return version
-}
-
-/** Whether a version is a prerelease (carries a -suffix). */
-export function isPrerelease(version) {
-    return version.includes('-')
-}
-
-/**
- * The npm dist-tag a version is published under: `next` for every 0.x
- * version and every prerelease, `latest` from 1.0.0 on.
- *
- * The registry requires a `latest` tag, so the package's very first
- * publish also sets `latest` to that version, whatever --tag says. Later
- * 0.x releases move only `next`, so the bare package name keeps resolving
- * to the first release until a maintainer moves `latest` by hand
- * (`npm dist-tag add @kinetis/vector-ui@<version> latest`, from a token-
- * or 2FA-authenticated maintainer account: trusted publishing's OIDC
- * credential can only publish), or until 1.0.0 publishes with `latest`.
- */
-export function distTag(version) {
-    const major = Number(versionFromTag(`v${version}`).split('.')[0])
-
-    return isPrerelease(version) || major === 0 ? 'next' : 'latest'
-}
 
 /**
  * The body of a CHANGELOG's `## [version]` section (a Keep a Changelog
@@ -120,7 +85,7 @@ export function distTag(version) {
  */
 export function changelogSection(markdown, version, file = 'CHANGELOG.md') {
     const lines = markdown.split(/\r?\n/)
-    const heading = new RegExp(`^## \\[${version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\](\\s.*)?$`)
+    const heading = changelogHeading(version)
     const start = lines.findIndex(line => heading.test(line))
 
     if (start === -1) {
@@ -141,18 +106,39 @@ export function changelogSection(markdown, version, file = 'CHANGELOG.md') {
     return body
 }
 
-/** The GitHub Release body: both packages' sections, in order. */
-export function releaseNotes(version, { vector, ui }) {
-    return [
-        '## kinetis/vector',
-        '',
-        changelogSection(vector, version, 'packages/vector/CHANGELOG.md'),
-        '',
-        '## @kinetis/vector-ui',
-        '',
-        changelogSection(ui, version, 'packages/vector-ui/CHANGELOG.md'),
-        '',
-    ].join('\n')
+/**
+ * Whether one product's manifest version goes out this round, from what
+ * is already published. Pure, so every case is tested; the reads that
+ * feed it are in plan().
+ *
+ * A published version is done. An unpublished one must be one legal step
+ * above the highest published version — its predecessor is out — or, when
+ * nothing is published yet, the product's first release. GitHub keeps at
+ * most one pending run of release.yml, so a version merged while an
+ * earlier one's run was still waiting can lose its run entirely; the
+ * manifest only ever states the current version, so this is where that
+ * gap is seen, and the round stops rather than publishing over it.
+ *
+ * Returns { publish, notice }, or throws.
+ */
+export function productPlan({ product, version, published, publishedVersions }) {
+    if (published) {
+        return { publish: false, notice: `${product} ${version} is already published; nothing to do.` }
+    }
+
+    const highest = highestVersion(publishedVersions)
+
+    if (highest === null) {
+        return { publish: true, notice: `${product} ${version} is its first release.` }
+    }
+
+    const problem = transitionProblem(highest, version)
+
+    if (problem !== null) {
+        throw new Error(`${product} ${version} does not follow what is published (highest ${highest}): ${problem}. Publish the missing version first — re-run the release for the commit that introduced it — then re-run this one.`)
+    }
+
+    return { publish: true, notice: `${product} ${version} follows the published ${highest}.` }
 }
 
 /**
@@ -250,45 +236,104 @@ function sameRelease(repo, commit, splitCommit) {
         && changed.every(file => file.startsWith(`${DIST}/`))
 }
 
+/** A file at a commit, or null when that commit does not have it. */
+function showAt(repo, commit, file) {
+    const result = spawnSync('git', ['show', `${commit}:${file}`], { cwd: repo, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+
+    return result.status === 0 ? result.stdout : null
+}
+
 /**
- * Checks a tag before anything is built: its form, the shared version,
- * both CHANGELOG sections, that a real (non-dry) run is running from the
- * tag itself, and that the tagged commit is on origin/main.
+ * Every version the mirror publishes: its v<X.Y.Z> tags. Read through the
+ * deploy credential when one is given, the same askpass helper the push
+ * uses, so a mirror that is not public yet still answers; anonymously
+ * otherwise, as a rehearsal does.
  */
-export function verify(repo, { tag, ref, dryRun, head, log = console.log }) {
-    versionFromTag(tag)
-
-    // A real release runs from the tag, so the npm-release environment's
-    // tag rule admits it and npm's provenance names the tag.
-    if (!dryRun && ref !== undefined && ref !== `refs/tags/${tag}`) {
-        throw new Error(`A release that publishes runs from the tag itself (refs/tags/${tag}), not ${ref}; dispatch it from the tag, or as a dry run.`)
-    }
-
-    let source
+export function mirrorVersions(repo, mirror, token) {
+    const auth = mirror.startsWith('https://') && token !== undefined && token !== '' ? credential(mirror, token) : null
 
     try {
-        source = git(repo, ['rev-parse', '--verify', '--quiet', `refs/tags/${tag}^{commit}`])
-    } catch {
-        // A rehearsal comes before the tag, since pushing the tag is the
-        // release: it runs at the dispatched commit, as if tagged.
-        if (!dryRun || head === undefined) {
-            throw new Error(`The tag ${tag} does not exist in this checkout.`)
+        const result = spawnSync('git', ['ls-remote', '--tags', '--refs', mirror], { cwd: repo, env: { ...process.env, ...auth?.env }, encoding: 'utf8' })
+
+        if (result.status !== 0) {
+            throw new Error(`Could not list the mirror's tags: ${result.stderr.trim()}`)
         }
 
-        source = sha(head, 'the dispatched commit')
-        log(`${tag} does not exist yet; rehearsing at ${source} as if it were tagged ${tag}.`)
+        return result.stdout
+            .split('\n')
+            .map(line => /^[0-9a-f]+\trefs\/tags\/v(.+)$/.exec(line)?.[1])
+            .filter(version => version !== undefined && parseVersion(version) !== null)
+    } finally {
+        if (auth !== null) {
+            rmSync(auth.dir, { recursive: true, force: true })
+        }
     }
+}
 
-    // The tagged commit's own files, whatever the checkout is on.
-    const show = file => git(repo, ['show', `${source}:${file}`])
-    const version = checkVersion(tag, JSON.parse(show('packages/vector-ui/package.json')).version)
-    releaseNotes(version, { vector: show('packages/vector/CHANGELOG.md'), ui: show('packages/vector-ui/CHANGELOG.md') })
+/**
+ * Decides what this round publishes, before anything is built: the
+ * manifest at the source commit, the files it describes there, and, for
+ * each product, whether its version is published and may be.
+ *
+ * A real run publishes only from main: run from refs/heads/main, which
+ * the npm-release environment admits and npm's provenance names, at a
+ * commit origin/main contains. A rehearsal may run from any branch — a
+ * pull request's, before it merges — and says what a real run would
+ * refuse instead of refusing.
+ *
+ * Returns { source, vector, ui }, each product { version, publish, notes }.
+ */
+export function plan(repo, { source, ref, dryRun, mirror = MIRROR, token, npmView, npmVersionsView, log = console.log }) {
+    sha(source, 'the source commit')
+
+    if (!dryRun && ref !== undefined && ref !== 'refs/heads/main') {
+        throw new Error(`A release that publishes runs from main (refs/heads/main), not ${ref}; run it from main, or as a dry run.`)
+    }
 
     if (!isAncestor(repo, source, 'refs/remotes/origin/main')) {
-        throw new Error(`${tag} (${source}) is not on origin/main; a release only comes from main.`)
+        if (!dryRun) {
+            throw new Error(`${source} is not on origin/main; a release only comes from main.`)
+        }
+
+        log(`${source} is not on origin/main; rehearsing it anyway. A real run would refuse it.`)
     }
 
-    return { version, source, distTag: distTag(version), prerelease: isPrerelease(version) }
+    const manifest = manifestAt(repo, source)
+
+    if (manifest === null) {
+        throw new Error(`${source} carries no ${MANIFEST_FILE}; there is nothing to release.`)
+    }
+
+    const read = file => showAt(repo, source, file)
+    const problems = checkConsistency(manifest, read)
+
+    if (problems.length > 0) {
+        throw new Error(`The versions at ${source} are inconsistent:\n${problems.join('\n')}`)
+    }
+
+    const decide = (key, published, publishedVersions) => {
+        const entry = manifest.packages[key]
+
+        if (entry === undefined) {
+            throw new Error(`${MANIFEST_FILE} at ${source} has no product "${key}".`)
+        }
+
+        const decision = productPlan({ product: entry.name, version: entry.version, published: published(entry.version), publishedVersions })
+        log(decision.notice)
+
+        // The release notes are the product's CHANGELOG section, which must
+        // be there and say something before anything goes out.
+        const notes = decision.publish ? changelogSection(read(`${entry.path}/CHANGELOG.md`), entry.version, `${entry.path}/CHANGELOG.md`) : null
+
+        return { version: entry.version, publish: decision.publish, notes }
+    }
+
+    const tags = mirrorVersions(repo, mirror, token)
+    const vector = decide(PRODUCTS.vector, version => tags.includes(version), tags)
+    const npmVersions = npmPublishedVersions(npmVersionsView)
+    const ui = decide(PRODUCTS.ui, version => npmPublished(version, npmView), npmVersions)
+
+    return { source, vector, ui }
 }
 
 /** S: the pure subtree split of packages/vector at the source commit. */
@@ -310,7 +355,7 @@ export function releaseCommit(repo, { version, source, split: splitCommit }) {
     const manifest = JSON.parse(readFileSync(path.join(packageDir, DIST, MANIFEST), 'utf8'))
 
     if (manifest.version !== version || manifest.source !== source) {
-        throw new Error(`${PREFIX}/${DIST}/${MANIFEST} is the bundle ${manifest.version} from ${manifest.source}, not ${version} from ${source}; build it with scripts/build-hosted-bundle.mjs --version=${version} at the tagged commit.`)
+        throw new Error(`${PREFIX}/${DIST}/${MANIFEST} is the bundle ${manifest.version} from ${manifest.source}, not ${version} from ${source}; build it with scripts/build-hosted-bundle.mjs --version=${version} at the source commit.`)
     }
 
     const date = git(repo, ['show', '--no-patch', '--format=%cI', source])
@@ -369,11 +414,53 @@ function credential(mirror, token) {
 }
 
 /**
- * Reads the mirror (unauthenticated: it is public), decides with
- * publicationPlan(), re-checks the source tag, and pushes what is left
- * in one atomic push — or, on a dry run, says what it would push.
+ * Why the mirror must not be written for `version` from `source`, or null.
+ *
+ * With a tag trigger, the guard was that the source tag still resolved to
+ * the commit the run released: a moved tag was a different release. A
+ * push to main has no tag to re-read, so the guard is what makes a source
+ * commit a release here — main contains it, and its manifest names this
+ * version. origin's main is read again, now: a main that no longer
+ * contains the source (force-pushed past it) has withdrawn this release.
+ * A main that moved on to a newer version has not — the newer version
+ * needs this one published as its predecessor — so main's own current
+ * manifest is deliberately not compared. The manifest at the source binds
+ * the version this run builds to the commit it builds from, as the tag
+ * bound the two before.
  */
-export function publishMirror(repo, { tag, source, split: splitCommit, release, mirror = MIRROR, dryRun = false, token, log = console.log }) {
+export function sourceProblem(repo, { source, version }) {
+    const line = git(repo, ['ls-remote', 'origin', 'refs/heads/main'])
+    const current = line === '' ? null : sha(line.split('\t')[0], "origin's main")
+
+    if (current === null) {
+        return 'origin has no main'
+    }
+
+    if (spawnSync('git', ['cat-file', '-e', `${current}^{commit}`], { cwd: repo }).status !== 0) {
+        git(repo, ['fetch', '--quiet', '--no-tags', 'origin', 'refs/heads/main'])
+    }
+
+    if (!isAncestor(repo, source, current)) {
+        return `origin's main (${current}) no longer contains ${source}`
+    }
+
+    const stated = manifestAt(repo, source)?.packages[PRODUCTS.vector]?.version
+
+    if (stated !== version) {
+        return `the manifest at ${source} states kinetis/vector ${stated ?? 'nothing'}, not ${version}`
+    }
+
+    return null
+}
+
+/**
+ * Reads the mirror (unauthenticated: it is public), decides with
+ * publicationPlan(), re-checks the source with sourceProblem(), and
+ * pushes what is left in one atomic push — or, on a dry run, says what
+ * it would push.
+ */
+export function publishMirror(repo, { version, source, split: splitCommit, release, mirror = MIRROR, dryRun = false, token, log = console.log }) {
+    const tag = `v${version}`
     const remote = { main: remoteMain(repo, mirror), tag: remoteTagCommit(repo, mirror, tag) }
     const fetched = [remote.main, remote.tag].filter(commit => commit !== null)
 
@@ -404,14 +491,14 @@ export function publishMirror(repo, { tag, source, split: splitCommit, release, 
         return plan
     }
 
-    // Only while the source tag is still the commit this run released. A
-    // rehearsal may run before the tag exists; it says so and writes nothing.
-    const current = remoteTagCommit(repo, 'origin', tag)
+    // Only while the source is still this release. A rehearsal — from a
+    // branch not merged yet, say — says so and writes nothing.
+    const problem = sourceProblem(repo, { source, version })
 
-    if (current !== source && dryRun) {
-        log(`origin's ${tag} resolves to ${current ?? 'nothing'}, not ${source}; a real run would refuse to write the mirror until it does.`)
-    } else if (current !== source) {
-        throw new Error(`origin's ${tag} now resolves to ${current ?? 'nothing'}, not ${source}, the commit this run released; refusing to write the mirror.`)
+    if (problem !== null && dryRun) {
+        log(`${problem}; a real run would refuse to write the mirror.`)
+    } else if (problem !== null) {
+        throw new Error(`${problem}; refusing to write the mirror.`)
     }
 
     const push = [
@@ -447,13 +534,17 @@ export function publishMirror(repo, { tag, source, split: splitCommit, release, 
     return plan
 }
 
+function npmView(args) {
+    return () => spawnSync('npm', ['view', ...args], { encoding: 'utf8' })
+}
+
 /**
  * Whether @kinetis/vector-ui@version is on npm: `npm view` prints the
  * version when it is, nothing when the package exists without it, and
  * fails with E404 before the first publish. Any other failure is not an
  * answer, and fails.
  */
-export function npmPublished(version, view = () => spawnSync('npm', ['view', `@kinetis/vector-ui@${version}`, 'version'], { encoding: 'utf8' })) {
+export function npmPublished(version, view = npmView([`${NPM_PACKAGE}@${version}`, 'version'])) {
     const result = view()
 
     if (result.status === 0) {
@@ -464,7 +555,28 @@ export function npmPublished(version, view = () => spawnSync('npm', ['view', `@k
         return false
     }
 
-    throw new Error(`Could not ask npm whether @kinetis/vector-ui@${version} exists: ${(result.stderr ?? '').trim() || `npm exited ${result.status}`}`)
+    throw new Error(`Could not ask npm whether ${NPM_PACKAGE}@${version} exists: ${(result.stderr ?? '').trim() || `npm exited ${result.status}`}`)
+}
+
+/**
+ * Every version of @kinetis/vector-ui on npm: none before the first
+ * publish (E404). `npm view --json` prints a bare string for a package
+ * with one version, an array otherwise.
+ */
+export function npmPublishedVersions(view = npmView([NPM_PACKAGE, 'versions', '--json'])) {
+    const result = view()
+
+    if (result.status === 0) {
+        const versions = result.stdout.trim() === '' ? [] : JSON.parse(result.stdout)
+
+        return Array.isArray(versions) ? versions : [versions]
+    }
+
+    if (/\bE404\b/.test(result.stderr ?? '')) {
+        return []
+    }
+
+    throw new Error(`Could not ask npm which versions of ${NPM_PACKAGE} exist: ${(result.stderr ?? '').trim() || `npm exited ${result.status}`}`)
 }
 
 function options(argv) {
@@ -501,6 +613,28 @@ function output(values) {
     }
 }
 
+/** What this round publishes, and each release's notes, on the run's summary page when there is one. */
+function summary(result) {
+    const lines = ['## This round', '']
+
+    for (const [name, product] of [['kinetis/vector', result.vector], [NPM_PACKAGE, result.ui]]) {
+        lines.push(`- **${name} ${product.version}**: ${product.publish ? 'publishes' : 'already published'}`)
+    }
+
+    for (const [name, product] of [['kinetis/vector', result.vector], [NPM_PACKAGE, result.ui]]) {
+        if (product.publish) {
+            lines.push('', `## ${name} ${product.version}`, '', product.notes)
+        }
+    }
+
+    const text = `${lines.join('\n')}\n`
+    console.log(text)
+
+    if (process.env.GITHUB_STEP_SUMMARY) {
+        appendFileSync(process.env.GITHUB_STEP_SUMMARY, text)
+    }
+}
+
 export function main(argv) {
     // Out of the environment before any child starts; only the push gets it.
     const token = process.env[DEPLOY_CREDENTIAL_VARIABLE]
@@ -511,17 +645,28 @@ export function main(argv) {
     const dryRun = opts['dry-run'] === true || opts['dry-run'] === 'true'
 
     switch (command) {
-        case 'verify': {
-            const result = verify(root, { tag: required(opts, 'tag'), ref: opts.ref, dryRun, head: opts.head })
-            output({ version: result.version, source: result.source, dist_tag: result.distTag, prerelease: result.prerelease })
+        case 'plan': {
+            const result = plan(root, { source: required(opts, 'source'), ref: opts.ref, dryRun, mirror: opts.mirror ?? MIRROR, token })
+            summary(result)
+            output({
+                source: result.source,
+                vector_version: result.vector.version,
+                vector_publish: result.vector.publish,
+                ui_version: result.ui.version,
+                ui_publish: result.ui.publish,
+            })
             break
         }
         case 'notes': {
+            const product = required(opts, 'product')
             const version = required(opts, 'version')
-            process.stdout.write(releaseNotes(version, {
-                vector: readFileSync(path.join(root, 'packages/vector/CHANGELOG.md'), 'utf8'),
-                ui: readFileSync(path.join(root, 'packages/vector-ui/CHANGELOG.md'), 'utf8'),
-            }))
+            const entry = JSON.parse(readFileSync(path.join(root, MANIFEST_FILE), 'utf8')).packages[product]
+
+            if (entry === undefined) {
+                throw new Error(`--product=${product} is not in ${MANIFEST_FILE}.`)
+            }
+
+            process.stdout.write(`${changelogSection(readFileSync(path.join(root, entry.path, 'CHANGELOG.md'), 'utf8'), version, `${entry.path}/CHANGELOG.md`)}\n`)
             break
         }
         case 'split':
@@ -537,13 +682,13 @@ export function main(argv) {
         case 'npm-published': {
             const version = required(opts, 'version')
             const published = npmPublished(version)
-            console.log(published ? `@kinetis/vector-ui@${version} is already on npm.` : `@kinetis/vector-ui@${version} is not on npm yet.`)
+            console.log(published ? `${NPM_PACKAGE}@${version} is already on npm.` : `${NPM_PACKAGE}@${version} is not on npm yet.`)
             output({ published })
             break
         }
         case 'publish-mirror':
             publishMirror(root, {
-                tag: required(opts, 'tag'),
+                version: required(opts, 'version'),
                 source: sha(required(opts, 'source'), '--source'),
                 split: sha(required(opts, 'split'), '--split'),
                 release: sha(required(opts, 'release'), '--release'),
@@ -553,7 +698,7 @@ export function main(argv) {
             })
             break
         default:
-            throw new Error('Usage: release.mjs verify|notes|split|release-commit|npm-published|publish-mirror [--option=value ...]')
+            throw new Error('Usage: release.mjs plan|notes|split|release-commit|npm-published|publish-mirror [--option=value ...]')
     }
 }
 
