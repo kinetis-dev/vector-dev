@@ -55,8 +55,12 @@ rule and npm's provenance both see the tag.
 
 A dry run replaces the last two with a rehearsal job (`npm pack
 --dry-run` and `npm publish --dry-run`), and the mirror push with a line
-saying what it would push. Releases run one at a time and are never
-cancelled midway.
+saying what it would push. Releases run one at a time, and a running
+release is never cancelled midway. A pending one can be replaced:
+GitHub keeps at most one pending run of this workflow and a newer
+queued run cancels the one already waiting, so two tags pushed while a
+release runs leave only the later one queued, and a rehearsal can
+displace a pending real release (see [Recovery](#recovery)).
 
 ### The mirror's history
 
@@ -86,9 +90,22 @@ a disposable identity, at the source commit's own date.
 | any prerelease (`-rc.1`, `-beta.2`) | `next` |
 | `1.0.0` and later | `latest` |
 
-So `pnpm add @kinetis/vector-ui` installs a stable release only once
-there is one; until then, `@kinetis/vector-ui@next`. A prerelease is
-also marked as one on GitHub.
+The npm registry requires a `latest` dist-tag, so the package's very
+first publish also sets `latest`, even under `--tag next`. Later 0.x
+releases move only `next`, so a bare `pnpm add @kinetis/vector-ui` keeps
+resolving to that first release until 1.0.0, while
+`@kinetis/vector-ui@next` gets the newest. After each 0.x release,
+either move `latest` by hand:
+
+```console
+npm dist-tag add @kinetis/vector-ui@0.9.1 latest
+```
+
+from a maintainer account authenticated with a token or two-factor
+authentication — the workflow cannot, since trusted publishing's OIDC
+credential can only publish, not change dist-tags — or accept the stale
+`latest`. From 1.0.0 the workflow publishes with `latest`, and this goes
+away. A prerelease is also marked as one on GitHub.
 
 ## One-time setup
 
@@ -152,6 +169,12 @@ before writing.
   and which one stands is for a person to decide.
 - **npm** is skipped when the version is already published.
 - **The GitHub Release** is skipped when it already exists.
+- **A release shown as cancelled while pending** was replaced by a newer
+  queued run before it started. Re-run it from its tag: dispatch the
+  workflow with that tag and dry run off, from the tag itself (*Use
+  workflow from: vX.Y.Z*), or re-run the cancelled run. Do not dispatch
+  a rehearsal while a release is running or queued: it can displace the
+  pending release.
 
 Prefer *Re-run failed jobs*: it keeps the jobs that succeeded, and their
 outputs, as they were. A tag pushed by mistake, before anything was

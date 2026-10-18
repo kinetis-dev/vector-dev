@@ -96,8 +96,15 @@ export function isPrerelease(version) {
 
 /**
  * The npm dist-tag a version is published under: `next` for every 0.x
- * version and every prerelease, `latest` from 1.0.0 on — so installing
- * the bare package name gets a stable release only once there is one.
+ * version and every prerelease, `latest` from 1.0.0 on.
+ *
+ * The registry requires a `latest` tag, so the package's very first
+ * publish also sets `latest` to that version, whatever --tag says. Later
+ * 0.x releases move only `next`, so the bare package name keeps resolving
+ * to the first release until a maintainer moves `latest` by hand
+ * (`npm dist-tag add @kinetis/vector-ui@<version> latest`, from a token-
+ * or 2FA-authenticated maintainer account: trusted publishing's OIDC
+ * credential can only publish), or until 1.0.0 publishes with `latest`.
  */
 export function distTag(version) {
     const major = Number(versionFromTag(`v${version}`).split('.')[0])
