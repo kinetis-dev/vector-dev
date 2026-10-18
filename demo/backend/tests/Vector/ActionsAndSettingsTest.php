@@ -78,8 +78,8 @@ final class ActionsAndSettingsTest extends VectorTestCase
         self::assertIsArray($draft);
         $id = (int) $draft['id'];
 
-        // every adjustment below lands on draft products — put every one of them back afterwards
-        $touched = (new Query($link))->table('products')->select('id', 'stock')->where('status', '=', 'draft')->get(); // a superset of what q matches
+        // every adjustment below lands on draft products — put every product back afterwards, should a broken filter widen it
+        $touched = (new Query($link))->table('products')->select('id', 'stock')->get();
 
         try {
             $this->client->post('/vector/r/products/actions/adjust-stock', body: ['ids' => [$id], 'fields' => ['delta' => 5, 'note' => 'restock']], headers: $this->adminHeaders())
@@ -122,7 +122,20 @@ final class ActionsAndSettingsTest extends VectorTestCase
         $archived = (new Query($link))->table('products')->select('id')->where('status', '=', 'archived')->orderBy('id', 'ASC')->first();
         self::assertIsArray($archived);
         $this->client->post('/vector/r/products/actions/archive-products', body: ['ids' => [(int) $archived['id']]], headers: $this->adminHeaders())->assertStatus(403);
-        $this->client->post('/vector/r/order-lines/batch', body: ['action' => 'delete', 'all' => ['filter' => []]], headers: $this->adminHeaders())->assertStatus(403);
+
+        // the seeded order lines outnumber the bulk limit, which is what refuses this; deleted, every later run would pass it
+        $lines = (new Query($link))->table('order_lines')->get();
+
+        try {
+            $this->client->post('/vector/r/order-lines/batch', body: ['action' => 'delete', 'all' => ['filter' => []]], headers: $this->adminHeaders())->assertStatus(403);
+        } finally {
+            $left = array_map('intval', (new Query($link))->table('order_lines')->pluck('id'));
+            $gone = array_values(array_filter($lines, static fn (array $line): bool => !in_array((int) $line['id'], $left, true)));
+
+            if ($gone !== []) {
+                (new Query($link))->table('order_lines')->insert($gone);
+            }
+        }
 
         $events = $this->vectorQuery()->table('vector_action_events')->where('action', '=', 'action:adjust-stock')->count();
         self::assertGreaterThanOrEqual(2, $events);
