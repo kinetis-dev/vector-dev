@@ -1,10 +1,30 @@
 {
     "name": "kinetis/vector",
     "description": "A schema-driven admin platform for Kinetis applications: a compiled resource registry, a REST admin API and MCP tools over kinetis/orm entities.",
+    "keywords": [
+        "kinetis",
+        "admin",
+        "admin-panel",
+        "crud",
+        "orm",
+        "mcp"
+    ],
+    "homepage": "https://kinetis.dev/vector/docs/",
     "type": "library",
     "license": "MIT",
+    "authors": [
+        {
+            "name": "Alon Noy"
+        }
+    ],
+    "support": {
+        "docs": "https://kinetis.dev/vector/docs/",
+        "issues": "https://github.com/kinetis-dev/vector-dev/issues",
+        "source": "https://github.com/kinetis-dev/vector-dev"
+    },
     "require": {
         "php": "^8.4",
+        "composer-runtime-api": "^2.0",
         "kinetis/authorization": "^1.0.4",
         "kinetis/database-bridge": "^1.4.0",
         "kinetis/framework": "^1.22.0",
@@ -36,5 +56,7 @@
             "discovery": "Kinetis\\Vector\\Registry\\VectorRegistry",
             "bootstrap": "Kinetis\\Vector\\PackageBootstrap"
         }
-    }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
 }

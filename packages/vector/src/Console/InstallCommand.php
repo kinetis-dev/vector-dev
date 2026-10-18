@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Kinetis\Vector\Console;
 
+use Composer\InstalledVersions;
 use Kinetis\Config\Config;
 use Kinetis\Console\Attributes\Command;
 use Kinetis\Console\CommandArguments;
 use Kinetis\Runtime\ProjectRoot;
 use Kinetis\Vector\Database\VectorDatabase;
+use Kinetis\Vector\Ui\HostedBundle;
 use Kinetis\Vector\Ui\VectorUi;
 
 /**
@@ -26,6 +28,11 @@ use Kinetis\Vector\Ui\VectorUi;
  * `mysql` or `pgsql`. Nothing is overwritten; run `kinetis migrate`
  * afterwards. A named connection also needs `VECTOR_DB_CONNECTION=<name>`
  * in the application's configuration, which this command prints.
+ *
+ * The hosted UI is published only when `resources/dist` matches its
+ * manifest, `vector-bundle.json` (see HostedBundle): a bundle another
+ * version or descriptor contract built, or one whose files changed after
+ * the build, is refused with exit 1 and nothing is copied.
  */
 final readonly class InstallCommand
 {
@@ -114,7 +121,7 @@ final readonly class InstallCommand
                 : "Set VECTOR_DB_CONNECTION={$connection} in the application's configuration so Vector uses these tables.\n";
         }
 
-        return $this->publishUi(dirname(__DIR__, 2) . '/resources/dist', $root . '/public' . VectorUi::PATH);
+        return $this->publishUi(dirname(__DIR__, 2) . '/resources/dist', $root . '/public' . VectorUi::PATH, self::installedRelease());
     }
 
     /**
@@ -143,11 +150,37 @@ final readonly class InstallCommand
     }
 
     /**
+     * The installed kinetis/vector release without its leading "v", or
+     * null for a dev install — a path repository or a branch — whose
+     * bundle is whatever the last local build left.
+     */
+    private static function installedRelease(): ?string
+    {
+        try {
+            $version = InstalledVersions::getPrettyVersion(HostedBundle::PACKAGE);
+        } catch (\OutOfBoundsException) {
+            return null;
+        }
+
+        if ($version === null || str_contains($version, 'dev')) {
+            return null;
+        }
+
+        return str_starts_with($version, 'v') ? substr($version, 1) : $version;
+    }
+
+    /**
      * Copies the built admin bundle into the web root, replacing what an
      * earlier install left there, so the shell always references files
-     * that exist.
+     * that exist. The bundle is verified against its manifest first; the
+     * manifest itself stays out of the web root.
+     *
+     * @internal public so tests can verify a fixture bundle as a release
+     *           install would; install() is the command
+     *
+     * @param ?string $release the installed release, null for a dev install
      */
-    private function publishUi(string $dist, string $target): int
+    public function publishUi(string $dist, string $target, ?string $release): int
     {
         if (!is_file($dist . '/index.html')) {
             echo "No hosted admin bundle in {$dist}: a source install of kinetis/vector has none; released packages ship it. The hosted admin stays unpublished unless VECTOR_UI_DIR points at a separately built bundle. Migrations and the API work without it.\n";
@@ -155,11 +188,28 @@ final readonly class InstallCommand
             return 0;
         }
 
+        try {
+            $bundle = HostedBundle::verify($dist, $release);
+        } catch (\UnexpectedValueException $e) {
+            fwrite(STDERR, $e->getMessage() . "\n");
+
+            return 1;
+        }
+
+        if ($release === null) {
+            echo "Publishing a development build of the admin UI: version {$bundle->version}, built from {$bundle->source}.\n";
+        }
+
         $files = 0;
         $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dist, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST);
 
         foreach ($iterator as $item) {
             $relative = substr((string) $item->getPathname(), strlen($dist) + 1);
+
+            if ($relative === HostedBundle::MANIFEST) {
+                continue;
+            }
+
             $destination = $target . '/' . $relative;
 
             if ($item->isDir()) {

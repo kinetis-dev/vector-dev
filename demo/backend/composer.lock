@@ -2183,9 +2183,10 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector",
-                "reference": "8720addc84d943905907f57b9471a778d7fe6b9b"
+                "reference": "6fdfff78cfa0c1e2adaefd0ddc086cbe9f2fd916"
             },
             "require": {
+                "composer-runtime-api": "^2.0",
                 "kinetis/authorization": "^1.0.4",
                 "kinetis/database-bridge": "^1.4.0",
                 "kinetis/framework": "^1.22.0",
@@ -2223,7 +2224,26 @@
             "license": [
                 "MIT"
             ],
+            "authors": [
+                {
+                    "name": "Alon Noy"
+                }
+            ],
             "description": "A schema-driven admin platform for Kinetis applications: a compiled resource registry, a REST admin API and MCP tools over kinetis/orm entities.",
+            "homepage": "https://kinetis.dev/vector/docs/",
+            "keywords": [
+                "admin",
+                "admin-panel",
+                "crud",
+                "kinetis",
+                "mcp",
+                "orm"
+            ],
+            "support": {
+                "docs": "https://kinetis.dev/vector/docs/",
+                "issues": "https://github.com/kinetis-dev/vector-dev/issues",
+                "source": "https://github.com/kinetis-dev/vector-dev"
+            },
             "transport-options": {
                 "relative": true
             }
