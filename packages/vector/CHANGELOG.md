@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-10-18
+
+### Changed
+
+- Released alongside `@kinetis/vector-ui` 0.9.3, whose bundled package is
+  unchanged from 0.9.2; nothing in `kinetis/vector` changed.
+
 ## [0.9.2] - 2026-10-18
 
 ### Changed
