@@ -180,7 +180,7 @@ jobs:
         run: .github/scripts/php vendor/bin/phpunit
 
       - name: PHPStan
-        run: .github/scripts/php vendor/bin/phpstan analyse --no-progress
+        run: .github/scripts/php vendor/bin/phpstan analyse --no-progress --memory-limit=1G
 
       # Two Psalm passes, deliberately: --taint-analysis reports taint
       # issues only, suppressing every ordinary issue type — a plain run
