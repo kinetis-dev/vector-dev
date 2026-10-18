@@ -97,6 +97,10 @@ final readonly class HostedBundle
             throw $refuse("it was built for version {$data['version']}; kinetis/vector {$release} is installed");
         }
 
+        if (!isset($files['index.html'])) {
+            throw $refuse(self::MANIFEST . ' lists no index.html, so there is no shell to publish');
+        }
+
         $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dist, \FilesystemIterator::SKIP_DOTS));
 
         foreach ($iterator as $item) {

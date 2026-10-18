@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Vector;
 
+use Kinetis\Console\CommandArguments;
 use Kinetis\Vector\Console\InstallCommand;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Ui\HostedBundle;
@@ -14,9 +15,11 @@ use PHPUnit\Framework\TestCase;
  * vector:install publishing the hosted admin bundle: a bundle is copied
  * only when it matches its vector-bundle.json, so a stale build — one
  * another version built, or one whose files changed after the manifest
- * was written — exits 1 and copies nothing. Fixture bundles in a
- * temporary directory, published through InstallCommand::publishUi with
- * the installed release the command would otherwise read from Composer.
+ * was written — exits 1, publishes no migration and copies nothing.
+ * Fixture bundles in a temporary project root, installed through
+ * InstallCommand::installFrom with the installed release the command
+ * would otherwise read from Composer. No database: the command touches
+ * files only.
  */
 final class HostedBundleTest extends TestCase
 {
@@ -34,9 +37,17 @@ final class HostedBundleTest extends TestCase
     /** @var resource|null */
     private $filter = null;
 
+    private mixed $binDir;
+
+    private string|false $connection;
+
     protected function setUp(): void
     {
         $this->root = sys_get_temp_dir() . '/vector-bundle-' . bin2hex(random_bytes(6));
+        $this->binDir = $GLOBALS['_composer_bin_dir'] ?? null;
+        $this->connection = getenv('DB_CONNECTION');
+        $GLOBALS['_composer_bin_dir'] = $this->root . '/vendor/bin';
+        putenv('DB_CONNECTION=mysql');
         $this->dist = $this->root . '/dist';
         $this->target = $this->root . '/public/vector/ui';
         mkdir($this->dist . '/_nuxt', 0755, true);
@@ -57,6 +68,9 @@ final class HostedBundleTest extends TestCase
         if ($this->filter !== null) {
             stream_filter_remove($this->filter);
         }
+
+        $GLOBALS['_composer_bin_dir'] = $this->binDir;
+        putenv($this->connection === false ? 'DB_CONNECTION' : 'DB_CONNECTION=' . $this->connection);
 
         self::remove($this->root);
     }
@@ -82,11 +96,12 @@ final class HostedBundleTest extends TestCase
 
     /**
      * Writes the manifest the build script writes for the files now in
-     * dist/, with $overrides applied on top.
+     * dist/, with $extraFiles listed too and $overrides applied on top.
      *
      * @param array<string, mixed> $overrides
+     * @param array<string, string> $extraFiles
      */
-    private function writeManifest(array $overrides = []): void
+    private function writeManifest(array $overrides = [], array $extraFiles = []): void
     {
         $files = [];
         $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($this->dist, \FilesystemIterator::SKIP_DOTS));
@@ -99,6 +114,7 @@ final class HostedBundleTest extends TestCase
             }
         }
 
+        $files = [...$files, ...$extraFiles];
         ksort($files, SORT_STRING);
 
         file_put_contents($this->dist . '/' . HostedBundle::MANIFEST, json_encode([
@@ -117,7 +133,7 @@ final class HostedBundleTest extends TestCase
     private function publish(?string $release): array
     {
         ob_start();
-        $status = new InstallCommand()->publishUi($this->dist, $this->target, $release);
+        $status = new InstallCommand()->installFrom(CommandArguments::parse([]), $this->dist, $release);
         $output = (string) ob_get_clean();
 
         return [$status, $output, implode('', $this->stderr->getArrayCopy())];
@@ -133,6 +149,18 @@ final class HostedBundleTest extends TestCase
         self::assertStringContainsString('No hosted admin bundle', $output);
         self::assertSame('', $stderr);
         self::assertDirectoryDoesNotExist($this->target);
+        self::assertNotSame([], glob($this->root . '/migrations/*_vector_*.php'));
+    }
+
+    public function testADistWithNeitherShellNorManifestIsStillAbsent(): void
+    {
+        unlink($this->dist . '/index.html');
+
+        [$status, $output, $stderr] = $this->publish(null);
+
+        self::assertSame(0, $status, $stderr);
+        self::assertStringContainsString('No hosted admin bundle', $output);
+        self::assertDirectoryDoesNotExist($this->target);
     }
 
     public function testAReleaseBundleForTheInstalledReleaseIsPublishedWithoutItsManifest(): void
@@ -142,6 +170,7 @@ final class HostedBundleTest extends TestCase
         [$status, $output, $stderr] = $this->publish('0.9.0');
 
         self::assertSame(0, $status, $stderr);
+        self::assertNotSame([], glob($this->root . '/migrations/*_vector_*.php'));
         self::assertStringContainsString('Published the admin UI (3 files)', $output);
         self::assertStringNotContainsString('development build', $output);
         self::assertFileEquals($this->dist . '/index.html', $this->target . '/index.html');
@@ -182,6 +211,24 @@ final class HostedBundleTest extends TestCase
 
         yield 'a listed path leaves the bundle' => [static fn (self $test) => $test->writeManifest(['files' => ['../index.html' => str_repeat('0', 64)]]), null, 'vector-bundle.json is malformed'];
 
+        yield 'a listed path is absolute' => [static fn (self $test) => $test->writeManifest([], ['/etc/passwd' => str_repeat('0', 64)]), null, 'vector-bundle.json is malformed'];
+
+        // the target exists and its hash is right, so only the path check refuses it
+        yield 'a listed path climbs out midway' => [static function (self $test): void {
+            file_put_contents($test->root . '/x', 'outside');
+            $test->writeManifest([], ['_nuxt/../../x' => hash('sha256', 'outside')]);
+        }, null, 'vector-bundle.json is malformed'];
+
+        yield 'the manifest lists no shell' => [static function (self $test): void {
+            unlink($test->dist . '/index.html');
+            $test->writeManifest();
+        }, null, 'vector-bundle.json lists no index.html'];
+
+        yield 'a manifest without its shell' => [static function (self $test): void {
+            $test->writeManifest();
+            unlink($test->dist . '/index.html');
+        }, '0.9.0', 'index.html is listed in vector-bundle.json but missing'];
+
         yield 'another package' => [static fn (self $test) => $test->writeManifest(['package' => 'acme/vector']), null, 'it was built for acme/vector, not kinetis/vector'];
 
         yield 'another descriptor version' => [static fn (self $test) => $test->writeManifest(['descriptorVersion' => VectorRegistry::VERSION + 1]), null, 'it speaks descriptor version ' . (VectorRegistry::VERSION + 1)];
@@ -210,7 +257,7 @@ final class HostedBundleTest extends TestCase
      * @param \Closure(self): void $arrange
      */
     #[DataProvider('refusals')]
-    public function testARefusedBundleExitsNonZeroAndCopiesNothing(\Closure $arrange, ?string $release, string $cause): void
+    public function testARefusedBundleExitsNonZeroAndPublishesNothing(\Closure $arrange, ?string $release, string $cause): void
     {
         $arrange($this);
 
@@ -222,6 +269,46 @@ final class HostedBundleTest extends TestCase
         self::assertStringEndsWith($release === null ? "Rebuild it with `pnpm generate:hosted`, or delete it.\n" : "Reinstall kinetis/vector to restore the bundle the release shipped.\n", $stderr);
         self::assertSame(1, substr_count($stderr, "\n"));
         self::assertDirectoryDoesNotExist($this->target);
+        self::assertDirectoryDoesNotExist($this->root . '/migrations');
+    }
+
+    public function testARefusedBundleStopsTheMigrationsOnANamedConnectionToo(): void
+    {
+        $admin = getenv('DB_ADMIN_CONNECTION');
+        putenv('DB_ADMIN_CONNECTION=pgsql');
+
+        try {
+            $this->writeManifest(['version' => '0.8.0']);
+
+            ob_start();
+            $status = new InstallCommand()->installFrom(CommandArguments::parse(['--connection=admin']), $this->dist, '0.9.0');
+            $output = (string) ob_get_clean();
+        } finally {
+            putenv($admin === false ? 'DB_ADMIN_CONNECTION' : 'DB_ADMIN_CONNECTION=' . $admin);
+        }
+
+        self::assertSame(1, $status);
+        self::assertSame('', $output);
+        self::assertDirectoryDoesNotExist($this->root . '/migrations');
+    }
+
+    /**
+     * @return iterable<string, array{?string, ?string}>
+     */
+    public static function installedVersions(): iterable
+    {
+        yield 'a tagged release' => ['v0.9.0', '0.9.0'];
+        yield 'a release without the v' => ['0.9.0', '0.9.0'];
+        yield 'a pre-release' => ['v1.0.0-rc.1', '1.0.0-rc.1'];
+        yield 'a path repository' => ['dev-main', null];
+        yield 'a branch alias' => ['1.0.x-dev', null];
+        yield 'not installed through Composer' => [null, null];
+    }
+
+    #[DataProvider('installedVersions')]
+    public function testTheInstalledVersionNamesTheReleaseABundleMustMatch(?string $prettyVersion, ?string $release): void
+    {
+        self::assertSame($release, InstallCommand::release($prettyVersion));
     }
 
     public function testVerificationReportsTheBuildItAccepted(): void
