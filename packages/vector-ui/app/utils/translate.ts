@@ -4,9 +4,12 @@ import type { I18n } from 'vue-i18n'
 // the browser only (ssr: false), one app per page, so a module-level instance
 // is safe and lets utilities, stores and async handlers translate outside a
 // component's setup.
-let instance: I18n<Record<string, unknown>, Record<string, unknown>, Record<string, unknown>, string, false> | null = null
+let instance: VectorI18n | null = null
 
-export function setVectorI18n(i18n: NonNullable<typeof instance>): void {
+/** The admin's vue-i18n instance, in composition mode: what the plugin provides as `$vectorI18n`. */
+export type VectorI18n = I18n<Record<string, unknown>, Record<string, unknown>, Record<string, unknown>, string, false>
+
+export function setVectorI18n(i18n: VectorI18n): void {
     instance = i18n
 }
 
@@ -28,4 +31,15 @@ export function vt(key: string, params: Record<string, unknown> = {}, plural?: n
 export function vnoun(label: string): string {
     const locale = instance ? String(instance.global.locale.value) : 'en'
     return locale === 'de' || locale.startsWith('de-') ? label : label.toLocaleLowerCase(locale)
+}
+
+// `$vectorI18n` is declared here rather than left to Nuxt's generated plugin
+// types: NuxtApp inherits those from the type of every plugin module, a layer's
+// own plugins among them, and resolving that is circular — it leaves
+// `useNuxtApp().$vectorI18n` unknown. Kept out of the plugin module, which is one
+// of those bases itself.
+declare module '#app' {
+    interface NuxtApp {
+        $vectorI18n: VectorI18n
+    }
 }
