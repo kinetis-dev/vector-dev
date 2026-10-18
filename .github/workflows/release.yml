@@ -1,0 +1,292 @@
+name: Release
+
+# One v* tag releases both products at one shared version:
+# packages/vector to the mirror kinetis-dev/vector (Packagist's
+# kinetis/vector) and packages/vector-ui to npm (@kinetis/vector-ui).
+# docs/releasing.md is the maintainer's side of it; scripts/release.mjs
+# holds every rule this workflow applies, tested by pnpm test:scripts.
+on:
+  push:
+    tags: ['v*']
+  # A rehearsal: dispatch it from main with dry_run on (the default) to
+  # run every check, the split, the bundle and the release commit, and
+  # see what the mirror and npm would receive, writing nothing. It can run
+  # before the tag exists — pushing the tag is the release — and then
+  # rehearses the dispatched commit as if it were tagged. A dispatch that
+  # publishes must run from the tag itself ("Use workflow from" the tag),
+  # which verify enforces.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release tag, such as v0.9.0
+        required: true
+        type: string
+      dry_run:
+        description: Rehearse only; push and publish nothing
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# One release at a time, and never cancelled: a release stopped between
+# the mirror and npm is exactly the partial state this workflow works to
+# avoid, and two releases side by side could finish out of order. The
+# group is a constant, not the per-ref pair, because two tags are two
+# refs.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify the tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.verify.outputs.tag }}
+      version: ${{ steps.verify.outputs.version }}
+      source: ${{ steps.verify.outputs.source }}
+      dist_tag: ${{ steps.verify.outputs.dist_tag }}
+      prerelease: ${{ steps.verify.outputs.prerelease }}
+      dry_run: ${{ steps.verify.outputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Every tag and origin/main, for the reachability check.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Check the tag, the shared version and both CHANGELOG sections
+        id: verify
+        # The tag reaches the script through the environment, never
+        # interpolated into the script: a dispatch input is free text.
+        env:
+          TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        # verify reads packages/vector-ui/package.json and both CHANGELOGs
+        # from the tagged commit itself, whatever the dispatch ran from;
+        # --head is used only by a rehearsal whose tag does not exist yet.
+        run: |
+          if [ "$DRY_RUN" != 'true' ]; then DRY_RUN=false; fi
+          node scripts/release.mjs verify --tag="$TAG" --ref="$GITHUB_REF" --dry-run="$DRY_RUN" --head="$GITHUB_SHA"
+          {
+            echo "tag=${TAG}"
+            echo "dry_run=${DRY_RUN}"
+          } >> "$GITHUB_OUTPUT"
+
+  mirror:
+    name: Split, bundle and push the mirror
+    needs: verify
+    runs-on: ubuntu-latest
+    outputs:
+      split: ${{ steps.split.outputs.split }}
+      release: ${{ steps.commit.outputs.release }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.verify.outputs.source }}
+          # git subtree split walks the whole history of packages/vector.
+          fetch-depth: 0
+          # The default persists GITHUB_TOKEN as a credential for every
+          # https://github.com/ URL, which would authenticate the mirror
+          # push as github-actions[bot], ahead of the askpass helper
+          # scripts/release.mjs gives the push alone.
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Install the workspace
+        # pnpm at the version package.json's packageManager names, through
+        # Node's own corepack rather than another action.
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Split packages/vector (S, the mirror's main)
+        id: split
+        env:
+          SOURCE: ${{ needs.verify.outputs.source }}
+        run: node scripts/release.mjs split --source="$SOURCE"
+
+      - name: Build the hosted admin bundle
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: node scripts/build-hosted-bundle.mjs --version="$VERSION"
+
+      - name: Make the release commit (R, S plus resources/dist, the tag's target)
+        id: commit
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+          SOURCE: ${{ needs.verify.outputs.source }}
+          SPLIT: ${{ steps.split.outputs.split }}
+        # From git's plumbing (a scratch index, write-tree, commit-tree),
+        # not a worktree: nothing in this checkout moves and no ref is
+        # made. R is deterministic for given bundle bytes; the Nuxt build
+        # is not, which publishMirror() accounts for on a rerun.
+        run: node scripts/release.mjs release-commit --version="$VERSION" --source="$SOURCE" --split="$SPLIT"
+
+      - name: Push the mirror's main and tag
+        # The only step the deploy credential exists for. On a dry run it
+        # reads the mirror and says what it would push, without the
+        # credential.
+        env:
+          TAG: ${{ needs.verify.outputs.tag }}
+          SOURCE: ${{ needs.verify.outputs.source }}
+          SPLIT: ${{ steps.split.outputs.split }}
+          RELEASE: ${{ steps.commit.outputs.release }}
+          DRY_RUN: ${{ needs.verify.outputs.dry_run }}
+          RELEASE_DEPLOY_TOKEN: ${{ needs.verify.outputs.dry_run != 'true' && secrets.RELEASE_DEPLOY_TOKEN || '' }}
+        run: >-
+          node scripts/release.mjs publish-mirror --tag="$TAG" --source="$SOURCE"
+          --split="$SPLIT" --release="$RELEASE" --dry-run="$DRY_RUN"
+
+  npm-dry-run:
+    name: Rehearse the npm publish
+    needs: [verify, mirror]
+    if: needs.verify.outputs.dry_run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.verify.outputs.source }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Install npm 11 and the workspace
+        run: |
+          npm install --global npm@^11.5.1
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Ask npm whether this version is out
+        id: npm
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: node scripts/release.mjs npm-published --version="$VERSION"
+
+      - name: What would be published
+        if: steps.npm.outputs.published != 'true'
+        working-directory: packages/vector-ui
+        env:
+          DIST_TAG: ${{ needs.verify.outputs.dist_tag }}
+        # Provenance is off here: it is signed only by a real publish,
+        # with the npm-release environment's OIDC token, which a rehearsal
+        # does not get.
+        run: |
+          npm pack --dry-run
+          npm publish --dry-run --tag "$DIST_TAG" --provenance=false --access public
+
+  npm-publish:
+    name: Publish @kinetis/vector-ui
+    needs: [verify, mirror]
+    if: needs.verify.outputs.dry_run != 'true'
+    runs-on: ubuntu-latest
+    # Restricted to v* tags in the repository's settings; npm's trusted
+    # publisher names this workflow and this environment.
+    environment: npm-release
+    permissions:
+      contents: read
+      # The OIDC token npm's trusted publishing exchanges for a one-time
+      # publish credential, and signs the provenance with.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.verify.outputs.source }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Install npm 11 and the workspace
+        # Trusted publishing needs the npm CLI at 11.5.1 or later; Node
+        # 22's own npm is older. It publishes, not pnpm.
+        run: |
+          npm install --global npm@^11.5.1
+          npm --version
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Ask npm whether this version is out
+        id: npm
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: node scripts/release.mjs npm-published --version="$VERSION"
+
+      - name: Already on npm
+        if: steps.npm.outputs.published == 'true'
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: echo "::notice::@kinetis/vector-ui@${VERSION} is already on npm; nothing to publish."
+
+      - name: Publish
+        if: steps.npm.outputs.published != 'true'
+        working-directory: packages/vector-ui
+        env:
+          DIST_TAG: ${{ needs.verify.outputs.dist_tag }}
+          # FIRST PUBLISH ONLY. npm cannot have a trusted publisher for a
+          # package that does not exist yet, so the very first publish
+          # uses a short-lived token the maintainer puts on the
+          # npm-release environment. Once the trusted publisher is
+          # configured, the token is deleted and this stays empty, and
+          # the publish authenticates through OIDC alone. Delete this
+          # line, and the token branch below, after that.
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$NPM_TOKEN" ]; then
+            # A config file naming the variable, not holding its value,
+            # in the runner's temporary directory and nowhere else: npm
+            # expands ${NODE_AUTH_TOKEN} itself, hence the single quotes.
+            # shellcheck disable=SC2016
+            printf '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\n' > "$RUNNER_TEMP/npmrc"
+            export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/npmrc" NODE_AUTH_TOKEN="$NPM_TOKEN"
+          fi
+
+          npm publish --tag "$DIST_TAG" --provenance --access public
+
+  github-release:
+    name: Create the GitHub Release
+    needs: [verify, mirror, npm-publish]
+    if: needs.verify.outputs.dry_run != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.verify.outputs.source }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Create the release from both CHANGELOG sections
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.verify.outputs.tag }}
+          VERSION: ${{ needs.verify.outputs.version }}
+          PRERELEASE: ${{ needs.verify.outputs.prerelease }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::notice::The GitHub Release ${TAG} already exists."
+            exit 0
+          fi
+          node scripts/release.mjs notes --version="$VERSION" > "$RUNNER_TEMP/notes.md"
+          flags=()
+          # A 0.x version is still the latest release of this repository;
+          # only a -suffix version is a GitHub prerelease.
+          if [ "$PRERELEASE" = 'true' ]; then flags+=(--prerelease); fi
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" "${flags[@]}"

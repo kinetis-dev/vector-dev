@@ -58,3 +58,7 @@ from first install to the reference.
 - [REST API](https://kinetis.dev/vector/docs/rest-api.html): Every route, envelope, wire value, the list grammar and errors.
 - [Configuration](https://kinetis.dev/vector/docs/configuration.html): Every environment key and UI setting.
 - [Limits and guarantees](https://kinetis.dev/vector/docs/limits.html): Bounds, guarantees and known limits.
+
+## Working on Vector
+
+- [Releasing](https://kinetis.dev/vector/docs/releasing.html): Cutting a release from one v* tag: the mirror kinetis-dev/vector, npm, the mirror's history rule, one-time setup and recovery.
