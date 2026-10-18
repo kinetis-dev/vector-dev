@@ -12,11 +12,32 @@ updates:
       interval: "weekly"
 
   # The pnpm workspace: the root, @kinetis/vector-ui, the demo frontend
-  # and the end-to-end suite share the one root pnpm-lock.yaml.
+  # and the end-to-end suite share the one root pnpm-lock.yaml, so the
+  # week's updates come as two PRs rather than one per package, each
+  # needing one version bump at most. The test-tooling group lists the
+  # devDependencies scripts/version-policy.mjs exempts from a bump; keep
+  # the two lists the same.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      test-tooling:
+        patterns:
+          - "happy-dom"
+          - "vitest"
+          - "@vue/test-utils"
+          - "@nuxt/test-utils"
+          - "@types/node"
+          - "vue-tsc"
+      dependencies:
+        patterns:
+          - "*"
+    ignore:
+      # The types follow the Node every workflow runs (22), not the
+      # newest Node.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"

@@ -37,6 +37,9 @@ env:
 jobs:
   sonarqube:
     name: SonarQube Cloud scan
+    # A run Dependabot triggers gets Dependabot's secrets, not Actions',
+    # so SONAR_TOKEN is empty there; its PRs only move dependencies.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     # kinetis/vector has no suite of its own: the demo's PHPUnit suite is
     # its suite, and it boots the demo against these databases, as in

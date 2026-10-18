@@ -1,7 +1,8 @@
 // node --test scripts/*.test.mjs — the one version policy every release tool shares.
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { PINNED_MAJOR, allowedNextVersions, highestVersion, nextVersion, parseVersion, transitionProblem, versionProblem } from './version-policy.mjs'
+import { PINNED_MAJOR, TEST_ONLY_DEV_DEPENDENCIES, allowedNextVersions, highestVersion, nextVersion, parseVersion, transitionProblem, versionProblem } from './version-policy.mjs'
 
 test('a version is canonical X.Y.Z, each component without a leading zero and at most nine digits', () => {
     assert.deepEqual(parseVersion('0.9.0'), { major: 0, minor: 9, patch: 0 })
@@ -51,4 +52,34 @@ test('the highest version compares numerically and ignores what does not parse',
     assert.equal(highestVersion(['0.9.0', 'nightly', '0.9.10', '0.9.9']), '0.9.10')
     assert.equal(highestVersion([]), null)
     assert.equal(highestVersion(['latest']), null)
+})
+
+/** The patterns under the named group in .github/dependabot.yml, read line by line. */
+function dependabotGroup(yaml, group) {
+    const lines = yaml.split(/\r?\n/)
+    const start = lines.findIndex(line => line.trim() === `${group}:`)
+
+    assert.notEqual(start, -1, `.github/dependabot.yml has no ${group} group`)
+    assert.equal(lines[start + 1].trim(), 'patterns:')
+
+    const patterns = []
+
+    for (const line of lines.slice(start + 2)) {
+        const match = /^\s*-\s*"([^"]+)"\s*$/.exec(line)
+
+        if (match === null) {
+            break
+        }
+
+        patterns.push(match[1])
+    }
+
+    return patterns
+}
+
+test("the test-only devDependencies are exactly dependabot's test-tooling group", () => {
+    const yaml = readFileSync(new URL('../.github/dependabot.yml', import.meta.url), 'utf8')
+
+    assert.deepEqual([...dependabotGroup(yaml, 'test-tooling')].sort(), [...TEST_ONLY_DEV_DEPENDENCIES].sort())
+    assert.deepEqual(TEST_ONLY_DEV_DEPENDENCIES, ['happy-dom', 'vitest', '@vue/test-utils', '@nuxt/test-utils', '@types/node', 'vue-tsc'])
 })

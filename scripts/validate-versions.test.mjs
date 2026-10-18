@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { checkConsistency, checkHistory, checkIncludes, parseArguments, parseManifest, validate } from './validate-versions.mjs'
+import { checkConsistency, checkHistory, checkIncludes, onlyTestToolingChanged, parseArguments, parseManifest, validate } from './validate-versions.mjs'
 
 const manifest = (vector, ui) => ({
     packages: {
@@ -166,6 +166,63 @@ test('history: a product new to the manifest only needs a version the policy acc
     assert.match(checkHistory(old, manifest('0.9.0', '1.0.0'), {}).join('\n'), /vector-ui: version '1\.0\.0' leaves the 0\.x line/)
 })
 
+/** A vector-ui package.json at 0.9.0, with `change` applied to its parsed form. */
+const uiPackage = (change = () => {}) => {
+    const pkg = {
+        name: '@kinetis/vector-ui',
+        version: '0.9.0',
+        scripts: { test: 'vitest run' },
+        dependencies: { pinia: '^4.0.3' },
+        peerDependencies: { nuxt: '^4.5.0' },
+        devDependencies: { 'happy-dom': '^20.14.5', 'nuxt': '^4.5.2', 'vitest': '^4.0.2' },
+    }
+    change(pkg)
+
+    return `${JSON.stringify(pkg, null, 4)}\n`
+}
+
+test('a package.json changed only in test-tooling devDependencies needs no bump', () => {
+    const base = uiPackage()
+    assert.equal(onlyTestToolingChanged(base, uiPackage(p => { p.devDependencies['happy-dom'] = '^21.0.0' })), true)
+    assert.equal(onlyTestToolingChanged(base, uiPackage(p => { p.devDependencies['@types/node'] = '^22.0.0' })), true, 'added')
+    assert.equal(onlyTestToolingChanged(base, uiPackage(p => { delete p.devDependencies.vitest })), true, 'removed')
+    assert.equal(onlyTestToolingChanged(base, base.replace(/ {4}/g, '  ')), true, 'whitespace only')
+})
+
+test('any other package.json change still needs a bump', () => {
+    const base = uiPackage()
+    for (const [label, change] of [
+        ['an unlisted devDependency alongside a listed one', p => { p.devDependencies['happy-dom'] = '^21.0.0'; p.devDependencies.nuxt = '^4.6.0' }],
+        ['a listed package moved into dependencies', p => { delete p.devDependencies['happy-dom']; p.dependencies['happy-dom'] = '^20.14.5' }],
+        ['a listed package added to peerDependencies', p => { p.peerDependencies.vitest = '^4.0.2' }],
+        ['scripts changed alongside a listed change', p => { p.devDependencies['happy-dom'] = '^21.0.0'; p.scripts.test = 'vitest' }],
+        ['devDependencies turned into something else', p => { p.devDependencies = null }],
+        ['a reordered field', p => { const { scripts, ...rest } = p; Object.keys(p).forEach(k => delete p[k]); Object.assign(p, rest, { scripts }) }],
+    ]) {
+        assert.equal(onlyTestToolingChanged(base, uiPackage(change)), false, label)
+    }
+
+    assert.equal(onlyTestToolingChanged(null, base), false, 'added file')
+    assert.equal(onlyTestToolingChanged(base, null), false, 'deleted file')
+    assert.equal(onlyTestToolingChanged(base, '{'), false, 'not JSON')
+    assert.equal(onlyTestToolingChanged('[]', '[]'), false, 'not an object')
+})
+
+test('history: a product changed only in exempt files may keep its version or bump it', () => {
+    const old = manifest('0.9.0', '0.9.0')
+    const pkg = ['packages/vector-ui/package.json']
+
+    assert.deepEqual(checkHistory(old, manifest('0.9.0', '0.9.0'), { 'vector-ui': [] }, { 'vector-ui': pkg }), [])
+    // A bump alongside is a human's choice, not an "unchanged product" bump.
+    assert.deepEqual(checkHistory(old, manifest('0.9.0', '0.9.1'), { 'vector-ui': [] }, { 'vector-ui': pkg }), [])
+    // Nothing at all changed: that refusal still fires.
+    assert.match(checkHistory(old, manifest('0.9.0', '0.9.1'), {}, {}).join('\n'), /^vector-ui: version moved from 0\.9\.0 to 0\.9\.1, but nothing under packages\/vector-ui changed/)
+    // Another file beside an exempt package.json still needs the bump.
+    assert.deepEqual(checkHistory(old, manifest('0.9.0', '0.9.0'), { 'vector-ui': ['packages/vector-ui/app/x.ts'] }, { 'vector-ui': pkg }), [
+        'vector-ui: files under packages/vector-ui changed but its version is still 0.9.0 (packages/vector-ui/app/x.ts); run node scripts/bump.mjs vector-ui <patch|minor>',
+    ])
+})
+
 test('arguments: --base only, and never empty', () => {
     assert.deepEqual(parseArguments([]), { base: undefined })
     assert.deepEqual(parseArguments(['--base=abc']), { base: 'abc' })
@@ -295,6 +352,42 @@ test('history on a real history: a vector-ui change needs kinetis/vector bumped 
         // An included directory that does not exist is a consistency problem.
         write({ 'packages.manifest.json': including('0.9.1', '0.9.1').replace('"packages/vector-ui"\n', '"packages/vector-ui",\n                "packages/gone"\n') })
         assert.deepEqual(validate(repo, { base }).problems, ['[consistency] vector: includes "packages/gone", which is not a directory in this tree'])
+    } finally {
+        done()
+    }
+})
+
+test('history on a real history: a test-tooling devDependency bump needs no release, anything beside it does', { skip: !hasGit && 'git is not installed' }, () => {
+    const { repo, write, commit, done } = scratch()
+    const including = (vector, ui) => `${JSON.stringify({ packages: { ...manifest(vector, ui).packages, vector: { ...manifest(vector, ui).packages.vector, includes: ['packages/vector-ui'] } } }, null, 4)}\n`
+    const files = (vector, ui, change) => ({
+        ...tree(vector, ui),
+        'packages.manifest.json': including(vector, ui),
+        'packages/vector-ui/package.json': uiPackage(p => { p.version = ui; change?.(p) }),
+    })
+    const tooling = p => { p.devDependencies['happy-dom'] = '^21.0.0' }
+
+    try {
+        const base = commit({ ...files('0.9.0', '0.9.0'), 'packages/vector-ui/app/x.ts': 'export {}\n' }, 'First')
+
+        // Only happy-dom moved: neither product needs a bump.
+        write(files('0.9.0', '0.9.0', tooling))
+        assert.deepEqual(validate(repo, { base }).problems, [])
+
+        // ...and bumping both anyway is accepted.
+        write(files('0.9.1', '0.9.1', tooling))
+        assert.deepEqual(validate(repo, { base }).problems, [])
+
+        // nuxt moved too: both products need a bump, and the refusal names the file.
+        write(files('0.9.0', '0.9.0', p => { tooling(p); p.devDependencies.nuxt = '^4.6.0' }))
+        assert.deepEqual(validate(repo, { base }).problems, [
+            '[history] vector: files under packages/vector-ui (which kinetis/vector includes) changed but its version is still 0.9.0 (packages/vector-ui/package.json); run node scripts/bump.mjs vector <patch|minor>',
+            '[history] vector-ui: files under packages/vector-ui changed but its version is still 0.9.0 (packages/vector-ui/package.json); run node scripts/bump.mjs vector-ui <patch|minor>',
+        ])
+
+        // Another file under packages/vector-ui beside the exempt change: both need a bump.
+        write({ ...files('0.9.0', '0.9.0', tooling), 'packages/vector-ui/app/x.ts': 'export const x = 1\n' })
+        assert.match(validate(repo, { base }).problems.join('\n'), /vector: files under packages\/vector-ui \(which kinetis\/vector includes\) changed but its version is still 0\.9\.0 \(packages\/vector-ui\/app\/x\.ts\)/)
     } finally {
         done()
     }

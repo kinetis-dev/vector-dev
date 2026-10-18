@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-18
+
+### Changed
+
+- Tiptap 3.32.0 for the rich-text editor, every `@tiptap/*` package
+  together, and `@tiptap/suggestion` declared directly, since
+  `@tiptap/extension-mention` requires that exact version as a peer.
+
 ## [0.9.0] - 2026-10-18
 
 ### Added
