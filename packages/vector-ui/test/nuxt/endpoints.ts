@@ -14,7 +14,21 @@ interface H3Event {
     method: string
     path: string
     headers: Headers
-    node: { req: { body?: string | Uint8Array | FormData | null }, res: { statusCode: number } }
+    web: { request: Request }
+    node: { res: { statusCode: number } }
+}
+
+/** A request's body as the tests assert it: a multipart form's fields (a file by its name), parsed JSON, or undefined when empty. */
+async function readBody(request: Request): Promise<unknown> {
+    if (request.headers.get('content-type')?.startsWith('multipart/form-data')) {
+        const form = await request.formData()
+
+        return Object.fromEntries([...form.entries()].map(([k, v]) => [k, typeof v === 'string' ? v : v.name]))
+    }
+
+    const raw = await request.text()
+
+    return raw === '' ? undefined : JSON.parse(raw)
 }
 
 /**
@@ -27,17 +41,12 @@ export function endpoint(url: string, reply: Reply = {}, method?: string) {
     const requests: Received[] = []
 
     const handler = async (event: H3Event) => {
-        // the environment's mock request holds the whole body; it is not a readable stream
-        const body = event.node.req.body
-        // a multipart body arrives as the FormData itself: its fields, a file by its name
-        const form = body instanceof FormData ? Object.fromEntries([...body.entries()].map(([k, v]) => [k, typeof v === 'string' ? v : v.name])) : null
-        const raw = body === null || body === undefined || body instanceof FormData ? '' : typeof body === 'string' ? body : new TextDecoder().decode(body)
-
         const request: Received = {
             method: event.method,
             path: event.path.replace(/^\/_/, ''), // the environment mounts registered endpoints under /_
             headers: event.headers,
-            body: form ?? (raw === '' ? undefined : JSON.parse(raw)),
+            // the environment hands registered endpoints the fetch's own web Request (h3's toWebHandler)
+            body: await readBody(event.web.request),
         }
         requests.push(request)
 
