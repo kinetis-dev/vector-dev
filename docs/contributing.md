@@ -129,6 +129,7 @@ the plain run enforces it.
 ## Mutation testing
 
 ```console
+docker compose exec app composer infection:workers  # the workers' databases, first
 docker compose exec app composer infection          # the demo's src/, about 70 minutes
 docker compose exec app composer infection:vector   # Vector's Registry and Query
 ```
@@ -136,19 +137,30 @@ docker compose exec app composer infection:vector   # Vector's Registry and Quer
 Infection runs the PHPUnit suite against each mutant and fails below the
 `minMsi` and `minCoveredMsi` floors in `backend/infection.json5` and
 `backend/infection.vector.json5`. Each config records the scores the
-floors were set from. Both runs are slow and write to the seeded
-databases, so run them one at a time, never beside PHPUnit or the
-end-to-end suite, and on one thread. A killed mutant stops its test
-before the test puts its rows back, so afterwards expect missing order
+floors were set from.
+
+The mutated tests write to the databases, so each Infection worker runs
+on stores of its own. Infection numbers its worker processes in
+`TEST_TOKEN`, and when that is set `backend/tests/bootstrap.php` points
+worker N at the MySQL database `vector_N`, the PostgreSQL databases
+`vector_admin_N` and `vector_support_N`, Redis databases 2N (the cache)
+and 2N+1 (the jobs queue) and a temporary directory of its own
+(`backend/tests/worker-stores.php`). `composer infection:workers` drops,
+recreates, migrates and seeds those databases for workers 1 to 4, as root
+on MySQL; run it before each mutation-testing run. Without
+`TEST_TOKEN` (PHPUnit on its own, and Infection's initial run of the
+suite) the tests use the base databases as before.
+
+`infection:vector` runs four workers with `--only-covering-test-cases`.
+`infection` runs one, on worker 1's stores: its whole suite includes
+tests that share state outside them. Neither run touches the base
+databases beyond what PHPUnit itself does, but both still need them
+seeded, so run them one at a time, never beside PHPUnit or the
+end-to-end suite. A killed mutant stops its test before the test puts its
+rows back, so afterwards a worker's databases can hold missing order
 lines, changed product prices and stock, a leftover `hosted-test` tag,
 and, in Vector's own tables, a store `lowStockThreshold` of 0 and saved
-product views that make later runs of `ActionsAndSettingsTest` fail.
-Reseed before the next PHPUnit run; the reseed leaves Vector's tables
-alone, so put those two back by hand as well:
-
-```console
-docker compose exec --user www-data app vendor/bin/kinetis demo:seed --fresh
-```
+product views; `composer infection:workers` starts them over.
 
 The reports go to `backend/infection.log` and
 `backend/infection.vector.log`, each with a `.summary.log` beside it.
@@ -180,8 +192,9 @@ pull requests, each for the paths it covers:
   that changes files under `packages/vector-ui` bumps both `vector-ui`
   and `vector`, since the hosted bundle built from the UI ships inside
   `kinetis/vector`; see {doc}`releasing`.
-- `infection.yml` — `composer infection:vector`, when the PHP side
-  changes.
+- `infection.yml` — `composer infection:workers`, then
+  `composer infection:vector`, when Vector's Registry or Query or the
+  mutation setup changes.
 - `sonarqube.yml` — the PHPUnit suite under pcov, its coverage of
   `packages/vector/src` reported to SonarQube Cloud with its quality
   gate.

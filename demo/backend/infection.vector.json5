@@ -1,12 +1,20 @@
 {
     // Mutation testing over the two units the plan singles out: the
     // registry compiler and the list grammar. Runs the tests that
-    // exercise them against the seeded MySQL, so it is slow by design:
+    // exercise them, which write to the seeded databases:
+    //   docker compose exec app composer infection:workers
     //   docker compose exec app composer infection:vector
-    // One thread, for the same reason as infection.json5. A killed mutant
-    // can leave the rows its test would have removed; clean the demo
-    // tables (or reseed with demo:seed --fresh) before the next plain run.
+    // Four threads with --only-covering-test-cases. Each worker runs on
+    // stores of its own, keyed on Infection's TEST_TOKEN
+    // (tests/worker-stores.php, applied by tests/bootstrap.php), which
+    // infection:workers recreates, migrates and seeds; the initial run,
+    // without TEST_TOKEN, uses the base databases. A killed mutant can
+    // leave the rows its test would have removed in its worker's
+    // databases, so run infection:workers before each run.
     //
+    // Superseded: the measurement below predates four threads and
+    // --only-covering-test-cases, which can lose a few kills; the floors
+    // await a measurement of the current setup.
     // Measured 2026-10-06 (--threads=1, this config's 60 s timeout):
     // 1353 mutants, 920 killed, 1 syntax error, 2 timed out, 430 escaped,
     // 0 not covered — MSI 68.22%, covered MSI 68.22% (mutation coverage

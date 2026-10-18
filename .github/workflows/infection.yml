@@ -35,11 +35,12 @@ jobs:
   infection:
     name: Mutation testing (Vector's Registry and Query)
     runs-on: ubuntu-latest
-    # One thread over the PHPUnit tests that exercise the two units, on
-    # the seeded databases; slow by design (see infection.vector.json5).
-    timeout-minutes: 120
-    # The same databases as ci.yml's PHP job: the mutated tests boot the
-    # demo against them.
+    # Four threads over the PHPUnit tests that exercise the two units,
+    # each worker on databases of its own (see infection.vector.json5).
+    timeout-minutes: 30
+    # The same services as ci.yml's PHP job: the mutated tests boot the
+    # demo against them, the initial run on the base databases and each
+    # Infection worker on its own (demo/backend/tests/worker-stores.php).
     services:
       mysql:
         image: mysql:8.4
@@ -135,6 +136,13 @@ jobs:
         run: |
           .github/scripts/php vendor/bin/kinetis migrate
           .github/scripts/php vendor/bin/kinetis demo:seed
+
+      - name: Provision the Infection workers' databases
+        if: steps.scope.outputs.run == 'true'
+        # One MySQL and two PostgreSQL databases per worker, migrated and
+        # seeded like the base ones above, and two Redis databases; four
+        # workers, matching composer infection:vector's --threads=4.
+        run: .github/scripts/php composer infection:workers
 
       - name: Infection
         if: steps.scope.outputs.run == 'true'
