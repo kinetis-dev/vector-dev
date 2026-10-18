@@ -175,9 +175,11 @@ pull requests, each for the paths it covers:
 - `monorepo-validate.yml` — `node scripts/validate-monorepo.mjs`: no
   `App\` reference under `packages/`.
 - `versions.yml` — `node scripts/validate-versions.mjs`: a pull request
-  that changes files under `packages/vector` or `packages/vector-ui`
-  bumps that package's version in `packages.manifest.json` by one step,
-  with `node scripts/bump.mjs`; see {doc}`releasing`.
+  that changes files under `packages/vector` bumps `vector` in
+  `packages.manifest.json` by one step, with `node scripts/bump.mjs`. One
+  that changes files under `packages/vector-ui` bumps both `vector-ui`
+  and `vector`, since the hosted bundle built from the UI ships inside
+  `kinetis/vector`; see {doc}`releasing`.
 - `infection.yml` — `composer infection:vector`, when the PHP side
   changes.
 - `sonarqube.yml` — the PHPUnit suite under pcov, its coverage of

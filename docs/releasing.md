@@ -35,15 +35,28 @@ One step at a time keeps every version reachable: since every version
 that lands on `main` is published, a jump from `0.9.1` to `0.9.3` would
 leave `0.9.2` unpublished while its changes ship inside `0.9.3`.
 
+A product's version covers its own path, plus any directory its manifest
+entry lists under `includes`. `kinetis/vector` includes
+`packages/vector-ui`: the hosted admin bundle built from it ships inside
+the PHP package, in the mirror release's `resources/dist`. A change to
+the UI therefore changes what `kinetis/vector` releases, as well as
+`@kinetis/vector-ui`.
+
 ## Bumping in the pull request
 
-A pull request that changes anything under `packages/vector` or
-`packages/vector-ui` bumps that product once:
+A pull request that changes anything under `packages/vector` bumps
+`vector` once. A pull request that changes anything under
+`packages/vector-ui` bumps both products once, `vector-ui` for the npm
+package and `vector` for the bundle it ships:
 
 ```console
-node scripts/bump.mjs vector patch
 node scripts/bump.mjs vector-ui minor
+node scripts/bump.mjs vector patch
 ```
+
+Each bump is its own choice of `patch` or `minor`, with its own
+CHANGELOG entry. `bump.mjs vector-ui` prints the reminder to bump
+`vector` too, but does not bump it for you.
 
 `bump.mjs` moves the product's version in `packages.manifest.json` one
 step. For `vector-ui` it also writes the version into
@@ -70,11 +83,15 @@ when that is set, and `HEAD^` otherwise.
 - **Consistency**, on the tree: every manifest version parses and is on
   the `0.x` line; `packages/vector-ui/package.json` carries the
   manifest's name and version; `packages/vector/composer.json` carries
-  its name and no version; and each product's CHANGELOG has a
-  `## [<version>]` section.
+  its name and no version; each product's CHANGELOG has a
+  `## [<version>]` section; and each directory an `includes` lists
+  exists.
 - **History**, against the base (the pull request's merge base with its
   target, or what `main` pointed to before a push):
-  - a product with files changed under its path has its version bumped;
+  - a product with files changed under its path, or under a directory
+    its `includes` lists, has its version bumped (the failure names the
+    included directory, so a UI-only change says why `vector` needs a
+    bump);
   - a version that moved, moved exactly one step;
   - a product with nothing changed keeps its version.
 

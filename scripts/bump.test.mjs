@@ -70,6 +70,7 @@ test('bump vector-ui patch: the manifest, package.json and the CHANGELOG, and th
             from: '0.9.0',
             to: '0.9.1',
             files: ['packages.manifest.json', 'packages/vector-ui/package.json', 'packages/vector-ui/CHANGELOG.md'],
+            alsoBump: [],
         })
 
         assert.equal(read('packages.manifest.json'), manifestJson.replace(/("path": "packages\/vector-ui",\n\s+"version": )"0\.9\.0"/, '$1"0.9.1"'))
@@ -127,4 +128,24 @@ test('the CHANGELOG and package.json edits on their own', () => {
     assert.equal(releaseChangelog('## [Unreleased]\n\n- x\n', '0.9.1', '2026-10-19'), '## [Unreleased]\n\n## [0.9.1] - 2026-10-19\n\n- x\n')
     assert.throws(() => setPackageVersion('{"name":"x"}', '0.9.1'), /has no "version"/)
     assert.throws(() => setPackageVersion('{\n    "engines": {\n        "version": "1"\n    },\n    "version": "0.9.0"\n}', '0.9.1'), /not its top-level version/)
+})
+
+test('bumping an included product names the product that includes it, and leaves that one alone', () => {
+    const { repo, read, done } = scratch()
+
+    try {
+        const withIncludes = manifestJson.replace('"path": "packages/vector",', '"path": "packages/vector",\n            "includes": [\n                "packages/vector-ui"\n            ],')
+        writeFileSync(path.join(repo, 'packages.manifest.json'), withIncludes)
+
+        assert.deepEqual(bump(repo, 'vector-ui', 'patch', { date: '2026-10-19' }).alsoBump, ['vector'])
+        const after = parseManifest(read('packages.manifest.json'))
+        assert.equal(after.packages.vector.version, '0.9.0', 'kinetis/vector is not bumped for you')
+        assert.deepEqual(after.packages.vector.includes, ['packages/vector-ui'], 'includes survives the rewrite')
+        assert.equal(read('packages.manifest.json'), withIncludes.replace(/("path": "packages\/vector-ui",\n\s+"version": )"0\.9\.0"/, '$1"0.9.1"'))
+
+        // Bumping the including product itself names nothing else.
+        assert.deepEqual(bump(repo, 'vector', 'patch', { date: '2026-10-19' }).alsoBump, [])
+    } finally {
+        done()
+    }
 })

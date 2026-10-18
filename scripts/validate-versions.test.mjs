@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { checkConsistency, checkHistory, parseArguments, parseManifest, validate } from './validate-versions.mjs'
+import { checkConsistency, checkHistory, checkIncludes, parseArguments, parseManifest, validate } from './validate-versions.mjs'
 
 const manifest = (vector, ui) => ({
     packages: {
@@ -37,6 +37,68 @@ test('the manifest has one shape: packages, each with name, path and version', (
     assert.throws(() => parseManifest('{"packages":{"vector":{"name":"kinetis/vector","path":"packages/vector"}}}'), /must have exactly "name", "path", "version"/)
     assert.throws(() => parseManifest('{"packages":{"vector":{"name":"kinetis/vector","path":"packages/vector","version":"0.9.0","bin":"x"}}}'), /must have exactly/)
     assert.throws(() => parseManifest('{"packages":{"vector":{"name":"kinetis/vector","path":"../vector","version":"0.9.0"}}}'), /expected packages\/<directory>/)
+})
+
+const withIncludes = (includes) => {
+    const m = manifest('0.9.0', '0.9.0')
+    m.packages.vector = { ...m.packages.vector, includes }
+
+    return JSON.stringify(m)
+}
+
+test('includes is optional, and every other key is still rejected', () => {
+    assert.deepEqual(parseManifest(withIncludes(['packages/vector-ui'])).packages.vector.includes, ['packages/vector-ui'])
+    const unknown = manifest('0.9.0', '0.9.0')
+    unknown.packages.vector.include = ['packages/vector-ui']
+    assert.throws(() => parseManifest(JSON.stringify(unknown)), /"vector" must have exactly "name", "path", "version", each a non-empty string, and optionally "includes"/)
+})
+
+test('a malformed includes is rejected', () => {
+    for (const [includes, message] of [
+        ['packages/vector-ui', /not a non-empty array of paths/],
+        [[], /not a non-empty array of paths/],
+        [[''], /includes "", which is not a repo-relative directory/],
+        [[7], /includes 7, which is not a repo-relative directory/],
+        [['/packages/vector-ui'], /not a repo-relative directory/],
+        [['packages/vector-ui/'], /not a repo-relative directory/],
+        [['packages/../vector-ui'], /not a repo-relative directory/],
+        [['./packages/vector-ui'], /not a repo-relative directory/],
+        [['packages\\vector-ui'], /not a repo-relative directory/],
+        [['packages/vector'], /includes "packages\/vector", which overlaps its own path "packages\/vector"/],
+        [['packages/vector/resources'], /overlaps its own path/],
+        [['packages'], /overlaps its own path/],
+        [['packages/vector-ui', 'packages/vector-ui'], /includes "packages\/vector-ui" more than once/],
+    ]) {
+        assert.throws(() => parseManifest(withIncludes(includes)), message, JSON.stringify(includes))
+    }
+})
+
+test('consistency: an included directory must exist', () => {
+    const m = parseManifest(withIncludes(['packages/vector-ui', 'packages/gone']))
+    assert.deepEqual(checkIncludes(m, dir => dir === 'packages/vector-ui'), ['vector: includes "packages/gone", which is not a directory in this tree'])
+    assert.deepEqual(checkIncludes(manifest('0.9.0', '0.9.0'), () => false), [])
+})
+
+test('history: a change under an included path needs the including product bumped too, and says why', () => {
+    const old = parseManifest(withIncludes(['packages/vector-ui']))
+    const ui = ['packages/vector-ui/app/x.ts']
+    const at = (vector, uiVersion) => ({ packages: { ...manifest(vector, uiVersion).packages, vector: { ...manifest(vector, uiVersion).packages.vector, includes: ['packages/vector-ui'] } } })
+
+    // vector-ui changed and only vector-ui bumped: kinetis/vector fails, naming the included path.
+    assert.deepEqual(checkHistory(old, at('0.9.0', '0.9.1'), { 'vector': ui, 'vector-ui': ui }), [
+        'vector: files under packages/vector-ui (which kinetis/vector includes) changed but its version is still 0.9.0 (packages/vector-ui/app/x.ts); run node scripts/bump.mjs vector <patch|minor>',
+    ])
+    // Both bumped: passes, and vector's bump is no "unchanged product" bump.
+    assert.deepEqual(checkHistory(old, at('0.9.1', '0.9.1'), { 'vector': ui, 'vector-ui': ui }), [])
+    // vector-ui keeps its own obligation.
+    assert.match(checkHistory(old, at('0.9.1', '0.9.0'), { 'vector': ui, 'vector-ui': ui }).join('\n'), /^vector-ui: files under packages\/vector-ui changed but its version is still 0\.9\.0/)
+    // A vector-only change still needs only vector.
+    assert.deepEqual(checkHistory(old, at('0.9.1', '0.9.0'), { vector: ['packages/vector/src/A.php'] }), [])
+    // Both directories named when both changed.
+    assert.match(checkHistory(old, at('0.9.0', '0.9.1'), { 'vector': ['packages/vector/src/A.php', ...ui], 'vector-ui': ui }).join('\n'),
+        /^vector: files under packages\/vector and packages\/vector-ui \(which kinetis\/vector includes\) changed/)
+    // An unchanged product's bump names every path it covers.
+    assert.match(checkHistory(old, at('0.9.1', '0.9.0'), {}).join('\n'), /^vector: version moved from 0\.9\.0 to 0\.9\.1, but nothing under packages\/vector or packages\/vector-ui changed/)
 })
 
 test('consistency: the clean tree passes', () => {
@@ -208,6 +270,31 @@ test('history on a real history: base to head end to end, the working tree inclu
         // ...which is also an inconsistent tree: package.json and the CHANGELOG still say 0.9.0.
         assert.match(result.problems.join('\n'), /\[consistency\] vector-ui: packages\/vector-ui\/package\.json is at 0\.9\.0, the manifest at 0\.9\.1/)
         assert.match(result.problems.join('\n'), /\[consistency\] vector-ui: packages\/vector-ui\/CHANGELOG\.md has no "## \[0\.9\.1\]" section/)
+    } finally {
+        done()
+    }
+})
+
+test('history on a real history: a vector-ui change needs kinetis/vector bumped too, through includes', { skip: !hasGit && 'git is not installed' }, () => {
+    const { repo, write, commit, done } = scratch()
+    const including = (vector, ui) => `${JSON.stringify({ packages: { ...manifest(vector, ui).packages, vector: { ...manifest(vector, ui).packages.vector, includes: ['packages/vector-ui'] } } }, null, 4)}\n`
+
+    try {
+        const base = commit({ ...tree('0.9.0', '0.9.0'), 'packages.manifest.json': including('0.9.0', '0.9.0'), 'packages/vector-ui/app/x.ts': 'export {}\n' }, 'First')
+
+        // vector-ui changed, only vector-ui bumped.
+        write({ ...tree('0.9.0', '0.9.1'), 'packages.manifest.json': including('0.9.0', '0.9.1'), 'packages/vector-ui/app/x.ts': 'export const x = 1\n' })
+        assert.deepEqual(validate(repo, { base }).problems, [
+            '[history] vector: files under packages/vector-ui (which kinetis/vector includes) changed but its version is still 0.9.0 (packages/vector-ui/CHANGELOG.md, packages/vector-ui/app/x.ts, packages/vector-ui/package.json); run node scripts/bump.mjs vector <patch|minor>',
+        ])
+
+        // Both bumped.
+        write({ ...tree('0.9.1', '0.9.1'), 'packages.manifest.json': including('0.9.1', '0.9.1') })
+        assert.deepEqual(validate(repo, { base }).problems, [])
+
+        // An included directory that does not exist is a consistency problem.
+        write({ 'packages.manifest.json': including('0.9.1', '0.9.1').replace('"packages/vector-ui"\n', '"packages/vector-ui",\n                "packages/gone"\n') })
+        assert.deepEqual(validate(repo, { base }).problems, ['[consistency] vector: includes "packages/gone", which is not a directory in this tree'])
     } finally {
         done()
     }

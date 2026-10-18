@@ -11,6 +11,11 @@
 // under a fresh, empty `## [Unreleased]`. The date is today's, in UTC.
 // Link references at the end of a CHANGELOG are left as they are; neither
 // product's CHANGELOG uses them.
+//
+// A product whose `includes` names the bumped product's path needs its own
+// bump too — kinetis/vector includes packages/vector-ui, since the hosted
+// bundle ships inside the PHP package. That is printed, not done: each
+// bump is its own decision, patch or minor, with its own CHANGELOG entry.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -68,7 +73,8 @@ function today() {
 /**
  * Bumps `key` by `component` in the checkout at `repo`. Every file is
  * computed before any is written, so a refusal leaves the tree as it was.
- * Returns { from, to, files }.
+ * Returns { from, to, files, alsoBump }: `alsoBump` lists the products
+ * whose `includes` covers this one's path, which need a bump of their own.
  */
 export function bump(repo, key, component, { date = today() } = {}) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -110,7 +116,11 @@ export function bump(repo, key, component, { date = today() } = {}) {
         writeFileSync(file, contents)
     }
 
-    return { from, to, files: writes.map(([file]) => path.relative(repo, file)) }
+    const alsoBump = Object.entries(manifest.packages)
+        .filter(([other, { includes = [] }]) => other !== key && includes.some(dir => dir === entry.path || entry.path.startsWith(`${dir}/`)))
+        .map(([other]) => other)
+
+    return { from, to, files: writes.map(([file]) => path.relative(repo, file)), alsoBump }
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -124,9 +134,10 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
         }
 
         const date = flags.find(flag => flag.startsWith('--date='))?.slice('--date='.length)
-        const { from, to, files } = bump(root, positional[0], positional[1], date === undefined ? {} : { date })
+        const { from, to, files, alsoBump } = bump(root, positional[0], positional[1], date === undefined ? {} : { date })
         console.log(`${positional[0]}: ${from} -> ${to}`)
         files.forEach(file => console.log(`  updated ${file}`))
+        alsoBump.forEach(other => console.log(`${other} includes this product's path, so it needs a bump too: node scripts/bump.mjs ${other} <patch|minor>`))
     } catch (error) {
         console.error(error.message)
         process.exitCode = 1

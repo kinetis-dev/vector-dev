@@ -11,10 +11,14 @@
 //   - a package.json under a product's path carries the manifest's name
 //     and version; a composer.json carries the name and no version
 //     (Packagist reads kinetis/vector's from the mirror's tag);
-//   - each product's CHANGELOG.md has a `## [<version>]` section.
+//   - each product's CHANGELOG.md has a `## [<version>]` section;
+//   - each directory a product's optional `includes` names exists.
 //
 // history, against a comparison base:
-//   - a product whose files under its path changed has its version bumped;
+//   - a product whose files under its path changed has its version bumped,
+//     and so does a product whose `includes` names a directory that changed
+//     (kinetis/vector includes packages/vector-ui: the hosted bundle built
+//     from it ships inside the PHP package);
 //   - a version that changed moved exactly one legal step;
 //   - a product with no changed files keeps its version.
 //
@@ -27,7 +31,7 @@
 // no manifest yet (the change that introduces it), the history check is
 // skipped and says so. A base that was named and cannot be read fails.
 import { execFileSync, spawnSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { transitionProblem, versionProblem } from './version-policy.mjs'
@@ -35,13 +39,21 @@ import { transitionProblem, versionProblem } from './version-policy.mjs'
 export const MANIFEST_FILE = 'packages.manifest.json'
 
 const ENTRY_KEYS = ['name', 'path', 'version']
+const OPTIONAL_KEYS = ['includes']
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 
 /**
  * The manifest, parsed and shape-checked: `{ packages: { <key>: { name,
- * path, version } } }` and nothing else, every path a `packages/<dir>`.
- * Everything below indexes into it, so a malformed one throws here.
+ * path, version[, includes] } } }` and nothing else, every path a
+ * `packages/<dir>`. Everything below indexes into it, so a malformed one
+ * throws here.
+ *
+ * `includes` names other directories whose changes count toward the
+ * entry's version as well as its own path's: kinetis/vector includes
+ * packages/vector-ui, because the hosted bundle built from it ships inside
+ * the PHP package. Each is a repo-relative directory, listed once, outside
+ * the entry's own path; checkIncludes() checks that it exists.
  */
 export function parseManifest(json, where = MANIFEST_FILE) {
     let manifest
@@ -63,16 +75,73 @@ export function parseManifest(json, where = MANIFEST_FILE) {
     }
 
     for (const [key, entry] of Object.entries(manifest.packages)) {
-        if (!isObject(entry) || Object.keys(entry).sort().join() !== ENTRY_KEYS.join() || ENTRY_KEYS.some(field => typeof entry[field] !== 'string' || entry[field] === '')) {
-            throw new Error(`${where}: "${key}" must have exactly ${ENTRY_KEYS.map(field => `"${field}"`).join(', ')}, each a non-empty string.`)
+        const required = isObject(entry) ? Object.keys(entry).filter(field => !OPTIONAL_KEYS.includes(field)).sort().join() : null
+
+        if (required !== ENTRY_KEYS.join() || ENTRY_KEYS.some(field => typeof entry[field] !== 'string' || entry[field] === '')) {
+            throw new Error(`${where}: "${key}" must have exactly ${ENTRY_KEYS.map(field => `"${field}"`).join(', ')}, each a non-empty string, and optionally ${OPTIONAL_KEYS.map(field => `"${field}"`).join(', ')}.`)
         }
 
         if (!/^packages\/[a-z0-9][a-z0-9-]*$/.test(entry.path)) {
             throw new Error(`${where}: "${key}" has path "${entry.path}"; expected packages/<directory>.`)
         }
+
+        const problem = Object.hasOwn(entry, 'includes') ? includesProblem(entry) : null
+
+        if (problem !== null) {
+            throw new Error(`${where}: "${key}" ${problem}.`)
+        }
     }
 
     return manifest
+}
+
+/** Why an entry's `includes` is malformed, or null when it is not. */
+function includesProblem(entry) {
+    const includes = entry.includes
+
+    if (!Array.isArray(includes) || includes.length === 0) {
+        return 'has "includes" that is not a non-empty array of paths'
+    }
+
+    for (const dir of includes) {
+        // Repo-relative, as git prints it: no leading or trailing slash, no
+        // empty, "." or ".." segment, no backslash.
+        if (typeof dir !== 'string' || dir === '' || dir.split('/').some(part => part === '' || part === '.' || part === '..') || dir.includes('\\')) {
+            return `includes ${JSON.stringify(dir)}, which is not a repo-relative directory such as packages/vector-ui`
+        }
+
+        if (dir === entry.path || dir.startsWith(`${entry.path}/`) || entry.path.startsWith(`${dir}/`)) {
+            return `includes "${dir}", which overlaps its own path "${entry.path}"`
+        }
+    }
+
+    const duplicate = includes.find((dir, index) => includes.indexOf(dir) !== index)
+
+    return duplicate === undefined ? null : `includes "${duplicate}" more than once`
+}
+
+/** Whether `file` lies under the directory `dir`. */
+function under(file, dir) {
+    return file.startsWith(`${dir}/`)
+}
+
+/**
+ * The problems of each entry's `includes` against the tree: every path
+ * must be a directory that exists — another product's path, or any other
+ * directory. `isDirectory(dir)` answers for a repo-relative path.
+ */
+export function checkIncludes(manifest, isDirectory) {
+    const problems = []
+
+    for (const [key, entry] of Object.entries(manifest.packages)) {
+        for (const dir of entry.includes ?? []) {
+            if (!isDirectory(dir)) {
+                problems.push(`${key}: includes "${dir}", which is not a directory in this tree`)
+            }
+        }
+    }
+
+    return problems
 }
 
 /** Whether a CHANGELOG has a `## [version]` heading (Keep a Changelog, with or without a date after it). */
@@ -139,9 +208,10 @@ export function checkConsistency(manifest, read) {
 
 /**
  * The history problems between the manifest at the base and now.
- * `changed[key]` lists the files under that product's path that differ
- * between the base and the tree. A product the base manifest does not
- * list is new: its version only has to be one the policy accepts.
+ * `changed[key]` lists the files under that product's path, and under the
+ * paths its `includes` names, that differ between the base and the tree.
+ * A product the base manifest does not list is new: its version only has
+ * to be one the policy accepts.
  */
 export function checkHistory(oldManifest, newManifest, changed) {
     const problems = []
@@ -164,12 +234,20 @@ export function checkHistory(oldManifest, newManifest, changed) {
 
         if (!bumped && files.length > 0) {
             const shown = files.slice(0, 3).join(', ') + (files.length > 3 ? ', …' : '')
-            problems.push(`${key}: files under ${entry.path} changed but its version is still ${entry.version} (${shown}); run node scripts/bump.mjs ${key} <patch|minor>`)
+            // Name each directory that changed, an included one as such, so a
+            // contributor who touched only packages/vector-ui sees why
+            // kinetis/vector needs a bump too.
+            const where = [entry.path, ...(entry.includes ?? [])]
+                .filter(dir => files.some(file => under(file, dir)))
+                .map(dir => (dir === entry.path ? dir : `${dir} (which ${entry.name} includes)`))
+                .join(' and ')
+            problems.push(`${key}: files under ${where} changed but its version is still ${entry.version} (${shown}); run node scripts/bump.mjs ${key} <patch|minor>`)
             continue
         }
 
         if (bumped && files.length === 0) {
-            problems.push(`${key}: version moved from ${old.version} to ${entry.version}, but nothing under ${entry.path} changed; an unchanged product keeps its version`)
+            const where = [entry.path, ...(entry.includes ?? [])].join(' or ')
+            problems.push(`${key}: version moved from ${old.version} to ${entry.version}, but nothing under ${where} changed; an unchanged product keeps its version`)
             continue
         }
 
@@ -251,16 +329,17 @@ export function manifestAt(repo, commit) {
 }
 
 /**
- * Every file under `dir` that differs between `commit` and the working
- * tree, untracked files included. --no-renames makes a file moved between
- * two products count under both.
+ * Every file under `dirs` (one directory or several) that differs between
+ * `commit` and the working tree, untracked files included. --no-renames
+ * makes a file moved between two products count under both.
  */
-export function changedFiles(repo, commit, dir) {
-    const diff = git(repo, ['diff', '--no-renames', '--name-only', '-z', commit, '--', dir])
-    const untracked = git(repo, ['ls-files', '--others', '--exclude-standard', '-z', '--', dir])
+export function changedFiles(repo, commit, dirs) {
+    const paths = [dirs].flat()
+    const diff = git(repo, ['diff', '--no-renames', '--name-only', '-z', commit, '--', ...paths])
+    const untracked = git(repo, ['ls-files', '--others', '--exclude-standard', '-z', '--', ...paths])
 
     if (diff === null || untracked === null) {
-        throw new Error(`Could not diff ${dir} against ${commit}.`)
+        throw new Error(`Could not diff ${paths.join(', ')} against ${commit}.`)
     }
 
     return [...new Set([...diff.split('\0'), ...untracked.split('\0')].filter(file => file !== ''))].sort()
@@ -302,7 +381,10 @@ export function validate(repo, { base, before } = {}) {
         return { lines, problems: [`[consistency] ${error.message}`] }
     }
 
-    report('consistency', checkConsistency(manifest, read))
+    report('consistency', [
+        ...checkConsistency(manifest, read),
+        ...checkIncludes(manifest, dir => existsSync(path.join(repo, dir)) && statSync(path.join(repo, dir)).isDirectory()),
+    ])
 
     const commit = comparisonBase(repo, { base, before })
 
@@ -320,7 +402,7 @@ export function validate(repo, { base, before } = {}) {
         return { lines, problems }
     }
 
-    const changed = Object.fromEntries(Object.entries(manifest.packages).map(([key, entry]) => [key, changedFiles(repo, commit, entry.path)]))
+    const changed = Object.fromEntries(Object.entries(manifest.packages).map(([key, entry]) => [key, changedFiles(repo, commit, [entry.path, ...(entry.includes ?? [])])]))
     lines.push(`[history] Comparing against ${commit}.`)
     report('history', checkHistory(old, manifest, changed))
 
