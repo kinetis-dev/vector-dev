@@ -51,6 +51,7 @@ from first install to the reference.
 ## Integrations
 
 - [MCP tools](https://kinetis.dev/vector/docs/mcp.html): The admin's services as Model Context Protocol tools for AI agents.
+- [Agent guide](https://kinetis.dev/vector/docs/agent-guide.html): Routing for an AI coding agent in an application that installs kinetis/vector, served as kinetis://docs/vector: the installed-package gate, the version boundary, task routing, correctness boundaries and a verification checklist.
 - [Testing your admin](https://kinetis.dev/vector/docs/testing.html): Driving the REST API from the application's own test suite.
 
 ## Reference

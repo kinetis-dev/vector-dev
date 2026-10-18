@@ -166,6 +166,7 @@ databases
 :hidden:
 
 mcp
+agent-guide
 testing
 ```
 
