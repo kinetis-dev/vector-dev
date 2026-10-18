@@ -33,11 +33,29 @@ env:
 
 jobs:
   infection:
-    name: Mutation testing (Vector's Registry and Query)
+    name: Mutation testing (${{ matrix.shard.name }})
     runs-on: ubuntu-latest
-    # Four threads over the PHPUnit tests that exercise the two units,
+    # The mutants are split by source file over parallel jobs, each with
+    # four threads over the PHPUnit tests that exercise its files and
     # each worker on databases of its own (see infection.vector.json5).
+    # A runner has four CPUs, so more threads in one job would only
+    # queue; a shard of its own is what makes the run shorter.
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # files is Infection's --filter: bare file names, unique under
+        # the config's source directories. Together the shards cover
+        # every file infection.vector.json5 mutates; a file added there
+        # needs a shard here. Each floor applies to its own shard.
+        # Provisional floors: the sharded run has not been measured yet,
+        # so 60 is a starting point rather than a measurement. Set each
+        # from the covered MSI its own first run reports, two points
+        # under it.
+        shard:
+          - { name: ResourceCompiler, files: ResourceCompiler.php, minMsi: 60, minCoveredMsi: 60 }
+          - { name: ResourceService, files: ResourceService.php, minMsi: 60, minCoveredMsi: 60 }
+          - { name: ListRequest and the other compilers, files: 'ListRequest.php,XlsxWriter.php,LayoutCompiler.php,SettingsCompiler.php,WidgetCompiler.php', minMsi: 60, minCoveredMsi: 60 }
     # The same services as ci.yml's PHP job: the mutated tests boot the
     # demo against them, the initial run on the base databases and each
     # Infection worker on its own (demo/backend/tests/worker-stores.php).
@@ -146,13 +164,13 @@ jobs:
 
       - name: Infection
         if: steps.scope.outputs.run == 'true'
-        # The thresholds are infection.vector.json5's own minMsi and
-        # minCoveredMsi, measured against this suite; this step passes
-        # none of its own. Nor does it set pcov.directory, unlike
+        # The shard's files and floors override infection.vector.json5's
+        # minMsi and minCoveredMsi, which stay the floors of a whole run.
+        # This step does not set pcov.directory, unlike
         # sonarqube.yml: the image leaves that ini setting empty, and
         # Infection then sets it for its initial run to the common base
         # of the config's source directories, packages/vector/src.
-        run: .github/scripts/php composer infection:vector
+        run: .github/scripts/php composer infection:vector -- '--filter=${{ matrix.shard.files }}' --min-msi=${{ matrix.shard.minMsi }} --min-covered-msi=${{ matrix.shard.minCoveredMsi }}
 
       - name: Infection report
         if: always() && steps.scope.outputs.run == 'true'

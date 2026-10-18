@@ -61,7 +61,7 @@
         ],
         "infection:vector": [
             "Composer\\Config::disableProcessTimeout",
-            "@php -d memory_limit=1G vendor/bin/infection --configuration=infection.vector.json5 --threads=4 --only-covering-test-cases --no-progress"
+            "@php -d memory_limit=1G vendor/bin/infection --configuration=infection.vector.json5 --threads=4 --no-progress"
         ],
         "infection:workers": [
             "Composer\\Config::disableProcessTimeout",

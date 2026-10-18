@@ -151,7 +151,7 @@ on MySQL; run it before each mutation-testing run. Without
 `TEST_TOKEN` (PHPUnit on its own, and Infection's initial run of the
 suite) the tests use the base databases as before.
 
-`infection:vector` runs four workers with `--only-covering-test-cases`.
+`infection:vector` runs four workers.
 `infection` runs one, on worker 1's stores: its whole suite includes
 tests that share state outside them. Neither run touches the base
 databases beyond what PHPUnit itself does, but both still need them
@@ -194,7 +194,8 @@ pull requests, each for the paths it covers:
   `kinetis/vector`; see {doc}`releasing`.
 - `infection.yml` — `composer infection:workers`, then
   `composer infection:vector`, when Vector's Registry or Query or the
-  mutation setup changes.
+  mutation setup changes; the mutated files are split over three
+  parallel jobs, each passing `--filter` and floors of its own.
 - `sonarqube.yml` — the PHPUnit suite under pcov, its coverage of
   `packages/vector/src` reported to SonarQube Cloud with its quality
   gate.

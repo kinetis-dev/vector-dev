@@ -4,7 +4,9 @@
     // exercise them, which write to the seeded databases:
     //   docker compose exec app composer infection:workers
     //   docker compose exec app composer infection:vector
-    // Four threads with --only-covering-test-cases. Each worker runs on
+    // Four threads, each running whole covering test classes: on
+    // 2026-10-18 --only-covering-test-cases lost 79 kills (covered MSI
+    // 62%), so it stays off. Each worker runs on
     // stores of its own, keyed on Infection's TEST_TOKEN
     // (tests/worker-stores.php, applied by tests/bootstrap.php), which
     // infection:workers recreates, migrates and seeds; the initial run,
@@ -12,9 +14,12 @@
     // leave the rows its test would have removed in its worker's
     // databases, so run infection:workers before each run.
     //
-    // Superseded: the measurement below predates four threads and
-    // --only-covering-test-cases, which can lose a few kills; the floors
-    // await a measurement of the current setup.
+    // CI splits the files over parallel jobs (.github/workflows/
+    // infection.yml), each with --filter and floors of its own; the
+    // floors here are those of a whole run.
+    //
+    // Superseded: the measurement below predates four threads; the
+    // floors await a measurement of the current setup.
     // Measured 2026-10-06 (--threads=1, this config's 60 s timeout):
     // 1353 mutants, 920 killed, 1 syntax error, 2 timed out, 430 escaped,
     // 0 not covered — MSI 68.22%, covered MSI 68.22% (mutation coverage
