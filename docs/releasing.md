@@ -222,8 +222,8 @@ publishing*:
   directly; *Allow npm dist-tag* unchecked, since it never runs
   `npm dist-tag`.
 - Under *Settings → Publishing access*, **Require two-factor
-  authentication and disallow tokens**. Trusted publishing still works;
-  a token no longer can.
+  authentication and disallow bypass 2fa tokens**. Trusted publishing
+  still works; a token no longer can.
 
 A trusted publisher is only set up on a package that exists, so the
 first publish, 0.9.0, used a short-lived granular token instead; it has
