@@ -38,6 +38,10 @@ updates:
       # newest Node.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # typescript-eslint, which ESLint lints the workspace with, does
+      # not support TypeScript 7 yet; lint fails on it.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
