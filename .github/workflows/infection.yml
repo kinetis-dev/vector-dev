@@ -30,6 +30,11 @@ concurrency:
 env:
   # See ci.yml: the job's own token for what the Composer cache misses.
   COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ secrets.GITHUB_TOKEN }}"}}'
+  # ResourceCompiler.php alone is too many mutants for one job, and
+  # --filter goes no finer than a file, so its two shards split it by
+  # mutator: one runs only these, the other every mutator of the config
+  # but these. Measured 2026-10-18: 295 of the file's 589 mutants.
+  SPLIT_MUTATORS: Identical,MatchArmRemoval,LogicalNot,LogicalAnd,LogicalAndNegation,LogicalAndAllSubExprNegation,LogicalAndSingleSubExprNegation,LogicalOr,LogicalOrNegation,LogicalOrAllSubExprNegation,LogicalOrSingleSubExprNegation
 
 jobs:
   infection:
@@ -47,15 +52,18 @@ jobs:
         # files is Infection's --filter: bare file names, unique under
         # the config's source directories. Together the shards cover
         # every file infection.vector.json5 mutates; a file added there
-        # needs a shard here. Each floor applies to its own shard.
+        # needs a shard here. mutators is all, split (only
+        # SPLIT_MUTATORS) or rest (all but SPLIT_MUTATORS). Each floor
+        # applies to its own shard.
         # Provisional floors: the sharded run has not been measured yet,
         # so 60 is a starting point rather than a measurement. Set each
         # from the covered MSI its own first run reports, two points
         # under it.
         shard:
-          - { name: ResourceCompiler, files: ResourceCompiler.php, minMsi: 60, minCoveredMsi: 60 }
-          - { name: ResourceService, files: ResourceService.php, minMsi: 60, minCoveredMsi: 60 }
-          - { name: ListRequest and the other compilers, files: 'ListRequest.php,XlsxWriter.php,LayoutCompiler.php,SettingsCompiler.php,WidgetCompiler.php', minMsi: 60, minCoveredMsi: 60 }
+          - { name: ResourceCompiler logic and identity, files: ResourceCompiler.php, mutators: split, minMsi: 60, minCoveredMsi: 60 }
+          - { name: ResourceCompiler other mutators, files: ResourceCompiler.php, mutators: rest, minMsi: 60, minCoveredMsi: 60 }
+          - { name: ResourceService, files: ResourceService.php, mutators: all, minMsi: 60, minCoveredMsi: 60 }
+          - { name: ListRequest and the other compilers, files: 'ListRequest.php,XlsxWriter.php,LayoutCompiler.php,SettingsCompiler.php,WidgetCompiler.php', mutators: all, minMsi: 60, minCoveredMsi: 60 }
     # The same services as ci.yml's PHP job: the mutated tests boot the
     # demo against them, the initial run on the base databases and each
     # Infection worker on its own (demo/backend/tests/worker-stores.php).
@@ -170,7 +178,31 @@ jobs:
         # sonarqube.yml: the image leaves that ini setting empty, and
         # Infection then sets it for its initial run to the common base
         # of the config's source directories, packages/vector/src.
-        run: .github/scripts/php composer infection:vector -- '--filter=${{ matrix.shard.files }}' --min-msi=${{ matrix.shard.minMsi }} --min-covered-msi=${{ matrix.shard.minCoveredMsi }}
+        # --mutators replaces the config's mutators rather than narrowing
+        # them, so the rest shard runs a copy of the config with
+        # SPLIT_MUTATORS switched off: a mutator in neither list still
+        # runs there. A later --configuration overrides the script's.
+        env:
+          SHARD_FILES: ${{ matrix.shard.files }}
+          SHARD_MUTATORS: ${{ matrix.shard.mutators }}
+          MIN_MSI: ${{ matrix.shard.minMsi }}
+          MIN_COVERED_MSI: ${{ matrix.shard.minCoveredMsi }}
+        run: |
+          args=("--filter=$SHARD_FILES" "--min-msi=$MIN_MSI" "--min-covered-msi=$MIN_COVERED_MSI")
+          case "$SHARD_MUTATORS" in
+            all) ;;
+            split) args+=("--mutators=$SPLIT_MUTATORS") ;;
+            rest)
+              # After @default: a false entry unsets only what came before.
+              off="$(printf ', "%s": false' ${SPLIT_MUTATORS//,/ })"
+              sed "s/\"mutators\": { \"@default\": true }/\"mutators\": { \"@default\": true${off} }/" \
+                demo/backend/infection.vector.json5 > demo/backend/infection.vector.rest.json5
+              grep -q '"Identical": false' demo/backend/infection.vector.rest.json5
+              args+=(--configuration=infection.vector.rest.json5)
+              ;;
+            *) echo "Unknown mutators: $SHARD_MUTATORS"; exit 1 ;;
+          esac
+          .github/scripts/php composer infection:vector -- "${args[@]}"
 
       - name: Infection report
         if: always() && steps.scope.outputs.run == 'true'

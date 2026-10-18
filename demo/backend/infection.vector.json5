@@ -15,8 +15,10 @@
     // databases, so run infection:workers before each run.
     //
     // CI splits the files over parallel jobs (.github/workflows/
-    // infection.yml), each with --filter and floors of its own; the
-    // floors here are those of a whole run.
+    // infection.yml), each with --filter and floors of its own, and
+    // ResourceCompiler.php over two of them by mutator; the floors here
+    // are those of a whole run. That split derives its second config
+    // from the "mutators" line below, so keep that line as it is.
     //
     // Superseded: the measurement below predates four threads; the
     // floors await a measurement of the current setup.
