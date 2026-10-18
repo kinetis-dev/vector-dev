@@ -40,6 +40,27 @@ API need none; the hosted shell is then served only when `VECTOR_UI_DIR`
 points at a separately built bundle. A released package's bundle is
 built with `NUXT_APP_BASE_URL=/vector/ui/`.
 
+The bundle carries a manifest, `vector-bundle.json`: the package and
+version that built it, the source commit, the descriptor version it
+speaks and the SHA-256 of every file. `vector:install` checks the bundle
+against it before writing anything, and refuses it with exit 1, one line
+naming the cause and the remedy, and no migration or file written, when:
+
+- the manifest is missing or malformed, or lists no `index.html`;
+- it was built for another package or descriptor version;
+- on a released package, it was built for another version;
+- a listed file is missing or changed, or a file is not listed.
+
+A `resources/dist` holding a manifest but no `index.html` is a damaged
+bundle, refused rather than treated as absent. On a released package,
+reinstall `kinetis/vector` to restore the bundle it shipped; in a
+checkout, rebuild it or delete it. `pnpm generate:hosted` builds the
+bundle into
+`packages/vector/resources/dist` with a development version,
+`dev-<short commit>`, which `vector:install` publishes and names; the
+release build passes `--version=<x.y.z>`, which must equal
+`packages/vector-ui`'s version.
+
 Vector's `ShellController` then answers `GET /vector/ui` and every deep
 link under it with the bundle's `index.html` plus one inline script,
 `window.__VECTOR__`, carrying the configuration: the API base, the base
