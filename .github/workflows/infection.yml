@@ -207,3 +207,13 @@ jobs:
       - name: Infection report
         if: always() && steps.scope.outputs.run == 'true'
         run: cat demo/backend/infection.vector.summary.log 2>/dev/null || true
+
+      # The full log lists every escaped mutant, so two runs of a shard can
+      # be diffed for mutants whose kill depends on the run.
+      - name: Upload the Infection log
+        if: always() && steps.scope.outputs.run == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: infection-log-${{ strategy.job-index }}
+          path: demo/backend/infection.vector*.log
+          if-no-files-found: ignore
