@@ -44,7 +44,7 @@
         "@mdi/font": "^7.4.47",
         "@pinia/nuxt": "^1.0.2",
         "@tiptap/core": "^3.31.3",
-        "@tiptap/extension-image": "^3.31.3",
+        "@tiptap/extension-image": "^3.32.0",
         "@tiptap/extension-link": "^3.31.3",
         "@tiptap/extension-mention": "^3.31.3",
         "@tiptap/extension-placeholder": "^3.31.3",
