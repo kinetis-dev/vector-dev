@@ -10,6 +10,47 @@ use Kinetis\QueryBuilder\Query;
 /** Actions, bulk selections, saved views, preferences and settings. */
 final class ActionsAndSettingsTest extends VectorTestCase
 {
+    /** The seeded admin's preferences these tests set, and every one of the other admin's, whose list they assert empty. */
+    private const array PREFERENCES = ['1' => ['columns.products', 'density'], '42' => null];
+
+    /** @var array{settings: list<array<string, mixed>>, views: list<array<string, mixed>>, preferences: list<array<string, mixed>>} */
+    private array $aside = ['settings' => [], 'views' => [], 'preferences' => []];
+
+    /**
+     * A test that fails midway leaves its branding, saved view or
+     * preferences behind, and under mutation testing every later mutant
+     * on that worker would then fail on them rather than on what it
+     * changed. So each test starts from none of them, and what was there
+     * is put back afterwards, as VectorTestCase does for the Languages.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->aside['settings'] = $this->vectorQuery()->table('vector_settings')->where('group', '=', 'branding')->get();
+        $this->aside['views'] = $this->vectorQuery()->table('vector_views')->where('resource', '=', 'products')->get();
+        $this->aside['preferences'] = [];
+
+        foreach (self::PREFERENCES as $owner => $keys) {
+            $this->aside['preferences'] = [...$this->aside['preferences'], ...$this->preferences((string) $owner, $keys)->get()];
+        }
+
+        $this->clearAside();
+    }
+
+    protected function tearDown(): void
+    {
+        $this->clearAside();
+
+        foreach ([['vector_settings', 'settings'], ['vector_views', 'views'], ['vector_preferences', 'preferences']] as [$table, $key]) {
+            if ($this->aside[$key] !== []) {
+                $this->vectorQuery()->table($table)->insert($this->aside[$key]);
+            }
+        }
+
+        parent::tearDown();
+    }
+
     public function testTheDescriptorPublishesActionsAndTheShowPageFiltersThemPerRecord(): void
     {
         $schema = $this->client->get('/vector/schema/products', headers: $this->adminHeaders())->assertOk()->json();
@@ -167,6 +208,24 @@ final class ActionsAndSettingsTest extends VectorTestCase
 
         $this->client->get('/vector/settings/nope', headers: $this->adminHeaders())->assertNotFound();
         $this->vectorQuery()->table('vector_settings')->where('group', '=', 'branding')->delete();
+    }
+
+    private function clearAside(): void
+    {
+        $this->vectorQuery()->table('vector_settings')->where('group', '=', 'branding')->delete();
+        $this->vectorQuery()->table('vector_views')->where('resource', '=', 'products')->delete();
+
+        foreach (self::PREFERENCES as $owner => $keys) {
+            $this->preferences((string) $owner, $keys)->delete();
+        }
+    }
+
+    /** @param list<string>|null $keys null: every one of the owner's */
+    private function preferences(string $owner, ?array $keys): Query
+    {
+        $query = $this->vectorQuery()->table('vector_preferences')->where('owner_id', '=', $owner);
+
+        return $keys === null ? $query : $query->whereIn('key', $keys);
     }
 
     private function link(): MysqlLink
