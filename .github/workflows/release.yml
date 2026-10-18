@@ -15,8 +15,9 @@ on:
   # A rehearsal: dispatch it with dry_run on (the default) to run every
   # check, the split, the bundle and the release commit, and see what the
   # mirror and npm would receive, writing nothing. It can run from any
-  # branch — a pull request's, before it merges — and then says what a
-  # real run would refuse. A dispatch that publishes must run from main.
+  # branch — a pull request's, before it merges — and reports, rather than
+  # fails on, a commit not on main yet; every other refusal fails it as it
+  # would a real run. A dispatch that publishes must run from main.
   workflow_dispatch:
     inputs:
       dry_run:

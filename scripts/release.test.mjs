@@ -281,6 +281,15 @@ test('plan reads the source commit, the mirror and npm, and a real release only 
         const skipped = commit(at('0.9.2', '0.9.1'), 'vector 0.9.2, 0.9.1 never published')
         sync()
         assert.throws(() => plan(repo, { source: skipped, ref: 'refs/heads/main', dryRun: false, mirror, log, ...npmAt(['0.9.0']) }), /kinetis\/vector 0\.9\.2 does not follow what is published \(highest 0\.9\.0\)/)
+        // A refusal stops the whole round: vector-ui 0.9.1 alone would go out,
+        // but the plan throws rather than publish it without vector.
+        assert.equal(productPlan({ product: '@kinetis/vector-ui', version: '0.9.1', published: false, publishedVersions: ['0.9.0'] }).publish, true)
+        let askedNpm = false
+        const npm = { ...npmAt(['0.9.0']), npmVersionsView: () => { askedNpm = true; return { status: 0, stdout: '["0.9.0"]' } } }
+        assert.throws(() => plan(repo, { source: skipped, ref: 'refs/heads/main', dryRun: false, mirror, log, ...npm }), /kinetis\/vector 0\.9\.2 does not follow/)
+        assert.equal(askedNpm, false, 'the vector refusal comes before vector-ui is even considered')
+        // ...and a rehearsal does not soften it.
+        assert.throws(() => plan(repo, { source: skipped, ref: 'refs/heads/main', dryRun: true, mirror, log, ...npmAt(['0.9.0']) }), /kinetis\/vector 0\.9\.2 does not follow/)
         // ...and the same for npm.
         run(repo, 'push', '--quiet', mirror, `${skipped}:refs/tags/v0.9.1`)
         assert.throws(() => plan(repo, { source: skipped, ref: 'refs/heads/main', dryRun: false, mirror, log, ...npmAt(['0.8.0']) }), /@kinetis\/vector-ui 0\.9\.1 does not follow what is published \(highest 0\.8\.0\)/)

@@ -278,8 +278,10 @@ export function mirrorVersions(repo, mirror, token) {
  * A real run publishes only from main: run from refs/heads/main, which
  * the npm-release environment admits and npm's provenance names, at a
  * commit origin/main contains. A rehearsal may run from any branch — a
- * pull request's, before it merges — and says what a real run would
- * refuse instead of refusing.
+ * pull request's, before it merges — and reports a commit not on
+ * origin/main instead of refusing it. Every other refusal throws on a
+ * rehearsal too, and any refusal stops the whole round: nothing is
+ * published for one product while the other is refused.
  *
  * Returns { source, vector, ui }, each product { version, publish, notes }.
  */
@@ -636,7 +638,9 @@ function summary(result) {
 }
 
 export function main(argv) {
-    // Out of the environment before any child starts; only the push gets it.
+    // Out of the environment before any child starts; only the plan's read of
+    // the mirror's tags (mirrorVersions) and the mirror push get it, each
+    // through the askpass helper.
     const token = process.env[DEPLOY_CREDENTIAL_VARIABLE]
     delete process.env[DEPLOY_CREDENTIAL_VARIABLE]
 

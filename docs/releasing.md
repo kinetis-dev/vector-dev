@@ -64,7 +64,8 @@ rebase onto `main` and bump again from its version.
 `.github/workflows/versions.yml` runs
 `node scripts/validate-versions.mjs` on every pull request and on every
 push to `main`. Run it locally the same way. `--base=<ref>` names the
-commit to compare against; it defaults to `HEAD^`.
+commit to compare against. Without it, the base is `GITHUB_EVENT_BEFORE`
+when that is set, and `HEAD^` otherwise.
 
 - **Consistency**, on the tree: every manifest version parses and is on
   the `0.x` line; `packages/vector-ui/package.json` carries the
@@ -93,11 +94,15 @@ Each push to `main` runs the release:
 | Split, bundle and push the mirror | Only when `kinetis/vector`'s version is not on the mirror yet. Splits `packages/vector`, builds the hosted bundle with `scripts/build-hosted-bundle.mjs --version=X.Y.Z` (the bundle carries `kinetis/vector`'s version, which `vector:install` checks it against), makes the release commit, and pushes the mirror's `main` and its `vX.Y.Z` tag. |
 | Publish @kinetis/vector-ui | Only when `@kinetis/vector-ui`'s version is not on npm yet. Runs `npm publish --provenance --tag latest` from `packages/vector-ui`, in the `npm-release` environment. |
 
-A push that changes no version publishes nothing and succeeds. The two
-products are independent: one can be published without the other, and a
-failure in one does not stop the other.
+A push that changes no version publishes nothing and succeeds. Once the
+plan has passed, the two publish jobs are independent: one product can
+be published without the other, and a failure in one publish job does
+not stop the other.
 
-The plan refuses to publish:
+The plan itself is all or nothing. Any refusal fails the whole round
+before anything is published, even when the other product would have
+been releasable on its own: a refusal is an anomaly for a person to
+look at. The plan refuses to publish:
 
 - from a commit `origin/main` does not contain, or from any ref but
   `main`;
@@ -124,9 +129,18 @@ request can be rehearsed before it merges. The rehearsal:
 - reads the mirror and says what it would push, and runs `npm pack
   --dry-run` and `npm publish --dry-run`.
 
-It writes nothing. A step a real run would refuse is reported instead,
-such as a commit that is not on `main` yet. A dispatch with dry run off
-publishes like a push, but only when run from `main`.
+It writes nothing. Two refusals of a real run are reported instead of
+failing the rehearsal, so a branch can be rehearsed before it merges:
+
+- the commit is not on `origin/main`;
+- the mirror push's source check fails (`origin`'s `main` does not
+  contain the commit, or the manifest there states another version).
+
+Every other refusal fails a rehearsal as it fails a real run: a missing
+predecessor, a `package.json` that disagrees with the manifest, a
+missing or empty CHANGELOG section, or no manifest at the commit. A
+dispatch with dry run off publishes like a push, but only when run from
+`main`.
 
 ### The mirror's history
 
