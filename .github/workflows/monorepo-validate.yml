@@ -1,0 +1,37 @@
+name: Monorepo Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+# One run per branch at a time: a superseded PR push cancels the older
+# run outright; on main nothing is cancelled, but stacked pushes queue
+# as at most one pending run instead of piling up behind each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  validate:
+    name: Shared version + package boundaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # Dependency-free Node, so no install step: the one shared version
+      # (packages/vector-ui/package.json against the newest release each
+      # package's CHANGELOG.md records — kinetis/vector has no version
+      # field of its own) and no App\ reference under packages/. The
+      # script's header says why each check reads what it reads;
+      # composer validate --strict runs in ci.yml's PHP job.
+      - name: Validate the monorepo
+        run: node scripts/validate-monorepo.mjs

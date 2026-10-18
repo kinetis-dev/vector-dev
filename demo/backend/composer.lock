@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f8417ea34a5c6605e855b86c22f0be8d",
+    "content-hash": "7f4b19927f2a8dbe34518e75c94f2125",
     "packages": [
         {
             "name": "amphp/amp",
@@ -2183,7 +2183,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector",
-                "reference": "6fdfff78cfa0c1e2adaefd0ddc086cbe9f2fd916"
+                "reference": "88ec79fe985639b78b27e7a7e3f8b517413d15a9"
             },
             "require": {
                 "composer-runtime-api": "^2.0",

@@ -28,7 +28,7 @@
         "kinetis/queue-sql": "^1.6.3",
         "kinetis/session": "^1.3.1",
         "kinetis/storage": "^1.2.4",
-        "kinetis/vector": "@dev",
+        "kinetis/vector": "dev-main",
         "openspout/openspout": "^5.12",
         "psr/http-message": "^2.0"
     },
@@ -82,7 +82,12 @@
         {
             "name": "vector",
             "type": "path",
-            "url": "../../packages/vector"
+            "url": "../../packages/vector",
+            "options": {
+                "versions": {
+                    "kinetis/vector": "dev-main"
+                }
+            }
         }
     ]
 }

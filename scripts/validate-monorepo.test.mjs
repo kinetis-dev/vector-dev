@@ -1,0 +1,57 @@
+// node --test scripts/*.test.mjs — the monorepo checks on fixtures.
+import assert from 'node:assert/strict'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import { after, before, test } from 'node:test'
+import { appReferences, releasedVersion, versionProblems } from './validate-monorepo.mjs'
+
+const unreleased = '# Changelog\n\n## [Unreleased]\n\n### Added\n\n- Everything.\n'
+const released = version => `# Changelog\n\n## [Unreleased]\n\n## [${version}] - 2026-11-01\n\n### Added\n\n- Everything.\n\n## [0.0.1] - 2026-01-01\n`
+
+test('the newest released heading, skipping Unreleased', () => {
+    assert.equal(releasedVersion(unreleased), null)
+    assert.equal(releasedVersion(released('0.9.0')), '0.9.0')
+    assert.equal(releasedVersion('## [unreleased]\n## [1.0.0-rc.1]\n'), '1.0.0-rc.1')
+})
+
+test('nothing released yet: nothing to compare', () => {
+    assert.deepEqual(versionProblems('0.1.0', { 'a.md': unreleased, 'b.md': unreleased }), [])
+})
+
+test('both CHANGELOGs at the package.json version', () => {
+    assert.deepEqual(versionProblems('0.9.0', { 'a.md': released('0.9.0'), 'b.md': released('0.9.0') }), [])
+})
+
+test('a version that disagrees fails, naming the file', () => {
+    const problems = versionProblems('0.9.1', { 'a.md': released('0.9.0'), 'b.md': released('0.9.1') })
+
+    assert.equal(problems.length, 1)
+    assert.match(problems[0], /^a\.md's newest release is 0\.9\.0, but packages\/vector-ui\/package\.json's version is 0\.9\.1/)
+})
+
+test('a package.json version that is not SemVer fails', () => {
+    assert.match(versionProblems('v0.9.0', {})[0], /is not SemVer/)
+    assert.match(versionProblems(undefined, {})[0], /is not SemVer/)
+})
+
+let dir
+
+before(async () => {
+    dir = await mkdtemp(path.join(tmpdir(), 'vector-validate-'))
+    await mkdir(path.join(dir, 'vector/src'), { recursive: true })
+    await mkdir(path.join(dir, 'vector/resources/migrations'), { recursive: true })
+    await mkdir(path.join(dir, 'vector-ui/node_modules/x'), { recursive: true })
+    await writeFile(path.join(dir, 'vector/src/Clean.php'), '<?php\nnamespace Kinetis\\Vector;\nuse Kinetis\\App\\Thing;\nclass MyApp\\Clean {}\n')
+    await writeFile(path.join(dir, 'vector/src/Leak.php'), '<?php\nnamespace Kinetis\\Vector;\n\nuse App\\Domain\\Product;\n')
+    await writeFile(path.join(dir, 'vector/resources/migrations/x.mysql.stub'), "<?php\n$class = 'App\\\\Migration';\n")
+    await writeFile(path.join(dir, 'vector/composer.json'), '{"autoload":{"psr-4":{"Kinetis\\\\Vector\\\\":"src/"}}}')
+    // installed output is not the package's own
+    await writeFile(path.join(dir, 'vector-ui/node_modules/x/a.php'), '<?php use App\\X;\n')
+})
+
+after(() => rm(dir, { recursive: true, force: true }))
+
+test('App\\ references in PHP sources and stubs, not in built output', async () => {
+    assert.deepEqual((await appReferences(dir)).sort(), ['vector/resources/migrations/x.mysql.stub:2', 'vector/src/Leak.php:4'])
+})

@@ -1,0 +1,116 @@
+name: Infection
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/vector/**'
+      - 'demo/backend/**'
+      - 'demo/docker/**'
+      - '.github/scripts/php'
+      - '.github/workflows/infection.yml'
+  pull_request:
+    paths:
+      - 'packages/vector/**'
+      - 'demo/backend/**'
+      - 'demo/docker/**'
+      - '.github/scripts/php'
+      - '.github/workflows/infection.yml'
+
+permissions:
+  contents: read
+
+# One run per branch at a time: a superseded PR push cancels the older
+# run outright; on main nothing is cancelled, but stacked pushes queue
+# as at most one pending run instead of piling up behind each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  # See ci.yml: the job's own token for what the Composer cache misses.
+  COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ secrets.GITHUB_TOKEN }}"}}'
+
+jobs:
+  infection:
+    name: Mutation testing (Vector's Registry and Query)
+    runs-on: ubuntu-latest
+    # One thread over the PHPUnit tests that exercise the two units, on
+    # the seeded databases; slow by design (see infection.vector.json5).
+    timeout-minutes: 120
+    # The same databases as ci.yml's PHP job: the mutated tests boot the
+    # demo against them.
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: vector
+          MYSQL_USER: vector
+          MYSQL_PASSWORD: vector
+          MYSQL_ROOT_PASSWORD: vector
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pvector"
+          --health-interval=5s --health-timeout=3s --health-retries=20
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: vector_admin
+          POSTGRES_USER: vector
+          POSTGRES_PASSWORD: vector
+        options: >-
+          --health-cmd="pg_isready -U vector -d vector_admin"
+          --health-interval=5s --health-timeout=3s --health-retries=20
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=3s --health-retries=20
+    env:
+      VECTOR_PHP_IMAGE: vector-php:8.4
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Join the service network
+        # .github/scripts/php runs on the network GitHub created for this
+        # job's services, where they answer to their keys as host names.
+        run: echo "VECTOR_CI_NETWORK=${{ job.services.mysql.network }}" >> "$GITHUB_ENV"
+
+      - name: Cache Composer downloads
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/composer-cache
+          key: composer-${{ hashFiles('demo/backend/composer.lock') }}
+          restore-keys: composer-
+
+      - name: Build the demo's PHP image
+        # pcov, Infection's coverage driver, is already part of the
+        # demo's extension recipe (demo/docker/php-extensions.sh), so
+        # nothing is installed on top of the image the stack runs.
+        run: docker build -q --build-arg PHP_VERSION=8.4 --target fpm -t "$VECTOR_PHP_IMAGE" -f demo/docker/Dockerfile demo
+
+      - name: Install dependencies
+        run: .github/scripts/php composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare the demo databases
+        # As in ci.yml's PHP job.
+        run: |
+          cp demo/backend/.env.example demo/backend/.env
+          secret="$(openssl rand -hex 32)"
+          echo "::add-mask::$secret"
+          echo "JWT_SECRET=$secret" >> "$GITHUB_ENV"
+          docker exec "${{ job.services.postgres.id }}" psql -U vector -d vector_admin -c 'CREATE DATABASE vector_support OWNER vector'
+
+      - name: Migrate and seed
+        run: |
+          .github/scripts/php vendor/bin/kinetis migrate
+          .github/scripts/php vendor/bin/kinetis demo:seed
+
+      - name: Infection
+        # The thresholds are infection.vector.json5's own minMsi and
+        # minCoveredMsi, measured against this suite; this step passes
+        # none of its own.
+        run: .github/scripts/php composer infection:vector
+
+      - name: Infection report
+        if: always()
+        run: cat demo/backend/infection.vector.summary.log 2>/dev/null || true

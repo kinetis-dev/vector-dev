@@ -161,6 +161,32 @@ needs no `nuxt prepare`. Each package also has its own `pnpm lint`
 against that config. TypeScript is pinned to `~6.0.3` because
 typescript-eslint supports TypeScript only below 6.1.
 
+## Continuous integration
+
+The workflows in `.github/workflows/` run on pushes to `main` and on
+pull requests, each for the paths it covers:
+
+- `ci.yml` — on PHP 8.4 and 8.5, in the demo's own PHP image with
+  MySQL, PostgreSQL and Redis as services: `composer validate --strict`
+  for both `composer.json` files, `composer audit`, the PHPUnit suite
+  (both placements of Vector's tables, as above), PHPStan and both Psalm
+  runs; `pnpm lint`, `pnpm typecheck`, `pnpm test` and
+  `pnpm test:scripts`; and the strict build of this manual.
+- `monorepo-validate.yml` — `node scripts/validate-monorepo.mjs`: the
+  shared version in `packages/vector-ui/package.json` against the newest
+  release each package's `CHANGELOG.md` records, and no `App\`
+  reference under `packages/`.
+- `infection.yml` — `composer infection:vector`, when the PHP side
+  changes.
+- `sonarqube.yml` — the PHPUnit suite under pcov, its coverage of
+  `packages/vector/src` reported to SonarQube Cloud with its quality
+  gate.
+- `semgrep.yml` — Semgrep SAST; `.semgrepignore` lists the reviewed
+  false positives.
+
+`deploy-docs.yml` publishes this manual to `kinetis.dev/vector/docs/`
+when `docs/` changes on `main`.
+
 ## See also
 
 - {doc}`demo` — the stack and its services.

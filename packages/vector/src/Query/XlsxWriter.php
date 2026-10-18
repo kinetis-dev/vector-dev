@@ -124,7 +124,7 @@ final class XlsxWriter
 
         if (!is_string($currency) && is_string($path)) {
             [$first, $rest] = array_pad(explode('.', $path, 2), 2, null);
-            $carrier = $record[$first] ?? null;
+            $carrier = $record[(string) $first] ?? null;
             $currency = $rest === null ? $carrier : (is_array($carrier) ? $carrier[$rest] ?? null : null);
         }
 
