@@ -70,12 +70,39 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Decide whether the mutated units changed
+        # A pull request skips the run unless it changed the mutated
+        # sources, their configuration or this workflow, relative to the
+        # base branch; the paths above only decide whether the workflow
+        # starts. A selected run mutates the whole set: the floors are
+        # measured against all of it and say nothing about a subset
+        # picked from a diff. The two-dot diff against the base tip is
+        # exact because the PR checkout is the merge commit onto that
+        # tip. Every push to main runs in full.
+        id: scope
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            git fetch --no-tags --depth=1 origin "$BASE_REF"
+            if ! git diff --diff-filter=AM --name-only "origin/$BASE_REF" -- \
+                packages/vector/src/Registry packages/vector/src/Query \
+                demo/backend/infection.vector.json5 .github/workflows/infection.yml | grep -q .; then
+              echo "Registry, Query and the mutation setup are unchanged; skipping."
+              echo "run=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "run=true" >> "$GITHUB_OUTPUT"
+
       - name: Join the service network
+        if: steps.scope.outputs.run == 'true'
         # .github/scripts/php runs on the network GitHub created for this
         # job's services, where they answer to their keys as host names.
         run: echo "VECTOR_CI_NETWORK=${{ job.services.mysql.network }}" >> "$GITHUB_ENV"
 
       - name: Cache Composer downloads
+        if: steps.scope.outputs.run == 'true'
         uses: actions/cache@v6
         with:
           path: ${{ runner.temp }}/composer-cache
@@ -83,15 +110,18 @@ jobs:
           restore-keys: composer-
 
       - name: Build the demo's PHP image
+        if: steps.scope.outputs.run == 'true'
         # pcov, Infection's coverage driver, is already part of the
         # demo's extension recipe (demo/docker/php-extensions.sh), so
         # nothing is installed on top of the image the stack runs.
         run: docker build -q --build-arg PHP_VERSION=8.4 --target fpm -t "$VECTOR_PHP_IMAGE" -f demo/docker/Dockerfile demo
 
       - name: Install dependencies
+        if: steps.scope.outputs.run == 'true'
         run: .github/scripts/php composer install --no-interaction --prefer-dist --no-progress
 
       - name: Prepare the demo databases
+        if: steps.scope.outputs.run == 'true'
         # As in ci.yml's PHP job.
         run: |
           cp demo/backend/.env.example demo/backend/.env
@@ -101,11 +131,13 @@ jobs:
           docker exec "${{ job.services.postgres.id }}" psql -U vector -d vector_admin -c 'CREATE DATABASE vector_support OWNER vector'
 
       - name: Migrate and seed
+        if: steps.scope.outputs.run == 'true'
         run: |
           .github/scripts/php vendor/bin/kinetis migrate
           .github/scripts/php vendor/bin/kinetis demo:seed
 
       - name: Infection
+        if: steps.scope.outputs.run == 'true'
         # The thresholds are infection.vector.json5's own minMsi and
         # minCoveredMsi, measured against this suite; this step passes
         # none of its own. Nor does it set pcov.directory, unlike
@@ -115,5 +147,5 @@ jobs:
         run: .github/scripts/php composer infection:vector
 
       - name: Infection report
-        if: always()
+        if: always() && steps.scope.outputs.run == 'true'
         run: cat demo/backend/infection.vector.summary.log 2>/dev/null || true

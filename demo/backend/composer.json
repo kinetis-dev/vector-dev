@@ -57,11 +57,11 @@
         "psalm:taint": "@php -d zend.assertions=-1 vendor/bin/psalm --taint-analysis --no-progress --report=psalm.sarif --report-show-info=false",
         "infection": [
             "Composer\\Config::disableProcessTimeout",
-            "infection --threads=1 --only-covering-test-cases --no-progress"
+            "@php -d memory_limit=1G vendor/bin/infection --threads=1 --only-covering-test-cases --no-progress"
         ],
         "infection:vector": [
             "Composer\\Config::disableProcessTimeout",
-            "infection --configuration=infection.vector.json5 --threads=1 --no-progress"
+            "@php -d memory_limit=1G vendor/bin/infection --configuration=infection.vector.json5 --threads=1 --no-progress"
         ]
     },
     "scripts-descriptions": {
