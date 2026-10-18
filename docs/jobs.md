@@ -46,12 +46,17 @@ with the application scope; the application's own queues are untouched.
 A backend the queue package cannot build refuses the push with a `403`
 carrying the queue package's reason.
 
+A worker serves the connection by name:
+
+```console
+vendor/bin/kinetis queue:work --connection=admin --queue=vector
+```
+
 Whichever you choose, some worker must watch `VECTOR_QUEUE` on that
 backend, or jobs wait as *queued*:
 
 ```console
 vendor/bin/kinetis queue:work --queue=default,vector
-vendor/bin/kinetis queue:work --connection=admin --queue=vector
 ```
 
 ## Delivery

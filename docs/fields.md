@@ -7,23 +7,26 @@ from the name.
 
 ## Catalogue
 
-| Class | Holds |
-|---|---|
-| `Id` | The identifier. Read-only, sortable, never on a form. |
-| `Text`, `Email`, `Url`, `Password`, `Slug`, `Color` | String columns; `searchable()` allowed. `Slug::from('name')` derives a slug. `Email` must be an address and `Url` an absolute http(s) URL (the admin shows it as a link), unless the field declares an e-mail, URL or pattern rule of its own. `Password`: see [Passwords](#passwords). |
-| `Textarea`, `Json` | Long text, edited in wide inputs. A JSON value is a string column. |
-| `RichText` | Formatted content — headings, lists, links, tables, images — stored as a structured document; see below. |
-| `Markdown` | Markdown text for technical content, edited visually or as source; `toolbar([...])`. |
-| `Number` | Numbers; `decimals(n)`, `step()`. |
-| `Money` | An amount in the currency's minor units (cents, whole yen); see [Money and currencies](#money-and-currencies). |
-| `Currency` | An ISO 4217 code in a string column, chosen from a searchable list that names each code in the UI's language (`EUR · Euro`). The list holds every code, or `allowed(['EUR', 'USD'])`. Codes are stored upper-case, anything else is refused, and it filters like an enum. It starts from `default('EUR')`, else `VECTOR_CURRENCY`. |
-| `Boolean` | True or false. |
-| `Date`, `DateTime` | A calendar day, or an instant: ISO 8601 on the wire, UTC. See {doc}`databases` for `DATE` columns. |
-| `Enum` | A backed enum: `of(Status::class)`, `labels()`, `colors()`; its options are published in the descriptor. |
-| `KeyValue` | A JSON object of text values in a string column, edited as key/value rows; `columns('Attribute', 'Value')`, `maxEntries(n)` (50 by default). On the wire it is an object; a stored number or boolean reads back as text, and an empty object stores `null` where the column allows it. Keys are trimmed and at most 100 characters. A JSON column may reorder the keys. It cannot be sorted, filtered, searched or summarized, and is imported as JSON text. |
-| `File`, `Image` | An uploaded file's storage key; see {doc}`files`. |
-| `Computed` | A read-only value a method of the resource computes from the record; see below. |
-| `BelongsTo`, `HasOne`, `HasMany`, `ManyToMany` | Relations to another resource, made with `::to('name', TargetResource::class)`. `titleField()` overrides the target's title; `BelongsTo::dependsOn()` and `HasMany::repeater()` are on {doc}`forms`. |
+The descriptor names each field by its type, the identifier in the
+second column.
+
+| Class | Type | Holds |
+|---|---|---|
+| `Id` | `id` | The identifier. Read-only, sortable, never on a form. |
+| `Text`, `Email`, `Url`, `Password`, `Slug`, `Color` | `string`, `email`, `url`, `password`, `slug`, `color` | String columns; `searchable()` allowed. `Slug::from('name')` derives a slug. `Email` must be an address and `Url` an absolute http(s) URL (the admin shows it as a link), unless the field declares an e-mail, URL or pattern rule of its own. `Password`: see [Passwords](#passwords). |
+| `Textarea`, `Json` | `text`, `json` | Long text, edited in wide inputs. A JSON value is a string column. |
+| `RichText` | `richtext` | Formatted content — headings, lists, links, tables, images — stored as a structured document; see below. |
+| `Markdown` | `markdown` | Markdown text for technical content, edited visually or as source; `toolbar([...])`. |
+| `Number` | `number` | Numbers; `decimals(n)`, `step()`. |
+| `Money` | `money` | An amount in the currency's minor units (cents, whole yen); see [Money and currencies](#money-and-currencies). |
+| `Currency` | `currency` | An ISO 4217 code in a string column, chosen from a searchable list that names each code in the UI's language (`EUR · Euro`). The list holds every code, or `allowed(['EUR', 'USD'])`. Codes are stored upper-case, anything else is refused, and it filters like an enum. It starts from `default('EUR')`, else `VECTOR_CURRENCY`. |
+| `Boolean` | `boolean` | True or false. |
+| `Date`, `DateTime` | `date`, `datetime` | A calendar day, `YYYY-MM-DD` on the wire with no time or zone; or an instant, ISO 8601 on the wire in UTC. See {doc}`databases` for `DATE` columns. |
+| `Enum` | `enum` | A backed enum: `of(Status::class)`, `labels()`, `colors()`; its options are published in the descriptor. |
+| `KeyValue` | `keyValue` | A JSON object of text values in a string column, edited as key/value rows; `columns('Attribute', 'Value')`, `maxEntries(n)` (50 by default). On the wire it is an object; a stored number or boolean reads back as text, and an empty object stores `null` where the column allows it. Keys are trimmed and at most 100 characters. A JSON column may reorder the keys. It cannot be sorted, filtered, searched or summarized, and is imported as JSON text. |
+| `File`, `Image` | `file`, `image` | An uploaded file's storage key; see {doc}`files`. |
+| `Computed` | `computed` | A read-only value a method of the resource computes from the record; see below. |
+| `BelongsTo`, `HasOne`, `HasMany`, `ManyToMany` | `belongsTo`, `hasOne`, `hasMany`, `manyToMany` | Relations to another resource, made with `::to('name', TargetResource::class)`. `titleField()` overrides the target's title; `BelongsTo::dependsOn()` and `HasMany::repeater()` are on {doc}`forms`. |
 
 ## Common modifiers
 

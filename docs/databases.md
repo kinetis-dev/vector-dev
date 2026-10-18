@@ -78,7 +78,8 @@ default, and every named one an entity uses.
   `DateTime` field on one is refused at build time; a `Date` field on a
   timestamp property shows the instant's date part.
 - On PostgreSQL, a saved view's flags (`shared`, `is_default`,
-  `resource_default`) are `SMALLINT` 0/1 as on MySQL, and a job's file
+  `resource_default`) are `SMALLINT` 0/1, as they are 0/1 in MySQL's
+  `TINYINT(1)`, and a job's file
   is stored as base64 text, at most 12 MiB of file (MySQL's
   `MEDIUMBLOB`).
 

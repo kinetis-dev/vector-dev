@@ -31,13 +31,27 @@ Register nothing when no credential is present: the API then answers
 
 The MCP tools over HTTP, `POST /mcp`, are served by `kinetis/mcp` in its
 own `mcp` middleware group, which the `vector` group's members do not
-join on their own. Its last member, `McpIdentityGuardMiddleware`,
-answers `401` unless a middleware earlier in the group registered a
-`CurrentUserInterface`. With your authentication middleware in `vector`
-only, every caller of `POST /mcp` — admins included — gets `401`. Add
-`#[AsMiddlewareGroup('mcp', priority: 50)]` to it, as above, and do not
-set `MCP_HTTP_PUBLIC` as a workaround: that opens the endpoint to
-callers without an identity. See {doc}`mcp`.
+join on their own. Its last member, `McpIdentityGuardMiddleware` at
+priority 0, answers `401` unless a middleware earlier in the group
+registered a `CurrentUserInterface`. With your authentication middleware
+in `vector` only, every caller of `POST /mcp` — admins included — gets
+`401`. Add it to the `mcp` group as well, as the demo's
+`VectorAuthMiddleware` does:
+
+```php
+#[AsMiddlewareGroup('vector', priority: 50)]
+#[AsMiddlewareGroup('vector-shell', priority: 50)]
+#[AsMiddlewareGroup('mcp', priority: 50)]
+final readonly class VectorAuthMiddleware implements MiddlewareInterface { /* … */ }
+```
+
+Its priority in `mcp` must be above the guard's 0, so it runs before
+the guard; at 0 or below it is not ordered before the guard, and
+requests still get `401`. 50 sits
+between the guard and `kinetis/mcp`'s `McpOriginMiddleware`, at 100,
+which checks the `Origin` header first. Do not set `MCP_HTTP_PUBLIC` as
+a workaround: that opens the endpoint to callers without an identity.
+See {doc}`mcp`.
 
 ## The `vector-shell` middleware group
 
@@ -120,7 +134,9 @@ and `vector-shell` groups. A monolith on a view adapter keeps its own
 login page; Vector adds none.
 
 A user object may implement `VectorShellUserInterface` to give the shell
-a display name.
+a display name, and `ImpersonatedUserInterface` to say who is
+impersonating it, which Vector writes to every log and audit row
+({doc}`audit`).
 
 ## How long a session lasts
 

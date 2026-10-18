@@ -35,7 +35,10 @@ set; your browser's language plays no part.
 
 Every list of languages — the menu, the switches, the default's options
 — follows `Kinetis\Vector\Translation\Locales::SHIPPED`, which is kept in
-that order; a test fails when a language is added out of place.
+that order: the Unicode root collation of the languages' own names, with
+Latin script alphabetically first, then each other script as a group.
+The order is the same in every language, and a test fails when a
+language is added out of place.
 
 ## Which languages are offered
 
@@ -93,8 +96,8 @@ Vector's own arrive in English.
 The layer ships English (the base and the fallback, key by key) and the
 catalogs above, with the codes `pt` (European) and `pt-BR`, and
 `zh-Hans` for Simplified Chinese. The descriptor's `i18n` names the
-user's language and the languages on offer. The language menu names
-each in itself with its name in the current language beneath
+user's language and the languages on offer. The language menu lists
+them in the server's order, `Locales::SHIPPED`'s, naming each in itself with its name in the current language beneath
 (`languageName()`, from `Intl.DisplayNames`), and switching calls
 `useVectorLocale().choose(code)`, which stores the user's `locale`
 preference and reloads the descriptor.

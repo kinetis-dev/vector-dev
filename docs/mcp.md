@@ -76,8 +76,12 @@ authentication middleware in the `vector` group does not run for
 final readonly class AdminAuthMiddleware implements MiddlewareInterface { /* … */ }
 ```
 
-The demo's `App\Auth\VectorAuthMiddleware` carries exactly these three
-attributes. In production, rebuild the compiled cache (`kinetis build`)
+The middleware's priority in `mcp` must be above the guard's 0: the
+higher the priority, the earlier a member runs, and a member at 0 or
+below is not ordered before the guard, so requests still get `401`. `kinetis/mcp`'s other member, `McpOriginMiddleware`, is at 100
+and checks the `Origin` header first; 50 sits between the two. The
+demo's `App\Auth\VectorAuthMiddleware` carries exactly these three
+attributes, at 50. In production, rebuild the compiled cache (`kinetis build`)
 after the change, so the compiled `mcp` group carries the middleware
 ({doc}`deployment`).
 

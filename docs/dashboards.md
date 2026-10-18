@@ -38,7 +38,7 @@ A value's format is a number, `money:EUR`, `percent` or `duration`.
 | `ranges()` | The ranges offered; `7d`, `30d`, `90d` and `1y` by default. |
 | `width()` | 3, 4, 6 or 12 columns of the grid. |
 | `canView()` | Who sees it. |
-| `cacheSeconds()` | Memoizes the result per worker, per widget, range and account. |
+| `cacheSeconds()` | Above zero, memoizes the result in a bounded per-worker cache, keyed by widget, range and the account it was computed for. |
 | `cacheShared()` | Shares one cached result between all admins, for figures that are the same for everyone. |
 
 ## Dashboards
