@@ -21,6 +21,9 @@
 //     from it ships inside the PHP package);
 //   - a version that changed moved exactly one legal step;
 //   - a product with no changed files keeps its version.
+// A package.json whose only difference is in devDependencies entries
+// version-policy.mjs lists as test-only tooling is changed but needs no
+// bump: a product changed only that way may bump or not.
 //
 // The base is --base when given — the workflow passes the pull request's
 // merge base, so the branch is judged as one change — else
@@ -34,7 +37,8 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { transitionProblem, versionProblem } from './version-policy.mjs'
+import { isDeepStrictEqual } from 'node:util'
+import { TEST_ONLY_DEV_DEPENDENCIES, transitionProblem, versionProblem } from './version-policy.mjs'
 
 export const MANIFEST_FILE = 'packages.manifest.json'
 
@@ -207,18 +211,63 @@ export function checkConsistency(manifest, read) {
 }
 
 /**
+ * Whether a package.json changed from `before` to `after` (its contents at
+ * the base and in the tree, null where it does not exist) only in
+ * devDependencies entries TEST_ONLY_DEV_DEPENDENCIES lists: added, removed
+ * or moved to another range. Every other field must be identical once
+ * parsed, key order included (the order of `exports` conditions matters),
+ * so a whitespace-only change is exempt and anything else is not. A file
+ * added, deleted or not valid JSON on either side is never exempt.
+ */
+export function onlyTestToolingChanged(before, after) {
+    if (before === null || after === null) {
+        return false
+    }
+
+    let old
+    let now
+
+    try {
+        old = JSON.parse(before)
+        now = JSON.parse(after)
+    } catch {
+        return false
+    }
+
+    const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value)
+
+    if (!isObject(old) || !isObject(now)) {
+        return false
+    }
+
+    const { devDependencies: oldDev = {}, ...oldRest } = old
+    const { devDependencies: newDev = {}, ...newRest } = now
+
+    if (!isObject(oldDev) || !isObject(newDev) || JSON.stringify(oldRest) !== JSON.stringify(newRest)) {
+        return false
+    }
+
+    return [...new Set([...Object.keys(oldDev), ...Object.keys(newDev)])]
+        .filter(name => !isDeepStrictEqual(oldDev[name], newDev[name]))
+        .every(name => TEST_ONLY_DEV_DEPENDENCIES.includes(name))
+}
+
+/**
  * The history problems between the manifest at the base and now.
  * `changed[key]` lists the files under that product's path, and under the
- * paths its `includes` names, that differ between the base and the tree.
- * A product the base manifest does not list is new: its version only has
- * to be one the policy accepts.
+ * paths its `includes` names, that differ between the base and the tree
+ * and need a bump; `exempt[key]` lists those that differ but need none
+ * (see onlyTestToolingChanged). A product with only exempt changes may
+ * keep its version or bump it. A product the base manifest does not list
+ * is new: its version only has to be one the policy accepts.
  */
-export function checkHistory(oldManifest, newManifest, changed) {
+export function checkHistory(oldManifest, newManifest, changed, exempt = {}) {
     const problems = []
 
     for (const [key, entry] of Object.entries(newManifest.packages)) {
         const old = oldManifest.packages[key]
         const files = changed[key] ?? []
+        const exemptFiles = exempt[key] ?? []
 
         if (old === undefined) {
             const problem = versionProblem(entry.version)
@@ -245,7 +294,7 @@ export function checkHistory(oldManifest, newManifest, changed) {
             continue
         }
 
-        if (bumped && files.length === 0) {
+        if (bumped && files.length === 0 && exemptFiles.length === 0) {
             const where = [entry.path, ...(entry.includes ?? [])].join(' or ')
             problems.push(`${key}: version moved from ${old.version} to ${entry.version}, but nothing under ${where} changed; an unchanged product keeps its version`)
             continue
@@ -345,6 +394,11 @@ export function changedFiles(repo, commit, dirs) {
     return [...new Set([...diff.split('\0'), ...untracked.split('\0')].filter(file => file !== ''))].sort()
 }
 
+/** Reads a repo-relative file at a commit, or null when that commit does not carry it. */
+export function commitReader(repo, commit) {
+    return file => git(repo, ['show', `${commit}:${file}`])
+}
+
 /** Reads a repo-relative file from the working tree, or null when it does not exist. */
 export function treeReader(repo) {
     return (file) => {
@@ -402,9 +456,19 @@ export function validate(repo, { base, before } = {}) {
         return { lines, problems }
     }
 
-    const changed = Object.fromEntries(Object.entries(manifest.packages).map(([key, entry]) => [key, changedFiles(repo, commit, [entry.path, ...(entry.includes ?? [])])]))
+    const atBase = commitReader(repo, commit)
+    const isExempt = file => path.posix.basename(file) === 'package.json' && onlyTestToolingChanged(atBase(file), read(file))
+    const changed = {}
+    const exempt = {}
+
+    for (const [key, entry] of Object.entries(manifest.packages)) {
+        const files = changedFiles(repo, commit, [entry.path, ...(entry.includes ?? [])])
+        exempt[key] = files.filter(isExempt)
+        changed[key] = files.filter(file => !exempt[key].includes(file))
+    }
+
     lines.push(`[history] Comparing against ${commit}.`)
-    report('history', checkHistory(old, manifest, changed))
+    report('history', checkHistory(old, manifest, changed, exempt))
 
     return { lines, problems }
 }

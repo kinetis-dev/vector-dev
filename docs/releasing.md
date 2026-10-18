@@ -58,6 +58,23 @@ Each bump is its own choice of `patch` or `minor`, with its own
 CHANGELOG entry. `bump.mjs vector-ui` prints the reminder to bump
 `vector` too, but does not bump it for you.
 
+One change needs no bump: a `package.json` under a product's path whose
+only difference is in `devDependencies` entries for the test and
+type-check tooling `TEST_ONLY_DEV_DEPENDENCIES` in
+`scripts/version-policy.mjs` lists — `happy-dom`, `vitest`,
+`@vue/test-utils`, `@nuxt/test-utils`, `@types/node` and `vue-tsc` —
+added, removed or moved to another range. None of them reaches the npm
+package or the hosted bundle, so a Dependabot `test-tooling` update
+(that group in `.github/dependabot.yml` lists the same packages) merges
+without releasing either product. Anything else in that file counts as
+usual: another field, any other devDependency (`nuxt`, `vuetify`,
+`vuetify-nuxt-module`, `sass-embedded` and `typescript` shape the
+bundle), one of these packages moving into `dependencies` or
+`peerDependencies`, or a reordered field; a whitespace-only change is
+exempt. So does any other file changed in the same pull request. A
+product changed only that way may still be bumped, if you choose to
+release it.
+
 `bump.mjs` moves the product's version in `packages.manifest.json` one
 step. For `vector-ui` it also writes the version into
 `packages/vector-ui/package.json`. `packages/vector/composer.json` has
@@ -91,9 +108,11 @@ when that is set, and `HEAD^` otherwise.
   - a product with files changed under its path, or under a directory
     its `includes` lists, has its version bumped (the failure names the
     included directory, so a UI-only change says why `vector` needs a
-    bump);
+    bump), except a `package.json` changed only in test-tooling
+    devDependencies, as above;
   - a version that moved, moved exactly one step;
-  - a product with nothing changed keeps its version.
+  - a product with nothing changed keeps its version (an exempt
+    `package.json` change counts as a change here, so it allows a bump).
 
   The base and the head are compared end to end, so a version skipped
   across several commits fails even when each commit moved one step.

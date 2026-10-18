@@ -132,3 +132,28 @@ export function transitionProblem(old, version) {
 
     return `version jumped from ${old} to ${version}; the only steps allowed are ${allowed.join(' or ')}, so every version in between stays reachable`
 }
+
+/**
+ * The devDependencies of a product's package.json whose changes alone need
+ * no bump: test and type-check tooling, which no published artifact and no
+ * hosted bundle contains. scripts/validate-versions.mjs exempts a
+ * package.json change only when its sole difference is in these
+ * devDependencies entries. Anything that shapes the bundle kinetis/vector
+ * ships (nuxt, vuetify, vuetify-nuxt-module, sass-embedded, typescript) is
+ * deliberately absent. The test-tooling group in .github/dependabot.yml
+ * lists the same packages; keep the two identical.
+ */
+export const TEST_ONLY_DEV_DEPENDENCIES = Object.freeze([
+    // The DOM vitest runs the UI's tests in; never loaded by a build.
+    'happy-dom',
+    // The test runner; `nuxt build` never imports it.
+    'vitest',
+    // Mounting helpers imported only from test files.
+    '@vue/test-utils',
+    // Nuxt's test environment, imported only from test files and the vitest config.
+    '@nuxt/test-utils',
+    // Type declarations: erased at build time, nothing reaches the output.
+    '@types/node',
+    // The type checker behind `typecheck`; it emits nothing (--noEmit).
+    'vue-tsc',
+])
