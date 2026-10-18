@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-10-18
+
+### Changed
+
+- Nuxt 4.6.1, Vue 3.5.44, Vuetify 4.2.6, Pinia 4.1.0 with `@pinia/nuxt`
+  1.0.3, vue-i18n 11.4.14 and DOMPurify 3.4.17, with their lower bounds
+  raised to match. The `nuxt`, `vue` and `vuetify` peer ranges are
+  unchanged.
+
 ## [0.9.1] - 2026-10-18
 
 ### Changed
