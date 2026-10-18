@@ -210,26 +210,27 @@ a disposable identity, at the source commit's own date.
 - An environment named `npm-release`, under *Settings → Environments*,
   with *Deployment branches and tags* limited to the branch `main`.
 
-**npm (`@kinetis/vector-ui`).** Trusted publishing, where npm exchanges
-the workflow's OIDC token for a one-time credential, can only be set up
-on a package that exists. The first publish is the exception:
+**npm (`@kinetis/vector-ui`).** The package publishes through trusted
+publishing alone: npm exchanges the workflow's OIDC token for a
+one-time credential, and no npm token is stored anywhere. The publisher
+is configured on npmjs.com under the package's *Settings → Trusted
+publishing*:
 
-1. Create a granular access token that can publish to the `@kinetis`
-   scope, with a short expiry, and put it on the `npm-release`
-   environment as the secret `NPM_TOKEN`.
-2. Merge the first release to `main`. The publish step uses the token
-   when `NPM_TOKEN` is set, and OIDC otherwise.
-3. On npmjs.com, under the package's *Settings → Trusted publishing*,
-   add a GitHub Actions publisher: organization `kinetis-dev`,
-   repository `vector-dev`, workflow `release.yml`, environment
-   `npm-release`.
-4. Delete `NPM_TOKEN` from the environment, and revoke the token on npm.
-5. Under the package's *Settings → Publishing access*, choose **Require
-   two-factor authentication and disallow tokens**. Trusted publishing
-   still works; a token no longer can.
+- A GitHub Actions publisher: organization `kinetis-dev`, repository
+  `vector-dev`, workflow `release.yml`, environment `npm-release`.
+- *Allow npm publish* checked, since the workflow runs `npm publish`
+  directly; *Allow npm dist-tag* unchecked, since it never runs
+  `npm dist-tag`.
+- Under *Settings → Publishing access*, **Require two-factor
+  authentication and disallow tokens**. Trusted publishing still works;
+  a token no longer can.
 
-Afterwards the token branch of the publish step can be deleted; it is
-marked in the workflow.
+A trusted publisher is only set up on a package that exists, so the
+first publish, 0.9.0, used a short-lived granular token instead; it has
+since been deleted and revoked. Renaming the workflow file or the
+environment breaks publishing until the publisher on npm is updated to
+match. A new or changed publisher stays pending until a publish
+validates it, and lapses if none does by the date npm shows.
 
 **Packagist (`kinetis/vector`).** Do this after the first mirror push,
 so the repository has a `composer.json` to read:

@@ -240,25 +240,9 @@ jobs:
       - name: Publish
         if: steps.npm.outputs.published != 'true'
         working-directory: packages/vector-ui
-        env:
-          # FIRST PUBLISH ONLY. npm cannot have a trusted publisher for a
-          # package that does not exist yet, so the very first publish
-          # uses a short-lived token the maintainer puts on the
-          # npm-release environment. Once the trusted publisher is
-          # configured, the token is deleted and this stays empty, and
-          # the publish authenticates through OIDC alone. Delete this
-          # line, and the token branch below, after that.
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        # Every release is `latest`: versions are plain X.Y.Z, with no
-        # prereleases to keep off it.
-        run: |
-          if [ -n "$NPM_TOKEN" ]; then
-            # A config file naming the variable, not holding its value,
-            # in the runner's temporary directory and nowhere else: npm
-            # expands ${NODE_AUTH_TOKEN} itself, hence the single quotes.
-            # shellcheck disable=SC2016
-            printf '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\n' > "$RUNNER_TEMP/npmrc"
-            export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/npmrc" NODE_AUTH_TOKEN="$NPM_TOKEN"
-          fi
-
-          npm publish --tag latest --provenance --access public
+        # Authenticates through npm's trusted publisher for this
+        # workflow and the npm-release environment: npm exchanges the
+        # job's OIDC token for a one-time credential, and no npm token
+        # exists. Every release is `latest`: versions are plain X.Y.Z,
+        # with no prereleases to keep off it.
+        run: npm publish --tag latest --provenance --access public
