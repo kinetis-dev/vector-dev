@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.4] - 2026-10-19
+
+### Changed
+
+- The toast type `useVectorNotifications()` queues is renamed from
+  `VectorNotification` to `VectorToast`. `VectorNotification` is now only
+  the inbox item from `/vector/notifications`, and Nuxt no longer warns
+  about a duplicated auto-import.
+
 ## [0.9.3] - 2026-10-18
 
 ### Changed
