@@ -1,4 +1,4 @@
-export interface VectorNotification {
+export interface VectorToast {
     text: string
     color?: 'success' | 'error' | 'warning' | 'info'
     timeout?: number
@@ -9,9 +9,9 @@ export interface VectorNotification {
  * store or a fetch hook can notify from anywhere.
  */
 export function useVectorNotifications() {
-    const queue = useState<VectorNotification[]>('vector.notifications', () => [])
+    const queue = useState<VectorToast[]>('vector.notifications', () => [])
 
-    function notify(text: string, color: VectorNotification['color'] = 'info', timeout?: number) {
+    function notify(text: string, color: VectorToast['color'] = 'info', timeout?: number) {
         queue.value.push({ text, color, timeout })
     }
 
