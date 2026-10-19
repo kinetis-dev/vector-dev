@@ -5,7 +5,7 @@ record page and an input in forms. `Text::make('sku', 'SKU')` names the
 property and, optionally, the label; without one the label is derived
 from the name.
 
-## Catalogue
+## Catalog
 
 The descriptor names each field by its type, the identifier in the
 second column.

@@ -205,6 +205,6 @@ A resource in no navigation group shows `—` in the Group column.
 
 ## See also
 
-- {doc}`fields` — the field catalogue.
+- {doc}`fields` — the field catalog.
 - {doc}`forms` — conditions, dependent choices and repeaters.
 - {doc}`authorization` — who may do what.

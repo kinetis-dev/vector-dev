@@ -10,7 +10,7 @@ relation shape Vector administers is exercised:
   labels.
 
 It runs both admin modes, background jobs on a real queue, and a seeded
-catalogue.
+catalog.
 
 ## Run it
 

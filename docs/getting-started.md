@@ -137,7 +137,7 @@ offer the `POST /auth/login` endpoint the sign-in page calls.
 
 The Vector repository ships a complete demo: a shop on MySQL and a
 support desk on PostgreSQL, both admin modes, background jobs and a
-seeded catalogue. From `demo/`:
+seeded catalog. From `demo/`:
 
 ```console
 cp backend/.env.example backend/.env    # then set JWT_SECRET
