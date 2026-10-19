@@ -7,7 +7,7 @@ shown at all.
 
 ## Signing in
 
-How you sign in depends on how your organisation deployed the admin:
+How you sign in depends on how your organization deployed the admin:
 
 - **Standalone** — the admin's own sign-in page asks for your e-mail
   address and password. If you opened a link while signed out, you land

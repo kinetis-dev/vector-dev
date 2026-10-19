@@ -5,7 +5,7 @@ record page and an input in forms. `Text::make('sku', 'SKU')` names the
 property and, optionally, the label; without one the label is derived
 from the name.
 
-## Catalogue
+## Catalog
 
 The descriptor names each field by its type, the identifier in the
 second column.
@@ -160,7 +160,7 @@ ticket body is one.
 
 ### Markdown
 
-`Markdown` remains for technical text. The stored value is the Markdown
+`Markdown` is for technical text. The stored value is the Markdown
 source; the admin edits it visually through `@tiptap/markdown`, with a
 view of the source, and shows it through markdown-it (HTML in the source
 off, bare URLs linked) and the same sanitizer. The descriptor publishes

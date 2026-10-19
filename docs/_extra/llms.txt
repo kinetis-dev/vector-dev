@@ -14,6 +14,7 @@ from first install to the reference.
 
 - [Getting started](https://kinetis.dev/vector/docs/getting-started.html): Install the package, wire authentication, declare a first resource and open the admin.
 - [Core concepts](https://kinetis.dev/vector/docs/core-concepts.html): The compiled descriptor, the API as the authority, and how the UI and MCP tools follow from it.
+- [The demo application](https://kinetis.dev/vector/docs/demo.html): The Docker stack with a shop on MySQL and a support desk on PostgreSQL, both admin modes, FrankenPHP worker mode and the benchmark.
 
 ## Using the admin
 
@@ -24,12 +25,12 @@ from first install to the reference.
 ## Building the admin
 
 - [Resources](https://kinetis.dev/vector/docs/resources.html): The resource class: attribute, derived or declared fields, definition methods, request-time hooks, badges and global search.
-- [Fields](https://kinetis.dev/vector/docs/fields.html): The field catalogue, common modifiers, filter operators, relations and money.
+- [Fields](https://kinetis.dev/vector/docs/fields.html): The field catalog, common modifiers, filter operators, relations and money.
 - [Forms](https://kinetis.dev/vector/docs/forms.html): Conditions, dependent choices, repeaters, inline editing and optimistic locking.
 - [Actions](https://kinetis.dev/vector/docs/actions.html): Operations with dialogs, run on records, selections or everything a filter matches, directly or queued.
 - [Dashboards and widgets](https://kinetis.dev/vector/docs/dashboards.html): Stat, trend, partition, progress and table widgets; dashboards; caching.
 - [Files and images](https://kinetis.dev/vector/docs/files.html): Uploads checked by content, private storage and serving.
-- [Settings](https://kinetis.dev/vector/docs/settings.html): Settings groups edited in the admin, and Branding.
+- [Settings](https://kinetis.dev/vector/docs/settings.html): Settings groups edited in the admin, and the built-in Branding, Languages and Background jobs groups.
 
 ## Access
 
@@ -39,19 +40,18 @@ from first install to the reference.
 
 ## Background work
 
-- [Background jobs](https://kinetis.dev/vector/docs/jobs.html): Queued actions, large exports and imports on the application's queue.
+- [Background jobs](https://kinetis.dev/vector/docs/jobs.html): Queued actions, large and Excel exports and imports: requirements, the queue they go to, delivery and stalled jobs.
 
 ## Deployment and customization
 
 - [Deployment](https://kinetis.dev/vector/docs/deployment.html): Standalone and hosted modes, the Content Security Policy, and production builds.
 - [Customizing the UI](https://kinetis.dev/vector/docs/customizing-the-ui.html): Application config, custom cells, inputs and widgets, runtime extensions, custom pages and theming.
-- [Languages](https://kinetis.dev/vector/docs/languages.html): The UI's locale and message overrides.
+- [Languages](https://kinetis.dev/vector/docs/languages.html): The shipped languages, the languages on offer, translating your labels and overriding the UI's messages.
 - [Databases](https://kinetis.dev/vector/docs/databases.html): Entities on several connections, Vector's tables on their own, and dialect notes.
 
 ## Integrations
 
 - [MCP tools](https://kinetis.dev/vector/docs/mcp.html): The admin's services as Model Context Protocol tools for AI agents.
-- [Agent guide](https://kinetis.dev/vector/docs/agent-guide.html): Routing for an AI coding agent in an application that installs kinetis/vector, served as kinetis://docs/vector: the installed-package gate, the version boundary, task routing, correctness boundaries and a verification checklist.
 - [Testing your admin](https://kinetis.dev/vector/docs/testing.html): Driving the REST API from the application's own test suite.
 
 ## Reference
@@ -62,4 +62,6 @@ from first install to the reference.
 
 ## Working on Vector
 
+- [Working on Vector](https://kinetis.dev/vector/docs/contributing.html): The monorepo layout, the test suites, static analysis, mutation testing and continuous integration.
+- [AI coding agents](https://kinetis.dev/vector/docs/coding-agents.html): Working on this repository with an AI coding agent through Orbitron: session setup, client configuration and diagnostics.
 - [Releasing](https://kinetis.dev/vector/docs/releasing.html): Independent versions in packages.manifest.json, bumped in the pull request with scripts/bump.mjs and checked by versions.yml; release on merge to main to the mirror kinetis-dev/vector and npm; the mirror's history rule, one-time setup and recovery.

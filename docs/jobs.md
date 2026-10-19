@@ -77,7 +77,7 @@ A job moves its own row, so a worker that dies mid-way leaves the row
 `running`. A running row that has reported no progress for the minutes
 the **Background jobs** settings group allows (30 until an admin changes
 it) is answered as `stalled`: the **Jobs** page shows it so and stops
-polling. `kinetis vector:jobs:reap`, run now and then by a scheduler,
+polling. `kinetis vector:jobs:reap`, run periodically by a scheduler,
 marks such rows failed with the reason. The row itself stays `running`
 until the reaper closes it, so a job that is in fact still running
 finishes as usual.
@@ -98,14 +98,12 @@ composer require openspout/openspout
 Without them the descriptor's `capabilities.exportFormats` is `["csv"]`
 and the UI offers CSV alone.
 
-**An XLSX export is always a job.** The decision, checked against
-openspout 5.12's own source: its XLSX writer builds the sheet in a
-temporary folder and zips it with `ZipArchive` on a real file path, and
-has no memory-only path. That is blocking file I/O, which a persistent
-request worker must not do; the queue worker may. So XLSX is offered
-only when a queue runs Vector's jobs, the request answers `202` with the
-job, and the same field selection and limits apply
-(`exportQueueLimit()`).
+**An XLSX export is always a job.** openspout builds the sheet in a
+temporary folder and zips it with `ZipArchive` on a real file path:
+blocking file I/O, which a persistent request worker must not do and the
+queue worker may. So XLSX is offered only when a queue runs Vector's
+jobs, the request answers `202` with the job, and the same field
+selection and limits apply (`exportQueueLimit()`).
 
 ## Imports
 

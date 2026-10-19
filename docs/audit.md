@@ -4,9 +4,11 @@
 
 Every write through Vector — create, update, delete, restore, attach,
 detach, actions, bulk and inline edits, imports, repeater rows — is
-recorded in `vector_audit` with the field-level changes the writer
-observed, the actor, and the impersonator when there is one. A record's
-**History** shows it, limited to the fields the viewer may see.
+recorded in `vector_audit` with the actor, and the impersonator when
+there is one. Creates, updates, reverts and membership changes carry the
+field-level changes the writer observed; deletes, restores and action
+runs are recorded as the event alone (`action:<name>` for an action). A
+record's **History** shows it, limited to the fields the viewer may see.
 
 Action runs are also logged, once per run, in `vector_action_events`.
 

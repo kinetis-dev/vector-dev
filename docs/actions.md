@@ -33,18 +33,26 @@ final class AdjustStock extends VectorAction
 ```
 
 `fields()` become the action's dialog, validated like a form, with
-conditions and defaults. `canRun()` decides, per record, whether the
-action is offered and allowed.
+conditions and defaults; an action's fields are scalar, enum and
+belongs-to fields. `canRun()` decides whether the action is offered
+(`$record` is `null`) and whether it may run on a given record. The
+action's URL segment is `name()`: by default the class name without
+`Action`, in kebab-case (`PublishAction` is `publish`). The constructor
+may inject what a controller may.
 
 ## How it runs
 
 For every run, Vector:
 
-1. authorizes each record through the resource's policy and `canRun()`;
+1. checks the resource policy's `viewAny()` and `runAction()`, and
+   `canRun()` without a record;
 2. validates the dialog's values;
-3. loads the entities and hands them to `handle()`;
-4. saves everything in one flush, unless the response is `danger`;
-5. logs the run and writes each change to the audit trail.
+3. reads each selected record as the user may view it and refuses the
+   run when `canRun()` refuses one;
+4. loads the entities and hands them to `handle()`;
+5. saves everything in one flush, unless the response is `danger`;
+6. logs the run in `vector_action_events` and adds an entry naming the
+   action to each record's audit trail.
 
 An action runs on one record, on the selected records, or on every
 record a filter matches ("all matching"), within the resource's bulk
@@ -72,8 +80,8 @@ limit.
 | `ActionResponse::download()` | A file downloads. |
 | queued | A job to follow on **Jobs**. |
 
-A queued action must tolerate a chunk running twice: a chunk's flush and
-the progress recorded after it are two statements.
+A queued action runs in chunks; {doc}`jobs` covers how it is delivered
+and what it must tolerate.
 
 ## See also
 

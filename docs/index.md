@@ -166,7 +166,6 @@ databases
 :hidden:
 
 mcp
-agent-guide
 testing
 ```
 
@@ -175,7 +174,6 @@ testing
 :caption: Reference
 :hidden:
 
-reference
 rest-api
 configuration
 limits

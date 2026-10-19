@@ -25,6 +25,7 @@ export default defineAppConfig({
         basePath: '',                  // a router prefix inside the app
         commandPalette: true,          // Ctrl/⌘+K search
         usersResource: 'users',        // enables Impersonate on those records
+        idleMinutes: 30,               // sign out after this long unused; 0 never
         fields: {}, inputs: {}, widgets: {}, // component overrides
         locale: 'en', messages: {},    // see Languages
         pages: {},                     // custom pages, by name

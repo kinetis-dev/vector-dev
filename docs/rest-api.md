@@ -1,13 +1,15 @@
 # REST API
 
-Every route is under `/vector`, in the `vector` middleware group
-({doc}`authentication`). The API is the authority: the UI and the MCP
-tools are clients of it, and anything they do, a script can do.
+Every route is under `/vector`, in the `vector` middleware group,
+except hosted mode's page under `/vector/ui`, which is in the
+`vector-shell` group ({doc}`authentication`). The API is the authority:
+the UI and the MCP tools are clients of it, and anything they do, a
+script can do.
 
 The descriptor `GET /vector/schema` publishes validates against the JSON
-schema the package ships,
-`packages/vector/resources/schema/descriptor.schema.json`, and the demo's
-test suite asserts that for its own descriptor on every run.
+schema the package ships, `resources/schema/descriptor.schema.json`
+(`vendor/kinetis/vector/resources/schema/descriptor.schema.json` in an
+application).
 
 ## Routes
 
@@ -22,9 +24,9 @@ test suite asserts that for its own descriptor on every run.
 | `PATCH /vector/r/{resource}/{id}` | Updates the fields sent. `If-Match: "<version>"` answers `409` on a stale record. |
 | `DELETE /vector/r/{resource}/{id}` | Deletes, or trashes on a soft-deleting resource (`?force=1` deletes for good); `204`. |
 | `POST /vector/r/{resource}/{id}/restore` | Takes a record out of the trash. |
-| `POST /vector/r/{resource}/batch` | `delete`, `restore`, `forceDelete` or `update` (with `fields`) on `ids`, or on `all: {filter, q}`. One transaction. |
-| `POST /vector/r/{resource}/changes` | Inline edits: `{"changes": [{"id", "version", "values"}]}`, one transaction. |
-| `POST /vector/r/{resource}/actions/{action}` | Runs an action on `ids`, `all`, or nothing (standalone), with `fields`. A queued action answers `202` with a `jobId`. |
+| `POST /vector/r/{resource}/batch` | `action`: `delete`, `restore`, `forceDelete` or `update` (with `fields`), on `ids` or on `all: {filter, q}`, within the bulk limit. One transaction; answers `{affected, deleted}`. |
+| `POST /vector/r/{resource}/changes` | Inline edits: `{"changes": [{"id", "version", "values"}]}`, one transaction; answers the records as written. |
+| `POST /vector/r/{resource}/actions/{action}` | Runs an action on `ids`, `all: {filter, q}`, or nothing (standalone), with `fields`. A queued action answers `202` with a `jobId`. |
 | `GET /vector/r/{resource}/{id}/{relation}` | A page of a collection's records. |
 | `GET /vector/r/{resource}/{id}/{relation}/rows` | A repeater's current rows. |
 | `POST /vector/r/{resource}/{id}/{relation}/attach`, `…/detach` | `{"ids": [...]}` on a many-to-many. |
@@ -55,8 +57,9 @@ test suite asserts that for its own descriptor on every run.
   `{update, delete, restore, forceDelete, actions}`.
 - **A write refusal** — the framework's RFC 9457 document with
   `errors[].path/code/message`. Other refusals: `{"error": "..."}`.
-- **An action** — `{type, message, url, affected, jobId}`; a download
-  answers the file itself, and a queued action answers `202`.
+- **An action** — `{type, message, url, affected, jobId}`, where `type`
+  is `message`, `redirect`, `url`, `danger` (answered `422`) or `job`
+  (answered `202`); a download answers the file itself.
 - **A job** — `{id, kind, resource, name, actorId, impersonatorId,
   status, total, processed, result, failure, hasFile, fileName,
   createdAt, updatedAt, finishedAt}`.
@@ -199,8 +202,7 @@ reason.
 
 A list page is at most: one count, one page, one statement per relation
 field on the page, one aggregate for summaries. A show is one statement
-plus one per relation field. A write is one flush. The demo's suite
-asserts these bounds against MySQL's own statement counter.
+plus one per relation field. A write is one flush.
 
 ## Errors
 

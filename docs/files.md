@@ -30,9 +30,9 @@ value cannot be pointed at someone else's file.
 ## Serving
 
 `GET /vector/r/{resource}/{id}/files/{field}` serves a stored file only
-to users who may view the record and the field: images inline, anything else as a download, with `nosniff` and a
-sandboxing policy. `Image` accepts raster formats only; SVG can carry
-script.
+to users who may view the record and the field: images inline, anything
+else as a download, with `nosniff` and a sandboxing policy. `Image`
+accepts raster formats only; SVG can carry script.
 
 ## Good to know
 

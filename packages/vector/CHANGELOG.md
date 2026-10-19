@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.4] - 2026-10-19
+
+### Changed
+
+- Documentation: the manual reviewed for correctness against the code;
+  the agent guide moved to the Kinetis documentation as
+  `kinetis://docs/vector`.
+
 ## [0.9.3] - 2026-10-18
 
 ### Changed

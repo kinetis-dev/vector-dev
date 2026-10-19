@@ -32,8 +32,8 @@ A denial with a message shows that message to the user.
 |---|---|
 | `viewAny`, `view` | Listing the resource, and seeing one record. |
 | `create`, `update`, `delete` | Writing. `$record` is the serialized row. |
-| `restore`, `forceDelete` | The trash. |
-| `export` | CSV export. |
+| `restore`, `forceDelete` | The trash; both follow `delete` unless overridden. |
+| `export` | Exporting, as CSV or XLSX. |
 | `runAction` | Running an action, alongside the action's own `canRun()`. |
 | `viewField` | Seeing a field at all. |
 | `attach`, `detach` | Adding and removing one record in a many-to-many; both follow `update` unless overridden. |
@@ -69,7 +69,7 @@ public function scope(Query $query, CurrentUserInterface $user): Query
 `viewField($user, $field)` hides a field from a user completely: it
 leaves their descriptor, every record, the audit trail, exports and MCP
 results, and a filter, sort, grouping, column or written value naming
-it is refused as unknown. Search no longer reaches it.
+it is refused as unknown. Search does not reach it.
 
 ```php
 public function viewField(CurrentUserInterface $user, string $field): bool

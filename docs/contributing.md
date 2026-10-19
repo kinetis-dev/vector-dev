@@ -136,8 +136,7 @@ docker compose exec app composer infection:vector   # Vector's Registry and Quer
 
 Infection runs the PHPUnit suite against each mutant and fails below the
 `minMsi` and `minCoveredMsi` floors in `backend/infection.json5` and
-`backend/infection.vector.json5`. Each config records the scores the
-floors were set from.
+`backend/infection.vector.json5`.
 
 The mutated tests write to the databases, so each Infection worker runs
 on stores of its own. Infection numbers its worker processes in
@@ -149,7 +148,7 @@ and 2N+1 (the jobs queue) and a temporary directory of its own
 recreates, migrates and seeds those databases for workers 1 to 4, as root
 on MySQL; run it before each mutation-testing run. Without
 `TEST_TOKEN` (PHPUnit on its own, and Infection's initial run of the
-suite) the tests use the base databases as before.
+suite) the tests use the base databases.
 
 `infection:vector` runs four workers.
 `infection` runs one, on worker 1's stores: its whole suite includes

@@ -28,9 +28,6 @@ user manual.
 | [`demo/`](demo) | A Kinetis application administered by Vector — a shop on MySQL and a support desk on PostgreSQL — with the Docker stack that runs it and the end-to-end suite. |
 | [`docs/`](docs) | The user manual. |
 
-The architecture, the decisions behind it and the phase plan are in
-`~/Documents/Kinetis/Vector/KINETIS_VECTOR_MASTER_PLAN_2026-09-24.md`.
-
 ## Try it
 
 Docker is the only requirement. From `demo/`:
@@ -50,12 +47,11 @@ through FrankenPHP in worker mode, Kinetis's primary runtime: the same
 application, built from the same Dockerfile and extension recipe. A
 worker keeps the code it booted with, so run
 `docker compose restart frankenphp` after editing PHP.
-`bin/check-frankenphp` proves worker mode, the native drivers and request
-isolation there, and `bin/benchmark` compares the two runtimes. Its 12
-threads' database pools are sized against MySQL's and PostgreSQL's
-connection limits, and the image carries ext-event and a pinned ext-uv;
-[The demo application](docs/demo.md) has the arithmetic and the
-reasons.
+`bin/check-frankenphp` checks worker mode, the native drivers and
+request isolation there, and `bin/benchmark` compares the two runtimes.
+FrankenPHP runs 12 worker threads, with database pools sized against
+MySQL's and PostgreSQL's connection limits;
+[The demo application](docs/demo.md) has the arithmetic.
 
 ## Documentation
 

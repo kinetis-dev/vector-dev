@@ -35,9 +35,10 @@ A value's format is a number, `money:EUR`, `percent` or `duration`.
 
 | Method | Effect |
 |---|---|
-| `ranges()` | The ranges offered; `7d`, `30d`, `90d` and `1y` by default. |
+| `ranges()` | The ranges offered, as key => label, the first the default; `7d`, `30d`, `90d` and `1y` by default, and an empty array for none. |
 | `width()` | 3, 4, 6 or 12 columns of the grid. |
-| `canView()` | Who sees it. |
+| `name()`, `label()`, `icon()` | The URL segment (by default the class name without `Widget`, in kebab-case: `RevenueWidget` is `revenue`) and how it is shown. |
+| `canView()` | Who sees it, on top of the dashboard's or resource's own visibility. |
 | `cacheSeconds()` | Above zero, memoizes the result in a bounded per-worker cache, keyed by widget, range and the account it was computed for. |
 | `cacheShared()` | Shares one cached result between all admins, for figures that are the same for everyone. |
 
@@ -51,8 +52,11 @@ final class MainDashboard extends VectorDashboard
 }
 ```
 
-The dashboard named `main` is the admin's home page. Others appear in
-the navigation drawer under their own names.
+A dashboard's name is its class name without `Dashboard`, in kebab-case
+(`MainDashboard` is `main`), unless `name()` says otherwise. The
+dashboard named `main` — or, without one, the first — is the admin's
+home page; the others appear in the navigation drawer under their own
+labels. `canView()` hides a whole dashboard from a user.
 
 ## Resource widgets
 
