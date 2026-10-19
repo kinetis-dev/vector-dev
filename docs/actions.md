@@ -36,8 +36,8 @@ final class AdjustStock extends VectorAction
 conditions and defaults; an action's fields are scalar, enum and
 belongs-to fields. `canRun()` decides whether the action is offered
 (`$record` is `null`) and whether it may run on a given record.
-The action's URL segment is `name()`, the kebab-case class name unless
-you override it. The constructor may inject what a controller may.
+The action's URL segment is `name()`: by default the class name without
+`Action`, in kebab-case (`PublishAction` is `publish`). The constructor may inject what a controller may.
 
 ## How it runs
 
