@@ -223,11 +223,10 @@ publishing*:
   `npm dist-tag`.
 - Under *Settings → Publishing access*, **Require two-factor
   authentication and disallow bypass 2fa tokens**. Trusted publishing
-  still works; a token no longer can.
+  still works; a token cannot.
 
-A trusted publisher is only set up on a package that exists, so the
-first publish, 0.9.0, used a short-lived granular token instead; it has
-since been deleted and revoked. Renaming the workflow file or the
+A trusted publisher can only be set up on a package that already exists
+on npm. Renaming the workflow file or the
 environment breaks publishing until the publisher on npm is updated to
 match. A new or changed publisher stays pending until a publish
 validates it, and lapses if none does by the date npm shows.

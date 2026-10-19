@@ -58,8 +58,8 @@ copies a missing `backend/.env` from `backend/.env.example` (set
 `JWT_SECRET` in it before the app itself boots), and when the vendor
 volume has never been populated it runs `composer install` under the
 entrypoint's own `vendor/.install.lock`, with its output on stderr, so
-it never writes the tree while `app` does. Restarting, recreating or rebuilding
-`app` leaves a session connected. The container sees every checkout as
+it never writes the tree while `app` does. Restarting, recreating or
+rebuilding `app` leaves a session connected. The container sees every checkout as
 `/workspace/demo/backend`, so the launcher passes the host path in
 `KINETIS_ORBITRON_CHECKOUT_ROOT`, which `orbitron_inspect` reports as
 `checkoutRoot`. The host needs no PHP and no Composer.
@@ -153,7 +153,7 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocol
 
 A result naming `kinetis-orbitron-mcp` means the launcher and the server
 work, and what remains is the client: its trust policy, or a tool
-catalogue that has not picked the server up yet.
+catalog that has not picked the server up yet.
 
 **A dependency change.** It needs no restart. Orbitron reads the
 installed-package inventory on every call, so after a `composer require`
