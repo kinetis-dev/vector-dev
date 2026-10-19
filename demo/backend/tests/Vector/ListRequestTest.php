@@ -43,7 +43,7 @@ final class ListRequestTest extends TestCase
         self::assertSame('perPage must be a positive integer.', $this->refusal(['perPage' => '0']));
         self::assertSame('perPage must be at most 100.', $this->refusal(['perPage' => '101']));
 
-        // a caller's cap replaces the resource's bound, lower or higher
+        // a caller's cap is taken in place of the resource's bound, as given; vector_query passes maxPerPage()
         self::assertSame('perPage must be at most 50.', $this->refusal(['perPage' => '60'], cap: 50));
         self::assertSame(50, $this->parse(['perPage' => '50'], cap: 50)->perPage);
         self::assertSame(120, $this->parse(['perPage' => '120'], cap: 150)->perPage);
@@ -285,7 +285,13 @@ final class ListRequestTest extends TestCase
         self::assertSame([['released_at', 'lt', $day[0]]], $this->instants(['lt' => '2026-03-04']));
         self::assertSame([['released_at', 'gte', $day[0]]], $this->instants(['gte' => '2026-03-04']));
 
+        // only an exact date is a day: the conversion refuses a longer year or a sign
+        foreach (['12026-03-04', '+2026-03-04', '2026-03-04x'] as $value) {
+            self::assertSame('filter[releasedAt]: must be an ISO 8601 date or date-time.', $this->refusal(['filter' => ['releasedAt' => ['eq' => $value]]]), $value);
+        }
+
         // an instant is compared as given
+        self::assertSame([['released_at', 'eq', '2026-03-04 05:00:00.000000']], $this->instants(['eq' => '2026-03-04T00:00-0500']));
         self::assertSame([['released_at', 'eq', '2026-03-04 10:30:00.000000']], $this->instants(['eq' => '2026-03-04T10:30:00']));
         self::assertSame([['released_at', 'lte', '2026-03-04 10:30:00.000000']], $this->instants(['lte' => '2026-03-04 10:30']));
 
@@ -346,11 +352,12 @@ final class ListRequestTest extends TestCase
         return new ResourceDescriptor($this->data());
     }
 
-    /** The same fields with an opaque key, and no search, grouping, summaries or soft delete. */
+    /** The same fields with a string key, as an Id field over a string property compiles, and no search, grouping, summaries or soft delete. */
     private function bare(): ResourceDescriptor
     {
         $data = $this->data();
         $data['primaryKey']['type'] = 'string';
+        $data['fields'][0]['valueType'] = 'string';
         $data['searchColumns'] = [];
         $data['summaryPlan'] = [];
         $data['softDelete'] = null;
@@ -361,7 +368,9 @@ final class ListRequestTest extends TestCase
 
     /**
      * A compiled resource: stock is on the index only, notes on the show
-     * page only and neither sortable nor filterable.
+     * page only and neither sortable nor filterable. Its keys and shapes
+     * are those VectorRegistryTest::testTheCompiledShapeTheListGrammarReads
+     * pins on the compiled demo; change the two together.
      *
      * @return array<string, mixed>
      */

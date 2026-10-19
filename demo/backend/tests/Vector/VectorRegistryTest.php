@@ -19,12 +19,14 @@ use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\VectorResource;
+use PHPUnit\Framework\Attributes\Depends;
 use PHPUnit\Framework\TestCase;
 
 /** The registry compiles the demo application from source alone, with no database. */
 final class VectorRegistryTest extends TestCase
 {
-    public function testTheDemoApplicationCompilesAndRoundTrips(): void
+    /** @return array<string, mixed> the compiled registry, for the tests that depend on it */
+    public function testTheDemoApplicationCompilesAndRoundTrips(): array
     {
         $data = VectorRegistry::compile(new DiscoveryContext(dirname(__DIR__, 2)));
 
@@ -54,6 +56,58 @@ final class VectorRegistryTest extends TestCase
         self::assertFalse($this->action($products, 'adjust-stock')['fields'][0]['nullable'], 'a required action field is not nullable');
         self::assertTrue($this->action($products, 'catalog-summary')['standalone']);
         self::assertSame(['sku', 'name'], $products->toArray()['table']['search']);
+
+        return $data;
+    }
+
+    /**
+     * The compiled shape ListRequestTest builds its descriptor in, on a
+     * resource with an instant field, a summary and a soft delete.
+     *
+     * @param array<string, mixed> $data
+     */
+    #[Depends('testTheDemoApplicationCompilesAndRoundTrips')]
+    public function testTheCompiledShapeTheListGrammarReads(array $data): void
+    {
+        $products = $data['resources']['products'];
+
+        foreach (['slug', 'primaryKey', 'fields', 'columns', 'searchColumns', 'summaryPlan', 'softDelete', 'table_view', 'show_view'] as $key) {
+            self::assertArrayHasKey($key, $products);
+        }
+
+        self::assertSame(['field' => 'id', 'column' => 'id', 'type' => 'int'], $products['primaryKey']);
+        foreach (['columns', 'extra', 'groupable', 'defaultSort', 'perPage', 'maxPerPage'] as $key) {
+            self::assertArrayHasKey($key, $products['table_view']);
+        }
+
+        foreach (['fields', 'extra'] as $key) {
+            self::assertArrayHasKey($key, $products['show_view']);
+        }
+
+        self::assertSame([['field' => 'createdAt', 'order' => 'desc']], $products['table_view']['defaultSort']);
+        self::assertIsInt($products['table_view']['perPage']);
+        self::assertIsInt($products['table_view']['maxPerPage']);
+        self::assertSame(['sku' => 'sku', 'name' => 'name'], $products['searchColumns']);
+        self::assertSame(['function' => 'sum', 'column' => 'stock'], $products['summaryPlan']['stock']);
+        self::assertSame(['field' => 'deletedAt', 'column' => 'deleted_at'], $products['softDelete']);
+        self::assertSame('released_at', $products['columns']['releasedAt']);
+
+        $fields = array_column($products['fields'], null, 'name');
+
+        foreach ($fields as $name => $field) {
+            foreach (['name', 'type', 'sortable', 'operators'] as $key) {
+                self::assertArrayHasKey($key, $field, $name);
+            }
+
+            if (isset($field['column'])) {
+                self::assertArrayHasKey('valueType', $field, $name);
+            }
+        }
+
+        self::assertSame(['id', 'int', 'id', true, []], [$fields['id']['type'], $fields['id']['valueType'], $fields['id']['column'], $fields['id']['sortable'], $fields['id']['operators']]);
+        self::assertSame(['datetime', 'timestamp', 'released_at', true], [$fields['releasedAt']['type'], $fields['releasedAt']['valueType'], $fields['releasedAt']['column'], $fields['releasedAt']['sortable']]);
+        self::assertSame(['number', 'int', 'stock'], [$fields['stock']['type'], $fields['stock']['valueType'], $fields['stock']['column']]);
+        self::assertSame(['string', 'string', 'name'], [$fields['name']['type'], $fields['name']['valueType'], $fields['name']['column']]);
     }
 
     public function testDerivationCoversEveryMappedPropertyAndRelationship(): void
