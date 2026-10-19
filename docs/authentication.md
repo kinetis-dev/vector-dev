@@ -35,20 +35,12 @@ join on their own. Its last member, `McpIdentityGuardMiddleware` at
 priority 0, answers `401` unless a middleware earlier in the group
 registered a `CurrentUserInterface`. With your authentication middleware
 in `vector` only, every caller of `POST /mcp` — admins included — gets
-`401`. Add it to the `mcp` group as well, as the demo's
-`VectorAuthMiddleware` does:
-
-```php
-#[AsMiddlewareGroup('vector', priority: 50)]
-#[AsMiddlewareGroup('vector-shell', priority: 50)]
-#[AsMiddlewareGroup('mcp', priority: 50)]
-final readonly class VectorAuthMiddleware implements MiddlewareInterface { /* … */ }
-```
+`401`. Add it to the `mcp` group as well, as in the example above and
+the demo's `VectorAuthMiddleware`.
 
 Its priority in `mcp` must be above the guard's 0, so it runs before
 the guard; at 0 or below it is not ordered before the guard, and
-requests still get `401`. 50 sits
-between the guard and `kinetis/mcp`'s `McpOriginMiddleware`, at 100,
+requests still get `401`. 50 sits between the guard and `kinetis/mcp`'s `McpOriginMiddleware`, at 100,
 which checks the `Origin` header first. Do not set `MCP_HTTP_PUBLIC` as
 a workaround: that opens the endpoint to callers without an identity.
 See {doc}`mcp`.
@@ -81,14 +73,15 @@ the tokens for the browser tab only: in memory, mirrored to
 
 `refreshToken` is optional. When your login answers one, the UI renews
 the session itself, one renewal at a time: with under two minutes left
-on the access token, and once more when the API answers `401` (the
+on the access token, and once when the API answers `401` (the
 request is then repeated), it calls `POST {apiBase}/auth/refresh` with
 `{"refreshToken"}` and expects the same answer as the login; **Sign
 out** calls `POST {apiBase}/auth/logout` with `{"refreshToken"}` to revoke
 it. When the renewal is refused, or there is no refresh token, the UI
 signs out when the access token expires, and a `401` goes to `/login`.
-An impersonation token is never renewed. `kinetis/auth-jwt` issues and verifies access tokens, and its
-`RefreshTokenStore` keeps single-use refresh tokens in a Redis cache.
+An impersonation token is never renewed. `kinetis/auth-jwt` issues and
+verifies access tokens, and its `RefreshTokenStore` keeps single-use
+refresh tokens in a cache.
 
 ## Protecting the sign-in
 
@@ -140,7 +133,7 @@ impersonating it, which Vector writes to every log and audit row
 
 ## How long a session lasts
 
-A session does not end on its own otherwise: the UI renews the token
+A session does not end on its own: the UI renews the token
 before it runs out and polls badges and the inbox, so an open tab would
 stay signed in for as long as it is open. The layer's `app.config`
 `vector.idleMinutes` (30 by default; 0 turns it off) ends it, in both
@@ -178,8 +171,9 @@ final readonly class AdminResolver implements ActorResolverInterface
 }
 ```
 
-Without it, queued actions and imports are refused, naming what is
-missing.
+Without it, Vector queues nothing: queued actions and imports answer
+`403` naming what is missing, and exports stay inline and CSV-only
+({doc}`jobs`).
 
 ## See also
 

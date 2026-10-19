@@ -20,7 +20,7 @@ one input per field you may write.
   such as a duplicate name, comes back on the field it concerns.
 - **Conditional fields** — a field may appear, become required or be
   disabled depending on another; a product's *Released at* shows only
-  once it is no longer a draft.
+  when its status is not *Draft*.
 - **Dependent choices** — a choice may wait for another: pick a team
   before its agents are offered.
 - **Rows** — some records own rows edited inside their form, such as an

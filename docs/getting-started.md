@@ -1,7 +1,7 @@
 # Getting started
 
 Vector adds an admin to an existing Kinetis application that uses
-`kinetis/orm`. This page takes one from install to a working admin: the
+`kinetis/orm`. This page takes you from install to a working admin: the
 package, its tables, the three things your application provides, a
 first resource, and the UI.
 
@@ -37,10 +37,12 @@ from it:
 1. **Middleware in the `vector` group that registers the user.** It
    authenticates the request your way (a JWT, a session) and puts a
    `Kinetis\Http\CurrentUserInterface` on the request scope. Add the
-   `mcp` group too if agents will use the {doc}`mcp`.
+   `vector-shell` group for the hosted UI, and the `mcp` group if agents
+   will use the {doc}`mcp`.
 
    ```php
    #[AsMiddlewareGroup('vector', priority: 50)]
+   #[AsMiddlewareGroup('vector-shell', priority: 50)]
    #[AsMiddlewareGroup('mcp', priority: 50)]
    final readonly class AdminAuthMiddleware implements MiddlewareInterface
    {
@@ -69,7 +71,8 @@ from it:
 
 3. **An actor resolver, for background jobs.** Jobs run as the admin
    who started them. `ActorResolverInterface::resolve(string $actorId)`
-   rebuilds that user in the worker. Without it, queued work is refused.
+   rebuilds that user in the worker. Without it, Vector queues nothing
+   ({doc}`jobs`).
 
 Impersonation is optional and needs one more binding; see {doc}`audit`.
 {doc}`authentication` covers both UI modes in detail.

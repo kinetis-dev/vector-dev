@@ -84,8 +84,9 @@ bin/check-frankenphp   # the worker, the extensions, worker mode, the drivers an
 bin/benchmark          # Vector's list endpoints on both runtimes
 ```
 
-[Deployment, "Performance"](deployment.md#performance) records one run of
-`bin/benchmark`, with the machine and the settings it ran on.
+`bin/benchmark` prints its report as Markdown: latency, throughput and
+the statements each request sends, per endpoint and runtime. Run it
+alone, with nothing else using the stack.
 
 `bin/check-frankenphp` exits nonzero when any check fails:
 

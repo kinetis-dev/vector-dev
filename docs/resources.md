@@ -111,9 +111,10 @@ inject anything a controller may:
 - `create()` builds a new entity from the validated values, and
   `apply()` writes them to a loaded one. Returning `null` or `false`
   leaves it to Vector's default writer.
-- `beforeCreate()`, `beforeUpdate()`, `beforeDelete()` and their
-  `after*` counterparts run around each write, after validation and
-  before the flush.
+- `beforeCreate()`, `beforeUpdate()` and `beforeDelete()` run after
+  validation and before the flush; `afterCreate()`, `afterUpdate()` and
+  `afterDelete()` run after the flush committed. Each receives the
+  entity and a `WriteContext`.
 
 ## Badges
 

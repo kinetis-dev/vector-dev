@@ -57,12 +57,13 @@ installer prints it when it is missing. Vector uses the application's
 a link from the `DB_ADMIN_*` keys and closes it with the worker.
 
 Only Vector's tables move: your entities stay on the connection their
-`#[Entity]` names, and the queue on `QUEUE_CONNECTION_NAME`. When the
+`#[Entity]` names, and Vector's jobs on the queue `VECTOR_QUEUE_CONNECTION`
+or the application's queue configuration names ({doc}`jobs`). When the
 connections differ, Vector's own rows commit after, and separately
 from, the entity changes they describe.
 
 A connection name is lowercase letters and digits, starting with a
-letter; `app` and `default` are reserved.
+letter. `default` names the default connection, and `app` is reserved.
 
 ## Dialect notes
 

@@ -171,5 +171,6 @@ for every code.
 
 - {doc}`contributing` — the tests and checks a change must pass.
 - {doc}`demo` — the stack the agent works in.
-- {doc}`agent-guide` — what an agent working on an application that
-  installs Vector reads, as `kinetis://docs/vector`.
+- [Vector for coding agents](https://kinetis.dev/docs/vector.html) —
+  what an agent working on an application that installs Vector reads,
+  as `kinetis://docs/vector` from the Kinetis documentation.

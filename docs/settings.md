@@ -47,7 +47,7 @@ public function validate(array $values): array
 
 Vector ships three groups:
 
-- **Branding**: the admin's title, logo URL, primary colours for the
+- **Branding**: the admin's title, logo URL, primary colors for the
   light and dark themes, default theme and footer line. It applies at
   runtime, over the UI's built-in theme, without a rebuild.
 - **Languages**: which languages users may pick, and the default

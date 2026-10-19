@@ -3,7 +3,7 @@
 Create and edit forms are generated from the fields. The server
 validates every write; the form mirrors its rules so most mistakes are
 caught before a request, and places every server violation on the field
-it names. Four features make forms depend on their own values.
+it names.
 
 ## Layout
 
@@ -141,9 +141,10 @@ rows are saved together as one changeset with
 record is authorized, validated and hooked as a `PATCH` would be, and
 checked against the `_version` it was listed at: one stale record
 answers `409` for the whole changeset. A violation's path is
-`changes/{index}/{field}`. Only simple, editable fields qualify: text,
-email, url, slug, color, number, money, boolean, enum, date, datetime
-and belongs-to. Anything else fails the build.
+`changes/{index}/{field}`. Only simple fields editable on update
+qualify: text, email, url, slug, color, number, money, boolean, enum,
+currency, date, datetime and belongs-to. Anything else fails the
+build.
 
 ## Optimistic locking
 
