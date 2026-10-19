@@ -127,7 +127,7 @@ Each push to `main` runs the release:
 | Job | Does |
 |---|---|
 | Decide what this round publishes | Reads the manifest, `package.json` and both CHANGELOGs at the pushed commit and checks them again. Asks the mirror whether tag `v<version>` exists for `kinetis/vector`, and npm whether `@kinetis/vector-ui@<version>` exists. Puts each release's notes, its CHANGELOG section, on the run's summary page. |
-| Split, bundle and push the mirror | Only when `kinetis/vector`'s version is not on the mirror yet. Splits `packages/vector`, builds the hosted bundle with `scripts/build-hosted-bundle.mjs --version=X.Y.Z` (the bundle carries `kinetis/vector`'s version, which `vector:install` checks it against), makes the release commit, and pushes the mirror's `main` and its `vX.Y.Z` tag. |
+| Split, bundle and push the mirror | Only when `kinetis/vector`'s version is not on the mirror yet. Splits `packages/vector`, builds the hosted bundle with `scripts/build-hosted-bundle.mjs --version=X.Y.Z`, which must equal `kinetis/vector`'s version in `packages.manifest.json` (the bundle carries that version, which `vector:install` checks it against), makes the release commit, and pushes the mirror's `main` and its `vX.Y.Z` tag. |
 | Publish @kinetis/vector-ui | Only when `@kinetis/vector-ui`'s version is not on npm yet. Runs `npm publish --provenance --tag latest` from `packages/vector-ui`, in the `npm-release` environment. |
 
 A push that changes no version publishes nothing and succeeds. Once the
@@ -225,11 +225,12 @@ publishing*:
   authentication and disallow bypass 2fa tokens**. Trusted publishing
   still works; a token cannot.
 
-A trusted publisher can only be set up on a package that already exists
-on npm. Renaming the workflow file or the
-environment breaks publishing until the publisher on npm is updated to
-match. A new or changed publisher stays pending until a publish
-validates it, and lapses if none does by the date npm shows.
+A trusted publisher can only be set up for a package that already exists
+on npm, so the first publish of a new package uses a short-lived
+granular token, which is revoked afterwards. Renaming the workflow file
+or the environment breaks publishing until the publisher on npm is
+updated to match. A new or changed publisher stays pending until a
+publish validates it, and lapses if none does by the date npm shows.
 
 **Packagist (`kinetis/vector`).** Do this after the first mirror push,
 so the repository has a `composer.json` to read:

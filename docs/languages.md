@@ -24,9 +24,9 @@ still recognizable. The list keeps one order whatever language you are
 in, so it never reshuffles on a switch: Latin-script names
 alphabetically, then Cyrillic, Hebrew, Arabic, Korean, Japanese and
 Chinese. The settings page lists them the same way. Choosing one
-switches the whole admin at once — menus, labels, dates and numbers — and is remembered as
-your preference, on every device you sign in from. Hebrew and Arabic
-turn the layout right to left.
+switches the whole admin at once — menus, labels, dates and numbers —
+and is remembered as your preference, on every device you sign in from.
+Hebrew and Arabic turn the layout right to left.
 
 Until you choose, the admin is in the default language the administrator
 set; your browser's language plays no part.
@@ -129,15 +129,16 @@ window.Vector.defineMessages('de', { common: { save: 'Sichern' } })
 ```
 
 The English catalog in the layer's `app/i18n/en/` names every key; every
-shipped locale mirrors it, and a key a locale lacks falls back to English. Messages
-use `{name}` placeholders and are never rendered as HTML. A message that
-depends on a count lists its language's own forms, separated by `|`, in
-CLDR order — zero, one, two, few, many, other — only the ones that
-language has for whole numbers (`pluralCategories()`): two in English
-and German (`1 change | {count} changes`), three in Hebrew (one, two,
-other) and in Russian (one, few, many), one in Japanese, six in Arabic.
-`pluralRule()` picks the form by the browser's `Intl.PluralRules`. A
-two-form override you add is read the English way in any language.
+shipped locale mirrors it, and a key a locale lacks falls back to
+English. Messages use `{name}` placeholders and are never rendered as
+HTML. A message that depends on a count lists its language's own forms,
+separated by `|`, in CLDR order — zero, one, two, few, many, other —
+only the ones that language has for whole numbers
+(`pluralCategories()`): two in English and German
+(`1 change | {count} changes`), three in Hebrew (one, two, other) and in
+Russian (one, few, many), one in Japanese, six in Arabic. `pluralRule()`
+picks the form by the browser's `Intl.PluralRules`. A two-form override
+you add is read the English way in any language.
 
 ## See also
 

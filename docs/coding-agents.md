@@ -49,20 +49,20 @@ step fails it stops, names the step, quotes the error and points you to
 
 `bin/orbitron-mcp` runs `vendor/bin/kinetis-orbitron-mcp` through
 `docker compose --progress quiet run --rm -T --no-deps --entrypoint sh`
-on the `app`
-service: a one-off container from `app`'s image, sharing its project and
-vendor mounts but not its lifetime. `--entrypoint sh` skips the
-entrypoint's `composer install` on every launch, and `--no-deps` starts
-no other service. On a fresh clone the launcher sets itself up: it
-copies a missing `backend/.env` from `backend/.env.example` (set
-`JWT_SECRET` in it before the app itself boots), and when the vendor
-volume has never been populated it runs `composer install` under the
-entrypoint's own `vendor/.install.lock`, with its output on stderr, so
-it never writes the tree while `app` does. Restarting, recreating or
-rebuilding `app` leaves a session connected. The container sees every checkout as
-`/workspace/demo/backend`, so the launcher passes the host path in
-`KINETIS_ORBITRON_CHECKOUT_ROOT`, which `orbitron_inspect` reports as
-`checkoutRoot`. The host needs no PHP and no Composer.
+on the `app` service: a one-off container from `app`'s image, sharing
+its project and vendor mounts but not its lifetime. `--entrypoint sh`
+skips the entrypoint's `composer install` on every launch, and
+`--no-deps` starts no other service. On a fresh clone the launcher sets
+itself up: it copies a missing `backend/.env` from
+`backend/.env.example` (set `JWT_SECRET` in it before the app itself
+boots), and when the vendor volume has never been populated it runs
+`composer install` under the entrypoint's own `vendor/.install.lock`,
+with its output on stderr, so it never writes the tree while `app` does.
+Restarting, recreating or rebuilding `app` leaves a session connected.
+The container sees every checkout as `/workspace/demo/backend`, so the
+launcher passes the host path in `KINETIS_ORBITRON_CHECKOUT_ROOT`, which
+`orbitron_inspect` reports as `checkoutRoot`. The host needs no PHP and
+no Composer.
 
 That one server is the whole registration. The Kinetis documentation
 arrives on the same connection, as `kinetis://docs/*` pages. Those pages

@@ -34,8 +34,9 @@ vendor/bin/kinetis vector:install
 ```
 
 publishes the bundle a released `kinetis/vector` package ships to
-`public/vector/ui`. Run it again after every upgrade, and restart the
-workers so they read the new page. An install from source (a path
+`public/vector/ui`. Run it again after every upgrade. A worker reads
+`index.html` once, when it boots, so restart the workers after
+publishing. An install from source (a path
 repository or a branch) has no bundle; the command says so and exits
 successfully, since the migrations and the API need none, and the hosted
 admin is then served only when `VECTOR_UI_DIR` points at a separately
@@ -50,7 +51,9 @@ naming the cause and the remedy, and no migration or file written, when:
 - the manifest is missing or malformed, or lists no `index.html`;
 - it was built for another package or descriptor version;
 - on a released package, it was built for another version;
-- a listed file is missing or changed, or a file is not listed.
+- a listed file is missing or changed, or a file is not listed;
+- `resources/dist` holds a manifest but no `index.html`: a damaged
+  bundle, refused rather than treated as absent.
 
 On a released package, reinstall `kinetis/vector` to restore the bundle
 it shipped. In a checkout of the Vector repository, `pnpm

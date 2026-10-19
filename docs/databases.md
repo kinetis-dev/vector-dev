@@ -57,8 +57,8 @@ installer prints it when it is missing. Vector uses the application's
 a link from the `DB_ADMIN_*` keys and closes it with the worker.
 
 Only Vector's tables move: your entities stay on the connection their
-`#[Entity]` names, and Vector's jobs on the queue `VECTOR_QUEUE_CONNECTION`
-or the application's queue configuration names ({doc}`jobs`). When the
+`#[Entity]` names, and Vector's jobs go where
+[Where the jobs go](jobs.md#where-the-jobs-go) describes. When the
 connections differ, Vector's own rows commit after, and separately
 from, the entity changes they describe.
 
