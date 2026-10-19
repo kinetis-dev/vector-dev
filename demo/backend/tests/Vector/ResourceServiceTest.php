@@ -4,24 +4,37 @@ declare(strict_types=1);
 
 namespace App\Tests\Vector;
 
+use App\Auth\DemoActor;
 use Kinetis\Config\Config;
 use Kinetis\Container\AppScope;
+use Kinetis\Container\RequestScope;
 use Kinetis\Http\CurrentUserInterface;
+use Kinetis\Orm\EntityManager;
+use Kinetis\Orm\OrmFactoryRegistry;
 use Kinetis\Persistence\Contract\MysqlLink;
 use Kinetis\QueryBuilder\Query;
 use Kinetis\Vector\Auth\AllowAllPolicy;
 use Kinetis\Vector\Auth\ResourcePolicy;
+use Kinetis\Vector\Exception\ForbiddenOperationException;
+use Kinetis\Vector\Query\ListRequest;
+use Kinetis\Vector\Query\ResourceService;
+use Kinetis\Vector\Write\ValueConverter;
 
 /**
  * The read side of the admin API, asserted value for value against the
  * seeded shop: relation display values, the filter operators, summaries,
  * the trash, per-record permissions, policy refusals, global search and
- * exports. Expected rows, counts and totals are read from the database
- * the test runs on, and every row a test changes is put back.
+ * exports, and the service's own limits called in-process. Expected
+ * rows, counts and totals are read from the databases the test runs on;
+ * the products a test trashes and restores are put back as they were,
+ * and the history entries their restore recorded are removed. A queued
+ * export leaves its job, as every export does.
  */
 final class ResourceServiceTest extends VectorTestCase
 {
     private AdjustablePolicy $policy;
+
+    private ?EntityManager $supportManager = null;
 
     protected function registerTestDoubles(AppScope $app, Config $config): void
     {
@@ -103,6 +116,17 @@ final class ResourceServiceTest extends VectorTestCase
         $nothing = ['perPage' => 5, 'filter' => ['name' => 'No such product']];
         $plain = $this->countStatements(fn () => $this->json('/vector/r/products', [...$nothing, 'columns' => 'name'], $h));
         self::assertSame($plain, $this->countStatements(fn () => $this->json('/vector/r/products', [...$nothing, 'columns' => 'name,tags'], $h)));
+
+        // a page whose belongsTo values are all null looks no label up
+        $roots = $this->shop()->table('categories')->where('parent_id', '=', null)->count();
+        self::assertGreaterThan(0, $roots);
+        $top = ['perPage' => $roots, 'sort' => 'parent'];
+        $plain = $this->countStatements(fn () => $this->json('/vector/r/categories', [...$top, 'columns' => 'name'], $h));
+        $page = [];
+        self::assertSame($plain, $this->countStatements(function () use ($top, $h, &$page): void {
+            $page = $this->json('/vector/r/categories', [...$top, 'columns' => 'name,parent'], $h)['data'];
+        }));
+        self::assertSame(array_fill(0, $roots, null), array_column($page, 'parent'));
     }
 
     public function testEachFilterOperatorAndSummaryMatchesTheDatabase(): void
@@ -142,11 +166,12 @@ final class ResourceServiceTest extends VectorTestCase
             $this->json('/vector/r/products', ['perPage' => 1, 'summaries' => '1'], $h)['summaries'],
         );
         // PostgreSQL averages to more places than MySQL; the summary still keeps four
-        $tickets = $this->json('/vector/r/tickets', ['perPage' => 1, 'summaries' => '1'], $h)['summaries'];
-        self::assertIsInt($tickets['compensationCents']);
-        self::assertIsFloat($tickets['satisfaction']);
-        self::assertSame(round($tickets['satisfaction'], 4), $tickets['satisfaction']);
-        self::assertNotSame(round($tickets['satisfaction'], 3), $tickets['satisfaction'], 'the seeded average has a fourth decimal');
+        $support = $this->support()->table('tickets')->where('deleted_at', '=', null)->selectRaw('SUM(compensation_cents) AS compensation, AVG(satisfaction) AS satisfaction')->first();
+        self::assertIsArray($support);
+        self::assertSame(
+            ['compensationCents' => (int) $support['compensation'], 'satisfaction' => round((float) $support['satisfaction'], 4)],
+            $this->json('/vector/r/tickets', ['perPage' => 1, 'summaries' => '1'], $h)['summaries'],
+        );
         self::assertSame(
             ['priceCents' => null, 'stock' => null],
             $this->json('/vector/r/products', ['perPage' => 1, 'summaries' => '1', 'filter' => ['name' => 'No such product']], $h)['summaries'],
@@ -160,6 +185,10 @@ final class ResourceServiceTest extends VectorTestCase
         self::assertCount(3, $live);
         [$kept, $trashed] = [$live[0], array_slice($live, 1)];
         $ids = array_map(static fn (array $p): int => (int) $p['id'], $trashed);
+        // what the restore below writes: the soft-delete and update stamps, the version, and a history entry each
+        $before = $this->shop()->table('products')->select('id', 'deleted_at', 'updated_at', 'version')->whereIn('id', $ids)->get();
+        $audit = (int) $this->vectorQuery()->table('vector_audit')->selectRaw('MAX(id) AS id')->value('id');
+        $events = (int) $this->vectorQuery()->table('vector_action_events')->selectRaw('MAX(id) AS id')->value('id');
         $this->shop()->table('products')->whereIn('id', $ids)->update(['deleted_at' => gmdate('Y-m-d H:i:s')]);
 
         try {
@@ -181,8 +210,13 @@ final class ResourceServiceTest extends VectorTestCase
             self::assertSame(['update' => false, 'delete' => false, 'restore' => true, 'forceDelete' => true, 'actions' => $actions], $shown['permissions']);
 
             // a resource that does not soft-delete, and one whose policy refuses deleting your own account
-            self::assertSame(['update' => true, 'delete' => true, 'restore' => false, 'forceDelete' => false, 'actions' => []], $this->json('/vector/r/customers/1', [], $h)['permissions']);
-            self::assertSame(['update' => true, 'delete' => false, 'restore' => false, 'forceDelete' => false, 'actions' => []], $this->json('/vector/r/users/1', [], $h)['permissions']);
+            $customer = (int) $this->shop()->table('customers')->orderBy('id', 'ASC')->value('id');
+            self::assertSame(['update' => true, 'delete' => true, 'restore' => false, 'forceDelete' => false, 'actions' => []], $this->json("/vector/r/customers/{$customer}", [], $h)['permissions']);
+            self::assertSame(['update' => true, 'delete' => false, 'restore' => false, 'forceDelete' => false, 'actions' => []], $this->json("/vector/r/users/{$this->adminId()}", [], $this->realAdminHeaders())['permissions']);
+
+            // an integer key on PostgreSQL
+            $ticket = (int) $this->support()->table('tickets')->where('deleted_at', '=', null)->orderBy('id', 'ASC')->value('id');
+            self::assertSame($ticket, $this->json("/vector/r/tickets/{$ticket}", [], $h)['data']['id']);
 
             // search leaves the trash out
             self::assertSame([], array_values(array_filter(
@@ -201,8 +235,15 @@ final class ResourceServiceTest extends VectorTestCase
             ], headers: $h)->assertOk()->json();
             self::assertSame(['affected' => 2, 'deleted' => 0], $restored);
             self::assertSame(0, $this->shop()->table('products')->whereIn('id', $ids)->whereRaw('deleted_at IS NOT NULL')->count());
+            self::assertSame(2, $this->vectorQuery()->table('vector_audit')->where('id', '>', $audit)->where('event', '=', 'restore')->whereIn('record_id', array_map(strval(...), $ids))->count());
+            self::assertSame(1, $this->vectorQuery()->table('vector_action_events')->where('id', '>', $events)->where('resource', '=', 'products')->where('action', '=', 'restore')->count());
         } finally {
-            $this->shop()->table('products')->whereIn('id', $ids)->update(['deleted_at' => null]);
+            foreach ($before as $row) {
+                $this->shop()->table('products')->where('id', '=', $row['id'])->update(['deleted_at' => $row['deleted_at'], 'updated_at' => $row['updated_at'], 'version' => $row['version']]);
+            }
+
+            $this->vectorQuery()->table('vector_audit')->where('id', '>', $audit)->where('resource', '=', 'products')->whereIn('record_id', array_map(strval(...), $ids))->delete();
+            $this->vectorQuery()->table('vector_action_events')->where('id', '>', $events)->where('resource', '=', 'products')->where('action', '=', 'restore')->delete();
         }
     }
 
@@ -274,7 +315,7 @@ final class ResourceServiceTest extends VectorTestCase
         // a resource left out of global search is skipped, and the ones after it are still searched
         $found = $this->json('/vector/search', ['q' => 'admin@vector.local'], $h)['results'];
         self::assertNotContains('profiles', array_column($found, 'resource'));
-        self::assertSame([['resource' => 'users', 'resourceLabel' => 'User', 'id' => 1, 'title' => 'Vector Admin', 'subtitle' => 'admin@vector.local', 'image' => null]], $this->search('admin@vector.local', 'users'));
+        self::assertSame([['resource' => 'users', 'resourceLabel' => 'User', 'id' => $this->adminId(), 'title' => 'Vector Admin', 'subtitle' => 'admin@vector.local', 'image' => null]], $this->search('admin@vector.local', 'users'));
 
         // a term of up to 200 characters is searched, a longer one is not
         $searched = $this->countStatements(fn () => $this->client->get('/vector/search', query: ['q' => str_repeat('é', 200)], headers: $h)->assertOk()->assertJsonPath('results', []));
@@ -309,8 +350,49 @@ final class ResourceServiceTest extends VectorTestCase
 
         // a bulk selection above the resource's limit is refused before anything is written
         $refused = $this->client->post('/vector/r/order-lines/batch', body: ['action' => 'restore', 'all' => ['filter' => []]], headers: $h)->assertStatus(403)->json();
-        self::assertIsArray($refused);
-        self::assertStringContainsString('matches more than 1000 records', (string) json_encode($refused));
+        self::assertSame(['error' => 'The selection matches more than 1000 records; at most 1000 can be handled at once. Narrow the filter.'], $refused);
+    }
+
+    public function testTheServiceKeepsToTheLimitsAndTotalsItIsGiven(): void
+    {
+        $skus = array_column($this->shop()->table('products')->select('id', 'sku')->where('deleted_at', '=', null)->orderBy('id', 'ASC')->limit(3)->get(), 'sku', 'id');
+        self::assertCount(3, $skus);
+
+        $this->inScope(function (RequestScope $scope) use ($skus): void {
+            $service = $scope->get(ResourceService::class);
+            $converter = $scope->get(ValueConverter::class);
+            self::assertInstanceOf(ResourceService::class, $service);
+            self::assertInstanceOf(ValueConverter::class, $converter);
+            $products = $service->resource('products');
+            $selection = ListRequest::fromSelection(['filter' => ['sku' => ['in' => implode(',', $skus)]]], $products, $converter);
+
+            // a selection of exactly the caller's limit is answered, one more than it is refused
+            self::assertSame(array_keys($skus), $service->matchingIds($products, $selection, 3));
+
+            try {
+                $service->matchingIds($products, $selection, 2);
+                self::fail('A selection above the limit was answered.');
+            } catch (ForbiddenOperationException $e) {
+                self::assertSame('The selection matches more than 2 records; at most 2 can be handled at once. Narrow the filter.', $e->getMessage());
+            }
+
+            // a total the caller already counted is not counted again
+            self::assertSame(array_values($skus), array_column(iterator_to_array($service->stream($products, $selection, limit: 2, total: 2), false), 'sku'));
+        });
+
+        // a policy binding that is no policy is refused by name
+        $this->inScope(function (RequestScope $scope): void {
+            $scope->instance(AllowAllPolicy::class, new \stdClass());
+            $service = $scope->get(ResourceService::class);
+            self::assertInstanceOf(ResourceService::class, $service);
+
+            try {
+                $service->policy($service->registry()->resource('products'));
+                self::fail('A binding that is no policy was used as one.');
+            } catch (\LogicException $e) {
+                self::assertSame([\LogicException::class, AllowAllPolicy::class . ' is not a ResourcePolicyInterface.'], [$e::class, $e->getMessage()]);
+            }
+        });
     }
 
     /**
@@ -348,6 +430,44 @@ final class ResourceServiceTest extends VectorTestCase
         }
 
         return $counts;
+    }
+
+    /** Runs $work in a request scope of its own, as the seeded admin. */
+    private function inScope(\Closure $work): void
+    {
+        $scope = $this->app->createRequestScope();
+
+        try {
+            $scope->instance(CurrentUserInterface::class, new DemoActor($this->adminId(), 'Test', true));
+            $work($scope);
+        } finally {
+            $scope->dispose();
+        }
+    }
+
+    /** The seeded admin's id, as realAdminHeaders() signs in. */
+    private function adminId(): int
+    {
+        return (int) $this->shop()->table('users')->where('email', '=', 'admin@vector.local')->value('id');
+    }
+
+    /** A builder on the support database, through a manager this test opens and closes. */
+    private function support(): Query
+    {
+        if ($this->supportManager === null) {
+            $factories = $this->app->get(OrmFactoryRegistry::class);
+            self::assertInstanceOf(OrmFactoryRegistry::class, $factories);
+            $this->supportManager = $factories->factory('support')->open();
+        }
+
+        return $this->supportManager->builder();
+    }
+
+    protected function tearDown(): void
+    {
+        $this->supportManager?->close();
+        $this->supportManager = null;
+        parent::tearDown();
     }
 
     private function shop(): Query
