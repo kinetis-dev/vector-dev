@@ -5,15 +5,17 @@ through `kinetis/mcp`. The tools call the same services and policies as
 the REST API: an agent sees what its identity may see, and every write
 is validated, hooked and audited.
 
-| Tool | Does |
-|---|---|
-| `vector_resources` | Lists the resources this identity may use: slug, label and group — an index to pick from. |
-| `vector_describe` | Describes one resource for reading and writing its records (below). |
-| `vector_query` | Lists records under the list grammar: `filter`, `q`, `sort`, `page`, `perPage` (at most 200, and the resource's own maximum). |
-| `vector_get` | Reads one record, with its permissions. |
-| `vector_create`, `vector_update`, `vector_delete` | Writes. `vector_update` takes the `version` it read to refuse a stale write; `vector_delete` trashes on a soft-deleting resource unless `force` is true. |
-| `vector_run_action` | Runs an action on record `ids` (none for a standalone action) with its dialog `values`. |
-| `vector_widget` | Computes a dashboard widget (`dashboard` and `widget`) or a resource widget (`resource` and `widget`) for a range such as `30d`. |
+| Tool | Arguments | Does |
+|---|---|---|
+| `vector_resources` | — | Lists the resources this identity may view: slug, label and group. |
+| `vector_describe` | `resource` | Describes one resource's fields, actions and permissions (below). |
+| `vector_query` | `resource`, `filter`, `q`, `sort`, `page`, `perPage` | Lists records under the list grammar. `perPage` defaults to 25 and is capped at 200 and at the resource's own maximum. |
+| `vector_get` | `resource`, `id` | Reads one record, with its permissions. |
+| `vector_create` | `resource`, `values` | Creates a record, validated as the form validates it. |
+| `vector_update` | `resource`, `id`, `values`, `version` | Updates the fields in `values`. Pass the `version` you read to refuse a stale write. |
+| `vector_delete` | `resource`, `id`, `force` | Deletes a record; on a soft-deleting resource it goes to the trash unless `force` is true. |
+| `vector_run_action` | `resource`, `action`, `ids`, `values` | Runs an action on record `ids` (none for a standalone action) with its dialog `values`. A download comes back base64-encoded, with its filename and content type. |
+| `vector_widget` | `widget`, `dashboard` or `resource`, `range` | Computes a dashboard widget (`dashboard` defaults to `main`) or a resource widget, for a range such as `30d`. |
 
 An agent lists the resources, then describes the one it works with, so
 its context holds one resource's detail rather than all of them. For
@@ -21,9 +23,8 @@ each field, `vector_describe` (`Kinetis\Vector\Mcp\ResourceDescription`)
 states:
 
 - **`writable`**: whether a create, an update, both or neither may write it.
-- **`required`**: whether a create must send it. This is the writer's own
-  rule (`RecordInput::requiredOnCreate()`), so a create with just the
-  required fields succeeds.
+- **`required`**: whether a create must send it. It follows the writer's
+  own rule, so a create with just the required fields succeeds.
 - **`rules`, `options`, `default`, `unique`**: what a value must satisfy.
 - **`format`**: what a value looks like, where the type alone doesn't
   say (a date, a rich-text document, a list of ids).
@@ -56,30 +57,21 @@ grammar's filter as a JSON object: `{field: value | {op: value}, or:
 Either way, the tools ask `VectorAccessInterface` whether the identity
 may use the admin at all, as the `vector` group does for the UI.
 
-## `POST /mcp` answers 401 to everyone
+## When `POST /mcp` answers 401
 
-In bearer-token mode, when your authentication middleware is in the
-`vector` group only, `POST /mcp` answers `401 Unauthenticated.` to every
-caller, admins with a valid token included, while the same token works
-on `/vector/…`.
-
-`kinetis/mcp` closes the endpoint by default: its
-`Kinetis\Mcp\Http\McpIdentityGuardMiddleware`, the last member of the
-`mcp` group, answers `401` unless something earlier in that group
-registered a `Kinetis\Http\CurrentUserInterface`. Your authentication
-middleware in the `vector` group does not run for `/mcp`. Add
-`#[AsMiddlewareGroup('mcp', priority: 50)]` to it, at a priority above
-the guard's 0, as {doc}`authentication` shows. In production, rebuild
-the compiled cache (`kinetis build`) after the change, so the compiled
-`mcp` group carries the middleware ({doc}`deployment`).
+If every caller of `POST /mcp` gets `401 Unauthenticated.` while the same
+token works on `/vector/…`, your authentication middleware is in the
+`vector` group but not the `mcp` group. Add it there, at a priority
+above the identity guard's, as
+[the `mcp` middleware group](authentication.md#the-mcp-middleware-group)
+shows, and rebuild the compiled cache in production
+({doc}`deployment`).
 
 ```{warning}
-Do not set `MCP_HTTP_PUBLIC=true` to make the 401 go away. It serves
-`/mcp` to unauthenticated callers: the guard lets every request through
-whether or not an identity is registered, so any tool of yours that
-needs no identity becomes public, and Vector's own still have no
-identity to run as. Put the authentication middleware in the `mcp`
-group instead.
+Do not set `MCP_HTTP_PUBLIC=true` to make the 401 go away. It lets
+requests without an identity through to every tool: any tool of yours
+that needs no identity becomes public, and Vector's tools still have no
+identity to run as.
 ```
 
 ## See also

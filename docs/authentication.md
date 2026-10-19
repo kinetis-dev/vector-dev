@@ -40,8 +40,8 @@ the demo's `VectorAuthMiddleware`.
 
 Its priority in `mcp` must be above the guard's 0, so it runs before
 the guard; at 0 or below it is not ordered before the guard, and
-requests still get `401`. 50 sits between the guard and `kinetis/mcp`'s `McpOriginMiddleware`, at 100,
-which checks the `Origin` header first. Do not set `MCP_HTTP_PUBLIC` as
+requests still get `401`. 50 sits between the guard and `kinetis/mcp`'s
+`McpOriginMiddleware`, at 100, which checks the `Origin` header first. Do not set `MCP_HTTP_PUBLIC` as
 a workaround: that opens the endpoint to callers without an identity.
 See {doc}`mcp`.
 

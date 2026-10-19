@@ -58,7 +58,8 @@ which is what a persistent worker requires.
 |---|---|
 | Reads and writes, small exports, actions | In the request |
 | Queued actions, large exports, imports | In a queue worker, as the admin who started them |
-| Badges, widgets | In the request, optionally cached per worker |
+| Badges | In the request |
+| Widgets | In the request, optionally cached per worker ({doc}`dashboards`) |
 
 ## See also
 

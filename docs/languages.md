@@ -20,13 +20,11 @@ worded differently (below).
 The **language menu** in the app bar (the translate icon) lists the
 languages on offer, each in its own name with its name in your current
 language beneath (*Deutsch — German*), so a script you cannot read is
-still recognisable. The list is in one order whatever language you are
-in, so it never reshuffles on a switch: the languages' own names in
-Unicode's language-neutral order — Latin-script names alphabetically,
-then each other script as a group (Greek, Cyrillic, Hebrew, Arabic, the
-Indic scripts, Thai, Korean, Japanese, then Chinese). The settings
-page lists them the same way. Choosing one switches the whole
-admin at once — menus, labels, dates and numbers — and is remembered as
+still recognizable. The list keeps one order whatever language you are
+in, so it never reshuffles on a switch: Latin-script names
+alphabetically, then Cyrillic, Hebrew, Arabic, Korean, Japanese and
+Chinese. The settings page lists them the same way. Choosing one
+switches the whole admin at once — menus, labels, dates and numbers — and is remembered as
 your preference, on every device you sign in from. Hebrew and Arabic
 turn the layout right to left.
 
@@ -34,11 +32,7 @@ Until you choose, the admin is in the default language the administrator
 set; your browser's language plays no part.
 
 Every list of languages — the menu, the switches, the default's options
-— follows `Kinetis\Vector\Translation\Locales::SHIPPED`, which is kept in
-that order: the Unicode root collation of the languages' own names, with
-Latin script alphabetically first, then each other script as a group.
-The order is the same in every language, and a test fails when a
-language is added out of place.
+— follows `Kinetis\Vector\Translation\Locales::SHIPPED`.
 
 ## Which languages are offered
 
@@ -46,7 +40,8 @@ An administrator decides, under **Settings → Languages**: one switch per
 language, all on at first, and the **Default language** — English unless
 changed — for every user who has not chosen one. The default must be one
 of the languages switched on, so at least one always is; the page
-refuses to save otherwise. The language menu follows as soon as the settings are saved.
+refuses to save otherwise. The language menu follows as soon as the
+settings are saved.
 
 A language switched off cannot be chosen, not even through the API. A
 user who had chosen it sees the admin in the default language from their
@@ -88,8 +83,7 @@ dashboards and widget results — so the compiled registry stays in your
 labels' own words. The MCP schema resource is translated for the
 user's preference too. Record values are data and are never translated.
 
-Validation messages are not translated yet: the framework's and
-Vector's own arrive in English.
+Validation messages, the framework's and Vector's own, are in English.
 
 ## In the UI
 
@@ -97,8 +91,9 @@ The layer ships English (the base and the fallback, key by key) and the
 catalogs above, with the codes `pt` (European) and `pt-BR`, and
 `zh-Hans` for Simplified Chinese. The descriptor's `i18n` names the
 user's language and the languages on offer. The language menu lists
-them in the server's order, `Locales::SHIPPED`'s, naming each in itself with its name in the current language beneath
-(`languageName()`, from `Intl.DisplayNames`), and switching calls
+them in the server's order, `Locales::SHIPPED`'s, naming each in itself
+with its name in the current language beneath (`languageName()`, from
+`Intl.DisplayNames`), and switching calls
 `useVectorLocale().choose(code)`, which stores the user's `locale`
 preference and reloads the descriptor.
 
@@ -134,8 +129,7 @@ window.Vector.defineMessages('de', { common: { save: 'Sichern' } })
 ```
 
 The English catalog in the layer's `app/i18n/en/` names every key; every
-shipped locale mirrors it — a test holds each to the same keys and
-placeholders — and a key a locale lacks falls back to English. Messages
+shipped locale mirrors it, and a key a locale lacks falls back to English. Messages
 use `{name}` placeholders and are never rendered as HTML. A message that
 depends on a count lists its language's own forms, separated by `|`, in
 CLDR order — zero, one, two, few, many, other — only the ones that
