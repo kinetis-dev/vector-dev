@@ -16,6 +16,7 @@ use Kinetis\QueryBuilder\Query;
 use Kinetis\Vector\Auth\AllowAllPolicy;
 use Kinetis\Vector\Auth\ResourcePolicy;
 use Kinetis\Vector\Exception\ForbiddenOperationException;
+use Kinetis\Vector\Exception\InvalidListRequestException;
 use Kinetis\Vector\Query\ListRequest;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Registry\VectorRegistry;
@@ -399,6 +400,31 @@ final class ResourceServiceTest extends VectorTestCase
 
             // a total the caller already counted is not counted again
             self::assertSame(array_values($skus), array_column(iterator_to_array($service->stream($products, $selection, limit: 2, total: 2), false), 'sku'));
+        });
+
+        // an uncounted resource's export counts one row past its limit, never the whole match
+        $orders = $this->shop()->table('orders')->count();
+        self::assertGreaterThan(3, $orders);
+        $this->inScope(function (RequestScope $scope) use ($orders): void {
+            $service = $scope->get(ResourceService::class);
+            $converter = $scope->get(ValueConverter::class);
+            self::assertInstanceOf(ResourceService::class, $service);
+            self::assertInstanceOf(ValueConverter::class, $converter);
+            $descriptor = $service->resource('orders');
+            self::assertTrue($descriptor->withoutCount());
+            $all = ListRequest::fromSelection([], $descriptor, $converter);
+
+            self::assertSame(3, $service->exportCount($descriptor, $all, 2));
+            self::assertSame($orders, $service->exportCount($descriptor, $all, $orders));
+            self::assertSame($orders, $service->exportCount($descriptor, $all));
+            self::assertSame($this->shop()->table('customers')->count(), $service->exportCount($service->resource('customers'), ListRequest::fromSelection([], $service->resource('customers'), $converter), 2), 'a counted resource is counted');
+
+            try {
+                iterator_to_array($service->stream($descriptor, $all, limit: 2));
+                self::fail('An export above the limit was streamed.');
+            } catch (InvalidListRequestException $e) {
+                self::assertSame('The selection matches more than 2 records; this export serializes at most 2. Narrow the filter.', $e->getMessage());
+            }
         });
 
         // a policy binding that is no policy is refused by name

@@ -99,7 +99,7 @@ final readonly class ResourceController
         $this->service->authorizeExport($descriptor); // before any counting or queueing
         $listRequest = ListRequest::fromQueryParams($params, $descriptor, $this->converter)->unpaged();
         $fields = $listRequest->columns ?? $descriptor->toArray()['table']['columns'];
-        $total = $this->service->exportCount($descriptor, $listRequest);
+        $total = $this->service->exportCount($descriptor, $listRequest, $descriptor->exportLimit());
 
         // above the inline limit, or as XLSX, the export becomes a job
         if ($this->queue->available() && ($total > $descriptor->exportLimit() || $format === 'xlsx')) {

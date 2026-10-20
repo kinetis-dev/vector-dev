@@ -274,11 +274,13 @@ final readonly class ResourceService
 
         $fields = $this->listFields($resource, $request);
         $instance = $this->instance($resource);
-        $total ??= $this->exportCount($resource, $request);
         $limit ??= $resource->exportLimit();
+        $total ??= $this->exportCount($resource, $request, $limit);
 
         if ($total > $limit) {
-            throw new InvalidListRequestException("The selection matches {$total} records; this export serializes at most {$limit}. Narrow the filter.");
+            $matches = $resource->withoutCount() ? "more than {$limit}" : (string) $total;
+
+            throw new InvalidListRequestException("The selection matches {$matches} records; this export serializes at most {$limit}. Narrow the filter.");
         }
 
         $cursor = null;
@@ -348,12 +350,22 @@ final readonly class ResourceService
         return true;
     }
 
-    /** How many rows an export of this request would serialize. */
-    public function exportCount(ResourceDescriptor $resource, ListRequest $request): int
+    /**
+     * How many rows an export of this request would serialize. A
+     * withoutCount() resource counts at most one row past $cap: enough to
+     * tell a match above the limit from one within it, without the full
+     * COUNT the resource opted out of.
+     */
+    public function exportCount(ResourceDescriptor $resource, ListRequest $request, ?int $cap = null): int
     {
         $this->gate->authorize($this->user, $this->policy($resource)->viewAny(...));
+        $query = $this->constrained($resource, null, $request, null);
 
-        return $this->constrained($resource, null, $request, null)->count();
+        if (!$resource->withoutCount() || $cap === null) {
+            return $query->count();
+        }
+
+        return $this->query($resource)->fromSub($query->select($resource->primaryKeyColumn())->limit($cap + 1), 'vector_export')->count();
     }
 
     /**

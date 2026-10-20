@@ -94,7 +94,7 @@ arguments, and return plain data:
 | `policy()` | The policy class; see {doc}`authorization`. |
 | `defaultSort()` | The list's order, such as `['-createdAt', 'name']`. |
 | `perPage()`, `perPageOptions()`, `maxPerPage()` | The default page size, the sizes offered, and the most one request may ask for. |
-| `withoutCount()` | Whether a list page skips the COUNT of the match: `total` and `lastPage` are `null` and `hasMore` says whether another page follows, read from one row past the page. The admin pages it by previous and next. False by default; for a table large enough that counting is the slow part. See {doc}`lists` and {doc}`rest-api`. |
+| `withoutCount()` | Whether a list page skips the COUNT of the match: `total` and `lastPage` are `null` and `hasMore` says whether another page follows, read from one row past the page. The admin pages it by previous and next. An export counts no further than one row past its limit. False by default; for a table large enough that counting is the slow part. See {doc}`lists` and {doc}`rest-api`. |
 | `cursorPaging()` | Whether the admin pages the list by cursor, ordered by the identifier: no sort, grouping, page numbers, total or totals row. False by default. The REST API is unchanged: `?page=` and `?cursor=` both work on every resource. |
 | `softDeletes()` | The nullable `DateTimeImmutable` property that marks a record trashed. |
 | `timestamps()` | The properties Vector stamps on create and on every update; `createdAt` and `updatedAt` by default. |

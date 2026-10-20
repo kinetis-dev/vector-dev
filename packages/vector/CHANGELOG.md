@@ -13,7 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The page is `{data, currentPage, perPage, total: null, lastPage: null,
   hasMore}`, with `hasMore` read from one row past the page through the
   same policy, scope and trash predicate; summaries still work. A counted
-  resource's page is unchanged and carries no `hasMore`.
+  resource's page is unchanged and carries no `hasMore`. Its export does
+  not count the match either: `ResourceService::exportCount()` takes a
+  `$cap` and reads at most one row past it, which is enough to choose
+  between inline and queued, and a refusal says "more than N records".
 - `VectorResource::cursorPaging()`: the admin pages the list by cursor.
   The REST API is unchanged: `?page=` and `?cursor=` work on every
   resource.
