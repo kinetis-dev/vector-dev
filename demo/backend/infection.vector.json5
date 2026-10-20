@@ -34,7 +34,7 @@
         "excludes": ["ResourceDescriptor.php", "SettingsDescriptor.php", "VectorRegistry.php", "RowSerializer.php", "CsvWriter.php"]
     },
     "testFramework": "phpunit",
-    "testFrameworkOptions": "--filter 'VectorRegistryTest|ListGrammarTest|SchemaControllerTest|ResourceControllerTest|ActionsAndSettingsTest|ResourceCompilerTest|ResourceServiceTest|ListRequestTest|LayoutCompilerTest|WidgetCompilerTest|SettingsCompilerTest|XlsxWriterTest'",
+    "testFrameworkOptions": "--filter 'VectorRegistryTest|ListGrammarTest|SchemaControllerTest|ResourceControllerTest|ActionsAndSettingsTest|ResourceCompilerTest|ResourceServiceTest|ListRequestTest|LayoutCompilerTest|WidgetCompilerTest|SettingsCompilerTest|XlsxWriterTest|XlsxExportTest|XlsxUnavailableTest'",
     "timeout": 60,
     "logs": { "text": "infection.vector.log", "summary": "infection.vector.summary.log" },
     "minMsi": 92,
