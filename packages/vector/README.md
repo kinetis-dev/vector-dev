@@ -63,8 +63,12 @@ application scope carries request state.
 Installing this package auto-registers, via `extra.kinetis`:
 
 - **Routes**: the REST admin API under `/vector`, in the `vector`
-  middleware group, and the hosted admin shell at `GET /vector/ui`, in
-  the `vector-shell` group.
+  middleware group, with its OpenAPI 3.1 document at
+  `GET /vector/openapi.json`, and the hosted admin shell at
+  `GET /vector/ui`, in the `vector-shell` group.
+- **A global middleware**, `OpenApiGate`, which answers
+  `/vector/openapi.json` with the unmatched-path `404` wherever
+  `OPENAPI_ENVIRONMENTS` closes the framework's own `/openapi.json`.
 - **The innermost member of each group**: `VectorAccessMiddleware`,
   which asks the application's `VectorAccessInterface`, and
   `VectorShellAccessMiddleware`, which redirects a request without a
@@ -80,7 +84,7 @@ Installing this package auto-registers, via `extra.kinetis`:
   **Languages** and **Background jobs** settings groups.
 - **Bindings**, once per worker, from `PackageBootstrap`: the hosted UI
   document, Vector's database, queue and storage connections, its widget
-  cache and, unless the application binds its own, its label translator.
+  cache, its OpenAPI schema cache and, unless the application binds its own, its label translator.
 
 Nothing else. Authentication stays the application's: its middleware in
 the `vector` group (and `mcp`, for the tools over HTTP) registers

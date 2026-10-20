@@ -16,6 +16,7 @@ application).
 | Route | Answers |
 |---|---|
 | `GET /vector/schema`, `GET /vector/schema/{resource}` | The descriptor for this user, with an `ETag` (`If-None-Match` answers `304`). |
+| `GET /vector/openapi.json` | This API as an OpenAPI 3.1 document, for this user, where `OPENAPI_ENVIRONMENTS` opens it ([below](#openapi-document)). |
 | `GET /vector/me` | The authenticated identity. |
 | `GET /vector/r/{resource}` | A page of records under the list grammar. |
 | `GET /vector/r/{resource}/export` | The same list as a CSV file; a job above the export limit. |
@@ -213,6 +214,35 @@ plus one per relation field. A write is one flush.
 | `404` | Unknown resource or record. |
 | `409` | A stale version, or a revert over a field changed since. |
 | `422` | Validation — the framework's RFC 9457 document, with `errors[].path`, `code` and `message` — or an invalid list request. |
+
+## OpenAPI document
+
+`GET /vector/openapi.json` describes this API as an OpenAPI 3.1
+document, for the user who asks. It has a path for each resource they
+may list, with:
+
+- the list parameters that resource accepts: each field's
+  `filter[<field>][<op>]` operators, the sortable fields, `perPage` up
+  to the resource's maximum, `page`, `cursor`, `q`, `summaries`,
+  `group`, `columns`, and `filter[trashed]` where it soft-deletes;
+- show, create, update, delete and restore, with bodies built from the
+  compiled fields and their rules;
+- its actions, export, import and relation options;
+- `422` as the RFC 9457 document and every other error as
+  `{"error": "…"}`.
+
+A resource, field or action the policies hide from this user is absent,
+as it is from the descriptor. The document carries an `ETag` for the
+document and the user, and `If-None-Match` answers `304`.
+
+It is served where the framework serves its own `/openapi.json`: when
+`OPENAPI_ENVIRONMENTS` names `APP_ENV`. Unset, it is closed. A closed
+endpoint answers every method with the `404` of a path no route matches,
+before authentication runs; an open one is still in the `vector` group.
+The setting is read when the worker boots. The framework's own
+`/openapi.json` lists Vector's routes by their templates
+(`/vector/r/{resource}` and so on); this document lists each resource's
+own.
 
 ## See also
 
