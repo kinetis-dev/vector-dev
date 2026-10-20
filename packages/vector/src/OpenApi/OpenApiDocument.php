@@ -83,11 +83,14 @@ final readonly class OpenApiDocument
         $id = ['name' => 'id', 'in' => 'path', 'required' => true, 'schema' => $descriptor->primaryKeyType() === 'int' ? ['type' => 'integer'] : ['type' => 'string']];
         $one = self::json(['type' => 'object', 'properties' => ['data' => $record, 'permissions' => ['$ref' => '#/components/schemas/RecordPermissions']], 'required' => ['data', 'permissions']]);
         $soft = $descriptor->softDelete() !== null;
+        // what the descriptor publishes to this user: the searched and summarized fields it may see
+        /** @var array{search: list<string>, summaries: list<string>} $table */
+        $table = $this->resources->overlay($descriptor, $permissions)['table'];
 
         $paths = [];
         $paths[$base]['get'] = self::operation("{$slug}.list", "List {$descriptor->label()}", [
-            ...$this->listParameters($descriptor),
-            ...$this->pageParameters($descriptor),
+            ...$this->listParameters($descriptor, $table),
+            ...$this->pageParameters($descriptor, $table),
         ], null, ['200' => ['description' => 'A page of records.', 'content' => self::json($this->page($record))]]);
         $paths[$base]['get']['description'] = '`filter[field]=value` is `eq`. `filter[or][i]…` and `filter[and][i]…` hold alternatives and combined groups of these same conditions, four deep and 50 conditions at most.';
 
@@ -115,7 +118,7 @@ final readonly class OpenApiDocument
         if ($permissions['export']) {
             $formats = $this->queue->available() ? $this->defaults->exportFormats : ['csv'];
             $paths["{$base}/export"]['get'] = self::operation("{$slug}.export", "Export {$descriptor->label()}", [
-                ...$this->listParameters($descriptor),
+                ...$this->listParameters($descriptor, $table),
                 ['name' => 'format', 'in' => 'query', 'required' => false, 'schema' => ['enum' => $formats, 'default' => 'csv']],
             ], null, [
                 '200' => ['description' => 'The file.', 'content' => ['text/csv' => ['schema' => ['type' => 'string']]]],
@@ -350,9 +353,10 @@ final readonly class OpenApiDocument
      * The selection a list and an export share: sort, filters, search,
      * grouping and columns, each limited to what the descriptor allows.
      *
+     * @param array{search: list<string>, summaries: list<string>} $table the overlay's table
      * @return list<array<string, mixed>>
      */
-    private function listParameters(ResourceDescriptor $descriptor): array
+    private function listParameters(ResourceDescriptor $descriptor, array $table): array
     {
         $sortable = [];
         $filters = [];
@@ -385,8 +389,8 @@ final readonly class OpenApiDocument
             $parameters[] = ['name' => 'filter[trashed]', 'in' => 'query', 'required' => false, 'description' => 'Only trashed records, trashed ones too, or none (the default).', 'schema' => ['enum' => ['only', 'with', 'without']]];
         }
 
-        if ($descriptor->searchColumns() !== []) {
-            $parameters[] = ['name' => 'q', 'in' => 'query', 'required' => false, 'description' => 'Search over ' . implode(', ', array_keys($descriptor->searchColumns())) . '.', 'schema' => ['type' => 'string', 'maxLength' => 200]];
+        if ($table['search'] !== []) {
+            $parameters[] = ['name' => 'q', 'in' => 'query', 'required' => false, 'description' => 'Search over ' . implode(', ', $table['search']) . '.', 'schema' => ['type' => 'string', 'maxLength' => 200]];
         }
 
         if ($descriptor->groupable() !== []) {
@@ -399,8 +403,11 @@ final readonly class OpenApiDocument
         return $parameters;
     }
 
-    /** @return list<array<string, mixed>> */
-    private function pageParameters(ResourceDescriptor $descriptor): array
+    /**
+     * @param array{search: list<string>, summaries: list<string>} $table
+     * @return list<array<string, mixed>>
+     */
+    private function pageParameters(ResourceDescriptor $descriptor, array $table): array
     {
         $parameters = [
             ['name' => 'page', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'integer', 'minimum' => 1, 'default' => 1]],
@@ -408,8 +415,8 @@ final readonly class OpenApiDocument
             ['name' => 'cursor', 'in' => 'query', 'required' => false, 'description' => 'Keyset pages by the identifier: empty for the first, then the previous page\'s `nextCursor`. Not with `sort`.', 'schema' => ['type' => 'string']],
         ];
 
-        if ($descriptor->summaryPlan() !== []) {
-            $parameters[] = ['name' => 'summaries', 'in' => 'query', 'required' => false, 'description' => 'Include the summaries of ' . implode(', ', array_keys($descriptor->summaryPlan())) . '.', 'schema' => ['enum' => ['1', 'true']]];
+        if ($table['summaries'] !== []) {
+            $parameters[] = ['name' => 'summaries', 'in' => 'query', 'required' => false, 'description' => 'Include the summaries of ' . implode(', ', $table['summaries']) . '.', 'schema' => ['enum' => ['1', 'true']]];
         }
 
         return $parameters;

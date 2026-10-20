@@ -12,6 +12,7 @@ use Kinetis\Http\Routing\Exception\RouteNotFoundException;
 use Kinetis\Http\Routing\Route;
 use Kinetis\Http\Routing\Router;
 use Kinetis\OpenApi\OpenApiAccess;
+use Kinetis\Vector\Http\OpenApiController;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -32,19 +33,25 @@ use Psr\Http\Server\RequestHandlerInterface;
  * this is decided from the same Config and at the same point as the
  * framework's own table. A changed setting takes effect when the worker
  * restarts. Priority 0, the lowest: every other global middleware wraps
- * this path as it wraps an unmatched one. The path is compared the way
- * the Router compares it ({@see Route::normalizePath()}).
+ * this path as it wraps an unmatched one. A request is closed when the
+ * controller's own route matches its path, asked through
+ * {@see Route::matchPath()} exactly as {@see Router::match()} asks it, so
+ * every spelling the Router would route here is closed and no other.
  */
 #[AsGlobalMiddleware(priority: 0)]
 final readonly class OpenApiGate implements MiddlewareInterface
 {
-    public const string PATH = '/vector/openapi.json';
-
     private bool $open;
+
+    /** @var list<Route> the controller's routes, as the Router compiles them */
+    private array $routes;
 
     public function __construct(Config $config)
     {
         $this->open = self::opens($config);
+        $routes = new Router();
+        $routes->register(OpenApiController::class);
+        $this->routes = $routes->routes();
     }
 
     /**
@@ -63,10 +70,17 @@ final readonly class OpenApiGate implements MiddlewareInterface
     #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
+        if ($this->open) {
+            return $handler->handle($request);
+        }
+
+        // the path the Kernel hands the Router, and the Router's own test of it
         $path = $request->getUri()->getPath();
 
-        if (!$this->open && Route::normalizePath($path) === self::PATH) {
-            return ErrorResponse::create(404, RouteNotFoundException::forPath($path)->getMessage());
+        foreach ($this->routes as $route) {
+            if ($route->matchPath($path) !== null) {
+                return ErrorResponse::create(404, RouteNotFoundException::forPath($path)->getMessage());
+            }
         }
 
         return $handler->handle($request);

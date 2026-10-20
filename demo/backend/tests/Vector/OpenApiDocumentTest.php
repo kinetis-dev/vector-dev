@@ -314,6 +314,15 @@ final class OpenApiDocumentTest extends VectorTestCase
         self::assertSame($resource['table']['groupable'], $parameters['group']['schema']['enum'] ?? [], "{$slug}: group");
         self::assertSame($resource['table']['search'] !== [], isset($parameters['q']), "{$slug}: q");
         self::assertSame($resource['table']['summaries'] !== [], isset($parameters['summaries']), "{$slug}: summaries");
+
+        // and their descriptions name exactly what the descriptor publishes as searched and summarized
+        if (isset($parameters['q'])) {
+            self::assertSame('Search over ' . implode(', ', $resource['table']['search']) . '.', $parameters['q']['description'], "{$slug}: q names");
+        }
+
+        if (isset($parameters['summaries'])) {
+            self::assertSame('Include the summaries of ' . implode(', ', $resource['table']['summaries']) . '.', $parameters['summaries']['description'], "{$slug}: summaries name");
+        }
         self::assertArrayHasKey('cursor', $parameters);
         self::assertArrayHasKey('page', $parameters);
 
