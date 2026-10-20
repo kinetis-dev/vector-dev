@@ -40,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fails leaves the page number and the rows as they were, instead of
   showing page 1 over the old page's rows; the next step asks for the
   first page again. `VectorPageStep` gains `'first'`.
+- Rich text under the hosted admin's CSP reports no violation. The
+  sanitizer's self-test no longer carries `onclick` and `onerror`, which
+  the browser checked against `script-src-attr` even in DOMPurify's inert
+  document; its attributes still have to be stripped by the allow-list.
 
 ## [0.9.4] - 2026-10-19
 
