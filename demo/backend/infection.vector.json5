@@ -28,6 +28,14 @@
     // mutants that let a refused bulk delete through emptied the
     // worker's order lines, and every later mutant there counted as
     // killed.
+    //
+    // Measured 2026-10-21, the "ListRequest and the other compilers"
+    // shard alone (four threads, local): 643 mutants, 625 killed, 1
+    // syntax error, 0 timed out, 17 escaped — covered MSI 97.4%. Its 5
+    // XlsxWriter escapes are equivalent or out of reach without a seam:
+    // available() with openspout and zip both present, the read-back
+    // failure after a successful close, array_pad to 3, the cast of a
+    // string to string, and the float cast of a numeric string.
     "$schema": "vendor/infection/infection/resources/schema.json",
     "source": {
         "directories": ["../../packages/vector/src/Registry", "../../packages/vector/src/Query"],
