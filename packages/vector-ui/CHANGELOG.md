@@ -21,8 +21,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   next, and copying a record's many-to-many memberships walks such a
   target by `hasMore`.
 - `useVectorResource().listByCursor()`, `useVectorCursorPager()`,
-  `VxListPager` and the `VectorCursorPage` type. `VectorPage.total` and
-  `lastPage` are now `number | null`, with an optional `hasMore`.
+  `VxListPager` and the `VectorCursorPage` type. `VectorPage` gains an
+  optional `hasMore`.
+
+### Changed
+
+- `VectorPage.total` and `lastPage` are now `number | null`: they are
+  `null` on a page of a `withoutCount` resource. So are the `count` prop
+  of `VxActionDialog` and `VxListBulkEdit` and the `total` prop of
+  `VxListBulkBar`, `null` meaning every matching record of a list that
+  is not counted. Code that reads these, or renders these components,
+  must handle `null`.
 
 ## [0.9.4] - 2026-10-19
 
