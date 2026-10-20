@@ -7,7 +7,9 @@ works the same on ten records or ten million.
 ## Search, sort and page
 
 - **Search** matches the resource's searchable fields, ignoring case,
-  as you type.
+  as you type: text that contains the term, the title of a searchable
+  relation (products by their category's name), and whole words in the
+  fields the resource indexes for full-text search.
 - Click a **column header** to sort by it; click again to reverse.
 - The footer pages through the list and sets how many rows a page shows.
 - Click a **row** to open the record.

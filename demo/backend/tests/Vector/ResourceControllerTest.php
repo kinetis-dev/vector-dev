@@ -40,6 +40,24 @@ final class ResourceControllerTest extends VectorTestCase
         // COUNT, the page, the category labels, the tag counts — never one per row.
         self::assertLessThanOrEqual(4, $statements);
         self::assertGreaterThanOrEqual(2, $statements);
+
+        // a search through the category's title and the name's full-text index adds no statement
+        $link = $this->app->get(\Kinetis\Persistence\Contract\MysqlLink::class);
+        self::assertInstanceOf(\Kinetis\Persistence\Contract\MysqlLink::class, $link);
+        $laptops = (int) (new \Kinetis\QueryBuilder\Query($link))->table('categories')->where('name', '=', 'Laptops')->value('id');
+        $pages = [];
+        $filtered = $this->countStatements(function () use ($laptops, &$pages): void {
+            $pages[] = $this->client->get('/vector/r/products', query: ['perPage' => 50, 'filter' => ['category' => (string) $laptops]], headers: $this->adminHeaders())->assertOk()->json();
+        });
+        $searched = $this->countStatements(function () use (&$pages): void {
+            $pages[] = $this->client->get('/vector/r/products', query: ['perPage' => 50, 'q' => 'Laptop'], headers: $this->adminHeaders())->assertOk()->json();
+        });
+        self::assertIsArray($pages[0]);
+        self::assertIsArray($pages[1]);
+        self::assertGreaterThan(0, $pages[0]['total']);
+        self::assertSame(array_column($pages[0]['data'], 'id'), array_column($pages[1]['data'], 'id'), 'the same records');
+        self::assertSame(4, $searched, 'COUNT, the page, the category labels, the tag counts');
+        self::assertSame($filtered, $searched);
     }
 
     public function testAShowCarriesEveryShowFieldAndTheHasOneAndHasManyDisplays(): void

@@ -59,7 +59,7 @@ final class ActionsAndSettingsTest extends VectorTestCase
         self::assertArrayNotHasKey('class', $schema['actions'][0]);
         self::assertSame('Change by', $schema['actions'][2]['fields'][0]['label']);
         self::assertSame(['eq', 'ne', 'in', 'nin'], $schema['fields'][4]['operators']);
-        self::assertSame(['sku', 'name'], $schema['table']['search']);
+        self::assertSame(['sku', 'name', 'category'], $schema['table']['search']);
         self::assertSame(['priceCents', 'stock'], $schema['table']['summaries']);
         self::assertSame(['field' => 'deletedAt'], $schema['softDelete']);
 

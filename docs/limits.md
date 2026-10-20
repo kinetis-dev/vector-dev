@@ -44,9 +44,9 @@ The per-resource bounds are methods on the resource; see
 
 ## Known limits
 
-- Search is a case-insensitive `LIKE` (`ILIKE` on PostgreSQL) over the
-  resource's own searchable columns. Relation search and full-text
-  search are not implemented.
+- Search is a case-insensitive `LIKE` (`ILIKE` on PostgreSQL), and
+  whole words only on the fields a resource indexes with `fullText()`.
+  Matches are not ranked: a list keeps its sort.
 - Vector's writes to its own tables (action log, audit, jobs) run on
   Vector's connection as statements of their own, after the entity
   flush has committed — on the same connection or another. When

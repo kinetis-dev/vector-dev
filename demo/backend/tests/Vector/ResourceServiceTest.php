@@ -395,6 +395,161 @@ final class ResourceServiceTest extends VectorTestCase
         });
     }
 
+    public function testSearchMatchesTheRelatedTitleAndTheFullTextIndexOnEachEngine(): void
+    {
+        // the shop, on MySQL: every product's name holds its category's name as a word
+        $categories = array_column($this->shop()->table('categories')->select('id', 'name')->get(), 'name', 'id');
+        $products = $this->shop()->table('products')->select('id', 'name', 'category_id')->where('deleted_at', '=', null)->orderBy('id', 'ASC')->get();
+        $product = static fn (\Closure $match): array => array_values(array_map(static fn (array $p): int => (int) $p['id'], array_filter($products, $match)));
+        $named = static fn (string ...$words): \Closure => static fn (array $p): bool => array_diff(array_map('strtolower', $words), (array) preg_split('/\W+/', strtolower((string) $p['name']))) === [];
+
+        // a word only the category's title holds a match for, inside a longer word: the relation alone matches it
+        $laptops = $product(static fn (array $p): bool => $categories[$p['category_id']] === 'Laptops');
+        self::assertNotEmpty($laptops);
+        self::assertSame($laptops, $this->ids('products', 'Laptop'));
+
+        // the name by whole words, through its FULLTEXT index, never as part of a word as LIKE would
+        $rapid = $product($named('Rapid'));
+        self::assertGreaterThan(1, count($rapid));
+        self::assertSame($rapid, $this->ids('products', 'rapid'));
+        self::assertSame([], $this->ids('products', 'apid'));
+        self::assertSame($product($named('Rapid', 'Laptops')), $this->ids('products', 'Laptops Rapid'), 'every word is required');
+        self::assertNotEmpty($product($named('Rapid', 'Laptops')));
+        self::assertLessThan(count($rapid), count($product($named('Rapid', 'Laptops'))));
+        self::assertSame($rapid, $this->ids('products', 'Rapid the xy'), 'a stopword and a word shorter than the index keeps are not required');
+        self::assertSame($rapid, $this->ids('products', '-Rapid +Rapid* "Rapid'), "the user's operators are not passed on");
+
+        // the support desk, on PostgreSQL: no subject names its team
+        $teams = array_column($this->support()->table('support_teams')->select('id', 'name')->get(), 'name', 'id');
+        $tickets = $this->support()->table('tickets')->select('id', 'subject', 'team_id')->where('deleted_at', '=', null)->orderBy('id', 'ASC')->get();
+        $ticket = static fn (\Closure $match): array => array_values(array_map(static fn (array $t): int => (int) $t['id'], array_filter($tickets, $match)));
+        $about = static fn (string ...$words): \Closure => static fn (array $t): bool => array_diff($words, (array) preg_split('/\W+/', strtolower((string) $t['subject']))) === [];
+
+        $billing = $ticket(static fn (array $t): bool => $t['team_id'] !== null && $teams[$t['team_id']] === 'Billing');
+        self::assertNotEmpty($billing);
+        self::assertSame($billing, $this->ids('tickets', 'billing'));
+
+        $damaged = $ticket($about('damaged'));
+        self::assertNotEmpty($damaged);
+        self::assertSame($damaged, $this->ids('tickets', 'Damaged'));
+        self::assertSame([], $this->ids('tickets', 'damage'));
+        self::assertSame($ticket($about('arrived', 'damaged')), $this->ids('tickets', 'damaged arrived'), 'every word is required');
+        self::assertSame($damaged, $this->ids('tickets', 'damaged -damaged | !damaged'), "the user's operators are not passed on");
+        self::assertSame([], $this->ids('tickets', '#&!'), 'a term with no word matches no subject');
+
+        // what this user may not see, search does not match
+        $this->policy->hidden = ['name'];
+        self::assertSame([], $this->ids('products', 'Laptop'), "the category's hidden title");
+        self::assertSame([], $this->ids('products', 'Rapid'), 'the hidden name');
+        self::assertCount(10, $this->ids('products', 'SKU-0001'));
+        $this->policy->hidden = ['name', 'sku'];
+        self::assertSame([], $this->ids('products', 'SKU-0001'), 'a relation whose title is hidden leaves nothing to match');
+        self::assertSame([], $this->ids('products', (string) array_search('Laptops', $categories, true)), 'nor the key it fell back to');
+
+        // the full-text index alone: a term with no word still matches nothing
+        $this->policy->hidden = ['number', 'customerEmail', 'name'];
+        self::assertSame($damaged, $this->ids('tickets', 'damaged'));
+        self::assertSame([], $this->ids('tickets', '#&!'));
+    }
+
+    public function testTheSearchBindsEveryTermOnEachEngine(): void
+    {
+        $this->inScope(function (RequestScope $scope): void {
+            $service = $scope->get(ResourceService::class);
+            $converter = $scope->get(ValueConverter::class);
+            self::assertInstanceOf(ResourceService::class, $service);
+            self::assertInstanceOf(ValueConverter::class, $converter);
+            $sql = static function (string $slug, string $term) use ($service, $converter): array {
+                $resource = $service->resource($slug);
+                $query = null;
+                $service->list($resource, ListRequest::fromQueryParams(['q' => $term], $resource, $converter), static function (Query $list) use (&$query): void {
+                    $query = $list;
+                });
+                self::assertInstanceOf(Query::class, $query);
+                $compiled = $query->toSelectSql();
+
+                return [$compiled->sql, $compiled->params];
+            };
+
+            $term = "Rapid The xy Bob O'Brien rapid né Été été";
+            [$products, $params] = $sql('products', $term);
+            self::assertStringContainsString('(`sku` LIKE ? OR MATCH (`name`) AGAINST (? IN BOOLEAN MODE) OR `category_id` IN (SELECT `id` FROM `categories` WHERE `name` LIKE ?))', $products);
+            self::assertSame(["%{$term}%", '+rapid The xy +Bob O +Brien né +été', "%{$term}%"], $params, 'a word is measured and folded by characters, not bytes');
+
+            $term = "damaged O'Brien -refund";
+            [$tickets, $params] = $sql('tickets', $term);
+            self::assertStringContainsString(<<<'SQL'
+                ("number" ILIKE ? OR "customer_email" ILIKE ? OR to_tsvector('simple', coalesce("subject", '')) @@ plainto_tsquery('simple', ?) OR "team_id" IN (SELECT "id" FROM "support_teams" WHERE "name" ILIKE ?))
+                SQL, $tickets);
+            self::assertSame(["%{$term}%", "%{$term}%", $term, "%{$term}%"], $params);
+
+            foreach ([$products, $tickets] as $statement) {
+                self::assertStringNotContainsString('Brien', $statement, 'the term is bound, never written into the SQL');
+            }
+        });
+    }
+
+    public function testEveryPathSearchesAlike(): void
+    {
+        $h = $this->realAdminHeaders();
+        $mcp = [...$this->adminHeaders(), 'MCP-Protocol-Version' => '2025-06-18', 'Content-Type' => 'application/json'];
+
+        foreach ([['products', 'Laptop', 'sku'], ['products', 'Rapid', 'sku'], ['tickets', 'Billing', 'number'], ['tickets', 'damaged', 'number']] as [$slug, $q, $key]) {
+            $listed = $this->json("/vector/r/{$slug}", ['q' => $q, 'perPage' => 200, 'sort' => 'id', 'columns' => $key], $h)['data'];
+            $ids = array_column($listed, 'id');
+            $keys = array_column($listed, $key);
+            self::assertNotEmpty($ids, "{$slug} ?q={$q}");
+
+            // cursor pages
+            $paged = [];
+            $cursor = '';
+
+            do {
+                $page = $this->json("/vector/r/{$slug}", ['q' => $q, 'perPage' => 7, 'cursor' => $cursor, 'columns' => $key], $h);
+                $paged = [...$paged, ...array_column($page['data'], 'id')];
+                $cursor = (string) $page['nextCursor'];
+            } while ($page['hasMore']);
+
+            self::assertSame($ids, $paged, "{$slug} ?q={$q}: cursor pages");
+
+            // an inline export, and one the queue writes
+            $csv = $this->client->get("/vector/r/{$slug}/export", query: ['q' => $q, 'columns' => $key], headers: $h)->assertOk()->body();
+            $rows = array_map(static fn (string $row): mixed => str_getcsv($row, escape: '')[0], array_filter(explode("\n", trim(ltrim($csv, "\u{FEFF}"))), static fn (string $row): bool => trim($row) !== ''));
+            self::assertSame($keys, array_slice(array_values($rows), 1), "{$slug} ?q={$q}: inline export");
+            $queued = $this->client->get("/vector/r/{$slug}/export", query: ['q' => $q, 'columns' => $key, 'format' => 'xlsx'], headers: $h)->assertStatus(202)->json();
+            self::assertIsArray($queued);
+            $this->client->get("/vector/jobs/{$queued['jobId']}", headers: $h)->assertOk()
+                ->assertJsonPath('data.status', 'done')
+                ->assertJsonPath('data.result.rows', count($ids));
+
+            // an `all` selection, as bulk operations and queued actions resolve it
+            $this->inScope(static function (RequestScope $scope) use ($slug, $q, $ids): void {
+                $service = $scope->get(ResourceService::class);
+                $converter = $scope->get(ValueConverter::class);
+                self::assertInstanceOf(ResourceService::class, $service);
+                self::assertInstanceOf(ValueConverter::class, $converter);
+                $resource = $service->resource($slug);
+                self::assertSame($ids, $service->matchingIds($resource, ListRequest::fromSelection(['filter' => [], 'q' => $q], $resource, $converter)), "{$slug} ?q={$q}: selection");
+            });
+
+            // the MCP tool
+            $body = json_encode(['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/call', 'params' => ['name' => 'vector_query', 'arguments' => ['resource' => $slug, 'q' => $q, 'sort' => 'id', 'perPage' => 200]]], JSON_THROW_ON_ERROR);
+            $result = $this->client->raw('POST', '/mcp', $body, $mcp)->assertOk()->json();
+            self::assertIsArray($result);
+            self::assertFalse($result['result']['isError'] ?? false);
+            self::assertSame($ids, array_column(json_decode($result['result']['content'][0]['text'], true, 16, JSON_THROW_ON_ERROR)['data'], 'id'), "{$slug} ?q={$q}: vector_query");
+
+            // global search: the newest matches
+            self::assertSame(array_slice(array_reverse($ids), 0, 5), array_column($this->search($q, $slug), 'id'), "{$slug} ?q={$q}: global search");
+        }
+    }
+
+    /** @return list<int> the ids a list of $slug searched for $q holds, in key order */
+    private function ids(string $slug, string $q): array
+    {
+        return array_column($this->json("/vector/r/{$slug}", ['q' => $q, 'perPage' => 200, 'sort' => 'id', 'columns' => 'id'], $this->adminHeaders())['data'], 'id');
+    }
+
     /**
      * @param array<string, mixed> $query
      * @param array<string, string> $headers

@@ -100,6 +100,7 @@ arguments, and return plain data:
 | `badge()` | A count beside the resource in the menu. |
 | `replicable()` | Whether records can be duplicated; true by default. |
 | `searchSubtitle()`, `searchImage()` | What global search and a relation's choice list show under the title and as a thumbnail. |
+| `fullText()` | The searchable text fields a full-text index covers; see [Search](#search). |
 
 ## Request-time hooks
 
@@ -134,6 +135,44 @@ deletion applied. The UI polls `GET /vector/badges` every minute and
 after each navigation. A user who may not list the resource, or see a
 filtered field, gets no badge.
 
+## Search
+
+The list's `q` matches any `searchable()` field:
+
+- A string field matches when it contains the term, ignoring case
+  (`LIKE`, `ILIKE` on PostgreSQL).
+- A `BelongsTo` field matches when the related record's title contains
+  the term. The match is a subquery on the resource's connection, so a
+  page takes no extra statement. It applies neither the target's
+  `scope()` nor its trash, since the list shows the title of every
+  record it points at. A user who may not see the target's title field
+  matches nothing through it.
+- The fields `fullText()` names are matched by whole words, through the
+  database's full-text index, instead of `LIKE`:
+
+```php
+public function fullText(): ?FullText
+{
+    return FullText::on('name', 'description');   // ->config('english') for PostgreSQL
+}
+```
+
+Every word of the term is required, and the user's operators are read as
+plain text. On MySQL the term is split into words and each is required
+(`MATCH (name, description) AGAINST ('+word …' IN BOOLEAN MODE)`), except
+a word the index does not hold: one shorter than three characters, or on
+InnoDB's default stopword list. On PostgreSQL it is
+`to_tsvector(config, …) @@ plainto_tsquery(config, term)`, with the
+configuration `simple` (no stemming, no stopwords) unless `config()`
+names another. A part of a word no longer matches those fields. For a
+user who may not see one of them, the index cannot be used, and the
+others are matched with `LIKE`. The application creates the index; see
+{doc}`databases`.
+
+The same match applies wherever `q` does: the list and its cursor pages,
+inline and queued exports, an `all` selection for a batch or an action,
+`vector_query`, and global search.
+
 ## Global search
 
 Every resource is globally searchable unless `globallySearchable()`
@@ -149,12 +188,17 @@ not see its field.
 Compilation refuses, naming the class and field: a field that maps no
 property, a `#[BelongsTo]` declared without `BelongsTo::to()`, a
 relation to an unregistered resource, a sortable field without a
-column, a searchable field that is not a string column, a filterable
-collection, a summary over a non-numeric column, a default sort over a
-field that is not sortable, an unadministered identifier, a
-`softDeletes()` property that is not a nullable `DateTimeImmutable`,
-duplicate field, action or widget names, a slug already taken, and an
-entity with several resources but not exactly one `relationTarget`.
+column, a searchable field that is neither a string column nor a
+`BelongsTo`, a searchable `BelongsTo` whose target's title field is not
+a string column, a filterable collection, a summary over a non-numeric
+column, a default sort over a field that is not sortable, an
+unadministered identifier, a `softDeletes()` property that is not a
+nullable `DateTimeImmutable`, duplicate field, action or widget names, a
+slug already taken, and an entity with several resources but not exactly
+one `relationTarget`. It refuses a `fullText()` that names no field,
+names a field twice, or names one that is not a searchable `Text`,
+`Textarea`, `Markdown`, `Email`, `Url` or `Slug` field, and a
+configuration that is not a plain lowercase name.
 The pages on {doc}`fields` and {doc}`forms` list what each feature
 refuses besides.
 

@@ -55,7 +55,11 @@ final class VectorRegistryTest extends TestCase
         self::assertSame('int', $this->action($products, 'adjust-stock')['fields'][0]['valueType']);
         self::assertFalse($this->action($products, 'adjust-stock')['fields'][0]['nullable'], 'a required action field is not nullable');
         self::assertTrue($this->action($products, 'catalog-summary')['standalone']);
-        self::assertSame(['sku', 'name'], $products->toArray()['table']['search']);
+        self::assertSame(['sku', 'name', 'category'], $products->toArray()['table']['search'], 'the full-text field and the searchable relation are searched too');
+        self::assertSame(['sku' => 'sku'], $products->searchColumns(), 'LIKE leaves the full-text column to its index');
+        self::assertSame(['category' => ['column' => 'category_id', 'resource' => 'categories']], $products->searchRelations());
+        self::assertSame(['columns' => ['name' => 'name'], 'config' => 'simple'], $products->fullText());
+        self::assertSame([], array_intersect(['searchRelations', 'fullText'], array_keys($products->toArray())), 'the search plan stays internal');
 
         return $data;
     }
@@ -87,7 +91,9 @@ final class VectorRegistryTest extends TestCase
         self::assertSame([['field' => 'createdAt', 'order' => 'desc']], $products['table_view']['defaultSort']);
         self::assertIsInt($products['table_view']['perPage']);
         self::assertIsInt($products['table_view']['maxPerPage']);
-        self::assertSame(['sku' => 'sku', 'name' => 'name'], $products['searchColumns']);
+        self::assertSame(['sku' => 'sku'], $products['searchColumns']);
+        self::assertSame(['category' => ['column' => 'category_id', 'resource' => 'categories']], $products['searchRelations']);
+        self::assertSame(['columns' => ['name' => 'name'], 'config' => 'simple'], $products['fullText']);
         self::assertSame(['function' => 'sum', 'column' => 'stock'], $products['summaryPlan']['stock']);
         self::assertSame(['field' => 'deletedAt', 'column' => 'deleted_at'], $products['softDelete']);
         self::assertSame('released_at', $products['columns']['releasedAt']);

@@ -43,6 +43,7 @@ use Kinetis\Vector\Fields\Password;
 use Kinetis\Vector\Fields\RichText;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\Fields\Textarea;
+use Kinetis\Vector\FullText;
 use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\VectorResource;
 use PHPUnit\Framework\TestCase;
@@ -643,6 +644,118 @@ final class ResourceCompilerTest extends TestCase
         $this->assertRefused(self::fieldRefusal($sortable, 'description', 'is a rich-text field, which cannot be sorted or summarized'), $sortable);
     }
 
+    public function testASearchableRelationMatchesItsTargetsTitleAndFullTextCoversSearchableTextFields(): void
+    {
+        $products = new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Text::make('sku')->searchable(), Text::make('name')->searchable(), Textarea::make('description')->searchable(), BelongsTo::to('category', CompilerCategories::class)->searchable()];
+            }
+
+            public function fullText(): FullText
+            {
+                return FullText::on('description', 'name')->config('english');
+            }
+        };
+        $compiled = $this->compile($products)['products'];
+
+        self::assertSame(['sku', 'name', 'description', 'category'], $compiled['table_view']['search'], 'in the order of the fields');
+        self::assertSame(['sku' => 'sku'], $compiled['searchColumns'], 'LIKE leaves the indexed columns to the index');
+        self::assertSame(['category' => ['column' => 'category_id', 'resource' => 'compiler-categories']], $compiled['searchRelations']);
+        self::assertSame(['columns' => ['description' => 'description', 'name' => 'name'], 'config' => 'english'], $compiled['fullText'], 'in the order the index lists them');
+        self::assertTrue(self::field($compiled, 'category')['searchable']);
+
+        // a searchable relation, or a full-text index, is enough to search on its own
+        $lines = new #[Resource(OrderLine::class, slug: 'lines')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), BelongsTo::to('order', CompilerOrders::class)->searchable(), Number::make('quantity')];
+            }
+        };
+        $compiled = $this->compile($lines)['lines'];
+        self::assertSame([[], ['order'], true], [$compiled['searchColumns'], $compiled['table_view']['search'], $compiled['globallySearchable']]);
+        self::assertArrayNotHasKey('fullText', $compiled);
+
+        $indexed = new #[Resource(Category::class, slug: 'categories')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Text::make('name')->searchable()];
+            }
+
+            public function fullText(): FullText
+            {
+                return FullText::on('name');
+            }
+        };
+        $compiled = $this->compile($indexed)['categories'];
+        self::assertSame([[], ['name'], true, 'simple'], [$compiled['searchColumns'], $compiled['table_view']['search'], $compiled['globallySearchable'], $compiled['fullText']['config']]);
+        self::assertArrayNotHasKey('searchRelations', $compiled);
+    }
+
+    public function testASearchableRelationNeedsATextTitle(): void
+    {
+        $lines = new #[Resource(OrderLine::class, slug: 'lines')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), BelongsTo::to('order', UntitledOrders::class)->searchable()];
+            }
+        };
+        $this->assertRefused(self::fieldRefusal($lines, 'order', 'is searchable, but the title field "id" of untitled-orders is not a string column'), new UntitledOrders(), $lines);
+
+        // only a belongsTo matches through its target
+        $orders = new #[Resource(Order::class, slug: 'orders')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Text::make('number'), HasMany::to('lines', CompilerOrderLines::class)->searchable()];
+            }
+        };
+        $this->assertRefused(self::fieldRefusal($orders, 'lines', 'is not a string column and cannot be searchable'), $orders);
+    }
+
+    public function testFullTextNamesSearchableTextFieldsAndAConfigurationName(): void
+    {
+        $refusals = [
+            'fullText() names no field' => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const array FIELDS = []; },
+            'fullText() names "nope", which is not a text field of the resource' => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const array FIELDS = ['name', 'nope']; },
+            'fullText() names "position", which is not a text field of the resource' => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const array FIELDS = ['position']; },
+            'fullText() names "label", which is not a text field of the resource' => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const array FIELDS = ['label']; },
+            'fullText() names "slug", which is not searchable' => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const array FIELDS = ['name', 'slug']; },
+            'fullText() names "name" twice' => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const array FIELDS = ['name', 'description', 'name']; },
+        ];
+
+        foreach ($refusals as $reason => $resource) {
+            $this->assertRefused('Resource ' . $resource::class . ": {$reason}", $resource);
+        }
+
+        $configs = [
+            'english' => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const string CONFIG = 'english'; },
+            'x' => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const string CONFIG = 'x'; },
+            'pg_simple2' => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const string CONFIG = 'pg_simple2'; },
+            str_repeat('x', 63) => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const string CONFIG = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'; },
+        ];
+
+        foreach ($configs as $config => $resource) {
+            self::assertSame((string) $config, $this->compile($resource)['categories']['fullText']['config']);
+        }
+
+        // a name PostgreSQL could read as something else, or a literal it could break out of
+        $names = [
+            '' => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const string CONFIG = ''; },
+            'English' => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const string CONFIG = 'English'; },
+            'pg_catalog.english' => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const string CONFIG = 'pg_catalog.english'; },
+            "english'" => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const string CONFIG = "english'"; },
+            ' english' => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const string CONFIG = ' english'; },
+            'english ' => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const string CONFIG = 'english '; },
+            '2english' => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const string CONFIG = '2english'; },
+            str_repeat('x', 64) => new #[Resource(Category::class, slug: 'categories')] class extends FullTextCategories { public const string CONFIG = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'; },
+        ];
+
+        foreach ($names as $config => $resource) {
+            self::assertSame($config, $resource::CONFIG);
+            $this->assertRefused('Resource ' . $resource::class . ": fullText() configures \"{$config}\", which is not a PostgreSQL text search configuration name", $resource);
+        }
+    }
+
     public function testAKeyValueFieldCannotBeSortedFilteredOrSearched(): void
     {
         $refusal = 'is a key-value field, which cannot be sorted, filtered, searched or summarized';
@@ -1032,5 +1145,48 @@ final class CompilerConditionAction extends VectorAction
     public function handle(ActionRequest $request): ActionResponse
     {
         return ActionResponse::message('Done.');
+    }
+}
+
+/** Categories searched through the full-text declaration a subclass names in FIELDS and CONFIG. */
+abstract class FullTextCategories extends VectorResource
+{
+    /** @var list<string> */
+    public const array FIELDS = ['name'];
+
+    public const string CONFIG = 'simple';
+
+    public function fields(): array
+    {
+        return [
+            Id::make(),
+            Text::make('name')->searchable(),
+            Textarea::make('description')->searchable(),
+            Text::make('slug'),
+            // a text field over an integer column
+            Text::make('position'),
+            Computed::make('label')->method('label'),
+        ];
+    }
+
+    public function fullText(): FullText
+    {
+        return FullText::on(...static::FIELDS)->config(static::CONFIG);
+    }
+
+    /** @param array<string, mixed> $category */
+    public function label(array $category): string
+    {
+        return '';
+    }
+}
+
+/** Orders titled by their key: nothing to match a search against. */
+#[Resource(Order::class, slug: 'untitled-orders')]
+final class UntitledOrders extends VectorResource
+{
+    public function fields(): array
+    {
+        return [Id::make(), Number::make('totalCents')];
     }
 }

@@ -29,6 +29,7 @@ use Kinetis\Vector\Fields\Money;
 use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\Fields\RichText;
+use Kinetis\Vector\FullText;
 use Kinetis\Vector\VectorResource;
 
 /**
@@ -67,7 +68,7 @@ final class TicketResource extends VectorResource
             Enum::make('channel')->of(\App\Domain\Support\Channel::class)->filterable()->hideFromIndex(),
             Email::make('customerEmail', 'Customer')->required()->max(255)->searchable()->filterable(),
             Number::make('customerRef', 'Customer id (shop)')->hideFromIndex()->help('The shop customer on the MySQL connection, by id: a relationship never spans two databases.'),
-            BelongsTo::to('team', TeamResource::class)->sortable()->filterable(),
+            BelongsTo::to('team', TeamResource::class)->sortable()->filterable()->searchable(),
             BelongsTo::to('assignee', AgentResource::class)->dependsOn('team')->sortable()->filterable(),
             ManyToMany::to('labels', LabelResource::class),
             HasMany::to('replies', TicketReplyResource::class),
@@ -81,6 +82,13 @@ final class TicketResource extends VectorResource
             DateTime::make('createdAt')->readonly()->sortable()->hideFromForms(),
             DateTime::make('updatedAt')->readonly()->hideFromForms()->hideFromIndex(),
         ];
+    }
+
+    /** The subject is searched by words, through the GIN index of the support migration 20261020000001. */
+    #[\Override]
+    public function fullText(): FullText
+    {
+        return FullText::on('subject');
     }
 
     #[\Override]

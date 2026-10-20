@@ -72,6 +72,9 @@ default, and every named one an entity uses.
 
 - Search, the *contains* filter and relation option search ignore case
   on both (`ILIKE` on PostgreSQL).
+- Full-text search reads whole words on both. MySQL's index leaves out
+  words shorter than `innodb_ft_min_token_size` (3) and its stopwords;
+  PostgreSQL's follows the configuration `fullText()` names.
 - A unique-index violation is reported on the field it concerns, on
   both: from PostgreSQL's `Key (column)=` detail, or MySQL's index name.
 - A calendar day is a `Kinetis\Orm\Date` property on a `DATE` column:
@@ -83,6 +86,29 @@ default, and every named one an entity uses.
   `TINYINT(1)`, and a job's file
   is stored as base64 text, at most 12 MiB of file (MySQL's
   `MEDIUMBLOB`).
+
+## Full-text indexes
+
+A resource's `fullText()` searches through an index the application
+creates in its own migration, on each engine the entity may live on.
+
+On MySQL, a `FULLTEXT` index over exactly the columns `fullText()`
+names, in its order. `MATCH` refuses a column list no index covers, so
+the search fails without it:
+
+```sql
+CREATE FULLTEXT INDEX products_name_fulltext ON products (name);
+CREATE FULLTEXT INDEX articles_fulltext ON articles (title, body);
+```
+
+On PostgreSQL, a GIN index over the expression the search builds, with
+the same configuration, columns and order. Without it the search still
+answers, by scanning the table:
+
+```sql
+CREATE INDEX tickets_subject_fulltext ON tickets USING GIN (to_tsvector('simple', coalesce(subject, '')));
+CREATE INDEX articles_fulltext ON articles USING GIN (to_tsvector('english', coalesce(title, '') || ' ' || coalesce(body, '')));
+```
 
 ## See also
 

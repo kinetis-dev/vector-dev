@@ -103,7 +103,7 @@ final readonly class ListRequest
 
         $search = $search === null ? null : trim($search);
 
-        if ($search !== null && $search !== '' && $resource->searchColumns() === []) {
+        if ($search !== null && $search !== '' && !$resource->searchable()) {
             throw new InvalidListRequestException("{$resource->slug()} has no searchable fields.");
         }
 

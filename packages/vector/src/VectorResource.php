@@ -127,6 +127,17 @@ abstract class VectorResource
         return [];
     }
 
+    /**
+     * The searchable text fields a full-text index covers, or null for
+     * none: `q` matches them with MATCH … AGAINST on MySQL and `@@` on
+     * PostgreSQL instead of LIKE. The index is the application's own
+     * migration.
+     */
+    public function fullText(): ?FullText
+    {
+        return null;
+    }
+
     /** Whether `GET /vector/search` covers this resource (it needs searchable fields either way). */
     public function globallySearchable(): bool
     {

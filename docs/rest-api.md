@@ -171,7 +171,7 @@ or not the columns name it.
 | `filter[field][op]=value` | Filterable fields, with the operators they publish. `filter[field]=value` is `eq`; `in`, `nin` and `between` take `a,b`. |
 | `filter[or][i]…`, `filter[and][i]…` | Alternatives and combined groups, four deep, 50 conditions at most. |
 | `filter[trashed]=only\|with` | The trash, on a soft-deleting resource. |
-| `q` | Search over the searchable fields. |
+| `q` | Search over the searchable fields: contains the term, a searchable relation's title contains it, or full-text fields hold its words; see {doc}`resources`. |
 | `group=field` | Group by a groupable field. |
 | `summaries=1` | Include the summaries. |
 | `columns=a,b` | Only these fields, plus what their display needs. |
