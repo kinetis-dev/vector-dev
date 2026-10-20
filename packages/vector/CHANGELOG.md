@@ -7,8 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-20
+
 ### Added
 
+- `GET /vector/openapi.json`: Vector's REST API as an OpenAPI 3.1
+  document with concrete paths for the resources the caller may list,
+  filtered through the same per-identity overlay as the descriptor, so a
+  hidden resource, field or action never appears. It is served where the
+  framework serves its own `/openapi.json`, per `OPENAPI_ENVIRONMENTS`
+  and `APP_ENV`; elsewhere its path answers 404 before authentication.
+- A searchable `belongsTo` makes `q` match the related record's title,
+  through a subquery that applies neither the target's `scope()` nor its
+  trash. Compilation refuses one whose target's title is not a string
+  column.
+- `VectorResource::fullText()`: `q` matches the named searchable text
+  fields by whole words through their full-text index, `MATCH ...
+  AGAINST` in boolean mode on MySQL and `to_tsvector @@ plainto_tsquery`
+  on PostgreSQL. LIKE stays on the other searchable columns.
 - `VectorResource::withoutCount()`: an offset list page skips its COUNT.
   The page is `{data, currentPage, perPage, total: null, lastPage: null,
   hasMore}`, with `hasMore` read from one row past the page through the
@@ -27,7 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `VectorResponse::assertHasMore()`. `assertTotal()` on an uncounted page
   now fails with a message pointing to it.
 
-## [0.9.6] - 2026-10-20
+### Changed
+
+- Ships the `@kinetis/vector-ui` 0.10.0 hosted bundle, which pages
+  uncounted and cursor lists, and makes `VectorPage.total` and
+  `lastPage` nullable.
 
 ### Fixed
 
