@@ -821,7 +821,7 @@ final class ResourceCompiler
                 'exportLimit' => $instance->exportLimit(),
                 'exportQueueLimit' => $instance->exportQueueLimit(),
                 'bulkLimit' => $instance->bulkLimit(),
-            ],
+            ] + array_filter(['withoutCount' => $instance->withoutCount(), 'cursorPaging' => $instance->cursorPaging()]),
             'show_view' => ['fields' => $showFields, 'extra' => $dependencies($showFields)],
             'policy' => $instance->policy(),
             'entityProperties' => $entityProperties,

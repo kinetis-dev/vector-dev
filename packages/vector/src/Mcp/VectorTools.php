@@ -84,7 +84,7 @@ final readonly class VectorTools
      * @param array<string, mixed> $filter field => value, or field => {op: value}
      * @return array<string, mixed>|ToolResult
      */
-    #[McpTool(name: 'vector_query', description: 'List records of a resource with the admin list grammar: filter {field: value | {op: value}, or: [filter, ...], and: [filter, ...]}, q, sort "-field,other", page, perPage')]
+    #[McpTool(name: 'vector_query', description: 'List records of a resource with the admin list grammar: filter {field: value | {op: value}, or: [filter, ...], and: [filter, ...]}, q, sort "-field,other", page, perPage. A page carries total and lastPage, or, for a resource vector_describe marks withoutCount, null for both and hasMore')]
     public function query(
         string $resource,
         #[ObjectMap] array $filter = [],

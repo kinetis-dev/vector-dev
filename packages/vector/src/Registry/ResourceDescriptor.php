@@ -443,6 +443,18 @@ final readonly class ResourceDescriptor
         return $this->data['table_view']['maxPerPage'];
     }
 
+    /** Whether an offset page skips the COUNT: `total` and `lastPage` null, `hasMore` instead. */
+    public function withoutCount(): bool
+    {
+        return $this->data['table_view']['withoutCount'] ?? false;
+    }
+
+    /** Whether the admin pages the list by cursor rather than by page number. */
+    public function cursorPaging(): bool
+    {
+        return $this->data['table_view']['cursorPaging'] ?? false;
+    }
+
     /** @return class-string<\Kinetis\Vector\Auth\ResourcePolicyInterface>|null */
     public function policy(): ?string
     {
@@ -470,7 +482,7 @@ final readonly class ResourceDescriptor
 
             return $widget;
         }, $public['widgets']);
-        $public['table'] = $public['table_view'];
+        $public['table'] = $public['table_view'] + ['withoutCount' => false, 'cursorPaging' => false];
         $public['show'] = $public['show_view'];
         unset($public['table_view'], $public['show_view']);
         $public['fields'] = array_map(self::publicField(...), $public['fields']);

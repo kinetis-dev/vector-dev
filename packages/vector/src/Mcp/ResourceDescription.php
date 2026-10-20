@@ -62,6 +62,8 @@ final class ResourceDescription
             'permissions' => $permissions,
             'search' => $public['table']['search'],
             'defaultSort' => $public['table']['defaultSort'],
+            // vector_query's pages of this resource carry no total
+            'withoutCount' => $resource->withoutCount() ? true : null,
             'fields' => $fields,
             'actions' => array_map(self::action(...), $public['actions']),
         ];

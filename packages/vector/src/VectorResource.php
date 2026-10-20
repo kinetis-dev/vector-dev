@@ -72,6 +72,28 @@ abstract class VectorResource
     }
 
     /**
+     * Whether an offset list skips its COUNT: the page then carries
+     * `total` and `lastPage` as null and a `hasMore` read from one row
+     * past the page, and the admin pages it by previous and next. For a
+     * table large enough that counting the match is the expensive part.
+     */
+    public function withoutCount(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Whether the admin pages this resource's list by cursor — keyset on
+     * the identifier, without sort, grouping, page numbers or a total —
+     * instead of by page number. The REST API is unchanged: `page` and
+     * `cursor` both keep working whichever is set.
+     */
+    public function cursorPaging(): bool
+    {
+        return false;
+    }
+
+    /**
      * The order a list takes when the request names none. Field names,
      * `-` for descending. Empty means the identifier, ascending.
      *

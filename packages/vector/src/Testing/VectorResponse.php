@@ -160,7 +160,17 @@ final readonly class VectorResponse
 
     public function assertTotal(int $total): self
     {
-        Assert::assertSame($total, $this->json()['total'] ?? null, 'The list total differs.');
+        $json = $this->json();
+        Assert::assertFalse(array_key_exists('total', $json) && $json['total'] === null, 'The list is not counted (the resource is withoutCount()); assert hasMore instead.');
+        Assert::assertSame($total, $json['total'] ?? null, 'The list total differs.');
+
+        return $this;
+    }
+
+    /** Whether another page follows, on an uncounted (withoutCount()) or a cursor page. */
+    public function assertHasMore(bool $hasMore = true): self
+    {
+        Assert::assertSame($hasMore, $this->json()['hasMore'] ?? null, $hasMore ? 'Another page should follow.' : 'No page should follow.');
 
         return $this;
     }

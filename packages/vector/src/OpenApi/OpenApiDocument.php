@@ -91,7 +91,7 @@ final readonly class OpenApiDocument
         $paths[$base]['get'] = self::operation("{$slug}.list", "List {$descriptor->label()}", [
             ...$this->listParameters($descriptor, $table),
             ...$this->pageParameters($descriptor, $table),
-        ], null, ['200' => ['description' => 'A page of records.', 'content' => self::json($this->page($record))]]);
+        ], null, ['200' => ['description' => 'A page of records.', 'content' => self::json($this->page($record, $descriptor->withoutCount()))]]);
         $paths[$base]['get']['description'] = '`filter[field]=value` is `eq`. `filter[or][i]…` and `filter[and][i]…` hold alternatives and combined groups of these same conditions, four deep and 50 conditions at most.';
 
         if ($permissions['create']) {
@@ -423,15 +423,32 @@ final readonly class OpenApiDocument
     }
 
     /**
+     * The list's page: by offset, or under a cursor. A withoutCount()
+     * resource's offset page has no total or last page and says whether
+     * another page follows instead.
+     *
      * @param array<string, string> $record
      * @return array<string, mixed>
      */
-    private function page(array $record): array
+    private function page(array $record, bool $withoutCount): array
     {
         $data = ['type' => 'array', 'items' => $record];
-
-        return ['oneOf' => [
-            [
+        $offset = $withoutCount
+            ? [
+                'type' => 'object',
+                'description' => 'Not counted: `total` and `lastPage` are null, and `hasMore` says whether another page follows.',
+                'properties' => [
+                    'data' => $data,
+                    'currentPage' => ['type' => 'integer'],
+                    'perPage' => ['type' => 'integer'],
+                    'total' => ['type' => 'null'],
+                    'lastPage' => ['type' => 'null'],
+                    'hasMore' => ['type' => 'boolean'],
+                    'summaries' => ['type' => 'object'],
+                ],
+                'required' => ['data', 'currentPage', 'perPage', 'total', 'lastPage', 'hasMore'],
+            ]
+            : [
                 'type' => 'object',
                 'properties' => [
                     'data' => $data,
@@ -442,7 +459,10 @@ final readonly class OpenApiDocument
                     'summaries' => ['type' => 'object'],
                 ],
                 'required' => ['data', 'currentPage', 'perPage', 'total', 'lastPage'],
-            ],
+            ];
+
+        return ['oneOf' => [
+            $offset,
             [
                 'type' => 'object',
                 'description' => 'Under a cursor.',

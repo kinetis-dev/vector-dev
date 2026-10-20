@@ -153,8 +153,10 @@ final readonly class ResourceService
      * plan of §4.6 — scope, soft-delete predicate, filters, search,
      * order (always terminated by the key), one page, one statement per
      * relation field, one aggregate statement when summaries are asked.
+     * A withoutCount() resource reads one row past the page instead of
+     * counting the match.
      *
-     * @return array<string, mixed> the Paginator envelope, or `{data, nextCursor, hasMore, perPage}` under a cursor
+     * @return array<string, mixed> the Paginator envelope — with `total` and `lastPage` null and a `hasMore` when the resource is withoutCount() — or `{data, nextCursor, hasMore, perPage}` under a cursor
      */
     public function list(ResourceDescriptor $resource, ListRequest $request, ?\Closure $restrict = null): array
     {
@@ -190,18 +192,36 @@ final readonly class ResourceService
             $query->orderBy($resource->primaryKeyColumn(), 'ASC');
         }
 
-        $page = $query->paginate($request->perPage, $request->page);
-        /** @var list<array<string, mixed>> $rows */
-        $rows = $page->data;
-        $relations = $this->loadRelations($resource, $fields, $rows);
+        if ($resource->withoutCount()) {
+            // one row past the page tells a full last page from one with more after it, without a COUNT
+            /** @var list<array<string, mixed>> $rows */
+            $rows = $query->limit($request->perPage + 1)->offset(($request->page - 1) * $request->perPage)->get();
+            $hasMore = count($rows) > $request->perPage;
+            $rows = array_slice($rows, 0, $request->perPage);
+            $relations = $this->loadRelations($resource, $fields, $rows);
 
-        $envelope = [
-            'data' => array_map(fn (array $row): array => $this->serializer->serialize($resource, $row, $fields, $relations, $instance), $rows),
-            'currentPage' => $page->currentPage,
-            'perPage' => $page->perPage,
-            'total' => $page->total,
-            'lastPage' => $page->lastPage,
-        ];
+            $envelope = [
+                'data' => array_map(fn (array $row): array => $this->serializer->serialize($resource, $row, $fields, $relations, $instance), $rows),
+                'currentPage' => $request->page,
+                'perPage' => $request->perPage,
+                'total' => null,
+                'lastPage' => null,
+                'hasMore' => $hasMore,
+            ];
+        } else {
+            $page = $query->paginate($request->perPage, $request->page);
+            /** @var list<array<string, mixed>> $rows */
+            $rows = $page->data;
+            $relations = $this->loadRelations($resource, $fields, $rows);
+
+            $envelope = [
+                'data' => array_map(fn (array $row): array => $this->serializer->serialize($resource, $row, $fields, $relations, $instance), $rows),
+                'currentPage' => $page->currentPage,
+                'perPage' => $page->perPage,
+                'total' => $page->total,
+                'lastPage' => $page->lastPage,
+            ];
+        }
 
         if ($request->summaries) {
             $envelope['summaries'] = $this->summaries($resource, $request, $restrict);
