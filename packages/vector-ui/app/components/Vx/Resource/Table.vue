@@ -89,13 +89,17 @@ const hasMore = ref(false)
 const summaryValues = ref<Record<string, number | null>>({})
 const loading = ref(false)
 let requestId = 0
+/** Whether the next load goes back to the first page: a changed search, filter, sort or page size asked for it. */
+let restart = false
 
 /**
  * Loads the page shown now, or the one $step away on a list that is not
  * counted. The step is taken only once its page has arrived: a request
  * that fails leaves the page number, the cursors and the rows as they were.
+ * While a return to the first page is owed, every load is that return.
  */
 async function load(step: VectorPageStep = 'stay') {
+    if (restart) step = 'first'
     const cursor = byCursor.value ? cursors.cursorFor(step) : null
     if (byCursor.value && cursor === null) return
 
@@ -109,6 +113,7 @@ async function load(step: VectorPageStep = 'stay') {
             if (id !== requestId) return
 
             cursors.received(step, result)
+            restart = false
             items.value = result.data
             total.value = null
             hasMore.value = result.hasMore
@@ -116,7 +121,7 @@ async function load(step: VectorPageStep = 'stay') {
             return
         }
 
-        const target = page.value + (step === 'forward' ? 1 : step === 'back' ? -1 : 0)
+        const target = step === 'first' ? 1 : page.value + (step === 'forward' ? 1 : step === 'back' ? -1 : 0)
         const sort: VectorSort[] = sortBy.value.map(s => ({ field: s.key, order: s.order === 'desc' ? 'desc' : 'asc' }))
         const result: VectorPage = await client.list({
             page: target, perPage: itemsPerPage.value, sort, filter: rawFilters(), q: term.value || undefined,
@@ -126,6 +131,7 @@ async function load(step: VectorPageStep = 'stay') {
         if (id !== requestId) return
 
         page.value = target
+        restart = false
         items.value = result.data
         total.value = result.total
         hasMore.value = result.hasMore ?? false
@@ -142,10 +148,9 @@ function rawFilters(): VectorFilterQuery {
     return wireFilters.value
 }
 
-/** Back to the first page, as a changed search, filter or page size needs. */
+/** Back to the first page, as a changed search, filter or page size needs: once that page has arrived. */
 function firstPage() {
-    page.value = 1
-    cursors.reset()
+    restart = true
 }
 
 const debouncedLoad = useDebounceFn(() => { firstPage(); load() }, 300)
@@ -158,7 +163,7 @@ function onOptions() {
 }
 
 // The table resets the page it pages itself on a new sort; an uncounted list pages here, so this does, before the table reports the sort
-watch(sortBy, () => { if (!counted.value) page.value = 1 }, { deep: true, flush: 'sync' })
+watch(sortBy, () => { if (!counted.value) firstPage() }, { deep: true, flush: 'sync' })
 
 // The pager of a list that is not counted: the table's own footer needs a total.
 const onFirstPage = computed(() => byCursor.value ? !cursors.hasPrevious.value : page.value === 1)

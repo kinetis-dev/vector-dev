@@ -218,6 +218,68 @@ describe('VxResourceTable, uncounted and by cursor', () => {
         expect(button(wrapper, 'Previous page').attributes('disabled')).toBeDefined()
     })
 
+    it('stays on an uncounted page when a new search fails, and goes back to the first page once it is answered', async () => {
+        let failures = 1
+        const list = endpoint('/vector/r/tags', (request) => {
+            const { page, q } = query(request)
+            if (q === 'tag' && failures-- > 0) return refused
+
+            return { body: { data: q === 'tag' ? rows([9]) : Number(page) === 1 ? rows([1, 2]) : rows([3]), currentPage: Number(page), perPage: 2, total: null, lastPage: null, hasMore: !q && Number(page) === 1 } }
+        })
+        const wrapper = await mount({ withoutCount: true }, list)
+        await button(wrapper, 'Next page').trigger('click')
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Page 2'))
+        await enabled(wrapper, 'Previous page')
+
+        // the search for page 1 is refused: still page 2, its rows, and a way back
+        await wrapper.get('input[aria-label="Search"]').setValue('tag')
+        await vi.waitFor(() => expect(query(list.requests.at(-1)!).q).toBe('tag'), { timeout: 2000 })
+        expect(query(list.requests.at(-1)!).page).toBe('1')
+        await flushPromises()
+        await enabled(wrapper, 'Previous page')
+        expect(wrapper.text()).toContain('Page 2')
+        expect(wrapper.text()).toContain('Tag 3')
+
+        // any step now asks for the first page of the search again, and takes it once it arrives
+        await button(wrapper, 'Previous page').trigger('click')
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Tag 9'))
+        expect(query(list.requests.at(-1)!)).toMatchObject({ page: '1', q: 'tag' })
+        expect(wrapper.text()).toContain('Page 1')
+        expect(button(wrapper, 'Previous page').attributes('disabled')).toBeDefined()
+    })
+
+    it('stays on a cursor page when a new search fails', async () => {
+        let failures = 1
+        const list = endpoint('/vector/r/tags', (request) => {
+            const { cursor, q } = query(request)
+            if (q === 'tag' && failures-- > 0) return refused
+
+            return {
+                body: q === 'tag'
+                    ? { data: rows([9]), nextCursor: null, hasMore: false, perPage: 2 }
+                    : cursor === ''
+                        ? { data: rows([1, 2]), nextCursor: 'after-2', hasMore: true, perPage: 2 }
+                        : { data: rows([3]), nextCursor: null, hasMore: false, perPage: 2 },
+            }
+        })
+        const wrapper = await mount({ cursorPaging: true }, list)
+        await button(wrapper, 'Next page').trigger('click')
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Tag 3'))
+        await enabled(wrapper, 'Previous page')
+
+        await wrapper.get('input[aria-label="Search"]').setValue('tag')
+        await vi.waitFor(() => expect(query(list.requests.at(-1)!).q).toBe('tag'), { timeout: 2000 })
+        expect(query(list.requests.at(-1)!).cursor).toBe('')
+        await flushPromises()
+        await enabled(wrapper, 'Previous page')
+        expect(wrapper.text()).toContain('Tag 3')
+
+        await button(wrapper, 'Previous page').trigger('click')
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Tag 9'))
+        expect(query(list.requests.at(-1)!)).toMatchObject({ cursor: '', q: 'tag' })
+        expect(button(wrapper, 'Previous page').attributes('disabled')).toBeDefined()
+    })
+
     it('shows no totals row on a cursor list, even for a resource that summarizes', async () => {
         const summarized = { fields: [...resource().fields.slice(0, 2), { ...resource().fields[0]!, name: 'uses', label: 'Uses', type: 'number' as const, summary: 'sum' as const }] }
         const list = endpoint('/vector/r/tags', () => ({ body: { data: rows([1, 2]).map(r => ({ ...r, uses: 3 })), nextCursor: null, hasMore: false, perPage: 2, summaries: { uses: 6 } } }))

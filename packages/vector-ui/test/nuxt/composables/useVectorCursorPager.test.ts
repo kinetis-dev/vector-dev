@@ -62,6 +62,21 @@ describe('useVectorCursorPager', () => {
         expect(pager.current.value).toBe('')
     })
 
+    it('goes back to the first page only once that page has arrived', () => {
+        const pager = useVectorCursorPager()
+        pager.received('stay', { nextCursor: 'c25', hasMore: true })
+        pager.received('forward', { nextCursor: 'c50', hasMore: true })
+
+        expect(pager.cursorFor('first')).toBe('')
+        expect(pager.current.value).toBe('c25')
+        expect(pager.hasPrevious.value).toBe(true)
+
+        pager.received('first', { nextCursor: 'c25', hasMore: true })
+        expect(pager.current.value).toBe('')
+        expect(pager.hasPrevious.value).toBe(false)
+        expect(pager.cursorFor('forward')).toBe('c25')
+    })
+
     it('resets to the first page', () => {
         const pager = useVectorCursorPager()
         pager.received('stay', { nextCursor: 'c25', hasMore: true })

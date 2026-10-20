@@ -33,6 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is not counted. Code that reads these, or renders these components,
   must handle `null`.
 
+### Fixed
+
+- A list returns to its first page on a new search, filter, sort, page
+  size or saved view only once that page has arrived. A request that
+  fails leaves the page number and the rows as they were, instead of
+  showing page 1 over the old page's rows; the next step asks for the
+  first page again. `VectorPageStep` gains `'first'`.
+
 ## [0.9.4] - 2026-10-19
 
 ### Changed

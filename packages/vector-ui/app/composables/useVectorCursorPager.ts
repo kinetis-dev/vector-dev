@@ -1,5 +1,5 @@
-/** Where a list goes from the page it shows: nowhere (a reload), the next page, or the one before. */
-export type VectorPageStep = 'stay' | 'forward' | 'back'
+/** Where a list goes from the page it shows: nowhere (a reload), the next page, the one before, or back to the first. */
+export type VectorPageStep = 'stay' | 'forward' | 'back' | 'first'
 
 /**
  * Keyset paging as a list walks it: the cursor of every page visited so
@@ -27,6 +27,7 @@ export function useVectorCursorPager() {
     function cursorFor(step: VectorPageStep): string | null {
         if (step === 'forward') return next.value
         if (step === 'back') return visited.value.length > 1 ? visited.value[visited.value.length - 2]! : null
+        if (step === 'first') return ''
         return current.value
     }
 
@@ -34,6 +35,7 @@ export function useVectorCursorPager() {
     function received(step: VectorPageStep, page: { nextCursor: string | null, hasMore: boolean }) {
         if (step === 'forward' && next.value !== null) visited.value = [...visited.value, next.value]
         if (step === 'back' && visited.value.length > 1) visited.value = visited.value.slice(0, -1)
+        if (step === 'first') visited.value = ['']
         next.value = page.hasMore ? page.nextCursor : null
     }
 
