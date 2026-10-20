@@ -15,6 +15,7 @@ use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\Vector\Files\VectorStorage;
 use Kinetis\Vector\Write\EntityWriter;
 use Kinetis\Vector\Jobs\VectorQueue;
+use Kinetis\Vector\OpenApi\OpenApiCache;
 use Kinetis\Vector\Translation\MessagesTranslator;
 use Kinetis\Vector\Translation\TranslatorInterface;
 use Kinetis\Vector\Ui\VectorUi;
@@ -40,6 +41,8 @@ final readonly class PackageBootstrap implements PackageBootstrapInterface
         $app->instance(VectorUi::class, VectorUi::fromConfig($config, $root->path));
         $app->instance(VectorDefaults::class, VectorDefaults::fromConfig($config));
         $app->instance(WidgetCache::class, new WidgetCache());
+        // The schemas every GET /vector/openapi.json shares, whoever asks: a request-neutral memo.
+        $app->instance(OpenApiCache::class, new OpenApiCache());
         // Vector's own tables, on VECTOR_DB_CONNECTION or the default connection; the link is resolved on first use.
         $app->instance(VectorDatabase::class, VectorDatabase::fromConfig($app, $config));
         // The dialect of each connection, and the reflection the default writer needs: request-neutral memos.

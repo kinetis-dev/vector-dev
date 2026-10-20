@@ -14,7 +14,6 @@ use Kinetis\Container\RequestScope;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Settings\SettingsGroup;
 use Kinetis\Vector\Store\PreferenceStore;
-use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Store\NotificationStore;
 use Kinetis\Vector\Store\SettingsStore;
 use Kinetis\Vector\Translation\Labels;
@@ -45,6 +44,7 @@ final readonly class SchemaController
         private \Kinetis\Vector\VectorDefaults $defaults,
         private LocaleResolver $locales,
         private Labels $labels,
+        private VisibleResources $visible,
     ) {}
 
     #[Get('/schema')]
@@ -53,14 +53,8 @@ final readonly class SchemaController
         $resources = [];
         $menu = [];
 
-        foreach ($this->service->resources() as $slug => $descriptor) {
-            $permissions = $this->service->permissions($descriptor);
-
-            if ($permissions['viewAny'] !== true) {
-                continue;
-            }
-
-            $resources[$slug] = $this->overlay($descriptor, $permissions);
+        foreach ($this->visible->all() as $slug => ['descriptor' => $descriptor, 'permissions' => $permissions]) {
+            $resources[$slug] = $this->visible->overlay($descriptor, $permissions);
             $menu[$descriptor->toArray()['group'] ?? 'Resources'][] = $slug;
         }
 
@@ -127,7 +121,7 @@ final readonly class SchemaController
 
         $locale = $this->locales->resolve((string) $this->user->id())['locale'];
 
-        return $this->cached($request, $this->labels->document($this->overlay($descriptor, $permissions), $locale), $locale);
+        return $this->cached($request, $this->labels->document($this->visible->overlay($descriptor, $permissions), $locale), $locale);
     }
 
     /** @return array<string, mixed> */
@@ -157,22 +151,6 @@ final readonly class SchemaController
         $service = $this->scope->get(ImpersonationInterface::class);
 
         return $service instanceof ImpersonationInterface ? $service : null;
-    }
-
-    /**
-     * The published descriptor with this user's overlay: the permissions
-     * and only the actions this user may run.
-     *
-     * @param array<string, bool> $permissions
-     * @return array<string, mixed>
-     */
-    private function overlay(ResourceDescriptor $descriptor, array $permissions): array
-    {
-        $public = $descriptor->toArray();
-        $visible = $this->service->visibleActions($descriptor, null);
-        $public['actions'] = array_values(array_filter($public['actions'], static fn (array $a): bool => in_array($a['name'], $visible, true)));
-
-        return [...$public, 'permissions' => $permissions];
     }
 
     /** @param array<string, mixed> $document */
