@@ -369,7 +369,7 @@ final class ResourceCompiler
 
                 foreach ($repeater['fields'] ?? [] as $name) {
                     if (!in_array($name, $writable, true)) {
-                        throw ResourceCompileException::field($owner, $field['name'], "names \"{$name}\", which is not a field a {$child['labelSingular']} row can write");
+                        throw ResourceCompileException::field($owner, $field['name'], "names \"{$name}\", which is not a writable field of {$child['labelSingular']}");
                     }
                 }
 
@@ -887,7 +887,7 @@ final class ResourceCompiler
         }
 
         if (trim($badge['color']) === '') {
-            throw new ResourceCompileException("{$class}::badge() has no colour.");
+            throw new ResourceCompileException("{$class}::badge() has no color.");
         }
 
         self::checkBadgeFilter($badge['filter'], $fields, $class);

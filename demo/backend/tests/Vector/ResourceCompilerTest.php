@@ -523,7 +523,7 @@ final class ResourceCompilerTest extends TestCase
                 return Badge::count([], ' ');
             }
         };
-        $this->assertRefused($blank::class . '::badge() has no colour.', $blank);
+        $this->assertRefused($blank::class . '::badge() has no color.', $blank);
 
         $unfilterable = new #[Resource(Category::class, slug: 'categories')] class extends VectorResource {
             public function fields(): array
@@ -780,7 +780,7 @@ final class ResourceCompilerTest extends TestCase
                 return [Id::make(), HasMany::to('lines', CompilerOrderLines::class)->repeater(['order', 'quantity', 'unitPriceCents'])];
             }
         };
-        $this->assertRefused(self::fieldRefusal($parent, 'lines', 'names "order", which is not a field a Order line row can write'), $parent);
+        $this->assertRefused(self::fieldRefusal($parent, 'lines', 'names "order", which is not a writable field of Order line'), $parent);
 
         $partial = new #[Resource(Order::class, slug: 'orders')] class extends VectorResource {
             public function fields(): array

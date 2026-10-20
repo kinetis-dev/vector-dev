@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ListRequest::fromQueryParams()` takes a caller's `perPageCap` only as a
   tighter bound: a cap above the resource's `maxPerPage()` no longer raises
   the page size a request may ask for.
+- Two compile refusals read correctly: a badge without a color says
+  "color", and a repeater naming a field its rows cannot write no longer
+  puts "a" before the child's label ("not a writable field of Order
+  line").
 
 ## [0.9.5] - 2026-10-19
 
