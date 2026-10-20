@@ -2487,7 +2487,8 @@
             ],
             "exportLimit": 10000,
             "exportQueueLimit": 250000,
-            "bulkLimit": 1000
+            "bulkLimit": 1000,
+            "cursorPaging": true
         },
         "show_view": {
             "fields": [
@@ -3166,7 +3167,8 @@
             ],
             "exportLimit": 10000,
             "exportQueueLimit": 250000,
-            "bulkLimit": 1000
+            "bulkLimit": 1000,
+            "withoutCount": true
         },
         "show_view": {
             "fields": [
