@@ -8,7 +8,8 @@ import type { VectorResource, VectorSelection } from '#vector/app/types/vector'
 const props = defineProps<{
     resource: VectorResource
     selection: VectorSelection
-    count: number
+    /** null: every match of a list that is not counted */
+    count: number | null
 }>()
 
 const emit = defineEmits<{ done: [affected: number], cancel: [] }>()
@@ -34,7 +35,9 @@ watch(chosen, (names) => {
 })
 
 const subject = computed(() => props.selection.all
-    ? t('list.bulkEdit.everyMatching', { noun: noun(props.resource.labelSingular), count: props.count })
+    ? props.count === null
+        ? t('list.bulkEdit.everyMatchingUncounted', { noun: noun(props.resource.labelSingular) })
+        : t('list.bulkEdit.everyMatching', { noun: noun(props.resource.labelSingular), count: props.count })
     : t('list.bulkEdit.some', { count: props.count, noun: noun(props.count === 1 ? props.resource.labelSingular : props.resource.label) }))
 
 async function save(event: SubmitEventPromise) {
@@ -83,7 +86,7 @@ async function save(event: SubmitEventPromise) {
                 <v-card-actions>
                     <v-spacer />
                     <v-btn variant="text" :disabled="running" @click="emit('cancel')">{{ t('common.cancel') }}</v-btn>
-                    <v-btn type="submit" color="primary" :loading="running" :disabled="!chosen.length">{{ t('list.bulkEdit.applyTo', { count }) }}</v-btn>
+                    <v-btn type="submit" color="primary" :loading="running" :disabled="!chosen.length">{{ count === null ? t('list.bulkEdit.applyToAll') : t('list.bulkEdit.applyTo', { count }) }}</v-btn>
                 </v-card-actions>
             </v-card>
         </v-form>

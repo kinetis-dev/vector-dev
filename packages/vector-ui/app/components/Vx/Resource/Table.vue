@@ -17,6 +17,11 @@ const preferences = useVectorPreferences()
 await preferences.load()
 
 // --- list state -------------------------------------------------------
+// How the list pages: by page number with a total (the default), by page
+// number without one (withoutCount), or by cursor (cursorPaging), which
+// orders by the identifier and so can neither sort nor group.
+const byCursor = computed(() => props.resource.table.cursorPaging === true)
+const counted = computed(() => !byCursor.value && props.resource.table.withoutCount !== true)
 const columns = ref<string[]>(preferences.get<string[]>(`columns.${props.resource.slug}`)?.filter(c => props.resource.table.columns.includes(c)) ?? [...props.resource.table.columns])
 // The filter: conditions that must all hold, "any of" groups of
 // alternatives, and whatever a saved view holds that the bar cannot edit.
@@ -27,10 +32,11 @@ const search = ref<string | null>('')
 const term = computed(() => (search.value ?? '').trim())
 const group = ref<string | null>(null)
 const trashed = ref<'without' | 'only' | 'with'>('without')
-const summaries = ref(props.resource.table.summaries.length > 0)
+const summaries = ref(!byCursor.value && props.resource.table.summaries.length > 0)
 const page = ref(1)
+const cursors = useVectorCursorPager()
 const itemsPerPage = ref(props.resource.table.perPage)
-const sortBy = ref<{ key: string, order?: boolean | 'asc' | 'desc' }[]>(props.resource.table.defaultSort.map(s => ({ key: s.field, order: s.order })))
+const sortBy = ref<{ key: string, order?: boolean | 'asc' | 'desc' }[]>(byCursor.value ? [] : props.resource.table.defaultSort.map(s => ({ key: s.field, order: s.order })))
 const activeView = ref<number | null>(null)
 
 const fields = computed<VectorField[]>(() => columns.value
@@ -43,7 +49,7 @@ const numeric = (field: VectorField) => ['number', 'money'].includes(field.type 
 const headers = computed(() => fields.value.map(field => ({
     key: field.name,
     title: field.label,
-    sortable: field.sortable,
+    sortable: field.sortable && !byCursor.value,
     align: (numeric(field) ? 'end' : 'start') as 'start' | 'end',
     nowrap: true,
 })))
@@ -75,7 +81,10 @@ const state = computed<VectorListState>(() => ({
 
 // --- loading ----------------------------------------------------------
 const items = ref<VectorRecord[]>([])
-const total = ref(0)
+/** The match's size; null when the list is not counted. */
+const total = ref<number | null>(0)
+/** Whether a page follows this one, on a list that is not counted. */
+const hasMore = ref(false)
 const summaryValues = ref<Record<string, number | null>>({})
 const loading = ref(false)
 let requestId = 0
@@ -85,6 +94,19 @@ async function load() {
     loading.value = true
 
     try {
+        if (byCursor.value) {
+            const result = await client.listByCursor(cursors.current.value, { perPage: itemsPerPage.value, filter: rawFilters(), q: term.value || undefined, columns: columns.value })
+
+            if (id !== requestId) return
+
+            items.value = result.data
+            total.value = null
+            hasMore.value = result.hasMore
+            cursors.received(result)
+            summaryValues.value = {}
+            return
+        }
+
         const sort: VectorSort[] = sortBy.value.map(s => ({ field: s.key, order: s.order === 'desc' ? 'desc' : 'asc' }))
         const result: VectorPage = await client.list({
             page: page.value, perPage: itemsPerPage.value, sort, filter: rawFilters(), q: term.value || undefined,
@@ -95,6 +117,7 @@ async function load() {
 
         items.value = result.data
         total.value = result.total
+        hasMore.value = result.hasMore ?? false
         summaryValues.value = result.summaries ?? {}
     } catch (error) {
         notifications.error(vectorErrorMessage(error))
@@ -108,13 +131,43 @@ function rawFilters(): VectorFilterQuery {
     return wireFilters.value
 }
 
-const debouncedLoad = useDebounceFn(() => { page.value = 1; load() }, 300)
+/** Back to the first page, as a changed search, filter or page size needs. */
+function firstPage() {
+    page.value = 1
+    cursors.reset()
+}
+
+const debouncedLoad = useDebounceFn(() => { firstPage(); load() }, 300)
 watch(search, () => debouncedLoad())
-watch([filters, groups, advanced, group, trashed, summaries], () => { page.value = 1; load() }, { deep: true })
+watch([filters, groups, advanced, group, trashed, summaries], () => { firstPage(); load() }, { deep: true })
 watch(columns, (c) => { preferences.put({ [`columns.${props.resource.slug}`]: c }).catch(() => undefined); load() })
 
 function onOptions() {
     load()
+}
+
+// The table resets the page it pages itself on a new sort; an uncounted list pages here, so this does, before the table reports the sort
+watch(sortBy, () => { if (!counted.value) page.value = 1 }, { deep: true, flush: 'sync' })
+
+// The pager of a list that is not counted: the table's own footer needs a total.
+const onFirstPage = computed(() => byCursor.value ? !cursors.hasPrevious.value : page.value === 1)
+
+function previousPage() {
+    if (byCursor.value ? !cursors.back() : page.value <= 1) return
+    if (!byCursor.value) page.value--
+    load()
+}
+
+function nextPage() {
+    if (byCursor.value ? !cursors.forward() : !hasMore.value) return
+    if (!byCursor.value) page.value++
+    load()
+}
+
+/** A new page size starts again from the first page; the table reports the change, which loads it. */
+function setPerPage(perPage: number) {
+    firstPage()
+    itemsPerPage.value = perPage
 }
 
 // --- views ------------------------------------------------------------
@@ -163,13 +216,14 @@ function applyView(view: VectorSavedView | null) {
     groups.value = decoded.groups
     advanced.value = decoded.advanced
     search.value = s.q ?? ''
-    group.value = s.group && known.has(s.group) ? s.group : null
+    // a cursor list orders by the identifier: a view's grouping, sort and summaries do not apply to it
+    group.value = !byCursor.value && s.group && known.has(s.group) ? s.group : null
     const sorts = s.sort ? s.sort.split(',').map(e => ({ key: e.replace(/^-/, ''), order: e.startsWith('-') ? 'desc' as const : 'asc' as const })).filter(x => known.has(x.key)) : []
-    sortBy.value = sorts.length ? sorts : props.resource.table.defaultSort.map(x => ({ key: x.field, order: x.order }))
+    sortBy.value = byCursor.value ? [] : sorts.length ? sorts : props.resource.table.defaultSort.map(x => ({ key: x.field, order: x.order }))
     if (s.columns) columns.value = s.columns.split(',').filter(c => props.resource.table.columns.includes(c))
     itemsPerPage.value = s.perPage ?? props.resource.table.perPage
-    summaries.value = s.summaries ?? summaries.value
-    page.value = 1
+    summaries.value = !byCursor.value && (s.summaries ?? summaries.value)
+    firstPage()
 }
 
 onMounted(() => {
@@ -186,7 +240,10 @@ watch(items, () => { selected.value = selected.value.filter(id => items.value.so
 const selection = computed<VectorSelection>(() => allMatching.value
     ? { all: { filter: rawFilters(), q: term.value || undefined } }
     : { ids: selected.value })
-const selectionCount = computed(() => allMatching.value ? total.value : selected.value.length)
+/** How many records the selection holds; null for every match of a list that is not counted. */
+const selectionCount = computed<number | null>(() => allMatching.value ? total.value : selected.value.length)
+/** Whether "all matching" would add records to the checked rows, on a list that cannot count them. */
+const moreMatching = computed(() => hasMore.value || !onFirstPage.value || selected.value.length < items.value.length)
 const indexActions = computed(() => props.resource.actions.filter(a => a.showOnIndex && !a.standalone))
 const standaloneActions = computed(() => props.resource.actions.filter(a => a.showOnIndex && a.standalone))
 const dialogAction = ref<VectorAction | null>(null)
@@ -195,7 +252,9 @@ const bulkEditing = ref(false)
 async function operation(op: 'delete' | 'restore' | 'forceDelete') {
     const n = selectionCount.value
     const subject = noun(n === 1 ? props.resource.labelSingular : props.resource.label)
-    const titles = { delete: t('list.operation.deleteTitle', { count: n, noun: subject }), restore: t('list.operation.restoreTitle', { count: n, noun: subject }), forceDelete: t('list.operation.forceDeleteTitle', { count: n, noun: subject }) }
+    const titles = n === null
+        ? { delete: t('list.operation.deleteAllTitle', { noun: subject }), restore: t('list.operation.restoreAllTitle', { noun: subject }), forceDelete: t('list.operation.forceDeleteAllTitle', { noun: subject }) }
+        : { delete: t('list.operation.deleteTitle', { count: n, noun: subject }), restore: t('list.operation.restoreTitle', { count: n, noun: subject }), forceDelete: t('list.operation.forceDeleteTitle', { count: n, noun: subject }) }
 
     if (!await confirm({ title: titles[op], text: op === 'restore' ? undefined : (props.resource.softDelete && op === 'delete' ? t('list.operation.toTrash') : t('list.operation.irreversible')), confirmText: op === 'restore' ? t('common.restore') : t('common.delete'), destructive: op !== 'restore' })) return
 
@@ -362,7 +421,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
         <div class="d-flex align-center flex-wrap ga-2 mb-2">
             <v-text-field v-model="search" :placeholder="resource.table.search.length ? t('list.search', { label: noun(resource.label) }) : t('list.noSearch')" :disabled="resource.table.search.length === 0" prepend-inner-icon="mdi-magnify" density="compact" hide-details clearable :aria-label="t('common.search')" style="max-width: 320px" />
             <VxListViewMenu ref="viewMenu" :resource="resource" :current="state" :active-id="activeView" @apply="applyView" @update:active-id="(id: number | null) => activeView = id" />
-            <v-select v-if="resource.table.groupable.length" v-model="group" :items="[{ title: t('list.noGrouping'), value: null }, ...resource.table.groupable.map(g => ({ title: resource.fields.find(f => f.name === g)?.label ?? g, value: g }))]" :label="t('list.groupBy')" density="compact" hide-details style="max-width: 200px" />
+            <v-select v-if="resource.table.groupable.length && !byCursor" v-model="group" :items="[{ title: t('list.noGrouping'), value: null }, ...resource.table.groupable.map(g => ({ title: resource.fields.find(f => f.name === g)?.label ?? g, value: g }))]" :label="t('list.groupBy')" density="compact" hide-details style="max-width: 200px" />
             <v-select v-if="resource.softDelete" v-model="trashed" :items="[{ title: t('list.trash.active'), value: 'without' }, { title: t('list.trash.only'), value: 'only' }, { title: t('list.trash.with'), value: 'with' }]" density="compact" hide-details :aria-label="t('list.trash.label')" style="max-width: 180px" prepend-inner-icon="mdi-delete-clock-outline" />
             <v-spacer />
             <v-btn v-for="action in standaloneActions" :key="action.name" size="small" variant="tonal" :prepend-icon="action.icon ?? undefined" @click="dialogAction = action">{{ action.label }}</v-btn>
@@ -387,6 +446,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
             :resource="resource"
             :selected="selected.length"
             :total="total"
+            :more="moreMatching"
             :all-matching="allMatching"
             :trashed-only="trashed === 'only'"
             :actions="indexActions"
@@ -409,12 +469,12 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
 
         <v-data-table-server
             v-model="selected"
-            v-model:page="page"
             v-model:items-per-page="itemsPerPage"
             v-model:sort-by="sortBy"
+            :page="counted ? page : 1"
             :headers="headers"
             :items="items"
-            :items-length="total"
+            :items-length="counted ? total ?? 0 : items.length"
             :loading="loading"
             :items-per-page-options="resource.table.perPageOptions"
             :group-by="group ? [{ key: group, order: 'asc' }] : []"
@@ -423,6 +483,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
             hover
             fixed-header
             density="comfortable"
+            @update:page="(p: number) => { if (counted) page = p }"
             @update:options="onOptions"
             @click:row="(_: Event, { item }: { item: VectorRecord }) => open(item)"
         >
@@ -482,6 +543,20 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
                         </template>
                     </td>
                 </tr>
+            </template>
+
+            <template v-if="!counted" #bottom>
+                <VxListPager
+                    :per-page="itemsPerPage"
+                    :per-page-options="resource.table.perPageOptions"
+                    :page="byCursor ? null : page"
+                    :has-previous="!onFirstPage"
+                    :has-next="byCursor ? cursors.hasNext.value : hasMore"
+                    :disabled="loading"
+                    @update:per-page="setPerPage"
+                    @previous="previousPage"
+                    @next="nextPage"
+                />
             </template>
 
             <template #no-data>

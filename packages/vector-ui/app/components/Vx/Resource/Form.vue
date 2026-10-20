@@ -131,7 +131,8 @@ async function allRelatedIds(id: string | number, field: VectorField): Promise<u
         const result = await client.related(id, field.name, { page, perPage })
         ids.push(...result.data.map(r => r.id))
 
-        if (page >= result.lastPage) return ids
+        // an uncounted (withoutCount) target has no last page: it says whether another follows
+        if (result.lastPage === null ? !result.hasMore : page >= result.lastPage) return ids
     }
 }
 

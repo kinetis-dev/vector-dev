@@ -8,7 +8,8 @@ const props = defineProps<{
     resource: VectorResource
     action: VectorAction
     selection: VectorSelection | null
-    count: number
+    /** null: every match of a list that is not counted */
+    count: number | null
 }>()
 
 const emit = defineEmits<{ done: [affected: number], cancel: [] }>()
@@ -30,7 +31,9 @@ for (const field of props.action.fields) {
 const subject = computed(() => props.action.standalone
     ? ''
     : props.selection?.all
-        ? t('actions.subjectAll', { label: noun(props.resource.labelSingular), count: props.count })
+        ? props.count === null
+            ? t('actions.subjectAllUncounted', { label: noun(props.resource.labelSingular) })
+            : t('actions.subjectAll', { label: noun(props.resource.labelSingular), count: props.count })
         : t('actions.subjectCount', { count: props.count, label: noun(props.count === 1 ? props.resource.labelSingular : props.resource.label) }))
 
 async function run(event: SubmitEventPromise) {

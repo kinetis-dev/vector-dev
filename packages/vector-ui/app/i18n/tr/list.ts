@@ -36,6 +36,9 @@ export default {
         deleteTitle: '{count} {noun} silinsin mi?',
         restoreTitle: '{count} {noun} geri yüklensin mi?',
         forceDeleteTitle: '{count} {noun} kalıcı olarak silinsin mi?',
+        deleteAllTitle: 'Eşleşen tüm {noun} silinsin mi?',
+        restoreAllTitle: 'Eşleşen tüm {noun} geri yüklensin mi?',
+        forceDeleteAllTitle: 'Eşleşen tüm {noun} kalıcı olarak silinsin mi?',
         toTrash: 'Çöp kutusuna taşınırlar ve geri yüklenebilirler.',
         irreversible: 'Bu işlem geri alınamaz.',
         restored: '{count} {noun} geri yüklendi.',
@@ -43,18 +46,22 @@ export default {
     },
     bulk: {
         allMatching: 'Eşleşen tüm kayıtlar: {total}',
+        allMatchingUncounted: 'Eşleşen tüm kayıtlar',
         selected: '{count} seçili',
         selectAllMatching: 'Eşleşen tüm kayıtları seç: {total}',
+        selectAllMatchingUncounted: 'Eşleşen tüm kayıtları seç',
         onlyChecked: 'Yalnızca işaretli satırlar',
         clearSelection: 'Seçimi temizle',
     },
     bulkEdit: {
         everyMatching: 'eşleşen her {noun} ({count})',
+        everyMatchingUncounted: 'eşleşen her {noun}',
         some: '{count} {noun}',
         title: 'Düzenle: {subject}',
         fieldsToChange: 'Değiştirilecek alanlar',
         fieldsHint: 'Yalnızca seçtiğiniz alanlar yazılır; diğer tüm değerler olduğu gibi kalır.',
         applyTo: 'Uygula ({count})',
+        applyToAll: 'Eşleşen tümüne uygula',
         updated: '{count} {noun} güncellendi.',
     },
     columns: {
@@ -141,6 +148,9 @@ export default {
             update: 'Her satır, değeri eşleşen kaydı günceller; hiçbir kayıtla eşleşmeyen satır, başarısız satırlar dosyasına gider.',
             upsert: 'Her satır, değeri eşleşen kaydı günceller ya da eşleşen yoksa yeni bir kayıt oluşturur.',
         },
+    },
+    pager: {
+        page: 'Sayfa {page}',
     },
     page: {
         create: 'Yeni {noun}',

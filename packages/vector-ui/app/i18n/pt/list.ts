@@ -36,6 +36,9 @@ export default {
         deleteTitle: 'Eliminar {count} {noun}?',
         restoreTitle: 'Restaurar {count} {noun}?',
         forceDeleteTitle: 'Eliminar definitivamente {count} {noun}?',
+        deleteAllTitle: 'Eliminar todos os {noun} correspondentes?',
+        restoreAllTitle: 'Restaurar todos os {noun} correspondentes?',
+        forceDeleteAllTitle: 'Eliminar definitivamente todos os {noun} correspondentes?',
         toTrash: 'São movidos para o lixo e podem ser restaurados.',
         irreversible: 'Esta ação não pode ser anulada.',
         restored: '{count} {noun} restaurados.',
@@ -43,18 +46,22 @@ export default {
     },
     bulk: {
         allMatching: 'Todos os {total} correspondentes',
+        allMatchingUncounted: 'Todos os registos correspondentes',
         selected: '{count} selecionados',
         selectAllMatching: 'Selecionar todos os {total} correspondentes',
+        selectAllMatchingUncounted: 'Selecionar todos os registos correspondentes',
         onlyChecked: 'Apenas as linhas marcadas',
         clearSelection: 'Limpar seleção',
     },
     bulkEdit: {
         everyMatching: 'todos os {noun} correspondentes ({count})',
+        everyMatchingUncounted: 'todos os {noun} correspondentes',
         some: '{count} {noun}',
         title: 'Editar {subject}',
         fieldsToChange: 'Campos a alterar',
         fieldsHint: 'Só são gravados os campos que escolher; todos os outros valores ficam como estão.',
         applyTo: 'Aplicar a {count}',
+        applyToAll: 'Aplicar a todos os correspondentes',
         updated: '{count} {noun} atualizados.',
     },
     columns: {
@@ -141,6 +148,9 @@ export default {
             update: 'Cada linha atualiza o registo cujo valor corresponde; uma linha sem correspondência vai para o ficheiro de linhas com falha.',
             upsert: 'Cada linha atualiza o registo cujo valor corresponde, ou cria um quando não há nenhum.',
         },
+    },
+    pager: {
+        page: 'Página {page}',
     },
     page: {
         create: 'Novo {noun}',

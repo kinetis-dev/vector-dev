@@ -36,6 +36,9 @@ export default {
         deleteTitle: 'Eliminare {count} {noun}?',
         restoreTitle: 'Ripristinare {count} {noun}?',
         forceDeleteTitle: 'Eliminare definitivamente {count} {noun}?',
+        deleteAllTitle: 'Eliminare tutti i {noun} corrispondenti?',
+        restoreAllTitle: 'Ripristinare tutti i {noun} corrispondenti?',
+        forceDeleteAllTitle: 'Eliminare definitivamente tutti i {noun} corrispondenti?',
         toTrash: 'Vengono spostati nel cestino e possono essere ripristinati.',
         irreversible: 'L’operazione non può essere annullata.',
         restored: '{count} {noun} ripristinati.',
@@ -43,18 +46,22 @@ export default {
     },
     bulk: {
         allMatching: 'Tutti i {total} corrispondenti',
+        allMatchingUncounted: 'Tutti i record corrispondenti',
         selected: '{count} selezionati',
         selectAllMatching: 'Seleziona tutti i {total} corrispondenti',
+        selectAllMatchingUncounted: 'Seleziona tutti i record corrispondenti',
         onlyChecked: 'Solo le righe selezionate',
         clearSelection: 'Annulla selezione',
     },
     bulkEdit: {
         everyMatching: 'tutti i {noun} corrispondenti ({count})',
+        everyMatchingUncounted: 'tutti i {noun} corrispondenti',
         some: '{count} {noun}',
         title: 'Modifica {subject}',
         fieldsToChange: 'Campi da modificare',
         fieldsHint: 'Vengono scritti solo i campi scelti; tutti gli altri valori restano invariati.',
         applyTo: 'Applica a {count}',
+        applyToAll: 'Applica a tutti i corrispondenti',
         updated: '{count} {noun} aggiornati.',
     },
     columns: {
@@ -141,6 +148,9 @@ export default {
             update: 'Ogni riga aggiorna il record con il valore corrispondente; una riga senza corrispondenze finisce nel file delle righe non riuscite.',
             upsert: 'Ogni riga aggiorna il record con il valore corrispondente, oppure ne crea uno se non ce ne sono.',
         },
+    },
+    pager: {
+        page: 'Pagina {page}',
     },
     page: {
         create: 'Nuovo {noun}',

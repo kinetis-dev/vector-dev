@@ -36,6 +36,9 @@ export default {
         deleteTitle: 'Видалити {noun} ({count})?',
         restoreTitle: 'Відновити {noun} ({count})?',
         forceDeleteTitle: 'Видалити {noun} ({count}) назавжди?',
+        deleteAllTitle: 'Видалити всі відповідні {noun}?',
+        restoreAllTitle: 'Відновити всі відповідні {noun}?',
+        forceDeleteAllTitle: 'Видалити всі відповідні {noun} назавжди?',
         toTrash: 'Їх буде переміщено до кошика, звідки їх можна відновити.',
         irreversible: 'Цю дію неможливо скасувати.',
         restored: '{noun}: відновлено {count}.',
@@ -43,18 +46,22 @@ export default {
     },
     bulk: {
         allMatching: 'Усі відповідні: {total}',
+        allMatchingUncounted: 'Усі відповідні записи',
         selected: 'Вибрано: {count}',
         selectAllMatching: 'Вибрати всі відповідні ({total})',
+        selectAllMatchingUncounted: 'Вибрати всі відповідні записи',
         onlyChecked: 'Лише позначені рядки',
         clearSelection: 'Скасувати вибір',
     },
     bulkEdit: {
         everyMatching: 'усі відповідні {noun} ({count})',
+        everyMatchingUncounted: 'усі відповідні {noun}',
         some: '{noun} ({count})',
         title: 'Редагувати {subject}',
         fieldsToChange: 'Поля для зміни',
         fieldsHint: 'Записуються лише вибрані поля; усі інші значення залишаються без змін.',
         applyTo: 'Застосувати до {count}',
+        applyToAll: 'Застосувати до всіх відповідних',
         updated: '{noun}: оновлено {count}.',
     },
     columns: {
@@ -141,6 +148,9 @@ export default {
             update: 'Кожен рядок оновлює запис із відповідним значенням; рядок без відповідника потрапляє до файлу з невдалими рядками.',
             upsert: 'Кожен рядок оновлює запис із відповідним значенням або створює новий, якщо такого немає.',
         },
+    },
+    pager: {
+        page: 'Сторінка {page}',
     },
     page: {
         create: 'Створити: {noun}',

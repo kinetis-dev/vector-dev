@@ -36,6 +36,9 @@ export default {
         deleteTitle: '{count} 件の{noun}を削除しますか？',
         restoreTitle: '{count} 件の{noun}を復元しますか？',
         forceDeleteTitle: '{count} 件の{noun}を完全に削除しますか？',
+        deleteAllTitle: '一致するすべての{noun}を削除しますか？',
+        restoreAllTitle: '一致するすべての{noun}を復元しますか？',
+        forceDeleteAllTitle: '一致するすべての{noun}を完全に削除しますか？',
         toTrash: 'ゴミ箱に移動され、後で復元できます。',
         irreversible: 'この操作は元に戻せません。',
         restored: '{count} 件の{noun}を復元しました。',
@@ -43,18 +46,22 @@ export default {
     },
     bulk: {
         allMatching: '一致する全 {total} 件',
+        allMatchingUncounted: '一致するすべてのレコード',
         selected: '{count} 件選択中',
         selectAllMatching: '一致する全 {total} 件を選択',
+        selectAllMatchingUncounted: '一致するすべてのレコードを選択',
         onlyChecked: 'チェックした行のみ',
         clearSelection: '選択を解除',
     },
     bulkEdit: {
         everyMatching: '条件に一致するすべての{noun}（{count}）',
+        everyMatchingUncounted: '条件に一致するすべての{noun}',
         some: '{count} 件の{noun}',
         title: '{subject}を編集',
         fieldsToChange: '変更するフィールド',
         fieldsHint: '選択したフィールドのみが書き込まれ、その他の値はそのまま保持されます。',
         applyTo: '{count} 件に適用',
+        applyToAll: '一致するすべてに適用',
         updated: '{count} 件の{noun}を更新しました。',
     },
     columns: {
@@ -141,6 +148,9 @@ export default {
             update: '各行は値が一致するレコードを更新します。一致しない行は失敗行ファイルに出力されます。',
             upsert: '各行は値が一致するレコードを更新し、一致しない場合は新しいレコードを作成します。',
         },
+    },
+    pager: {
+        page: '{page} ページ',
     },
     page: {
         create: '新規{noun}',

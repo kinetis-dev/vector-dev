@@ -36,6 +36,9 @@ export default {
         deleteTitle: 'Excluir {count} {noun}?',
         restoreTitle: 'Restaurar {count} {noun}?',
         forceDeleteTitle: 'Excluir permanentemente {count} {noun}?',
+        deleteAllTitle: 'Excluir todos os {noun} correspondentes?',
+        restoreAllTitle: 'Restaurar todos os {noun} correspondentes?',
+        forceDeleteAllTitle: 'Excluir permanentemente todos os {noun} correspondentes?',
         toTrash: 'Eles vão para a lixeira e podem ser restaurados.',
         irreversible: 'Esta ação não pode ser desfeita.',
         restored: '{count} {noun} restaurados.',
@@ -43,18 +46,22 @@ export default {
     },
     bulk: {
         allMatching: 'Todos os {total} correspondentes',
+        allMatchingUncounted: 'Todos os registros correspondentes',
         selected: '{count} selecionados',
         selectAllMatching: 'Selecionar todos os {total} correspondentes',
+        selectAllMatchingUncounted: 'Selecionar todos os registros correspondentes',
         onlyChecked: 'Somente as linhas marcadas',
         clearSelection: 'Limpar seleção',
     },
     bulkEdit: {
         everyMatching: 'todos os {noun} correspondentes ({count})',
+        everyMatchingUncounted: 'todos os {noun} correspondentes',
         some: '{count} {noun}',
         title: 'Editar {subject}',
         fieldsToChange: 'Campos a alterar',
         fieldsHint: 'Somente os campos que você escolher são gravados; todos os outros valores permanecem como estão.',
         applyTo: 'Aplicar a {count}',
+        applyToAll: 'Aplicar a todos os correspondentes',
         updated: '{count} {noun} atualizados.',
     },
     columns: {
@@ -141,6 +148,9 @@ export default {
             update: 'Cada linha atualiza o registro cujo valor corresponde; uma linha sem correspondência vai para o arquivo de linhas com falha.',
             upsert: 'Cada linha atualiza o registro cujo valor corresponde, ou cria um quando não há nenhum.',
         },
+    },
+    pager: {
+        page: 'Página {page}',
     },
     page: {
         create: 'Novo {noun}',

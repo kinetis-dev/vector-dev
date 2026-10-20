@@ -36,6 +36,9 @@ export default {
         deleteTitle: 'למחוק {count} {noun}?',
         restoreTitle: 'לשחזר {count} {noun}?',
         forceDeleteTitle: 'למחוק לצמיתות {count} {noun}?',
+        deleteAllTitle: 'למחוק את כל הרשומות התואמות מסוג {noun}?',
+        restoreAllTitle: 'לשחזר את כל הרשומות התואמות מסוג {noun}?',
+        forceDeleteAllTitle: 'למחוק לצמיתות את כל הרשומות התואמות מסוג {noun}?',
         toTrash: 'הרשומות יועברו לסל המחזור וניתן יהיה לשחזר אותן.',
         irreversible: 'לא ניתן לבטל פעולה זו.',
         restored: 'שוחזרו: {count} {noun}.',
@@ -43,18 +46,22 @@ export default {
     },
     bulk: {
         allMatching: 'כל {total} הרשומות התואמות',
+        allMatchingUncounted: 'כל הרשומות התואמות',
         selected: '{count} נבחרו',
         selectAllMatching: 'בחירת כל {total} הרשומות התואמות',
+        selectAllMatchingUncounted: 'בחירת כל הרשומות התואמות',
         onlyChecked: 'רק השורות המסומנות',
         clearSelection: 'ניקוי הבחירה',
     },
     bulkEdit: {
         everyMatching: 'כל הרשומות התואמות מסוג {noun} ({count})',
+        everyMatchingUncounted: 'כל הרשומות התואמות מסוג {noun}',
         some: '{count} {noun}',
         title: 'עריכת {subject}',
         fieldsToChange: 'שדות לשינוי',
         fieldsHint: 'ייכתבו רק השדות שנבחרו; כל שאר הערכים יישארו כפי שהם.',
         applyTo: 'החלה על {count}',
+        applyToAll: 'החלה על כל הרשומות התואמות',
         updated: 'עודכנו: {count} {noun}.',
     },
     columns: {
@@ -141,6 +148,9 @@ export default {
             update: 'כל שורה מעדכנת את הרשומה שהערך שלה תואם; שורה שאינה תואמת אף רשומה עוברת לקובץ השורות שנכשלו.',
             upsert: 'כל שורה מעדכנת את הרשומה שהערך שלה תואם, או יוצרת רשומה חדשה כשאין התאמה.',
         },
+    },
+    pager: {
+        page: 'עמוד {page}',
     },
     page: {
         create: 'יצירת {noun}',
