@@ -218,4 +218,17 @@ describe('VxResourceTable, uncounted and by cursor', () => {
         expect(button(wrapper, 'Previous page').attributes('disabled')).toBeDefined()
     })
 
+    it('shows no totals row on a cursor list, even for a resource that summarizes', async () => {
+        const summarized = { fields: [...resource().fields.slice(0, 2), { ...resource().fields[0]!, name: 'uses', label: 'Uses', type: 'number' as const, summary: 'sum' as const }] }
+        const list = endpoint('/vector/r/tags', () => ({ body: { data: rows([1, 2]).map(r => ({ ...r, uses: 3 })), nextCursor: null, hasMore: false, perPage: 2, summaries: { uses: 6 } } }))
+        cleanups.push(list.unregister)
+        const base = resource(summarized)
+        const wrapper = await mountSuspended(VxResourceTable, { props: { resource: { ...base, table: { ...base.table, columns: ['id', 'name', 'uses'], perPage: 2, perPageOptions: [2, 10], summaries: ['uses'], cursorPaging: true } } } })
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Tag 1'))
+        await flushPromises()
+
+        expect(query(list.requests[0]!)).not.toHaveProperty('summaries')
+        expect(wrapper.findAll('.v-data-table tbody tr')).toHaveLength(2)
+        expect(wrapper.text()).not.toContain('Sum')
+    })
 })

@@ -540,7 +540,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
                 </tr>
             </template>
 
-            <template v-if="summaries && Object.keys(summaryValues).length" #body.append>
+            <template v-if="!byCursor && summaries && Object.keys(summaryValues).length" #body.append>
                 <tr class="font-weight-medium bg-surface-light">
                     <td />
                     <td v-if="group" />
