@@ -9,7 +9,7 @@ is validated, hooked and audited.
 |---|---|---|
 | `vector_resources` | — | Lists the resources this identity may view: slug, label and group. |
 | `vector_describe` | `resource` | Describes one resource's fields, actions and permissions (below). |
-| `vector_query` | `resource`, `filter`, `q`, `sort`, `page`, `perPage` | Lists records under the list grammar. `perPage` defaults to 25 and is capped at 200 and at the resource's own maximum. |
+| `vector_query` | `resource`, `filter`, `q`, `sort`, `page`, `perPage` | Lists records under the list grammar. `perPage` defaults to 25 and is capped at 200 and at the resource's own maximum. A page carries `total` and `lastPage`; for a resource described as `withoutCount`, both are `null` and `hasMore` says whether another page follows. |
 | `vector_get` | `resource`, `id` | Reads one record, with its permissions. |
 | `vector_create` | `resource`, `values` | Creates a record, validated as the form validates it. |
 | `vector_update` | `resource`, `id`, `values`, `version` | Updates the fields in `values`. Pass the `version` you read to refuse a stale write. |
@@ -34,7 +34,9 @@ states:
   other fields' values.
 
 The description also carries each action with its dialog fields, and
-what this identity may do. It is in the identity's language, and a field
+what this identity may do. `withoutCount: true` marks a resource whose
+`vector_query` pages are not counted (see {doc}`rest-api`); the key is
+absent otherwise. It is in the identity's language, and a field
 a policy hides is left out. Files and images can't be uploaded through
 the tools.
 

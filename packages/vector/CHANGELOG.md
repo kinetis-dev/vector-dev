@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `VectorResource::withoutCount()`: an offset list page skips its COUNT.
+  The page is `{data, currentPage, perPage, total: null, lastPage: null,
+  hasMore}`, with `hasMore` read from one row past the page through the
+  same policy, scope and trash predicate; summaries still work. A counted
+  resource's page is unchanged and carries no `hasMore`.
+- `VectorResource::cursorPaging()`: the admin pages the list by cursor.
+  The REST API is unchanged: `?page=` and `?cursor=` work on every
+  resource.
+- Both flags are published in the schema's `table` (`withoutCount`,
+  `cursorPaging`). The OpenAPI document gives a withoutCount resource's
+  list `total` and `lastPage` as `null` and documents `hasMore`;
+  `vector_describe` marks it `withoutCount`, and `vector_query` says so.
+- `VectorResponse::assertHasMore()`. `assertTotal()` on an uncounted page
+  now fails with a message pointing to it.
+
 ## [0.9.6] - 2026-10-20
 
 ### Fixed

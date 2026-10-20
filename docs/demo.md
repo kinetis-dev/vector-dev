@@ -230,7 +230,7 @@ The test suite expects the stock data set. Put it back with
 
 | To see | Look in `demo/backend/` |
 |---|---|
-| Resources, actions, widgets, dashboards and settings groups | `src/Vector/`; `ProductResource` declares soft deletes, summaries and five actions. |
+| Resources, actions, widgets, dashboards and settings groups | `src/Vector/`; `ProductResource` declares soft deletes, summaries and five actions; `OrderResource` lists without a count (`withoutCount()`), `OrderLineResource` pages by cursor (`cursorPaging()`) ({doc}`lists`). |
 | Both sign-ins, their throttling and impersonation | `src/Auth/`: the JWT API under `/auth/*` and the session form at `/login` ({doc}`authentication`). |
 | Rich text rendered outside the admin | `GET /shop/products/{id}` (`src/Http/ProductPageController.php`) renders a product description with `Document::toHtml()`. |
 | Runtime UI extensions | `public/vector-extensions/`: a stock-level cell, and a "Stock overview" page reading `GET /vector-demo/stock-overview` ({doc}`customizing-the-ui`). |

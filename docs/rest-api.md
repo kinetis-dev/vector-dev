@@ -54,6 +54,15 @@ application).
 - **A list** — `{data, currentPage, perPage, total, lastPage}`, or
   `{data, nextCursor, hasMore, perPage}` under a cursor, plus
   `summaries` when asked.
+- **An uncounted list** — a resource that declares `withoutCount()`
+  issues no COUNT: its offset page is `{data, currentPage, perPage,
+  total: null, lastPage: null, hasMore}`, where `hasMore` says whether
+  another page follows (read from one row past the page), plus
+  `summaries` when asked. A counted resource's page carries no
+  `hasMore`. `GET /vector/openapi.json` describes each resource's own
+  form. The cursor envelope is the same for every resource, and so is
+  a collection's page under `/{id}/{relation}`, which takes the target
+  resource's form.
 - **A record** — `{data, permissions}`, where `permissions` is
   `{update, delete, restore, forceDelete, actions}`.
 - **A write refusal** — the framework's RFC 9457 document with

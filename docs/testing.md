@@ -38,6 +38,12 @@ Every call answers a `VectorResponse` with chaining assertions —
 `assertPermission`, `assertHasField`, `assertQueued` and more. `raw()`
 is the framework's `TestResponse`, for anything else.
 
+On a resource that declares `withoutCount()`, a list page has no total:
+`assertTotal()` fails with a message saying so, and
+`assertHasMore()` — or `assertHasMore(false)` on the last page — checks
+whether another page follows. `assertHasMore()` reads a cursor page's
+`hasMore` the same way.
+
 ## Waiting on the database without blocking
 
 On a persistent worker, a request that waits on the database has to

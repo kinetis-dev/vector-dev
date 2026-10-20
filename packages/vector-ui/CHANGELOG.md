@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A list whose resource is `withoutCount` pages by previous and next
+  with the page number, and shows no total and no last page. "Select all
+  matching" and its confirmations name every matching record without a
+  count.
+- A list whose resource is `cursorPaging` pages by cursor, keeping the
+  cursors it visited so Previous works. It offers no sort, grouping,
+  page numbers, total or totals row; search, filters and page size
+  return it to the first page, and so does a reload.
+- A relation panel whose target is `withoutCount` pages by previous and
+  next, and copying a record's many-to-many memberships walks such a
+  target by `hasMore`.
+- `useVectorResource().listByCursor()`, `useVectorCursorPager()`,
+  `VxListPager` and the `VectorCursorPage` type. `VectorPage.total` and
+  `lastPage` are now `number | null`, with an optional `hasMore`.
+
 ## [0.9.4] - 2026-10-19
 
 ### Changed
