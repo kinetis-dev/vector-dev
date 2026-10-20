@@ -102,8 +102,8 @@ CREATE FULLTEXT INDEX articles_fulltext ON articles (title, body);
 ```
 
 On PostgreSQL, a GIN index over the expression the search builds, with
-the same configuration, columns and order. Without it the search still
-answers, by scanning the table:
+the same configuration, columns and order. Without it the search
+answers by scanning the table:
 
 ```sql
 CREATE INDEX tickets_subject_fulltext ON tickets USING GIN (to_tsvector('simple', coalesce(subject, '')));

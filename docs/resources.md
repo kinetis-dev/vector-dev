@@ -143,10 +143,11 @@ The list's `q` matches any `searchable()` field:
   (`LIKE`, `ILIKE` on PostgreSQL).
 - A `BelongsTo` field matches when the related record's title contains
   the term. The match is a subquery on the resource's connection, so a
-  page takes no extra statement. It applies neither the target's
-  `scope()` nor its trash, since the list shows the title of every
-  record it points at. A user who may not see the target's title field
-  matches nothing through it.
+  page takes no extra statement. Like the title the list shows, it
+  applies neither the target's `scope()` nor its trash, and does not
+  depend on whether the user may list the target: a row matches exactly
+  when it shows a title containing the term. A user who may not see the
+  target's title field matches nothing through it.
 - The fields `fullText()` names are matched by whole words, through the
   database's full-text index, instead of `LIKE`:
 
@@ -164,7 +165,7 @@ a word the index does not hold: one shorter than three characters, or on
 InnoDB's default stopword list. On PostgreSQL it is
 `to_tsvector(config, …) @@ plainto_tsquery(config, term)`, with the
 configuration `simple` (no stemming, no stopwords) unless `config()`
-names another. A part of a word no longer matches those fields. For a
+names another. A part of a word does not match those fields. For a
 user who may not see one of them, the index cannot be used, and the
 others are matched with `LIKE`. The application creates the index; see
 {doc}`databases`.

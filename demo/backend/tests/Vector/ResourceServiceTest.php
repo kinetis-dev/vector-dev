@@ -18,6 +18,8 @@ use Kinetis\Vector\Auth\ResourcePolicy;
 use Kinetis\Vector\Exception\ForbiddenOperationException;
 use Kinetis\Vector\Query\ListRequest;
 use Kinetis\Vector\Query\ResourceService;
+use Kinetis\Vector\Registry\VectorRegistry;
+use Kinetis\Vector\VectorResource;
 use Kinetis\Vector\Write\ValueConverter;
 
 /**
@@ -36,11 +38,30 @@ final class ResourceServiceTest extends VectorTestCase
 
     private ?EntityManager $supportManager = null;
 
+    private ScopedCategories $categories;
+
+    private CategoriesPolicy $categoriesPolicy;
+
     protected function registerTestDoubles(AppScope $app, Config $config): void
     {
         parent::registerTestDoubles($app, $config);
         $this->policy = new AdjustablePolicy();
         $app->instance(AllowAllPolicy::class, $this->policy);
+
+        if ($this->name() === 'testARelatedTitleMatchesExactlyWhenTheListShowsIt') {
+            // categories gain a scope and a policy of their own; order lines search their product
+            $this->categories = new ScopedCategories();
+            $this->categoriesPolicy = new CategoriesPolicy();
+            $app->instance(ScopedCategories::class, $this->categories);
+            $app->instance(CategoriesPolicy::class, $this->categoriesPolicy);
+            $registry = $app->get(VectorRegistry::class);
+            self::assertInstanceOf(VectorRegistry::class, $registry);
+            $data = $registry->toArray();
+            $data['resources']['categories']['class'] = ScopedCategories::class;
+            $data['resources']['categories']['policy'] = CategoriesPolicy::class;
+            $data['resources']['order-lines']['searchRelations'] = ['product' => ['column' => 'product_id', 'resource' => 'products']];
+            $app->instance(VectorRegistry::class, VectorRegistry::fromArray($data));
+        }
     }
 
     public function testAPageCarriesEachRelationsDisplayValue(): void
@@ -452,6 +473,60 @@ final class ResourceServiceTest extends VectorTestCase
         self::assertSame([], $this->ids('tickets', '#&!'));
     }
 
+    /**
+     * A belongsTo shows its target's title whatever the target's scope(),
+     * trash or list permission (loadRelations() reads it by key alone),
+     * and search matches exactly the titles the list shows.
+     */
+    public function testARelatedTitleMatchesExactlyWhenTheListShowsIt(): void
+    {
+        $h = $this->adminHeaders();
+        $categories = array_column($this->shop()->table('categories')->select('id', 'name')->get(), 'name', 'id');
+        $laptops = (int) array_search('Laptops', $categories, true);
+        $inLaptops = array_map(static fn (array $p): int => (int) $p['id'], $this->shop()->table('products')->select('id')
+            ->where('category_id', '=', $laptops)->where('deleted_at', '=', null)->orderBy('id', 'ASC')->get());
+        self::assertNotEmpty($inLaptops);
+        $shown = fn (): array => array_values(array_unique(array_column(array_column(
+            $this->json('/vector/r/products', ['filter' => ['category' => (string) $laptops], 'perPage' => 200, 'columns' => 'category'], $h)['data'],
+            'category',
+        ), 'label')));
+
+        // (a) the categories' scope() leaves Laptops out for this user
+        $this->categories->without = 'Laptops';
+        self::assertNotContains('Laptops', array_column($this->json('/vector/r/categories', ['perPage' => 200, 'columns' => 'name'], $h)['data'], 'name'), 'the scope applies');
+        self::assertSame(['Laptops'], $shown(), 'a product still shows its scoped-out category');
+        self::assertSame($inLaptops, $this->ids('products', 'Laptop'), 'and search matches it');
+
+        // (c) this user may list products, but not categories
+        $this->categories->without = null;
+        $this->categoriesPolicy->deny = ['viewAny'];
+        $this->client->get('/vector/r/categories', headers: $h)->assertStatus(403);
+        self::assertSame(['Laptops'], $shown(), 'a product still shows a category the user may not list');
+        self::assertSame($inLaptops, $this->ids('products', 'Laptop'), 'and search matches it');
+
+        // (b) an order line whose product is in the trash
+        $product = (int) $this->shop()->table('order_lines')->orderBy('id', 'ASC')->value('product_id');
+        $name = (string) $this->shop()->table('products')->where('id', '=', $product)->value('name');
+        $named = array_map(static fn (array $p): int => (int) $p['id'], array_filter(
+            $this->shop()->table('products')->select('id', 'name')->get(),
+            static fn (array $p): bool => mb_stripos((string) $p['name'], $name) !== false,
+        ));
+        $lines = array_map(static fn (array $l): int => (int) $l['id'], $this->shop()->table('order_lines')->select('id')->whereIn('product_id', array_values($named))->orderBy('id', 'ASC')->get());
+        $this->shop()->table('products')->where('id', '=', $product)->update(['deleted_at' => date('Y-m-d H:i:s')]);
+
+        try {
+            self::assertNotContains($product, $this->ids('products', $name), 'the product list leaves it out');
+            self::assertSame([$name], array_values(array_unique(array_column(array_column(
+                $this->json('/vector/r/order-lines', ['filter' => ['product' => (string) $product], 'perPage' => 200, 'columns' => 'product'], $h)['data'],
+                'product',
+            ), 'label'))), 'a line still shows its trashed product');
+            self::assertContains($lines[0] ?? null, $this->ids('order-lines', $name));
+            self::assertSame($lines, $this->ids('order-lines', $name), 'and search matches it');
+        } finally {
+            $this->shop()->table('products')->where('id', '=', $product)->update(['deleted_at' => null]);
+        }
+    }
+
     public function testTheSearchBindsEveryTermOnEachEngine(): void
     {
         $this->inScope(function (RequestScope $scope): void {
@@ -471,10 +546,13 @@ final class ResourceServiceTest extends VectorTestCase
                 return [$compiled->sql, $compiled->params];
             };
 
-            $term = "Rapid The xy Bob O'Brien rapid né Été été";
+            // é typed as e and a combining accent (NFD), and Devanagari's vowel signs and virama, stay inside their words
+            $nfd = "e\u{301}te\u{301}";
+            $hindi = 'हिन्दी';
+            $term = "Rapid The xy Bob O'Brien rapid né Été été {$nfd} {$hindi}";
             [$products, $params] = $sql('products', $term);
             self::assertStringContainsString('(`sku` LIKE ? OR MATCH (`name`) AGAINST (? IN BOOLEAN MODE) OR `category_id` IN (SELECT `id` FROM `categories` WHERE `name` LIKE ?))', $products);
-            self::assertSame(["%{$term}%", '+rapid The xy +Bob O +Brien né +été', "%{$term}%"], $params, 'a word is measured and folded by characters, not bytes');
+            self::assertSame(["%{$term}%", "+rapid The xy +Bob O +Brien né +été +{$nfd} +{$hindi}", "%{$term}%"], $params, 'a word is measured and folded by characters, not bytes');
 
             $term = "damaged O'Brien -refund";
             [$tickets, $params] = $sql('tickets', $term);
@@ -634,8 +712,25 @@ final class ResourceServiceTest extends VectorTestCase
     }
 }
 
+/** The categories resource with a scope a test sets: leaving out the category of that name. */
+final class ScopedCategories extends VectorResource
+{
+    public ?string $without = null;
+
+    public function fields(): array
+    {
+        return [];
+    }
+
+    #[\Override]
+    public function scope(Query $query, CurrentUserInterface $user): Query
+    {
+        return $this->without === null ? $query : $query->where('name', '!=', $this->without);
+    }
+}
+
 /** The default policy, refusing the abilities and hiding the fields a test names. */
-final class AdjustablePolicy extends ResourcePolicy
+class AdjustablePolicy extends ResourcePolicy
 {
     /** @var list<string> */
     public array $deny = [];
@@ -663,3 +758,6 @@ final class AdjustablePolicy extends ResourcePolicy
         return !in_array($field, $this->hidden, true);
     }
 }
+
+/** The categories' own policy, adjusted apart from the default one. */
+final class CategoriesPolicy extends AdjustablePolicy {}

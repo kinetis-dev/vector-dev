@@ -702,6 +702,15 @@ final class ResourceCompilerTest extends TestCase
         };
         $this->assertRefused(self::fieldRefusal($lines, 'order', 'is searchable, but the title field "id" of untitled-orders is not a string column'), new UntitledOrders(), $lines);
 
+        // a computed title has no column to match: the target's own compile refuses it first
+        $computed = new #[Resource(OrderLine::class, slug: 'lines')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), BelongsTo::to('order', ComputedTitleOrders::class)->searchable()];
+            }
+        };
+        $this->assertRefused('Resource ' . ComputedTitleOrders::class . ': title field "label" maps no column', new ComputedTitleOrders(), $computed);
+
         // only a belongsTo matches through its target
         $orders = new #[Resource(Order::class, slug: 'orders')] class extends VectorResource {
             public function fields(): array
@@ -1178,6 +1187,22 @@ abstract class FullTextCategories extends VectorResource
     public function label(array $category): string
     {
         return '';
+    }
+}
+
+/** Orders titled by a computed string: no column to match a search against. */
+#[Resource(Order::class, slug: 'computed-title-orders', title: 'label')]
+final class ComputedTitleOrders extends VectorResource
+{
+    public function fields(): array
+    {
+        return [Id::make(), Text::make('number'), Computed::make('label')->from(['number'])->method('label')];
+    }
+
+    /** @param array<string, mixed> $order */
+    public function label(array $order): string
+    {
+        return 'Order ' . (is_scalar($order['number'] ?? null) ? (string) $order['number'] : '');
     }
 }
 

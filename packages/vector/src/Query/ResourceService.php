@@ -543,9 +543,10 @@ final readonly class ResourceService
      * searchable belongsTo, the foreign key among the related records
      * whose title matches. That last is a subquery on the resource's own
      * connection, so the page stays one statement however many relations
-     * are searched. It applies neither the target's scope() nor its trash:
-     * the list shows every related title it points at, so matching one
-     * reveals nothing the row does not.
+     * are searched. Like labels(), which reads the title a row shows by key
+     * alone, it applies neither the target's scope(), nor its trash, nor
+     * its list permission: a row matches exactly when the title it shows
+     * does, so matching reveals nothing the row does not.
      */
     private function applySearch(ResourceDescriptor $resource, Query $query, string $term): void
     {
@@ -629,14 +630,16 @@ final readonly class ResourceService
      * requires every word. MySQL's boolean mode is given the words alone,
      * so no operator of the user's survives: each is required (`+word`),
      * except one InnoDB's defaults leave out of the index — shorter than
-     * innodb_ft_min_token_size (3), or a default stopword — which, required,
-     * would match no row at all.
+     * innodb_ft_min_token_size (3 characters, counted as code points, as
+     * InnoDB counts them), or a default stopword — which, required, would
+     * match no row at all.
      *
      * @param 'mysql'|'pgsql' $dialect
      */
     private static function fullTextTerm(string $dialect, string $term): string
     {
-        $words = preg_split('/[^\p{L}\p{N}_]+/u', $term, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        // a combining mark (an accent typed apart, a vowel sign) belongs to its word
+        $words = preg_split('/[^\p{L}\p{M}\p{N}_]+/u', $term, -1, PREG_SPLIT_NO_EMPTY) ?: [];
 
         if ($words === [] || $dialect === Connections::PGSQL) {
             return $words === [] ? '' : $term;
