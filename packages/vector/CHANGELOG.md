@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.6] - 2026-10-20
+
+### Fixed
+
+- `ListRequest::fromQueryParams()` takes a caller's `perPageCap` only as a
+  tighter bound: a cap above the resource's `maxPerPage()` no longer raises
+  the page size a request may ask for.
+
 ## [0.9.5] - 2026-10-19
 
 ### Changed

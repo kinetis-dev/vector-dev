@@ -43,10 +43,11 @@ final class ListRequestTest extends TestCase
         self::assertSame('perPage must be a positive integer.', $this->refusal(['perPage' => '0']));
         self::assertSame('perPage must be at most 100.', $this->refusal(['perPage' => '101']));
 
-        // a caller's cap is taken in place of the resource's bound, as given; vector_query passes maxPerPage()
+        // a caller's cap tightens the resource's bound and never raises it
         self::assertSame('perPage must be at most 50.', $this->refusal(['perPage' => '60'], cap: 50));
         self::assertSame(50, $this->parse(['perPage' => '50'], cap: 50)->perPage);
-        self::assertSame(120, $this->parse(['perPage' => '120'], cap: 150)->perPage);
+        self::assertSame('perPage must be at most 100.', $this->refusal(['perPage' => '120'], cap: 150));
+        self::assertSame(100, $this->parse(['perPage' => '100'], cap: 150)->perPage);
     }
 
     public function testACursorIsTheLastKeyOfThePageBefore(): void
