@@ -12,7 +12,9 @@ use Kinetis\QueryBuilder\Query;
 use Kinetis\Vector\Auth\AllowAllPolicy;
 use Kinetis\Vector\Auth\ResourcePolicy;
 use Kinetis\Vector\Registry\VectorRegistry;
+use Kinetis\Vector\Testing\InteractsWithVector;
 use Kinetis\Vector\VectorResource;
+use PHPUnit\Framework\AssertionFailedError;
 
 /**
  * How a list pages. Orders are withoutCount(): an offset page carries
@@ -25,6 +27,8 @@ use Kinetis\Vector\VectorResource;
  */
 final class ListPagingTest extends VectorTestCase
 {
+    use InteractsWithVector;
+
     private PagingPolicy $policy;
 
     private ScopedOrders $orders;
@@ -195,6 +199,37 @@ final class ListPagingTest extends VectorTestCase
         self::assertSame([null, null, true], [$query['total'], $query['lastPage'], $query['hasMore']]);
     }
 
+    public function testTheTestingKitAssertsWhetherAnotherPageFollows(): void
+    {
+        [$customer, $ids] = $this->busiestCustomer();
+        $k = count($ids);
+        $orders = $this->vector($this->adminHeaders())->resource('orders');
+        $mine = ['customer' => (string) $customer];
+
+        $orders->list(filter: $mine, perPage: $k - 1)->assertOk()->assertHasMore();
+        $orders->list(filter: $mine, perPage: $k - 1, page: 2)->assertOk()->assertHasMore(false);
+        $orders->list(filter: $mine, perPage: $k)->assertOk()->assertHasMore(false);
+
+        // an uncounted page has no total to assert, and says so rather than comparing with null
+        try {
+            $orders->list(filter: $mine, perPage: $k)->assertTotal($k);
+            self::fail('assertTotal() passed on a page that is not counted');
+        } catch (AssertionFailedError $failure) {
+            self::assertStringContainsString('The list is not counted', $failure->getMessage());
+        }
+
+        // a counted page's total is asserted as before
+        $this->vector($this->adminHeaders())->resource('customers')->list(perPage: 1)->assertTotal($this->shop()->table('customers')->count());
+
+        // a cursor page carries hasMore too
+        $lines = $this->vector($this->adminHeaders())->resource('order-lines');
+        $count = $this->shop()->table('order_lines')->count();
+        $lines->list(perPage: 2, extra: ['cursor' => '', 'columns' => 'quantity'])->assertOk()->assertHasMore();
+        self::assertGreaterThan(2, $count);
+        $order = (int) $this->shop()->table('order_lines')->select('order_id')->limit(1)->get()[0]['order_id'];
+        $lines->list(filter: ['order' => (string) $order], perPage: 100, extra: ['cursor' => '', 'columns' => 'quantity'])->assertOk()->assertHasMore(false);
+    }
+
     public function testTheOpenApiDocumentDescribesAnUncountedPage(): void
     {
         $document = $this->client->get('/vector/openapi.json', headers: $this->adminHeaders())->assertOk()->json();
@@ -206,6 +241,10 @@ final class ListPagingTest extends VectorTestCase
         self::assertSame(['type' => 'null'], $orders['properties']['lastPage']);
         self::assertSame(['type' => 'boolean'], $orders['properties']['hasMore']);
         self::assertSame(['data', 'currentPage', 'perPage', 'total', 'lastPage', 'hasMore'], $orders['required']);
+
+        // a collection's page under /{id}/{relation} is not in the document, so no relation path describes a page at all
+        self::assertArrayNotHasKey('/vector/r/customers/{id}/orders', $document['paths']);
+        self::assertArrayNotHasKey('/vector/r/customers/{id}/{relation}', $document['paths']);
 
         $customers = $offset('customers');
         self::assertSame(['type' => 'integer'], $customers['properties']['total']);

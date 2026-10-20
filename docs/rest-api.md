@@ -59,10 +59,10 @@ application).
   total: null, lastPage: null, hasMore}`, where `hasMore` says whether
   another page follows (read from one row past the page), plus
   `summaries` when asked. A counted resource's page carries no
-  `hasMore`. `GET /vector/openapi.json` describes each resource's own
-  form. The cursor envelope is the same for every resource, and so is
-  a collection's page under `/{id}/{relation}`, which takes the target
-  resource's form.
+  `hasMore`. `GET /vector/openapi.json` describes each resource's list
+  in its own form. A collection's page under `/{id}/{relation}` takes
+  the target resource's form; that path is not in the OpenAPI document.
+  The cursor envelope is the same for every resource.
 - **A record** — `{data, permissions}`, where `permissions` is
   `{update, delete, restore, forceDelete, actions}`.
 - **A write refusal** — the framework's RFC 9457 document with
