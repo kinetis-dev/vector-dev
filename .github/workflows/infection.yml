@@ -56,14 +56,14 @@ jobs:
         # SPLIT_MUTATORS) or rest (all but SPLIT_MUTATORS). Each floor
         # applies to its own shard.
         # Each floor sits about two points under its shard's covered MSI
-        # as measured 2026-10-18 (run 39166062216, identical over two
-        # attempts): 64.7%, 65.3%, 47.7% and 51.0%. Mutation coverage is
-        # 100%, so MSI and covered MSI coincide.
+        # as measured 2026-10-20 (run 39374383118, matching a local run):
+        # 99.3%, 97.7%, 85.2% and 97.4%. Mutation coverage is 100%, so
+        # MSI and covered MSI coincide.
         shard:
-          - { name: ResourceCompiler logic and identity, files: ResourceCompiler.php, mutators: split, minMsi: 62, minCoveredMsi: 62 }
-          - { name: ResourceCompiler other mutators, files: ResourceCompiler.php, mutators: rest, minMsi: 63, minCoveredMsi: 63 }
-          - { name: ResourceService, files: ResourceService.php, mutators: all, minMsi: 45, minCoveredMsi: 45 }
-          - { name: ListRequest and the other compilers, files: 'ListRequest.php,XlsxWriter.php,LayoutCompiler.php,SettingsCompiler.php,WidgetCompiler.php', mutators: all, minMsi: 49, minCoveredMsi: 49 }
+          - { name: ResourceCompiler logic and identity, files: ResourceCompiler.php, mutators: split, minMsi: 97, minCoveredMsi: 97 }
+          - { name: ResourceCompiler other mutators, files: ResourceCompiler.php, mutators: rest, minMsi: 95, minCoveredMsi: 95 }
+          - { name: ResourceService, files: ResourceService.php, mutators: all, minMsi: 83, minCoveredMsi: 83 }
+          - { name: ListRequest and the other compilers, files: 'ListRequest.php,XlsxWriter.php,LayoutCompiler.php,SettingsCompiler.php,WidgetCompiler.php', mutators: all, minMsi: 95, minCoveredMsi: 95 }
     # The same services as ci.yml's PHP job: the mutated tests boot the
     # demo against them, the initial run on the base databases and each
     # Infection worker on its own (demo/backend/tests/worker-stores.php).
