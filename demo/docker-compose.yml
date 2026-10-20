@@ -188,7 +188,7 @@ services:
   # the workspace's, installed by the node service. The image tag and
   # @playwright/test in e2e/package.json must name the same version.
   e2e:
-    image: mcr.microsoft.com/playwright:v1.63.0-noble
+    image: mcr.microsoft.com/playwright:v1.64.1-noble
     profiles: [e2e]
     working_dir: /workspace/demo/e2e
     entrypoint: ["./node_modules/.bin/playwright"]
