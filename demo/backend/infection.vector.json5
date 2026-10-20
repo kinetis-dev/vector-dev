@@ -20,11 +20,11 @@
     // are those of a whole run. That split derives its second config
     // from the "mutators" line below, so keep that line as it is.
     //
-    // Measured 2026-10-18 (CI's four shards together, four threads each,
-    // this config's 60 s timeout): 1366 mutants, 767 killed, 1 syntax
-    // error, 2 timed out, 0 not covered — MSI and covered MSI 56.1%
-    // (mutation coverage 100%), identical over two runs. The floors sit
-    // two points under it. The 68% measured 2026-10-06 was inflated:
+    // Measured 2026-10-20 (CI's four shards together, four threads each,
+    // this config's 60 s timeout): 1570 mutants, 1482 killed, 1 syntax
+    // error, 2 timed out, 0 not covered — MSI and covered MSI 94.6%
+    // (mutation coverage 100%), matching a local run. The floors sit
+    // about two points under it. The 68% measured 2026-10-06 was inflated:
     // mutants that let a refused bulk delete through emptied the
     // worker's order lines, and every later mutant there counted as
     // killed.
@@ -37,7 +37,7 @@
     "testFrameworkOptions": "--filter 'VectorRegistryTest|ListGrammarTest|SchemaControllerTest|ResourceControllerTest|ActionsAndSettingsTest|ResourceCompilerTest|ResourceServiceTest|ListRequestTest|LayoutCompilerTest|WidgetCompilerTest|SettingsCompilerTest|XlsxWriterTest'",
     "timeout": 60,
     "logs": { "text": "infection.vector.log", "summary": "infection.vector.summary.log" },
-    "minMsi": 54,
-    "minCoveredMsi": 54,
+    "minMsi": 92,
+    "minCoveredMsi": 92,
     "mutators": { "@default": true }
 }
