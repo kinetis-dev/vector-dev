@@ -225,7 +225,9 @@ describe('VxResourceForm: unsaved changes and save variants', () => {
 
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true }))
 
-        await vi.waitFor(() => expect(update.requests).toHaveLength(1))
+        // the request is recorded before it is answered, and saved is emitted after: wait for the latter
+        await vi.waitFor(() => expect(form.emitted('saved')).toBeDefined())
+        expect(update.requests).toHaveLength(1)
         expect(form.emitted('saved')![0]![1]).toBe('close')
     })
 
