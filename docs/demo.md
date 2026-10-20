@@ -31,11 +31,11 @@ from `demo/`.
 
 | Service | Address | What it is |
 |---|---|---|
-| `nginx`, `app` | `localhost:8080` | The API: nginx and PHP-FPM. `/openapi` in development. |
+| `nginx`, `app` | `localhost:8080` | The API: nginx and PHP-FPM. `/openapi` in development. Set `NGINX_HOST_PORT` to publish it on another host port when 8080 is taken. |
 | `frankenphp` | `localhost:8081` | The same application under FrankenPHP worker mode, Kinetis's primary runtime: 12 worker threads on the native database drivers. |
 | `node` | `localhost:3000` | The standalone admin: `nuxt dev` for `demo/frontend`. |
 | `worker` | — | `queue:work --queue=default,vector`: the application's jobs first, then Vector's. |
-| `mysql` | `localhost:3306` | The shop, and the SQL queue table the test suite uses. `vector` / `vector`. |
+| `mysql` | `localhost:3306` | The shop, and the SQL queue table the test suite uses. `vector` / `vector`. Set `MYSQL_HOST_PORT` to publish it on another host port when 3306 is taken. |
 | `postgres` | `localhost:5432` | `vector_support`, the support desk (connection `support`), and `vector_admin`, Vector's own tables (connection `admin`). `vector` / `vector`. |
 | `redis` | `localhost:6379` | The job queue (connection `jobs`) and, in database 1, the cache holding sign-in throttling and refresh tokens. |
 
