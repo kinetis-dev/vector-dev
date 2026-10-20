@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { fieldProps, type VectorAction, type VectorExportFormat, type VectorField, type VectorFilterGroup, type VectorFilterQuery, type VectorFilters, type VectorListState, type VectorPage, type VectorRecord, type VectorResource, type VectorSelection, type VectorSort, type VectorSavedView } from '#vector/app/types/vector'
+import type { VectorPageStep } from '#vector/app/composables/useVectorCursorPager'
 
 // The list view: a server-driven table whose every option — page, size,
 // sort, filters, search, grouping, columns — becomes one list request,
@@ -89,32 +90,42 @@ const summaryValues = ref<Record<string, number | null>>({})
 const loading = ref(false)
 let requestId = 0
 
-async function load() {
+/**
+ * Loads the page shown now, or the one $step away on a list that is not
+ * counted. The step is taken only once its page has arrived: a request
+ * that fails leaves the page number, the cursors and the rows as they were.
+ */
+async function load(step: VectorPageStep = 'stay') {
+    const cursor = byCursor.value ? cursors.cursorFor(step) : null
+    if (byCursor.value && cursor === null) return
+
     const id = ++requestId
     loading.value = true
 
     try {
         if (byCursor.value) {
-            const result = await client.listByCursor(cursors.current.value, { perPage: itemsPerPage.value, filter: rawFilters(), q: term.value || undefined, columns: columns.value })
+            const result = await client.listByCursor(cursor!, { perPage: itemsPerPage.value, filter: rawFilters(), q: term.value || undefined, columns: columns.value })
 
             if (id !== requestId) return
 
+            cursors.received(step, result)
             items.value = result.data
             total.value = null
             hasMore.value = result.hasMore
-            cursors.received(result)
             summaryValues.value = {}
             return
         }
 
+        const target = page.value + (step === 'forward' ? 1 : step === 'back' ? -1 : 0)
         const sort: VectorSort[] = sortBy.value.map(s => ({ field: s.key, order: s.order === 'desc' ? 'desc' : 'asc' }))
         const result: VectorPage = await client.list({
-            page: page.value, perPage: itemsPerPage.value, sort, filter: rawFilters(), q: term.value || undefined,
+            page: target, perPage: itemsPerPage.value, sort, filter: rawFilters(), q: term.value || undefined,
             group: group.value ?? undefined, summaries: summaries.value, columns: columns.value,
         })
 
         if (id !== requestId) return
 
+        page.value = target
         items.value = result.data
         total.value = result.total
         hasMore.value = result.hasMore ?? false
@@ -153,15 +164,11 @@ watch(sortBy, () => { if (!counted.value) page.value = 1 }, { deep: true, flush:
 const onFirstPage = computed(() => byCursor.value ? !cursors.hasPrevious.value : page.value === 1)
 
 function previousPage() {
-    if (byCursor.value ? !cursors.back() : page.value <= 1) return
-    if (!byCursor.value) page.value--
-    load()
+    if (!onFirstPage.value) load('back')
 }
 
 function nextPage() {
-    if (byCursor.value ? !cursors.forward() : !hasMore.value) return
-    if (!byCursor.value) page.value++
-    load()
+    if (byCursor.value ? cursors.hasNext.value : hasMore.value) load('forward')
 }
 
 /** A new page size starts again from the first page; the table reports the change, which loads it. */

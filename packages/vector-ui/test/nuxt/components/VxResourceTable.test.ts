@@ -120,4 +120,102 @@ describe('VxResourceTable, uncounted and by cursor', () => {
 
         expect(wrapper.text()).toContain('All matching records')
     })
+
+    // a refused answer, which the client does not retry
+    const refused = { status: 403, body: { error: 'Not now.' } }
+    /** Waits until $label is enabled again: the pager disables both buttons while a request is in flight. */
+    const enabled = (wrapper: Awaited<ReturnType<typeof mountSuspended>>, label: string) => vi.waitFor(() => expect(button(wrapper, label).attributes('disabled')).toBeUndefined())
+
+    it('stays on an uncounted page when the next one fails, and asks for that page again', async () => {
+        let failures = 1
+        const list = endpoint('/vector/r/tags', (request) => {
+            const page = Number(query(request).page)
+            if (page === 2 && failures-- > 0) return refused
+
+            return { body: { data: page === 1 ? rows([1, 2]) : rows([3]), currentPage: page, perPage: 2, total: null, lastPage: null, hasMore: page === 1 } }
+        })
+        const wrapper = await mount({ withoutCount: true }, list)
+
+        await button(wrapper, 'Next page').trigger('click')
+        await vi.waitFor(() => expect(list.requests).toHaveLength(2))
+        await flushPromises()
+        await enabled(wrapper, 'Next page')
+        expect(query(list.requests[1]!).page).toBe('2')
+        expect(wrapper.text()).toContain('Page 1')
+        expect(wrapper.text()).toContain('Tag 1')
+        expect(button(wrapper, 'Previous page').attributes('disabled')).toBeDefined()
+        expect(button(wrapper, 'Next page').attributes('disabled')).toBeUndefined()
+
+        await button(wrapper, 'Next page').trigger('click')
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Page 2'))
+        expect(list.requests).toHaveLength(3)
+        expect(query(list.requests[2]!).page).toBe('2')
+        expect(wrapper.text()).toContain('Tag 3')
+    })
+
+    it('stays on a cursor page when the next one fails, and asks for the same cursor again', async () => {
+        let failures = 1
+        const list = endpoint('/vector/r/tags', (request) => {
+            const cursor = query(request).cursor
+            if (cursor === 'after-2' && failures-- > 0) return refused
+
+            return {
+                body: cursor === ''
+                    ? { data: rows([1, 2]), nextCursor: 'after-2', hasMore: true, perPage: 2 }
+                    : { data: rows([3]), nextCursor: null, hasMore: false, perPage: 2 },
+            }
+        })
+        const wrapper = await mount({ cursorPaging: true }, list)
+
+        await button(wrapper, 'Next page').trigger('click')
+        await vi.waitFor(() => expect(list.requests).toHaveLength(2))
+        await flushPromises()
+        await enabled(wrapper, 'Next page')
+        expect(query(list.requests[1]!).cursor).toBe('after-2')
+        expect(wrapper.text()).toContain('Tag 1')
+        expect(button(wrapper, 'Previous page').attributes('disabled')).toBeDefined()
+        expect(button(wrapper, 'Next page').attributes('disabled')).toBeUndefined()
+
+        await button(wrapper, 'Next page').trigger('click')
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Tag 3'))
+        expect(list.requests).toHaveLength(3)
+        expect(query(list.requests[2]!).cursor).toBe('after-2')
+        expect(button(wrapper, 'Previous page').attributes('disabled')).toBeUndefined()
+    })
+
+    it('stays on a cursor page when the previous one fails', async () => {
+        let failFirst = false
+        const list = endpoint('/vector/r/tags', (request) => {
+            const cursor = query(request).cursor
+            if (cursor === '' && failFirst) {
+                failFirst = false
+
+                return refused
+            }
+
+            return {
+                body: cursor === ''
+                    ? { data: rows([1, 2]), nextCursor: 'after-2', hasMore: true, perPage: 2 }
+                    : { data: rows([3]), nextCursor: null, hasMore: false, perPage: 2 },
+            }
+        })
+        const wrapper = await mount({ cursorPaging: true }, list)
+        await button(wrapper, 'Next page').trigger('click')
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Tag 3'))
+        await enabled(wrapper, 'Previous page')
+
+        failFirst = true
+        await button(wrapper, 'Previous page').trigger('click')
+        await vi.waitFor(() => expect(list.requests).toHaveLength(3))
+        await flushPromises()
+        await enabled(wrapper, 'Previous page')
+        expect(wrapper.text()).toContain('Tag 3')
+        expect(button(wrapper, 'Previous page').attributes('disabled')).toBeUndefined()
+
+        await button(wrapper, 'Previous page').trigger('click')
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Tag 1'))
+        expect(query(list.requests.at(-1)!).cursor).toBe('')
+        expect(button(wrapper, 'Previous page').attributes('disabled')).toBeDefined()
+    })
+
 })

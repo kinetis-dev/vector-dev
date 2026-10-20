@@ -49,14 +49,16 @@ const perPage = ref(10)
 const sortBy = ref<{ key: string, order: 'asc' | 'desc' }[]>([])
 const loading = ref(false)
 
-async function load() {
+/** Loads $target, the page shown now by default; the page number moves only once that page has arrived. */
+async function load(target: number = page.value) {
     loading.value = true
 
     try {
         const result = await client.related(props.record.id, props.field.name, {
-            page: page.value, perPage: perPage.value,
+            page: target, perPage: perPage.value,
             sort: sortBy.value.map(s => ({ field: s.key, order: s.order })),
         })
+        page.value = target
         items.value = result.data
         total.value = result.total
         hasMore.value = result.hasMore ?? false
@@ -174,7 +176,7 @@ function label(n: number): string {
             density="compact"
             hover
             @update:page="(p: number) => { if (total !== null) page = p }"
-            @update:options="load"
+            @update:options="() => load()"
             @click:row="(_: Event, { item }: { item: VectorRecord }) => open(item)"
         >
             <template v-for="column in columns" :key="column.name" #[`item.${column.name}`]="{ item }">
@@ -192,8 +194,8 @@ function label(n: number): string {
                     :has-next="hasMore"
                     :disabled="loading"
                     @update:per-page="(n: number) => { page = 1; perPage = n }"
-                    @previous="page--; load()"
-                    @next="page++; load()"
+                    @previous="load(page - 1)"
+                    @next="load(page + 1)"
                 />
             </template>
             <template #no-data>
