@@ -26,7 +26,7 @@ final class CsvWriter
         $out = fopen('php://memory', 'r+');
 
         if ($out === false) {
-            throw new \RuntimeException('Could not open a memory stream.');
+            throw new ExportWriteException('Could not open a memory stream.');
         }
 
         fwrite($out, "\xEF\xBB\xBF");

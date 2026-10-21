@@ -43,7 +43,7 @@ final readonly class NotificationsController
     #[Post('/notifications/{id}/read')]
     public function read(string $id): array
     {
-        if (preg_match('/^[1-9][0-9]{0,17}$/', $id) !== 1) {
+        if (preg_match('/^[1-9]\d{0,17}$/D', $id) !== 1) {
             throw RecordNotFoundException::of('notifications', $id);
         }
 

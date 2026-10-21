@@ -73,6 +73,17 @@ final class ListRequestTest extends TestCase
         self::assertSame('ab-c', $this->parse(['cursor' => 'ab-c'], $this->bare())->cursor);
     }
 
+    public function testATrailingNewlineIsNotPartOfAnInteger(): void
+    {
+        // `$` alone matches before a final newline: these once parsed as 42, -7 and page 5
+        foreach (["42\n", "-7\n"] as $cursor) {
+            self::assertSame('cursor must be an identifier of this resource.', $this->refusal(['cursor' => $cursor]), json_encode($cursor, JSON_THROW_ON_ERROR));
+        }
+
+        self::assertSame('page must be a positive integer.', $this->refusal(['page' => "5\n"]));
+        self::assertSame('perPage must be a positive integer.', $this->refusal(['perPage' => "5\n"]));
+    }
+
     public function testTheSearchIsTrimmedAndBounded(): void
     {
         self::assertNull($this->parse([])->search);

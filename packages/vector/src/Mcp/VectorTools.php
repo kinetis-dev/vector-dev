@@ -259,7 +259,7 @@ final readonly class VectorTools
                 $ops = [];
 
                 foreach ($spec as $op => $value) {
-                    $ops[$op] = is_array($value) ? implode(',', array_map(static fn (mixed $v): string => is_scalar($v) ? (string) $v : '', $value)) : (is_scalar($value) ? (string) $value : '');
+                    $ops[$op] = is_array($value) ? implode(',', array_map(self::text(...), $value)) : self::text($value);
                 }
 
                 $out[$field] = $ops;
@@ -269,5 +269,10 @@ final readonly class VectorTools
         }
 
         return $out;
+    }
+
+    private static function text(mixed $value): string
+    {
+        return is_scalar($value) ? (string) $value : '';
     }
 }

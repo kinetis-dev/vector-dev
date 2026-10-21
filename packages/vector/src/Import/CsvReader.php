@@ -27,7 +27,7 @@ final class CsvReader
         $stream = fopen('php://memory', 'r+');
 
         if ($stream === false) {
-            throw new \RuntimeException('Could not open a memory stream.');
+            throw new CsvReadException('Could not open a memory stream.');
         }
 
         fwrite($stream, $contents);
@@ -115,7 +115,7 @@ final class CsvReader
         $out = fopen('php://memory', 'r+');
 
         if ($out === false) {
-            throw new \RuntimeException('Could not open a memory stream.');
+            throw new CsvReadException('Could not open a memory stream.');
         }
 
         fwrite($out, "\xEF\xBB\xBF");

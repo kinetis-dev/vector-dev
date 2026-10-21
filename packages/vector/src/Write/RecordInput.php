@@ -202,7 +202,11 @@ final readonly class RecordInput
             $value = $value['id'] ?? null;
         }
 
-        return is_int($value) || is_string($value) && $value !== '' ? $value : (is_bool($value) ? (int) $value : null);
+        return match (true) {
+            is_int($value), is_string($value) && $value !== '' => $value,
+            is_bool($value) => (int) $value,
+            default => null,
+        };
     }
 
     /**
@@ -249,7 +253,11 @@ final readonly class RecordInput
             return $violations;
         }
 
-        $values[$name] = $raw === null ? null : ($rich['storesHtml'] ? $this->document->toHtml($raw, $rich['features']) : $raw);
+        $values[$name] = match (true) {
+            $raw === null => null,
+            $rich['storesHtml'] => $this->document->toHtml($raw, $rich['features']),
+            default => $raw,
+        };
 
         $textField = $rich['textField'] ?? null;
 

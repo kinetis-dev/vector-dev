@@ -36,13 +36,17 @@ final readonly class FieldInput
         $states = Conditions::states($fields, $payload);
 
         foreach ($fields as $name => $field) {
-            $raw = array_key_exists($name, $payload) ? $payload[$name] : ($field['hasDefault'] === true ? $field['default'] : null);
+            $raw = array_key_exists($name, $payload) ? $payload[$name] : self::defaultOf($field);
             $state = $states[$name] ?? null;
 
             if ($state !== null && (!$state['visible'] || $state['disabled'])) {
                 // not shown or not editable now: the default stands, and nothing is required
-                $default = $field['hasDefault'] === true ? $field['default'] : null;
-                $values[$name] = $default === null ? ($field['type'] === 'boolean' ? false : null) : $this->converter->convert($field, $default);
+                $default = self::defaultOf($field);
+                $values[$name] = match (true) {
+                    $default !== null => $this->converter->convert($field, $default),
+                    $field['type'] === 'boolean' => false,
+                    default => null,
+                };
 
                 continue;
             }
@@ -77,5 +81,11 @@ final readonly class FieldInput
         }
 
         return $values;
+    }
+
+    /** @param array<string, mixed> $field */
+    private static function defaultOf(array $field): mixed
+    {
+        return $field['hasDefault'] === true ? $field['default'] : null;
     }
 }

@@ -131,7 +131,7 @@ final readonly class ValueConverter
         }
 
         return match ($field['valueType'] ?? 'string') {
-            'int' => preg_match('/^-?[0-9]{1,18}$/', $raw) === 1 ? (int) $raw : throw self::mismatch('an integer'),
+            'int' => preg_match('/^-?\d{1,18}$/D', $raw) === 1 ? (int) $raw : throw self::mismatch('an integer'),
             'float' => is_numeric($raw) ? (float) $raw : throw self::mismatch('a number'),
             'bool' => match (strtolower($raw)) {
                 'true', '1', 'yes' => true,
@@ -178,7 +178,11 @@ final readonly class ValueConverter
     public function identifier(string $type, mixed $raw): int|string
     {
         if ($type === 'int') {
-            return is_int($raw) ? $raw : (is_string($raw) && preg_match('/^[1-9][0-9]{0,17}$/', $raw) === 1 ? (int) $raw : throw self::mismatch('an identifier'));
+            if (is_int($raw)) {
+                return $raw;
+            }
+
+            return is_string($raw) && preg_match('/^[1-9]\d{0,17}$/D', $raw) === 1 ? (int) $raw : throw self::mismatch('an identifier');
         }
 
         return is_string($raw) && $raw !== '' ? $raw : throw self::mismatch('an identifier');
@@ -235,7 +239,11 @@ final readonly class ValueConverter
                 throw new InputViolation(new Violation([], 'type_mismatch', "has a value under \"{$key}\" that is not text."));
             }
 
-            $map[$key] = is_bool($value) ? ($value ? 'true' : 'false') : (string) $value;
+            $map[$key] = match ($value) {
+                true => 'true',
+                false => 'false',
+                default => (string) $value,
+            };
         }
 
         if ($map === [] && ($field['nullable'] ?? false) === true) {
@@ -298,7 +306,7 @@ final readonly class ValueConverter
     /** @throws InputViolation */
     private function instant(mixed $raw): DateTimeImmutable
     {
-        if (!is_string($raw) || preg_match('/^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?)?(?:Z|[+-]\d{2}:?\d{2})?$/', $raw) !== 1) {
+        if (!is_string($raw) || !self::isInstant($raw)) {
             throw self::mismatch('an ISO 8601 date or date-time');
         }
 
@@ -307,6 +315,22 @@ final readonly class ValueConverter
         } catch (Throwable) {
             throw new InputViolation(new Violation([], 'invalid_date', 'is not a valid date.'));
         }
+    }
+
+    /**
+     * YYYY-MM-DD, then an optional time (hh:mm, :ss, .ffffff) and an
+     * optional zone (Z, ±hh:mm or ±hhmm). The shape is matched first and
+     * the time and the zone it isolates are checked on their own; neither
+     * can contain the other's characters, so the split is unambiguous.
+     */
+    private static function isInstant(string $raw): bool
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}(?<time>[T ][\d:.]+)?(?<zone>Z|[+-][\d:]+)?$/', $raw, $m, PREG_UNMATCHED_AS_NULL) !== 1) {
+            return false;
+        }
+
+        return ($m['time'] === null || preg_match('/^[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?$/D', $m['time']) === 1)
+            && ($m['zone'] === null || preg_match('/^(?:Z|[+-]\d{2}:?\d{2})$/D', $m['zone']) === 1);
     }
 
     /**

@@ -26,6 +26,8 @@ use Kinetis\Vector\Write\RecordInput;
  */
 final readonly class OpenApiDocument
 {
+    private const string ACTION_RESULT = '#/components/schemas/ActionResult';
+
     public function __construct(
         private VisibleResources $resources,
         private ResourceService $service,
@@ -306,10 +308,10 @@ final readonly class OpenApiDocument
             'content' => self::json(['type' => 'object', 'properties' => $properties]),
         ], [
             '200' => ['description' => 'What the client does next; a download answers the file itself.', 'content' => [
-                ...self::json(['$ref' => '#/components/schemas/ActionResult']),
+                ...self::json(['$ref' => self::ACTION_RESULT]),
                 'application/octet-stream' => ['schema' => ['type' => 'string']],
             ]],
-            '202' => ['description' => 'The queued action.', 'content' => self::json(['$ref' => '#/components/schemas/ActionResult'])],
+            '202' => ['description' => 'The queued action.', 'content' => self::json(['$ref' => self::ACTION_RESULT])],
         ]);
 
         // a refusal the action answers itself (`type: danger`) is a 422 too
@@ -317,7 +319,7 @@ final readonly class OpenApiDocument
             'description' => 'A refused value or selection, or the action\'s own refusal (`type: danger`).',
             'content' => [
                 'application/problem+json' => ['schema' => ['$ref' => '#/components/schemas/Problem']],
-                'application/json' => ['schema' => ['oneOf' => [['$ref' => '#/components/schemas/ActionResult'], ['$ref' => '#/components/schemas/Error']]]],
+                'application/json' => ['schema' => ['oneOf' => [['$ref' => self::ACTION_RESULT], ['$ref' => '#/components/schemas/Error']]]],
             ],
         ];
 

@@ -134,9 +134,11 @@ final readonly class InstallCommand
             $published++;
         }
 
+        $option = $connection === 'default' ? '' : " --connection={$connection}";
+
         echo $published === 0
             ? "Nothing to publish: every Vector migration is already present for the \"{$connection}\" connection.\n"
-            : 'Run `vendor/bin/kinetis migrate' . ($connection === 'default' ? '' : " --connection={$connection}") . "` to apply.\n";
+            : "Run `vendor/bin/kinetis migrate{$option}` to apply.\n";
 
         foreach ($this->otherPartitions($migrations, $connection) as $other) {
             echo "Note: Vector's migrations are also published for the \"{$other}\" connection. Vector uses the one VECTOR_DB_CONNECTION names.\n";

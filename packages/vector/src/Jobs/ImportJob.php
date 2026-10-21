@@ -77,7 +77,7 @@ final readonly class ImportJob implements Job
             $failed = [];
             $processed = 0;
 
-            foreach ($reader->rows() as $line => $row) {
+            foreach ($reader->rows() as $row) {
                 $processed++;
 
                 try {
