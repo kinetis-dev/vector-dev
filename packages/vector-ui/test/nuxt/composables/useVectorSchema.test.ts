@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { registerEndpoint } from '@nuxt/test-utils/runtime'
+import { DESCRIPTOR_VERSION } from '#vector/app/composables/useVectorSchema'
 import { adoptMinorUnits, minorDigits } from '#vector/app/utils/format'
 import { endpoint, standaloneApi } from '../endpoints'
 import { resource, schema } from '../fixtures'
@@ -86,6 +87,22 @@ describe('useVectorSchema', () => {
             ['Catalog', ['products', 'tags']],
             ['Support', ['tickets']],
         ])
+    })
+
+    it('refuses a descriptor of another contract version, and keeps none', async () => {
+        cleanup = endpoint('/vector/schema', { body: { ...descriptor, version: 5 } }).unregister
+        const { load, loading, schema: loaded } = useVectorSchema()
+
+        await expect(load()).rejects.toThrow('The API publishes descriptor version 5; this admin reads version 4.')
+
+        expect(loaded.value).toBeNull()
+        expect(loading.value).toBe(false)
+    })
+
+    it('reads the contract version the server publishes', () => {
+        // packages/vector's VectorRegistry::VERSION, as descriptor.schema.json pins it
+        expect(DESCRIPTOR_VERSION).toBe(4)
+        expect(descriptor.version).toBe(DESCRIPTOR_VERSION)
     })
 
     it('is not left loading after a failure', async () => {

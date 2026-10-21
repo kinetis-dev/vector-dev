@@ -8,6 +8,7 @@ export default {
     toggleTheme: 'Сменить тему',
     language: 'Язык: {name}',
     languageFailed: 'Не удалось сохранить язык: {error}',
+    unsupportedDescriptor: 'API публикует дескриптор версии {version}, а эта панель читает версию {supported}. Установите совместимые выпуски kinetis/vector и vector-ui.',
     nav: {
         main: 'Главное',
         dashboard: 'Панель управления',

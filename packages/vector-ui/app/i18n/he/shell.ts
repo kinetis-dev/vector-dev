@@ -8,6 +8,7 @@ export default {
     toggleTheme: 'החלפת ערכת נושא',
     language: 'שפה: {name}',
     languageFailed: 'לא ניתן לשמור את השפה: {error}',
+    unsupportedDescriptor: 'ה-API מפרסם את גרסה {version} של המתאר; ממשק הניהול הזה קורא את גרסה {supported}. התקינו גרסאות תואמות של kinetis/vector ו-vector-ui.',
     nav: {
         main: 'ראשי',
         dashboard: 'לוח בקרה',

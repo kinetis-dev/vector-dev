@@ -8,6 +8,7 @@ export default {
     toggleTheme: 'テーマの切り替え',
     language: '言語：{name}',
     languageFailed: '言語を保存できませんでした：{error}',
+    unsupportedDescriptor: 'API はディスクリプタのバージョン {version} を公開していますが、この管理画面が読めるのはバージョン {supported} です。対応する kinetis/vector と vector-ui をインストールしてください。',
     nav: {
         main: 'メイン',
         dashboard: 'ダッシュボード',

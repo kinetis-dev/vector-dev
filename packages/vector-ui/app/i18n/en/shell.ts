@@ -8,6 +8,7 @@ export default {
     toggleTheme: 'Toggle theme',
     language: 'Language: {name}',
     languageFailed: 'The language could not be saved: {error}',
+    unsupportedDescriptor: 'The API publishes descriptor version {version}; this admin reads version {supported}. Install matching releases of kinetis/vector and vector-ui.',
     nav: {
         main: 'Main',
         dashboard: 'Dashboard',

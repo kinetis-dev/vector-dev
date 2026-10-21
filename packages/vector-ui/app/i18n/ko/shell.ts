@@ -8,6 +8,7 @@ export default {
     toggleTheme: '테마 전환',
     language: '언어: {name}',
     languageFailed: '언어를 저장할 수 없습니다: {error}',
+    unsupportedDescriptor: 'API가 디스크립터 버전 {version}을(를) 게시하지만 이 관리자는 버전 {supported}을(를) 읽습니다. 서로 맞는 kinetis/vector와 vector-ui 릴리스를 설치하세요.',
     nav: {
         main: '메인',
         dashboard: '대시보드',

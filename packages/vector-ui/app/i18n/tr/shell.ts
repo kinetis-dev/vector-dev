@@ -8,6 +8,7 @@ export default {
     toggleTheme: 'Temayı değiştir',
     language: 'Dil: {name}',
     languageFailed: 'Dil kaydedilemedi: {error}',
+    unsupportedDescriptor: 'API, tanımlayıcı sürümü {version} yayımlıyor; bu yönetim paneli sürüm {supported} okuyor. kinetis/vector ve vector-ui için uyumlu sürümleri yükleyin.',
     nav: {
         main: 'Ana',
         dashboard: 'Pano',

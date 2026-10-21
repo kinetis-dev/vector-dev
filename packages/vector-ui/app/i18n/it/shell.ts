@@ -8,6 +8,7 @@ export default {
     toggleTheme: 'Cambia tema',
     language: 'Lingua: {name}',
     languageFailed: 'Impossibile salvare la lingua: {error}',
+    unsupportedDescriptor: 'L’API pubblica la versione {version} del descrittore; questo pannello legge la versione {supported}. Installa versioni corrispondenti di kinetis/vector e vector-ui.',
     nav: {
         main: 'Principale',
         dashboard: 'Dashboard',

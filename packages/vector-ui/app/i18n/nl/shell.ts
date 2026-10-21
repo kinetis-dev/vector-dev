@@ -8,6 +8,7 @@ export default {
     toggleTheme: 'Thema wisselen',
     language: 'Taal: {name}',
     languageFailed: 'De taal kon niet worden opgeslagen: {error}',
+    unsupportedDescriptor: 'De API publiceert descriptorversie {version}; deze beheeromgeving leest versie {supported}. Installeer bij elkaar passende versies van kinetis/vector en vector-ui.',
     nav: {
         main: 'Hoofdmenu',
         dashboard: 'Dashboard',

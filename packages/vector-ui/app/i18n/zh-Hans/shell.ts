@@ -8,6 +8,7 @@ export default {
     toggleTheme: '切换主题',
     language: '语言：{name}',
     languageFailed: '无法保存语言：{error}',
+    unsupportedDescriptor: 'API 发布的描述符版本为 {version}，而此管理界面读取版本 {supported}。请安装相互匹配的 kinetis/vector 和 vector-ui 版本。',
     nav: {
         main: '主菜单',
         dashboard: '仪表盘',

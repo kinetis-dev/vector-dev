@@ -8,6 +8,7 @@ export default {
     toggleTheme: 'تبديل السمة',
     language: 'اللغة: {name}',
     languageFailed: 'تعذّر حفظ اللغة: {error}',
+    unsupportedDescriptor: 'تنشر الواجهة البرمجية الإصدار {version} من الواصف، وهذه الإدارة تقرأ الإصدار {supported}. ثبّت إصدارين متوافقين من kinetis/vector وvector-ui.',
     nav: {
         main: 'الرئيسية',
         dashboard: 'لوحة المعلومات',

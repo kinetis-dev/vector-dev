@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The admin refuses a descriptor whose `version` is not the contract it
+  reads (4), naming both versions, instead of rendering it as if it were.
+
 ## [0.10.2] - 2026-10-21
 
 ### Fixed
