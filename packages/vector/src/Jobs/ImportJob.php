@@ -68,6 +68,7 @@ final readonly class ImportJob implements Job
 
             // the resource as the admin who started the job sees it
             $descriptor = $service->visible($descriptor);
+            $manager = $managers->managerFor($descriptor->entityClass());
 
             $file = $context->jobs->file($this->jobId) ?? throw new JobFailedException('The uploaded file is gone.');
             $reader = CsvReader::fromString($file['contents']);
@@ -104,14 +105,18 @@ final readonly class ImportJob implements Job
                     }
                 } catch (ValidationException $e) {
                     $failed[] = [...$row, 'error' => implode('; ', array_map(static fn (Violation $v): string => implode('.', array_map('strval', $v->path)) . ' ' . $v->message, $e->violations))];
+                    // a refused row may still be pending — a failed flush keeps its insert, a hook's refusal
+                    // the values already assigned — and the next row's flush would send it again
+                    $manager->clear();
                 } catch (VectorException | AuthorizationException $e) {
                     $failed[] = [...$row, 'error' => $e->getMessage()]; // refused by a policy or a rule: this row's failure
+                    $manager->clear();
                 }
 
                 if ($processed % 100 === 0) {
                     $context->jobs->progress($this->jobId, $processed);
                     // every row so far is flushed; the identity map need not hold them for the rows to come
-                    $managers->managerFor($descriptor->entityClass())->clear();
+                    $manager->clear();
                 }
             }
 

@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`Kinetis\Orm\Date`) on every row with "must be a date as
   YYYY-MM-DD.": the parsed date reached the writer as an object rather
   than the text a body carries.
+- A row of a CSV import that the database refused — a duplicate unique
+  value, a value too long for its column — stayed pending in the entity
+  manager, so the next row's write sent it again and failed with that
+  row's reason, up to the next hundred rows. A refused row's pending
+  changes are now discarded before the next row.
 
 ## [0.11.0] - 2026-10-21
 
