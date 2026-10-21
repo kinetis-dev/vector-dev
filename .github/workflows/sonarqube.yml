@@ -92,7 +92,9 @@ jobs:
 
       - name: Build the demo's PHP image
         # pcov is part of the demo's extension recipe already.
-        run: docker build --progress=plain --build-arg PHP_VERSION=8.4 --target fpm -t "$VECTOR_PHP_IMAGE" -f demo/docker/Dockerfile demo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: docker build --progress=plain --secret id=github_token,env=GITHUB_TOKEN --build-arg PHP_VERSION=8.4 --target fpm -t "$VECTOR_PHP_IMAGE" -f demo/docker/Dockerfile demo
 
       - name: Install dependencies
         run: .github/scripts/php composer install --no-interaction --prefer-dist --no-progress

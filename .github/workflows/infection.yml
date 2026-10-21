@@ -141,7 +141,9 @@ jobs:
         # pcov, Infection's coverage driver, is already part of the
         # demo's extension recipe (demo/docker/php-extensions.sh), so
         # nothing is installed on top of the image the stack runs.
-        run: docker build --progress=plain --build-arg PHP_VERSION=8.4 --target fpm -t "$VECTOR_PHP_IMAGE" -f demo/docker/Dockerfile demo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: docker build --progress=plain --secret id=github_token,env=GITHUB_TOKEN --build-arg PHP_VERSION=8.4 --target fpm -t "$VECTOR_PHP_IMAGE" -f demo/docker/Dockerfile demo
 
       - name: Install dependencies
         if: steps.scope.outputs.run == 'true'

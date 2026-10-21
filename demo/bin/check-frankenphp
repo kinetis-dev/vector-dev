@@ -55,7 +55,7 @@ else
 fi
 
 # The PHP version, then every loaded extension and the version of each
-# one PECL installs (a bundled one reports PHP's own version), then every
+# one PIE installs (a bundled one reports PHP's own version), then every
 # Zend extension (OPcache, a debugger) with its version: plain
 # get_loaded_extensions() leaves those out. The Dockerfile pins the PHP
 # minor for both bases, not the patch each base image ships, so a patch
