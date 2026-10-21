@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SubmitEventPromise } from 'vuetify'
+import { hasEmailShape } from '#vector/app/utils/internal/patterns'
 
 definePageMeta({ layout: 'default' })
 

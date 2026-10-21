@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { fieldState, hasEmailShape, isEmailAddress, phpRegex, rulesFor } from '#vector/app/utils/rules'
+import { fieldState, rulesFor } from '#vector/app/utils/rules'
+import { hasEmailShape, isEmailAddress, phpRegex } from '#vector/app/utils/internal/patterns'
 import { field, rule } from '../fixtures'
 
 /** Every rule's verdict on one value: the first message, or true. */

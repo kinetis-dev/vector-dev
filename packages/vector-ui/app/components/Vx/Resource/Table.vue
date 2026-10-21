@@ -92,18 +92,18 @@ let requestId = 0
 /** Whether the next load goes back to the first page: a changed search, filter, sort or page size asked for it. */
 let restart = false
 
-/**
- * Loads the page shown now, or the one $step away on a list that is not
- * counted. The step is taken only once its page has arrived: a request
- * that fails leaves the page number, the cursors and the rows as they were.
- * While a return to the first page is owed, every load is that return.
- */
 /** How many pages a step moves from the current one. */
 function pageOffset(step: VectorPageStep): number {
     if (step === 'forward') return 1
     return step === 'back' ? -1 : 0
 }
 
+/**
+ * Loads the page shown now, or the one $step away on a list that is not
+ * counted. The step is taken only once its page has arrived: a request
+ * that fails leaves the page number, the cursors and the rows as they were.
+ * While a return to the first page is owed, every load is that return.
+ */
 async function load(step: VectorPageStep = 'stay') {
     if (restart) step = 'first'
     const cursor = byCursor.value ? cursors.cursorFor(step) : null
