@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Vector;
 
+use App\Domain\ProductStatus;
+use App\Tests\Vector\Fixtures\Level;
 use DateTimeImmutable;
 use Kinetis\Container\AppScope;
 use Kinetis\Container\RequestScope;
@@ -79,6 +81,34 @@ final class ValueConverterTest extends TestCase
 
         foreach ($refused as $raw) {
             self::assertSame('must be an ISO 8601 date or date-time.', $this->mismatch(fn () => $this->converter()->fromQuery($instant, $raw)), $raw);
+        }
+    }
+
+    /**
+     * tryFrom() under strict types throws a TypeError for the scalar its
+     * enum is not backed by: a filter on an int-backed enum, or a body
+     * value of the other type, once answered 500 instead of refusing it.
+     */
+    public function testAnEnumValueOfEitherBackingIsAChoiceOrARefusal(): void
+    {
+        $level = ['type' => 'enum', 'valueType' => 'int', 'enum' => Level::class, 'nullable' => false];
+        $status = ['type' => 'enum', 'valueType' => 'string', 'enum' => ProductStatus::class, 'nullable' => false];
+
+        self::assertSame(2, $this->converter()->fromQuery($level, '2'));
+        self::assertSame('active', $this->converter()->fromQuery($status, 'active'));
+        self::assertSame(Level::High, $this->converter()->convert($level, 2));
+        self::assertSame(ProductStatus::Active, $this->converter()->convert($status, 'active'));
+
+        foreach (['x', '3', '2x', "2\n", ''] as $raw) {
+            self::assertSame('is not one of the allowed values.', $this->mismatch(fn () => $this->converter()->fromQuery($level, $raw)), json_encode($raw, JSON_THROW_ON_ERROR));
+        }
+
+        foreach (['2', 'High', 3] as $raw) {
+            self::assertSame('is not one of the allowed values.', $this->mismatch(fn () => $this->converter()->convert($level, $raw)), json_encode($raw, JSON_THROW_ON_ERROR));
+        }
+
+        foreach ([1, 'nope'] as $raw) {
+            self::assertSame('is not one of the allowed values.', $this->mismatch(fn () => $this->converter()->convert($status, $raw)), json_encode($raw, JSON_THROW_ON_ERROR));
         }
     }
 

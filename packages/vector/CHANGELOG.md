@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- An enum value of the scalar type its enum is not backed by — any
+  `filter[field]=…` on an int-backed enum, or a string sent for one in
+  a body — answered `500` with a `TypeError` from `tryFrom()`. A list
+  filter now matches an int-backed enum by its digits, and any other
+  value is refused as `invalid_choice` (`422`).
+
 ## [0.11.0] - 2026-10-21
 
 ### Added
