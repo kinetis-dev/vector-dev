@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A relation input whose search fails says why under the input and keeps
   the choices it listed, instead of failing silently with an unhandled
   promise rejection.
+- Opening a notification whose mark-as-read fails says why, instead of
+  failing silently with an unhandled promise rejection.
 
 ### Security
 
@@ -27,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when it is http(s), mailto or relative — the rule a URL cell and a
   rich-text link follow. A `javascript:` or `data:` URL, which an action
   echoing a record's value could return, is no longer opened.
+- A notification's link is followed only when it is a path of the
+  admin, the rule the sign-in page's `redirect` follows; `//host`,
+  `/\host` and a URL with a scheme are not.
 
 ## [0.10.2] - 2026-10-21
 
