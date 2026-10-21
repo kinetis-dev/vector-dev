@@ -3,7 +3,8 @@ import type { $Fetch } from 'nitropack'
 /**
  * The one HTTP client every Vector request goes through. Bearer mode
  * attaches the in-memory token — renewed first when it has under two
- * minutes left — and on a 401 renews it once and repeats the request,
+ * minutes left — and on a 401 renews it once and repeats the request
+ * (a 401 for a token another request already renewed only repeats it),
  * sending the user to the login page only when that fails too (a 401
  * means the request did nothing, so repeating even a POST is safe);
  * cookie mode (hosted) rides the application's session cookie,
@@ -29,13 +30,16 @@ export function useVectorApi(): $Fetch {
                 }
             } else {
                 const token = await auth.fresh()
+                Object.assign(options, { vectorToken: token }) // which token this request carried, for its 401
                 if (token) options.headers.set('Authorization', `Bearer ${token}`)
             }
         },
         async onResponseError({ response, options }) {
-            const once = options as typeof options & { vectorRenewed?: boolean }
+            const once = options as typeof options & { vectorRenewed?: boolean, vectorToken?: string | null }
+            // renewed since this request left (another request's 401 did it): repeat it, without renewing again
+            const renewedSince = auth.token !== null && auth.token !== once.vectorToken
 
-            if (response.status === 401 && !runtime.hosted && !once.vectorRenewed && auth.canRefresh && await auth.refresh()) {
+            if (response.status === 401 && !runtime.hosted && !once.vectorRenewed && (renewedSince || (auth.canRefresh && await auth.refresh()))) {
                 // repeated once, with the renewed token (onRequest sets it)
                 once.vectorRenewed = true
                 options.retry = 1

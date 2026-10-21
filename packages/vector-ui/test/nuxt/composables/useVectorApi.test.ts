@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { endpoint, standaloneApi } from '../endpoints'
 
 const cleanups: (() => void)[] = []
@@ -71,6 +71,33 @@ describe('useVectorApi, standalone (bearer)', () => {
         expect(refresh.requests).toHaveLength(1)
         expect(probe.requests.map(r => r.headers.get('authorization'))).toEqual(['Bearer revoked', 'Bearer renewed'])
         expect(auth.token).toBe('renewed')
+    })
+
+    it('repeats a request refused for a token already renewed, without renewing again', async () => {
+        const auth = useVectorAuthStore()
+        mock('/auth/login', { body: { accessToken: 'revoked', tokenType: 'Bearer', expiresIn: 900, refreshToken: 'r-1', refreshExpiresIn: 3600, user: { id: 1, name: 'Vector Admin' } } }, 'POST')
+        const refresh = mock('/auth/refresh', { body: { accessToken: 'renewed', tokenType: 'Bearer', expiresIn: 900, refreshToken: 'r-2', refreshExpiresIn: 3600, user: { id: 1, name: 'Vector Admin' } } }, 'POST')
+        let release!: () => void
+        const held = new Promise<void>((resolve) => { release = resolve })
+        // the slow request's 401 arrives only after the fast one's renewal finished
+        const slow = mock('/vector/slow', async (request) => {
+            if (request.headers.get('authorization') === 'Bearer renewed') return { body: { ok: 'slow' } }
+            await held
+            return { status: 401, body: { error: 'Unauthenticated.' } }
+        })
+        mock('/vector/fast', request => request.headers.get('authorization') === 'Bearer renewed' ? { body: { ok: 'fast' } } : { status: 401, body: { error: 'Unauthenticated.' } })
+        await auth.login('admin@vector.local', 'password')
+        const api = useVectorApi()
+
+        const slowAnswer = api('/vector/slow')
+        await vi.waitFor(() => expect(slow.requests).toHaveLength(1))
+        expect(await api('/vector/fast')).toEqual({ ok: 'fast' })
+        release()
+
+        expect(await slowAnswer).toEqual({ ok: 'slow' })
+        expect(refresh.requests).toHaveLength(1)
+        expect(auth.token).toBe('renewed')
+        expect(auth.refreshToken).toBe('r-2')
     })
 
     it('leaves the session alone on other errors', async () => {

@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reads (4), naming both versions, instead of rendering it as if it were.
 - Following a job no longer adds a listener to the page's abort signal on
   every poll without removing it; a long job's page held one per poll.
+- A request refused (401) for an access token another request has
+  already renewed is repeated with the new token instead of renewing the
+  session a second time, which spent the new refresh token and could end
+  a session that was still good.
 
 ### Security
 
