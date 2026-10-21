@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   key's database column, which its JSON schema does not declare and no
   client reads; every other column it already leaves out. The key is
   `{field, type}`, as the MCP description has it.
+- `descriptor.schema.json` did not declare two keys the descriptor
+  publishes: a resource's `show.extra` (as `table.extra` is) and a
+  relation's `owned`.
 
 ## [0.11.0] - 2026-10-21
 

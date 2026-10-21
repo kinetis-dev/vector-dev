@@ -74,8 +74,21 @@ final class SchemaControllerTest extends VectorTestCase
         foreach ($document['resources'] as $slug => $resource) {
             $check("resources.{$slug}", $resource, $declared($schema['$defs']['resource']));
 
+            // and one level down, in the objects the schema spells out
+            foreach ($schema['$defs']['resource']['properties'] as $key => $definition) {
+                if (isset($definition['properties']) && is_array($resource[$key] ?? null)) {
+                    $check("resources.{$slug}.{$key}", $resource[$key], $declared($definition));
+                }
+            }
+
             foreach ($resource['fields'] as $field) {
                 $check("resources.{$slug}.fields", $field, $declared($schema['$defs']['field']));
+
+                foreach ($schema['$defs']['field']['properties'] as $key => $definition) {
+                    if (isset($definition['properties']) && is_array($field[$key] ?? null)) {
+                        $check("resources.{$slug}.fields.{$key}", $field[$key], $declared($definition));
+                    }
+                }
             }
 
             foreach ($resource['actions'] as $action) {
