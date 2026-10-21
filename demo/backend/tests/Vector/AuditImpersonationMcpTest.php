@@ -79,6 +79,27 @@ final class AuditImpersonationMcpTest extends VectorTestCase
     }
 
     /**
+     * `$` without `D` matches before a trailing newline: "2\n" once named
+     * user 2, and the admin's own id with one slipped past the "already
+     * yourself" check, which compares the text.
+     */
+    public function testAnIdWithATrailingNewlineNamesNoUser(): void
+    {
+        $link = $this->link();
+        $admin = (new Query($link))->table('users')->select('id')->where('email', '=', 'admin@vector.local')->first();
+        $editor = (new Query($link))->table('users')->select('id')->where('email', '=', 'editor@vector.local')->first();
+        self::assertIsArray($admin);
+        self::assertIsArray($editor);
+        $adminHeaders = ['Authorization' => 'Bearer ' . $this->tokenFor((string) $admin['id'])];
+
+        $this->client->post("/vector/impersonate/{$admin['id']}%0A", headers: $adminHeaders)->assertNotFound();
+        $this->client->post("/vector/impersonate/{$editor['id']}%0A", headers: $adminHeaders)->assertNotFound();
+
+        self::assertNull((new \App\Auth\DemoActorResolver($link))->resolve("{$editor['id']}\n"));
+        self::assertNotNull((new \App\Auth\DemoActorResolver($link))->resolve((string) $editor['id']));
+    }
+
+    /**
      * @param array<string, mixed> $admin
      * @param array<string, mixed> $editor
      * @param array<string, string> $adminHeaders
