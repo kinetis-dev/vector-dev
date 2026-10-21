@@ -29,6 +29,11 @@ final class SchemaControllerTest extends VectorTestCase
         foreach ($document['resources']['products']['fields'] as $field) {
             self::assertArrayNotHasKey('column', $field, 'the published descriptor names no database column');
         }
+
+        // nor the primary key's: a client addresses records by the key's field
+        foreach ($document['resources'] as $slug => $resource) {
+            self::assertSame(['field', 'type'], array_keys($resource['primaryKey']), $slug);
+        }
     }
 
     public function testThePublishedDescriptorValidatesAgainstItsJsonSchema(): void

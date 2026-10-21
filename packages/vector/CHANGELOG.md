@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   manager, so the next row's write sent it again and failed with that
   row's reason, up to the next hundred rows. A refused row's pending
   changes are now discarded before the next row.
+- The descriptor published each resource's `primaryKey.column`, the
+  key's database column, which its JSON schema does not declare and no
+  client reads; every other column it already leaves out. The key is
+  `{field, type}`, as the MCP description has it.
 
 ## [0.11.0] - 2026-10-21
 
