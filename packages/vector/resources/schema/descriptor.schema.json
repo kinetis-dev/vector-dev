@@ -871,6 +871,14 @@
                         },
                         "bulkLimit": {
                             "type": "integer"
+                        },
+                        "withoutCount": {
+                            "type": "boolean",
+                            "description": "Offset pages carry no total: total and lastPage are null, hasMore says whether another page follows."
+                        },
+                        "cursorPaging": {
+                            "type": "boolean",
+                            "description": "The admin pages the list by cursor: no sort, grouping, page numbers, total or summaries."
                         }
                     }
                 },

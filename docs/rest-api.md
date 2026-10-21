@@ -16,6 +16,7 @@ application).
 | Route | Answers |
 |---|---|
 | `GET /vector/schema`, `GET /vector/schema/{resource}` | The descriptor for this user, with an `ETag` (`If-None-Match` answers `304`). |
+| `GET /vector/openapi.json` | This API as an OpenAPI 3.1 document, for this user, where `OPENAPI_ENVIRONMENTS` opens it ([below](#openapi-document)). |
 | `GET /vector/me` | The authenticated identity. |
 | `GET /vector/r/{resource}` | A page of records under the list grammar. |
 | `GET /vector/r/{resource}/export` | The same list as a CSV file; a job above the export limit. |
@@ -53,6 +54,15 @@ application).
 - **A list** — `{data, currentPage, perPage, total, lastPage}`, or
   `{data, nextCursor, hasMore, perPage}` under a cursor, plus
   `summaries` when asked.
+- **An uncounted list** — a resource that declares `withoutCount()`
+  issues no COUNT: its offset page is `{data, currentPage, perPage,
+  total: null, lastPage: null, hasMore}`, where `hasMore` says whether
+  another page follows (read from one row past the page), plus
+  `summaries` when asked. A counted resource's page carries no
+  `hasMore`. `GET /vector/openapi.json` describes each resource's list
+  in its own form. A collection's page under `/{id}/{relation}` takes
+  the target resource's form; that path is not in the OpenAPI document.
+  The cursor envelope is the same for every resource.
 - **A record** — `{data, permissions}`, where `permissions` is
   `{update, delete, restore, forceDelete, actions}`.
 - **A write refusal** — the framework's RFC 9457 document with
@@ -170,7 +180,7 @@ or not the columns name it.
 | `filter[field][op]=value` | Filterable fields, with the operators they publish. `filter[field]=value` is `eq`; `in`, `nin` and `between` take `a,b`. |
 | `filter[or][i]…`, `filter[and][i]…` | Alternatives and combined groups, four deep, 50 conditions at most. |
 | `filter[trashed]=only\|with` | The trash, on a soft-deleting resource. |
-| `q` | Search over the searchable fields. |
+| `q` | Search over the searchable fields: contains the term, a searchable relation's title contains it, or full-text fields hold its words; see {doc}`resources`. |
 | `group=field` | Group by a groupable field. |
 | `summaries=1` | Include the summaries. |
 | `columns=a,b` | Only these fields, plus what their display needs. |
@@ -213,6 +223,35 @@ plus one per relation field. A write is one flush.
 | `404` | Unknown resource or record. |
 | `409` | A stale version, or a revert over a field changed since. |
 | `422` | Validation — the framework's RFC 9457 document, with `errors[].path`, `code` and `message` — or an invalid list request. |
+
+## OpenAPI document
+
+`GET /vector/openapi.json` describes this API as an OpenAPI 3.1
+document, for the user who asks. It has a path for each resource they
+may list, with:
+
+- the list parameters that resource accepts: each field's
+  `filter[<field>][<op>]` operators, the sortable fields, `perPage` up
+  to the resource's maximum, `page`, `cursor`, `q`, `summaries`,
+  `group`, `columns`, and `filter[trashed]` where it soft-deletes;
+- show, create, update, delete and restore, with bodies built from the
+  compiled fields and their rules;
+- its actions, export, import and relation options;
+- `422` as the RFC 9457 document and every other error as
+  `{"error": "…"}`.
+
+A resource, field or action the policies hide from this user is absent,
+as it is from the descriptor. The document carries an `ETag` for the
+document and the user, and `If-None-Match` answers `304`.
+
+It is served where the framework serves its own `/openapi.json`: when
+`OPENAPI_ENVIRONMENTS` names `APP_ENV`. Unset, it is closed. A closed
+endpoint answers every method with the `404` of a path no route matches,
+before authentication runs; an open one is still in the `vector` group.
+The setting is read when the worker boots. The framework's own
+`/openapi.json` lists Vector's routes by their templates
+(`/vector/r/{resource}` and so on); this document lists each resource's
+own.
 
 ## See also
 

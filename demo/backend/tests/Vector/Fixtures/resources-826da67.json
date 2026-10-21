@@ -2487,7 +2487,8 @@
             ],
             "exportLimit": 10000,
             "exportQueueLimit": 250000,
-            "bulkLimit": 1000
+            "bulkLimit": 1000,
+            "cursorPaging": true
         },
         "show_view": {
             "fields": [
@@ -3166,7 +3167,8 @@
             ],
             "exportLimit": 10000,
             "exportQueueLimit": 250000,
-            "bulkLimit": 1000
+            "bulkLimit": 1000,
+            "withoutCount": true
         },
         "show_view": {
             "fields": [
@@ -3560,7 +3562,7 @@
                 "type": "belongsTo",
                 "label": "Category",
                 "sortable": true,
-                "searchable": false,
+                "searchable": true,
                 "filterable": true,
                 "readonly": false,
                 "inline": false,
@@ -4657,7 +4659,8 @@
             "maxPerPage": 200,
             "search": [
                 "sku",
-                "name"
+                "name",
+                "category"
             ],
             "groupable": [
                 "sku",
@@ -4834,8 +4837,7 @@
             "column": "deleted_at"
         },
         "searchColumns": {
-            "sku": "sku",
-            "name": "name"
+            "sku": "sku"
         },
         "summaryPlan": {
             "priceCents": {
@@ -5143,7 +5145,19 @@
                 "cacheSeconds": 0,
                 "cacheShared": false
             }
-        ]
+        ],
+        "searchRelations": {
+            "category": {
+                "column": "category_id",
+                "resource": "categories"
+            }
+        },
+        "fullText": {
+            "columns": {
+                "name": "name"
+            },
+            "config": "simple"
+        }
     },
     "support-teams": {
         "slug": "support-teams",
@@ -6827,7 +6841,7 @@
                 "type": "belongsTo",
                 "label": "Team",
                 "sortable": true,
-                "searchable": false,
+                "searchable": true,
                 "filterable": true,
                 "readonly": false,
                 "inline": false,
@@ -8840,7 +8854,8 @@
             "search": [
                 "number",
                 "subject",
-                "customerEmail"
+                "customerEmail",
+                "team"
             ],
             "groupable": [
                 "number",
@@ -9051,7 +9066,6 @@
         },
         "searchColumns": {
             "number": "number",
-            "subject": "subject",
             "customerEmail": "customer_email"
         },
         "summaryPlan": {
@@ -9112,7 +9126,19 @@
                 "cacheSeconds": 0,
                 "cacheShared": false
             }
-        ]
+        ],
+        "searchRelations": {
+            "team": {
+                "column": "team_id",
+                "resource": "support-teams"
+            }
+        },
+        "fullText": {
+            "columns": {
+                "subject": "subject"
+            },
+            "config": "simple"
+        }
     },
     "users": {
         "slug": "users",

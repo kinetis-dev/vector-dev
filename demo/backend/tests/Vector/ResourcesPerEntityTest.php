@@ -108,7 +108,9 @@ final class ResourcesPerEntityTest extends TestCase
      * Every resource the demo had before an entity could have several
      * compiles byte for byte as it did then: the fixture was captured
      * from the compiler at 826da67. Users, now one of two resources over
-     * its entity, is among them.
+     * its entity, is among them. Products and tickets have since declared
+     * a searchable relation and full-text search, and the fixture holds
+     * them with those declarations.
      */
     public function testEveryExistingDescriptorIsUnchanged(): void
     {

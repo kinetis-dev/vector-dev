@@ -36,6 +36,9 @@ export default {
         deleteTitle: '{count} {noun} löschen?',
         restoreTitle: '{count} {noun} wiederherstellen?',
         forceDeleteTitle: '{count} {noun} endgültig löschen?',
+        deleteAllTitle: 'Alle passenden {noun} löschen?',
+        restoreAllTitle: 'Alle passenden {noun} wiederherstellen?',
+        forceDeleteAllTitle: 'Alle passenden {noun} endgültig löschen?',
         toTrash: 'Sie werden in den Papierkorb verschoben und können wiederhergestellt werden.',
         irreversible: 'Dies kann nicht rückgängig gemacht werden.',
         restored: '{count} {noun} wiederhergestellt.',
@@ -43,18 +46,22 @@ export default {
     },
     bulk: {
         allMatching: 'Alle {total} Treffer',
+        allMatchingUncounted: 'Alle Treffer',
         selected: '{count} ausgewählt',
         selectAllMatching: 'Alle {total} Treffer auswählen',
+        selectAllMatchingUncounted: 'Alle Treffer auswählen',
         onlyChecked: 'Nur markierte Zeilen',
         clearSelection: 'Auswahl aufheben',
     },
     bulkEdit: {
         everyMatching: 'alle passenden {noun} ({count})',
+        everyMatchingUncounted: 'alle passenden {noun}',
         some: '{count} {noun}',
         title: '{subject} bearbeiten',
         fieldsToChange: 'Zu ändernde Felder',
         fieldsHint: 'Nur die ausgewählten Felder werden geschrieben; alle anderen Werte bleiben unverändert.',
         applyTo: 'Auf {count} anwenden',
+        applyToAll: 'Auf alle Treffer anwenden',
         updated: '{count} {noun} aktualisiert.',
     },
     columns: {
@@ -141,6 +148,9 @@ export default {
             update: 'Jede Zeile aktualisiert den Datensatz mit dem passenden Wert; eine Zeile ohne Treffer landet in der Datei der fehlgeschlagenen Zeilen.',
             upsert: 'Jede Zeile aktualisiert den Datensatz mit dem passenden Wert oder legt einen neuen an, wenn es keinen gibt.',
         },
+    },
+    pager: {
+        page: 'Seite {page}',
     },
     page: {
         create: '{noun} anlegen',

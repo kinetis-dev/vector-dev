@@ -72,6 +72,28 @@ abstract class VectorResource
     }
 
     /**
+     * Whether an offset list skips its COUNT: the page then carries
+     * `total` and `lastPage` as null and a `hasMore` read from one row
+     * past the page, and the admin pages it by previous and next. For a
+     * table large enough that counting the match is the expensive part.
+     */
+    public function withoutCount(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Whether the admin pages this resource's list by cursor — keyset on
+     * the identifier, without sort, grouping, page numbers or a total —
+     * instead of by page number. The REST API is unchanged: `page` and
+     * `cursor` both keep working whichever is set.
+     */
+    public function cursorPaging(): bool
+    {
+        return false;
+    }
+
+    /**
      * The order a list takes when the request names none. Field names,
      * `-` for descending. Empty means the identifier, ascending.
      *
@@ -125,6 +147,17 @@ abstract class VectorResource
     public function widgets(): array
     {
         return [];
+    }
+
+    /**
+     * The searchable text fields a full-text index covers, or null for
+     * none: `q` matches them with MATCH … AGAINST on MySQL and `@@` on
+     * PostgreSQL instead of LIKE. The index is the application's own
+     * migration.
+     */
+    public function fullText(): ?FullText
+    {
+        return null;
     }
 
     /** Whether `GET /vector/search` covers this resource (it needs searchable fields either way). */

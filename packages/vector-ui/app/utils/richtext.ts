@@ -252,8 +252,12 @@ export function sanitizeHtml(html: string): string {
 
     // Fail closed: a sanitizer that does not clean a known-bad canary exactly
     // (a DOM that iterates wrongly, a patched library) is not trusted, and
-    // everything is shown as text instead.
-    purifierWorks ??= purifier.sanitize('<p onclick="x">a<script>b</script><img src="x" onerror="y"><a href="javascript:z">c</a></p>', SANITIZE_CONFIG)
+    // everything is shown as text instead. Its on-attributes name no event,
+    // and it has no style: the browser checks a real handler or style against
+    // the CSP even in the inert document DOMPurify parses into, and reports a
+    // violation for each, while the allow-list strips any attribute it does
+    // not name all the same.
+    purifierWorks ??= purifier.sanitize('<p onvector="x">a<script>b</script><img src="x" onvectorerror="y"><a href="javascript:z">c</a></p>', SANITIZE_CONFIG)
         === '<p>a<img><a target="_blank" rel="noopener noreferrer nofollow">c</a></p>'
 
     return purifierWorks ? purifier.sanitize(html, SANITIZE_CONFIG) : escapeHtml(html)

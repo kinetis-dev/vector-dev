@@ -36,6 +36,9 @@ export default {
         deleteTitle: 'Usunąć {count} {noun}?',
         restoreTitle: 'Przywrócić {count} {noun}?',
         forceDeleteTitle: 'Trwale usunąć {count} {noun}?',
+        deleteAllTitle: 'Usunąć wszystkie pasujące: {noun}?',
+        restoreAllTitle: 'Przywrócić wszystkie pasujące: {noun}?',
+        forceDeleteAllTitle: 'Trwale usunąć wszystkie pasujące: {noun}?',
         toTrash: 'Zostaną przeniesione do kosza i można je przywrócić.',
         irreversible: 'Tej operacji nie można cofnąć.',
         restored: 'Przywrócono: {count} {noun}.',
@@ -43,18 +46,22 @@ export default {
     },
     bulk: {
         allMatching: 'Wszystkie pasujące ({total})',
+        allMatchingUncounted: 'Wszystkie pasujące rekordy',
         selected: 'Zaznaczono: {count}',
         selectAllMatching: 'Zaznacz wszystkie pasujące ({total})',
+        selectAllMatchingUncounted: 'Zaznacz wszystkie pasujące rekordy',
         onlyChecked: 'Tylko zaznaczone wiersze',
         clearSelection: 'Wyczyść zaznaczenie',
     },
     bulkEdit: {
         everyMatching: 'wszystkie pasujące: {noun} ({count})',
+        everyMatchingUncounted: 'wszystkie pasujące: {noun}',
         some: '{count} {noun}',
         title: 'Edytuj: {subject}',
         fieldsToChange: 'Pola do zmiany',
         fieldsHint: 'Zapisywane są tylko wybrane pola; pozostałe wartości nie zmieniają się.',
         applyTo: 'Zastosuj do {count}',
+        applyToAll: 'Zastosuj do wszystkich pasujących',
         updated: 'Zaktualizowano: {count} {noun}.',
     },
     columns: {
@@ -141,6 +148,9 @@ export default {
             update: 'Każdy wiersz aktualizuje rekord o pasującej wartości; wiersz bez dopasowania trafia do pliku błędnych wierszy.',
             upsert: 'Każdy wiersz aktualizuje rekord o pasującej wartości lub tworzy nowy, gdy żaden nie pasuje.',
         },
+    },
+    pager: {
+        page: 'Strona {page}',
     },
     page: {
         create: 'Nowy: {noun}',

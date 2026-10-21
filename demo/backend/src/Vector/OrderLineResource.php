@@ -32,6 +32,13 @@ final class OrderLineResource extends VectorResource
         ];
     }
 
+    /** The largest table of the shop, several lines per order: the admin pages it by cursor. */
+    #[\Override]
+    public function cursorPaging(): bool
+    {
+        return true;
+    }
+
     /**
      * The line's total in minor units, computed from the serialized record.
      *

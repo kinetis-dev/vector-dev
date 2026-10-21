@@ -16,8 +16,11 @@ use Kinetis\QueryBuilder\Query;
 use Kinetis\Vector\Auth\AllowAllPolicy;
 use Kinetis\Vector\Auth\ResourcePolicy;
 use Kinetis\Vector\Exception\ForbiddenOperationException;
+use Kinetis\Vector\Exception\InvalidListRequestException;
 use Kinetis\Vector\Query\ListRequest;
 use Kinetis\Vector\Query\ResourceService;
+use Kinetis\Vector\Registry\VectorRegistry;
+use Kinetis\Vector\VectorResource;
 use Kinetis\Vector\Write\ValueConverter;
 
 /**
@@ -36,11 +39,30 @@ final class ResourceServiceTest extends VectorTestCase
 
     private ?EntityManager $supportManager = null;
 
+    private ScopedCategories $categories;
+
+    private CategoriesPolicy $categoriesPolicy;
+
     protected function registerTestDoubles(AppScope $app, Config $config): void
     {
         parent::registerTestDoubles($app, $config);
         $this->policy = new AdjustablePolicy();
         $app->instance(AllowAllPolicy::class, $this->policy);
+
+        if ($this->name() === 'testARelatedTitleMatchesExactlyWhenTheListShowsIt') {
+            // categories gain a scope and a policy of their own; order lines search their product
+            $this->categories = new ScopedCategories();
+            $this->categoriesPolicy = new CategoriesPolicy();
+            $app->instance(ScopedCategories::class, $this->categories);
+            $app->instance(CategoriesPolicy::class, $this->categoriesPolicy);
+            $registry = $app->get(VectorRegistry::class);
+            self::assertInstanceOf(VectorRegistry::class, $registry);
+            $data = $registry->toArray();
+            $data['resources']['categories']['class'] = ScopedCategories::class;
+            $data['resources']['categories']['policy'] = CategoriesPolicy::class;
+            $data['resources']['order-lines']['searchRelations'] = ['product' => ['column' => 'product_id', 'resource' => 'products']];
+            $app->instance(VectorRegistry::class, VectorRegistry::fromArray($data));
+        }
     }
 
     public function testAPageCarriesEachRelationsDisplayValue(): void
@@ -380,6 +402,31 @@ final class ResourceServiceTest extends VectorTestCase
             self::assertSame(array_values($skus), array_column(iterator_to_array($service->stream($products, $selection, limit: 2, total: 2), false), 'sku'));
         });
 
+        // an uncounted resource's export counts one row past its limit, never the whole match
+        $orders = $this->shop()->table('orders')->count();
+        self::assertGreaterThan(3, $orders);
+        $this->inScope(function (RequestScope $scope) use ($orders): void {
+            $service = $scope->get(ResourceService::class);
+            $converter = $scope->get(ValueConverter::class);
+            self::assertInstanceOf(ResourceService::class, $service);
+            self::assertInstanceOf(ValueConverter::class, $converter);
+            $descriptor = $service->resource('orders');
+            self::assertTrue($descriptor->withoutCount());
+            $all = ListRequest::fromSelection([], $descriptor, $converter);
+
+            self::assertSame(3, $service->exportCount($descriptor, $all, 2));
+            self::assertSame($orders, $service->exportCount($descriptor, $all, $orders));
+            self::assertSame($orders, $service->exportCount($descriptor, $all));
+            self::assertSame($this->shop()->table('customers')->count(), $service->exportCount($service->resource('customers'), ListRequest::fromSelection([], $service->resource('customers'), $converter), 2), 'a counted resource is counted');
+
+            try {
+                iterator_to_array($service->stream($descriptor, $all, limit: 2));
+                self::fail('An export above the limit was streamed.');
+            } catch (InvalidListRequestException $e) {
+                self::assertSame('The selection matches more than 2 records; this export serializes at most 2. Narrow the filter.', $e->getMessage());
+            }
+        });
+
         // a policy binding that is no policy is refused by name
         $this->inScope(function (RequestScope $scope): void {
             $scope->instance(AllowAllPolicy::class, new \stdClass());
@@ -393,6 +440,218 @@ final class ResourceServiceTest extends VectorTestCase
                 self::assertSame([\LogicException::class, AllowAllPolicy::class . ' is not a ResourcePolicyInterface.'], [$e::class, $e->getMessage()]);
             }
         });
+    }
+
+    public function testSearchMatchesTheRelatedTitleAndTheFullTextIndexOnEachEngine(): void
+    {
+        // the shop, on MySQL: every product's name holds its category's name as a word
+        $categories = array_column($this->shop()->table('categories')->select('id', 'name')->get(), 'name', 'id');
+        $products = $this->shop()->table('products')->select('id', 'name', 'category_id')->where('deleted_at', '=', null)->orderBy('id', 'ASC')->get();
+        $product = static fn (\Closure $match): array => array_values(array_map(static fn (array $p): int => (int) $p['id'], array_filter($products, $match)));
+        $named = static fn (string ...$words): \Closure => static fn (array $p): bool => array_diff(array_map('strtolower', $words), (array) preg_split('/\W+/', strtolower((string) $p['name']))) === [];
+
+        // a word only the category's title holds a match for, inside a longer word: the relation alone matches it
+        $laptops = $product(static fn (array $p): bool => $categories[$p['category_id']] === 'Laptops');
+        self::assertNotEmpty($laptops);
+        self::assertSame($laptops, $this->ids('products', 'Laptop'));
+
+        // the name by whole words, through its FULLTEXT index, never as part of a word as LIKE would
+        $rapid = $product($named('Rapid'));
+        self::assertGreaterThan(1, count($rapid));
+        self::assertSame($rapid, $this->ids('products', 'rapid'));
+        self::assertSame([], $this->ids('products', 'apid'));
+        self::assertSame($product($named('Rapid', 'Laptops')), $this->ids('products', 'Laptops Rapid'), 'every word is required');
+        self::assertNotEmpty($product($named('Rapid', 'Laptops')));
+        self::assertLessThan(count($rapid), count($product($named('Rapid', 'Laptops'))));
+        self::assertSame($rapid, $this->ids('products', 'Rapid the xy'), 'a stopword and a word shorter than the index keeps are not required');
+        self::assertSame($rapid, $this->ids('products', '-Rapid +Rapid* "Rapid'), "the user's operators are not passed on");
+
+        // the support desk, on PostgreSQL: no subject names its team
+        $teams = array_column($this->support()->table('support_teams')->select('id', 'name')->get(), 'name', 'id');
+        $tickets = $this->support()->table('tickets')->select('id', 'subject', 'team_id')->where('deleted_at', '=', null)->orderBy('id', 'ASC')->get();
+        $ticket = static fn (\Closure $match): array => array_values(array_map(static fn (array $t): int => (int) $t['id'], array_filter($tickets, $match)));
+        $about = static fn (string ...$words): \Closure => static fn (array $t): bool => array_diff($words, (array) preg_split('/\W+/', strtolower((string) $t['subject']))) === [];
+
+        $billing = $ticket(static fn (array $t): bool => $t['team_id'] !== null && $teams[$t['team_id']] === 'Billing');
+        self::assertNotEmpty($billing);
+        self::assertSame($billing, $this->ids('tickets', 'billing'));
+
+        $damaged = $ticket($about('damaged'));
+        self::assertNotEmpty($damaged);
+        self::assertSame($damaged, $this->ids('tickets', 'Damaged'));
+        self::assertSame([], $this->ids('tickets', 'damage'));
+        self::assertSame($ticket($about('arrived', 'damaged')), $this->ids('tickets', 'damaged arrived'), 'every word is required');
+        self::assertSame($damaged, $this->ids('tickets', 'damaged -damaged | !damaged'), "the user's operators are not passed on");
+        self::assertSame([], $this->ids('tickets', '#&!'), 'a term with no word matches no subject');
+
+        // what this user may not see, search does not match
+        $this->policy->hidden = ['name'];
+        self::assertSame([], $this->ids('products', 'Laptop'), "the category's hidden title");
+        self::assertSame([], $this->ids('products', 'Rapid'), 'the hidden name');
+        self::assertCount(10, $this->ids('products', 'SKU-0001'));
+        $this->policy->hidden = ['name', 'sku'];
+        self::assertSame([], $this->ids('products', 'SKU-0001'), 'a relation whose title is hidden leaves nothing to match');
+        self::assertSame([], $this->ids('products', (string) array_search('Laptops', $categories, true)), 'nor the key it fell back to');
+
+        // the full-text index alone: a term with no word still matches nothing
+        $this->policy->hidden = ['number', 'customerEmail', 'name'];
+        self::assertSame($damaged, $this->ids('tickets', 'damaged'));
+        self::assertSame([], $this->ids('tickets', '#&!'));
+    }
+
+    /**
+     * A belongsTo shows its target's title whatever the target's scope(),
+     * trash or list permission (loadRelations() reads it by key alone),
+     * and search matches exactly the titles the list shows.
+     */
+    public function testARelatedTitleMatchesExactlyWhenTheListShowsIt(): void
+    {
+        $h = $this->adminHeaders();
+        $categories = array_column($this->shop()->table('categories')->select('id', 'name')->get(), 'name', 'id');
+        $laptops = (int) array_search('Laptops', $categories, true);
+        $inLaptops = array_map(static fn (array $p): int => (int) $p['id'], $this->shop()->table('products')->select('id')
+            ->where('category_id', '=', $laptops)->where('deleted_at', '=', null)->orderBy('id', 'ASC')->get());
+        self::assertNotEmpty($inLaptops);
+        $shown = fn (): array => array_values(array_unique(array_column(array_column(
+            $this->json('/vector/r/products', ['filter' => ['category' => (string) $laptops], 'perPage' => 200, 'columns' => 'category'], $h)['data'],
+            'category',
+        ), 'label')));
+
+        // (a) the categories' scope() leaves Laptops out for this user
+        $this->categories->without = 'Laptops';
+        self::assertNotContains('Laptops', array_column($this->json('/vector/r/categories', ['perPage' => 200, 'columns' => 'name'], $h)['data'], 'name'), 'the scope applies');
+        self::assertSame(['Laptops'], $shown(), 'a product still shows its scoped-out category');
+        self::assertSame($inLaptops, $this->ids('products', 'Laptop'), 'and search matches it');
+
+        // (c) this user may list products, but not categories
+        $this->categories->without = null;
+        $this->categoriesPolicy->deny = ['viewAny'];
+        $this->client->get('/vector/r/categories', headers: $h)->assertStatus(403);
+        self::assertSame(['Laptops'], $shown(), 'a product still shows a category the user may not list');
+        self::assertSame($inLaptops, $this->ids('products', 'Laptop'), 'and search matches it');
+
+        // (b) an order line whose product is in the trash
+        $product = (int) $this->shop()->table('order_lines')->orderBy('id', 'ASC')->value('product_id');
+        $name = (string) $this->shop()->table('products')->where('id', '=', $product)->value('name');
+        $named = array_map(static fn (array $p): int => (int) $p['id'], array_filter(
+            $this->shop()->table('products')->select('id', 'name')->get(),
+            static fn (array $p): bool => mb_stripos((string) $p['name'], $name) !== false,
+        ));
+        $lines = array_map(static fn (array $l): int => (int) $l['id'], $this->shop()->table('order_lines')->select('id')->whereIn('product_id', array_values($named))->orderBy('id', 'ASC')->get());
+        $this->shop()->table('products')->where('id', '=', $product)->update(['deleted_at' => date('Y-m-d H:i:s')]);
+
+        try {
+            self::assertNotContains($product, $this->ids('products', $name), 'the product list leaves it out');
+            self::assertSame([$name], array_values(array_unique(array_column(array_column(
+                $this->json('/vector/r/order-lines', ['filter' => ['product' => (string) $product], 'perPage' => 200, 'columns' => 'product'], $h)['data'],
+                'product',
+            ), 'label'))), 'a line still shows its trashed product');
+            self::assertContains($lines[0] ?? null, $this->ids('order-lines', $name));
+            self::assertSame($lines, $this->ids('order-lines', $name), 'and search matches it');
+        } finally {
+            $this->shop()->table('products')->where('id', '=', $product)->update(['deleted_at' => null]);
+        }
+    }
+
+    public function testTheSearchBindsEveryTermOnEachEngine(): void
+    {
+        $this->inScope(function (RequestScope $scope): void {
+            $service = $scope->get(ResourceService::class);
+            $converter = $scope->get(ValueConverter::class);
+            self::assertInstanceOf(ResourceService::class, $service);
+            self::assertInstanceOf(ValueConverter::class, $converter);
+            $sql = static function (string $slug, string $term) use ($service, $converter): array {
+                $resource = $service->resource($slug);
+                $query = null;
+                $service->list($resource, ListRequest::fromQueryParams(['q' => $term], $resource, $converter), static function (Query $list) use (&$query): void {
+                    $query = $list;
+                });
+                self::assertInstanceOf(Query::class, $query);
+                $compiled = $query->toSelectSql();
+
+                return [$compiled->sql, $compiled->params];
+            };
+
+            // é typed as e and a combining accent (NFD), and Devanagari's vowel signs and virama, stay inside their words
+            $nfd = "e\u{301}te\u{301}";
+            $hindi = 'हिन्दी';
+            $term = "Rapid The xy Bob O'Brien rapid né Été été {$nfd} {$hindi}";
+            [$products, $params] = $sql('products', $term);
+            self::assertStringContainsString('(`sku` LIKE ? OR MATCH (`name`) AGAINST (? IN BOOLEAN MODE) OR `category_id` IN (SELECT `id` FROM `categories` WHERE `name` LIKE ?))', $products);
+            self::assertSame(["%{$term}%", "+rapid The xy +Bob O +Brien né +été +{$nfd} +{$hindi}", "%{$term}%"], $params, 'a word is measured and folded by characters, not bytes');
+
+            $term = "damaged O'Brien -refund";
+            [$tickets, $params] = $sql('tickets', $term);
+            self::assertStringContainsString(<<<'SQL'
+                ("number" ILIKE ? OR "customer_email" ILIKE ? OR to_tsvector('simple', coalesce("subject", '')) @@ plainto_tsquery('simple', ?) OR "team_id" IN (SELECT "id" FROM "support_teams" WHERE "name" ILIKE ?))
+                SQL, $tickets);
+            self::assertSame(["%{$term}%", "%{$term}%", $term, "%{$term}%"], $params);
+
+            foreach ([$products, $tickets] as $statement) {
+                self::assertStringNotContainsString('Brien', $statement, 'the term is bound, never written into the SQL');
+            }
+        });
+    }
+
+    public function testEveryPathSearchesAlike(): void
+    {
+        $h = $this->realAdminHeaders();
+        $mcp = [...$this->adminHeaders(), 'MCP-Protocol-Version' => '2025-06-18', 'Content-Type' => 'application/json'];
+
+        foreach ([['products', 'Laptop', 'sku'], ['products', 'Rapid', 'sku'], ['tickets', 'Billing', 'number'], ['tickets', 'damaged', 'number']] as [$slug, $q, $key]) {
+            $listed = $this->json("/vector/r/{$slug}", ['q' => $q, 'perPage' => 200, 'sort' => 'id', 'columns' => $key], $h)['data'];
+            $ids = array_column($listed, 'id');
+            $keys = array_column($listed, $key);
+            self::assertNotEmpty($ids, "{$slug} ?q={$q}");
+
+            // cursor pages
+            $paged = [];
+            $cursor = '';
+
+            do {
+                $page = $this->json("/vector/r/{$slug}", ['q' => $q, 'perPage' => 7, 'cursor' => $cursor, 'columns' => $key], $h);
+                $paged = [...$paged, ...array_column($page['data'], 'id')];
+                $cursor = (string) $page['nextCursor'];
+            } while ($page['hasMore']);
+
+            self::assertSame($ids, $paged, "{$slug} ?q={$q}: cursor pages");
+
+            // an inline export, and one the queue writes
+            $csv = $this->client->get("/vector/r/{$slug}/export", query: ['q' => $q, 'columns' => $key], headers: $h)->assertOk()->body();
+            $rows = array_map(static fn (string $row): mixed => str_getcsv($row, escape: '')[0], array_filter(explode("\n", trim(ltrim($csv, "\u{FEFF}"))), static fn (string $row): bool => trim($row) !== ''));
+            self::assertSame($keys, array_slice(array_values($rows), 1), "{$slug} ?q={$q}: inline export");
+            $queued = $this->client->get("/vector/r/{$slug}/export", query: ['q' => $q, 'columns' => $key, 'format' => 'xlsx'], headers: $h)->assertStatus(202)->json();
+            self::assertIsArray($queued);
+            $this->client->get("/vector/jobs/{$queued['jobId']}", headers: $h)->assertOk()
+                ->assertJsonPath('data.status', 'done')
+                ->assertJsonPath('data.result.rows', count($ids));
+
+            // an `all` selection, as bulk operations and queued actions resolve it
+            $this->inScope(static function (RequestScope $scope) use ($slug, $q, $ids): void {
+                $service = $scope->get(ResourceService::class);
+                $converter = $scope->get(ValueConverter::class);
+                self::assertInstanceOf(ResourceService::class, $service);
+                self::assertInstanceOf(ValueConverter::class, $converter);
+                $resource = $service->resource($slug);
+                self::assertSame($ids, $service->matchingIds($resource, ListRequest::fromSelection(['filter' => [], 'q' => $q], $resource, $converter)), "{$slug} ?q={$q}: selection");
+            });
+
+            // the MCP tool
+            $body = json_encode(['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/call', 'params' => ['name' => 'vector_query', 'arguments' => ['resource' => $slug, 'q' => $q, 'sort' => 'id', 'perPage' => 200]]], JSON_THROW_ON_ERROR);
+            $result = $this->client->raw('POST', '/mcp', $body, $mcp)->assertOk()->json();
+            self::assertIsArray($result);
+            self::assertFalse($result['result']['isError'] ?? false);
+            self::assertSame($ids, array_column(json_decode($result['result']['content'][0]['text'], true, 16, JSON_THROW_ON_ERROR)['data'], 'id'), "{$slug} ?q={$q}: vector_query");
+
+            // global search: the newest matches
+            self::assertSame(array_slice(array_reverse($ids), 0, 5), array_column($this->search($q, $slug), 'id'), "{$slug} ?q={$q}: global search");
+        }
+    }
+
+    /** @return list<int> the ids a list of $slug searched for $q holds, in key order */
+    private function ids(string $slug, string $q): array
+    {
+        return array_column($this->json("/vector/r/{$slug}", ['q' => $q, 'perPage' => 200, 'sort' => 'id', 'columns' => 'id'], $this->adminHeaders())['data'], 'id');
     }
 
     /**
@@ -479,8 +738,25 @@ final class ResourceServiceTest extends VectorTestCase
     }
 }
 
+/** The categories resource with a scope a test sets: leaving out the category of that name. */
+final class ScopedCategories extends VectorResource
+{
+    public ?string $without = null;
+
+    public function fields(): array
+    {
+        return [];
+    }
+
+    #[\Override]
+    public function scope(Query $query, CurrentUserInterface $user): Query
+    {
+        return $this->without === null ? $query : $query->where('name', '!=', $this->without);
+    }
+}
+
 /** The default policy, refusing the abilities and hiding the fields a test names. */
-final class AdjustablePolicy extends ResourcePolicy
+class AdjustablePolicy extends ResourcePolicy
 {
     /** @var list<string> */
     public array $deny = [];
@@ -508,3 +784,6 @@ final class AdjustablePolicy extends ResourcePolicy
         return !in_array($field, $this->hidden, true);
     }
 }
+
+/** The categories' own policy, adjusted apart from the default one. */
+final class CategoriesPolicy extends AdjustablePolicy {}

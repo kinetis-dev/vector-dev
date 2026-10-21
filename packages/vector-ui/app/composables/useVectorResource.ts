@@ -1,4 +1,4 @@
-import type { VectorActionResponse, VectorAuditEntry, VectorExportFormat, VectorFilterQuery, VectorImportMode, VectorImportPreview, VectorPage, VectorRecord, VectorRecordPermissions, VectorRelationValue, VectorSelection, VectorSort, VectorUploaded, VectorWidgetData } from '#vector/app/types/vector'
+import type { VectorActionResponse, VectorAuditEntry, VectorCursorPage, VectorExportFormat, VectorFilterQuery, VectorImportMode, VectorImportPreview, VectorPage, VectorRecord, VectorRecordPermissions, VectorRelationValue, VectorSelection, VectorSort, VectorUploaded, VectorWidgetData } from '#vector/app/types/vector'
 
 export interface VectorListOptions {
     page?: number
@@ -82,6 +82,11 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
 
     function list(options: VectorListOptions = {}): Promise<VectorPage> {
         return api<VectorPage>(base(), { query: listQuery(options) })
+    }
+
+    /** A keyset page by the identifier: `''` for the first, then the previous page's `nextCursor`. The API sorts, groups and summarizes nothing under a cursor. */
+    function listByCursor(cursor: string, options: Omit<VectorListOptions, 'page' | 'sort' | 'group' | 'summaries'> = {}): Promise<VectorCursorPage> {
+        return api<VectorCursorPage>(base(), { query: { ...listQuery(options), cursor } })
     }
 
     function related(id: string | number, relation: string, options: VectorListOptions = {}): Promise<VectorPage> {
@@ -256,7 +261,7 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
         })
     }
 
-    return { list, related, show, create, update, remove, removeMany, batch, changes, attach, detach, upload, fileBlob, downloadFile, forceRemove, restore, runAction, exportCsv, exportFile, audit, revert, rows, widget, importPreview, importCsv, options }
+    return { list, listByCursor, related, show, create, update, remove, removeMany, batch, changes, attach, detach, upload, fileBlob, downloadFile, forceRemove, restore, runAction, exportCsv, exportFile, audit, revert, rows, widget, importPreview, importCsv, options }
 }
 
 /**

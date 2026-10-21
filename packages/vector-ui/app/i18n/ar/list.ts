@@ -36,6 +36,9 @@ export default {
         deleteTitle: 'حذف {count} {noun}؟',
         restoreTitle: 'استعادة {count} {noun}؟',
         forceDeleteTitle: 'حذف {count} {noun} نهائيًا؟',
+        deleteAllTitle: 'حذف جميع {noun} المطابقة؟',
+        restoreAllTitle: 'استعادة جميع {noun} المطابقة؟',
+        forceDeleteAllTitle: 'حذف جميع {noun} المطابقة نهائيًا؟',
         toTrash: 'تُنقل إلى سلة المهملات ويمكن استعادتها.',
         irreversible: 'لا يمكن التراجع عن هذا الإجراء.',
         restored: 'تمت استعادة {count} {noun}.',
@@ -43,18 +46,22 @@ export default {
     },
     bulk: {
         allMatching: 'جميع العناصر المطابقة ({total})',
+        allMatchingUncounted: 'جميع السجلات المطابقة',
         selected: 'المحدد: {count}',
         selectAllMatching: 'تحديد جميع العناصر المطابقة ({total})',
+        selectAllMatchingUncounted: 'تحديد جميع السجلات المطابقة',
         onlyChecked: 'الصفوف المحددة فقط',
         clearSelection: 'مسح التحديد',
     },
     bulkEdit: {
         everyMatching: 'جميع {noun} المطابقة ({count})',
+        everyMatchingUncounted: 'جميع {noun} المطابقة',
         some: '{count} {noun}',
         title: 'تعديل {subject}',
         fieldsToChange: 'الحقول المراد تغييرها',
         fieldsHint: 'تُكتب الحقول المختارة فقط؛ وتبقى كل القيم الأخرى كما هي.',
         applyTo: 'تطبيق على {count}',
+        applyToAll: 'تطبيق على جميع العناصر المطابقة',
         updated: 'تم تحديث {count} {noun}.',
     },
     columns: {
@@ -141,6 +148,9 @@ export default {
             update: 'يحدّث كل صف السجل الذي تطابق قيمته؛ والصف الذي لا يطابق أي سجل يُنقل إلى ملف الصفوف الفاشلة.',
             upsert: 'يحدّث كل صف السجل الذي تطابق قيمته، أو ينشئ سجلًا جديدًا إذا لم يطابق أي سجل.',
         },
+    },
+    pager: {
+        page: 'الصفحة {page}',
     },
     page: {
         create: 'إنشاء {noun}',

@@ -36,6 +36,9 @@ export default {
         deleteTitle: '{count} {noun} verwijderen?',
         restoreTitle: '{count} {noun} herstellen?',
         forceDeleteTitle: '{count} {noun} definitief verwijderen?',
+        deleteAllTitle: 'Alle overeenkomende {noun} verwijderen?',
+        restoreAllTitle: 'Alle overeenkomende {noun} herstellen?',
+        forceDeleteAllTitle: 'Alle overeenkomende {noun} definitief verwijderen?',
         toTrash: 'Ze worden naar de prullenbak verplaatst en kunnen worden hersteld.',
         irreversible: 'Dit kan niet ongedaan worden gemaakt.',
         restored: '{count} {noun} hersteld.',
@@ -43,18 +46,22 @@ export default {
     },
     bulk: {
         allMatching: 'Alle {total} overeenkomende',
+        allMatchingUncounted: 'Alle overeenkomende records',
         selected: '{count} geselecteerd',
         selectAllMatching: 'Alle {total} overeenkomende selecteren',
+        selectAllMatchingUncounted: 'Alle overeenkomende records selecteren',
         onlyChecked: 'Alleen aangevinkte rijen',
         clearSelection: 'Selectie wissen',
     },
     bulkEdit: {
         everyMatching: 'alle overeenkomende {noun} ({count})',
+        everyMatchingUncounted: 'alle overeenkomende {noun}',
         some: '{count} {noun}',
         title: '{subject} bewerken',
         fieldsToChange: 'Te wijzigen velden',
         fieldsHint: 'Alleen de gekozen velden worden opgeslagen; alle andere waarden blijven ongewijzigd.',
         applyTo: 'Toepassen op {count}',
+        applyToAll: 'Toepassen op alle overeenkomende',
         updated: '{count} {noun} bijgewerkt.',
     },
     columns: {
@@ -141,6 +148,9 @@ export default {
             update: 'Elke rij werkt het record bij waarvan de waarde overeenkomt; een rij zonder overeenkomst gaat naar het bestand met mislukte rijen.',
             upsert: 'Elke rij werkt het record bij waarvan de waarde overeenkomt, of maakt er een aan als er geen overeenkomt.',
         },
+    },
+    pager: {
+        page: 'Pagina {page}',
     },
     page: {
         create: 'Nieuw: {noun}',

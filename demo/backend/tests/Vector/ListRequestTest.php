@@ -43,10 +43,11 @@ final class ListRequestTest extends TestCase
         self::assertSame('perPage must be a positive integer.', $this->refusal(['perPage' => '0']));
         self::assertSame('perPage must be at most 100.', $this->refusal(['perPage' => '101']));
 
-        // a caller's cap is taken in place of the resource's bound, as given; vector_query passes maxPerPage()
+        // a caller's cap tightens the resource's bound and never raises it
         self::assertSame('perPage must be at most 50.', $this->refusal(['perPage' => '60'], cap: 50));
         self::assertSame(50, $this->parse(['perPage' => '50'], cap: 50)->perPage);
-        self::assertSame(120, $this->parse(['perPage' => '120'], cap: 150)->perPage);
+        self::assertSame('perPage must be at most 100.', $this->refusal(['perPage' => '120'], cap: 150));
+        self::assertSame(100, $this->parse(['perPage' => '100'], cap: 150)->perPage);
     }
 
     public function testACursorIsTheLastKeyOfThePageBefore(): void
@@ -84,6 +85,26 @@ final class ListRequestTest extends TestCase
 
         self::assertSame('gadgets has no searchable fields.', $this->refusal(['q' => 'lamp'], $this->bare()));
         self::assertNull($this->parse(['q' => ' '], $this->bare())->search, 'an empty search asks for nothing');
+    }
+
+    public function testASearchableRelationOrFullTextIndexAloneTakesASearch(): void
+    {
+        $relation = $this->bare(['searchRelations' => ['maker' => ['column' => 'maker_id', 'resource' => 'makers']]]);
+        self::assertSame('lamp', $this->parse(['q' => 'lamp'], $relation)->search);
+
+        $indexed = $this->bare(['fullText' => ['columns' => ['name' => 'name', 'notes' => 'notes'], 'config' => 'simple']]);
+        self::assertSame('lamp', $this->parse(['q' => 'lamp'], $indexed)->search);
+        self::assertSame('lamp', ListRequest::fromSelection(['q' => 'lamp'], $indexed, $this->converter())->search);
+
+        // without one of its columns the index cannot be used: the other columns are searched with LIKE
+        $hidden = $indexed->withoutFields(['notes']);
+        self::assertNull($hidden->fullText());
+        self::assertSame(['name' => 'name'], $hidden->searchColumns());
+        self::assertSame('lamp', $this->parse(['q' => 'lamp'], $hidden)->search);
+        self::assertTrue($hidden->globallySearchable());
+        self::assertFalse($indexed->withoutFields(['name', 'notes'])->globallySearchable());
+        self::assertSame('gadgets has no searchable fields.', $this->refusal(['q' => 'lamp'], $indexed->withoutFields(['name', 'notes'])));
+        self::assertSame('gadgets has no searchable fields.', $this->refusal(['q' => 'lamp'], $this->bare(['searchRelations' => []])));
     }
 
     public function testAGroupNamesAGroupableField(): void
@@ -352,15 +373,24 @@ final class ListRequestTest extends TestCase
         return new ResourceDescriptor($this->data());
     }
 
-    /** The same fields with a string key, as an Id field over a string property compiles, and no search, grouping, summaries or soft delete. */
-    private function bare(): ResourceDescriptor
+    /**
+     * The same fields with a string key, as an Id field over a string
+     * property compiles, and no search, grouping, summaries or soft
+     * delete, but for the $search plan given. It carries the keys
+     * withoutFields() rewrites, so a test can hide fields from it.
+     *
+     * @param array<string, mixed> $search searchRelations and fullText, as the compiler writes them
+     */
+    private function bare(array $search = []): ResourceDescriptor
     {
-        $data = $this->data();
+        $data = $search + $this->data();
         $data['primaryKey']['type'] = 'string';
         $data['fields'][0]['valueType'] = 'string';
         $data['searchColumns'] = [];
         $data['summaryPlan'] = [];
         $data['softDelete'] = null;
+        $data['table_view'] += ['search' => array_keys($data['fullText']['columns'] ?? []), 'summaries' => []];
+        $data += ['titleField' => 'name', 'globallySearchable' => true, 'searchResult' => ['subtitle' => null, 'image' => null], 'creation' => ['possible' => false, 'reason' => null]];
         $data['table_view']['groupable'] = [];
 
         return new ResourceDescriptor($data);

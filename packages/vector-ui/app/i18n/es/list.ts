@@ -36,6 +36,9 @@ export default {
         deleteTitle: '¿Eliminar {count} {noun}?',
         restoreTitle: '¿Restaurar {count} {noun}?',
         forceDeleteTitle: '¿Eliminar definitivamente {count} {noun}?',
+        deleteAllTitle: '¿Eliminar todos los {noun} coincidentes?',
+        restoreAllTitle: '¿Restaurar todos los {noun} coincidentes?',
+        forceDeleteAllTitle: '¿Eliminar definitivamente todos los {noun} coincidentes?',
         toTrash: 'Se mueven a la papelera y se pueden restaurar.',
         irreversible: 'Esta acción no se puede deshacer.',
         restored: 'Restaurados: {count} {noun}.',
@@ -43,18 +46,22 @@ export default {
     },
     bulk: {
         allMatching: 'Los {total} coincidentes',
+        allMatchingUncounted: 'Todos los registros coincidentes',
         selected: '{count} seleccionados',
         selectAllMatching: 'Seleccionar los {total} coincidentes',
+        selectAllMatchingUncounted: 'Seleccionar todos los registros coincidentes',
         onlyChecked: 'Solo las filas marcadas',
         clearSelection: 'Borrar selección',
     },
     bulkEdit: {
         everyMatching: 'todos los {noun} coincidentes ({count})',
+        everyMatchingUncounted: 'todos los {noun} coincidentes',
         some: '{count} {noun}',
         title: 'Editar {subject}',
         fieldsToChange: 'Campos que cambiar',
         fieldsHint: 'Solo se escriben los campos que elija; el resto de valores no cambia.',
         applyTo: 'Aplicar a {count}',
+        applyToAll: 'Aplicar a todos los coincidentes',
         updated: 'Actualizados: {count} {noun}.',
     },
     columns: {
@@ -141,6 +148,9 @@ export default {
             update: 'Cada fila actualiza el registro cuyo valor coincide; una fila que no coincide con ninguno va al archivo de filas fallidas.',
             upsert: 'Cada fila actualiza el registro cuyo valor coincide, o crea uno cuando no hay ninguno.',
         },
+    },
+    pager: {
+        page: 'Página {page}',
     },
     page: {
         create: 'Crear {noun}',

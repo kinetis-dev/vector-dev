@@ -31,11 +31,11 @@ from `demo/`.
 
 | Service | Address | What it is |
 |---|---|---|
-| `nginx`, `app` | `localhost:8080` | The API: nginx and PHP-FPM. `/openapi` in development. |
+| `nginx`, `app` | `localhost:8080` | The API: nginx and PHP-FPM. `/openapi` in development. Set `NGINX_HOST_PORT` to publish it on another host port when 8080 is taken. |
 | `frankenphp` | `localhost:8081` | The same application under FrankenPHP worker mode, Kinetis's primary runtime: 12 worker threads on the native database drivers. |
 | `node` | `localhost:3000` | The standalone admin: `nuxt dev` for `demo/frontend`. |
 | `worker` | — | `queue:work --queue=default,vector`: the application's jobs first, then Vector's. |
-| `mysql` | `localhost:3306` | The shop, and the SQL queue table the test suite uses. `vector` / `vector`. |
+| `mysql` | `localhost:3306` | The shop, and the SQL queue table the test suite uses. `vector` / `vector`. Set `MYSQL_HOST_PORT` to publish it on another host port when 3306 is taken. |
 | `postgres` | `localhost:5432` | `vector_support`, the support desk (connection `support`), and `vector_admin`, Vector's own tables (connection `admin`). `vector` / `vector`. |
 | `redis` | `localhost:6379` | The job queue (connection `jobs`) and, in database 1, the cache holding sign-in throttling and refresh tokens. |
 
@@ -230,7 +230,7 @@ The test suite expects the stock data set. Put it back with
 
 | To see | Look in `demo/backend/` |
 |---|---|
-| Resources, actions, widgets, dashboards and settings groups | `src/Vector/`; `ProductResource` declares soft deletes, summaries and five actions. |
+| Resources, actions, widgets, dashboards and settings groups | `src/Vector/`; `ProductResource` declares soft deletes, summaries and five actions; `OrderResource` lists without a count (`withoutCount()`), `OrderLineResource` pages by cursor (`cursorPaging()`) ({doc}`lists`). |
 | Both sign-ins, their throttling and impersonation | `src/Auth/`: the JWT API under `/auth/*` and the session form at `/login` ({doc}`authentication`). |
 | Rich text rendered outside the admin | `GET /shop/products/{id}` (`src/Http/ProductPageController.php`) renders a product description with `Document::toHtml()`. |
 | Runtime UI extensions | `public/vector-extensions/`: a stock-level cell, and a "Stock overview" page reading `GET /vector-demo/stock-overview` ({doc}`customizing-the-ui`). |

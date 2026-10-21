@@ -153,8 +153,10 @@ final readonly class ResourceService
      * plan of §4.6 — scope, soft-delete predicate, filters, search,
      * order (always terminated by the key), one page, one statement per
      * relation field, one aggregate statement when summaries are asked.
+     * A withoutCount() resource reads one row past the page instead of
+     * counting the match.
      *
-     * @return array<string, mixed> the Paginator envelope, or `{data, nextCursor, hasMore, perPage}` under a cursor
+     * @return array<string, mixed> the Paginator envelope — with `total` and `lastPage` null and a `hasMore` when the resource is withoutCount() — or `{data, nextCursor, hasMore, perPage}` under a cursor
      */
     public function list(ResourceDescriptor $resource, ListRequest $request, ?\Closure $restrict = null): array
     {
@@ -190,18 +192,36 @@ final readonly class ResourceService
             $query->orderBy($resource->primaryKeyColumn(), 'ASC');
         }
 
-        $page = $query->paginate($request->perPage, $request->page);
-        /** @var list<array<string, mixed>> $rows */
-        $rows = $page->data;
-        $relations = $this->loadRelations($resource, $fields, $rows);
+        if ($resource->withoutCount()) {
+            // one row past the page tells a full last page from one with more after it, without a COUNT
+            /** @var list<array<string, mixed>> $rows */
+            $rows = $query->limit($request->perPage + 1)->offset(($request->page - 1) * $request->perPage)->get();
+            $hasMore = count($rows) > $request->perPage;
+            $rows = array_slice($rows, 0, $request->perPage);
+            $relations = $this->loadRelations($resource, $fields, $rows);
 
-        $envelope = [
-            'data' => array_map(fn (array $row): array => $this->serializer->serialize($resource, $row, $fields, $relations, $instance), $rows),
-            'currentPage' => $page->currentPage,
-            'perPage' => $page->perPage,
-            'total' => $page->total,
-            'lastPage' => $page->lastPage,
-        ];
+            $envelope = [
+                'data' => array_map(fn (array $row): array => $this->serializer->serialize($resource, $row, $fields, $relations, $instance), $rows),
+                'currentPage' => $request->page,
+                'perPage' => $request->perPage,
+                'total' => null,
+                'lastPage' => null,
+                'hasMore' => $hasMore,
+            ];
+        } else {
+            $page = $query->paginate($request->perPage, $request->page);
+            /** @var list<array<string, mixed>> $rows */
+            $rows = $page->data;
+            $relations = $this->loadRelations($resource, $fields, $rows);
+
+            $envelope = [
+                'data' => array_map(fn (array $row): array => $this->serializer->serialize($resource, $row, $fields, $relations, $instance), $rows),
+                'currentPage' => $page->currentPage,
+                'perPage' => $page->perPage,
+                'total' => $page->total,
+                'lastPage' => $page->lastPage,
+            ];
+        }
 
         if ($request->summaries) {
             $envelope['summaries'] = $this->summaries($resource, $request, $restrict);
@@ -254,11 +274,13 @@ final readonly class ResourceService
 
         $fields = $this->listFields($resource, $request);
         $instance = $this->instance($resource);
-        $total ??= $this->exportCount($resource, $request);
         $limit ??= $resource->exportLimit();
+        $total ??= $this->exportCount($resource, $request, $limit);
 
         if ($total > $limit) {
-            throw new InvalidListRequestException("The selection matches {$total} records; this export serializes at most {$limit}. Narrow the filter.");
+            $matches = $resource->withoutCount() ? "more than {$limit}" : (string) $total;
+
+            throw new InvalidListRequestException("The selection matches {$matches} records; this export serializes at most {$limit}. Narrow the filter.");
         }
 
         $cursor = null;
@@ -328,12 +350,22 @@ final readonly class ResourceService
         return true;
     }
 
-    /** How many rows an export of this request would serialize. */
-    public function exportCount(ResourceDescriptor $resource, ListRequest $request): int
+    /**
+     * How many rows an export of this request would serialize. A
+     * withoutCount() resource counts at most one row past $cap: enough to
+     * tell a match above the limit from one within it, without the full
+     * COUNT the resource opted out of.
+     */
+    public function exportCount(ResourceDescriptor $resource, ListRequest $request, ?int $cap = null): int
     {
         $this->gate->authorize($this->user, $this->policy($resource)->viewAny(...));
+        $query = $this->constrained($resource, null, $request, null);
 
-        return $this->constrained($resource, null, $request, null)->count();
+        if (!$resource->withoutCount() || $cap === null) {
+            return $query->count();
+        }
+
+        return $this->query($resource)->fromSub($query->select($resource->primaryKeyColumn())->limit($cap + 1), 'vector_export')->count();
     }
 
     /**
@@ -536,22 +568,127 @@ final readonly class ResourceService
     }
 
     /**
-     * `q`: a case-insensitive match over every searchable column, as one
-     * parenthesized OR group — LIKE on MySQL, whose collations already
-     * ignore case, ILIKE on PostgreSQL, whose LIKE does not.
+     * `q`, as one parenthesized OR group: a case-insensitive LIKE over
+     * every searchable column — LIKE on MySQL, whose collations already
+     * ignore case, ILIKE on PostgreSQL, whose LIKE does not; the full-text
+     * predicate over the columns the resource's index covers; and, for a
+     * searchable belongsTo, the foreign key among the related records
+     * whose title matches. That last is a subquery on the resource's own
+     * connection, so the page stays one statement however many relations
+     * are searched. Like labels(), which reads the title a row shows by key
+     * alone, it applies neither the target's scope(), nor its trash, nor
+     * its list permission: a row matches exactly when the title it shows
+     * does, so matching reveals nothing the row does not.
      */
     private function applySearch(ResourceDescriptor $resource, Query $query, string $term): void
     {
         $pattern = '%' . addcslashes($term, '%_\\') . '%';
-        $columns = array_values($resource->searchColumns());
         $dialect = $this->dialect($resource);
+        $like = [];
 
-        $query->whereGroup(static function (Conditions $group) use ($columns, $pattern, $dialect): void {
-            foreach ($columns as $i => $column) {
-                $group->whereRaw(Sql::like($dialect, $column), [$pattern], $i === 0 ? 'AND' : 'OR');
+        foreach ($resource->searchColumns() as $column) {
+            $like[] = [Sql::like($dialect, $column), [$pattern]];
+        }
+
+        $fullText = $resource->fullText();
+        $relations = [];
+
+        foreach ($resource->searchRelations() as $relation) {
+            $target = $this->resource($relation['resource']);
+
+            // a title this user may not see fell back to the key: there is no title to match
+            if (($target->field($target->titleField())['valueType'] ?? null) === 'string') {
+                $relations[] = [$relation['column'], $this->query($resource)->table($target->table())
+                    ->select($target->primaryKeyColumn())
+                    ->whereRaw(Sql::like($dialect, $target->titleColumn()), [$pattern])];
+            }
+        }
+
+        if ($like === [] && $fullText === null && $relations === []) {
+            // every searchable field is one this user may not see: nothing matches
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->whereGroup(static function (Conditions $group) use ($like, $fullText, $relations, $dialect, $term): void {
+            foreach ($like as [$sql, $params]) {
+                $group->whereRaw($sql, $params, 'OR');
+            }
+
+            if ($fullText !== null) {
+                $words = self::fullTextTerm($dialect, $term);
+
+                if ($words === '') {
+                    // a term of punctuation alone holds no word for the index to match
+                    $group->whereRaw('1 = 0', [], 'OR');
+                } else {
+                    $group->whereRaw(self::fullTextMatch($dialect, array_values($fullText['columns']), $fullText['config']), [$words], 'OR');
+                }
+            }
+
+            foreach ($relations as [$column, $titles]) {
+                $group->whereIn($column, $titles, 'OR');
             }
         });
     }
+
+    /**
+     * The full-text predicate over $columns, binding the term once. MySQL
+     * names the index's exact column list; PostgreSQL builds the same
+     * `to_tsvector()` expression its GIN index is built on. The
+     * configuration is a compiled name, written as a literal so the planner
+     * can match that index.
+     *
+     * @param 'mysql'|'pgsql' $dialect
+     * @param list<string> $columns
+     */
+    private static function fullTextMatch(string $dialect, array $columns, string $config): string
+    {
+        $quoted = array_map(static fn (string $column): string => Sql::quote($dialect, $column), $columns);
+
+        if ($dialect === Connections::MYSQL) {
+            return 'MATCH (' . implode(', ', $quoted) . ') AGAINST (? IN BOOLEAN MODE)';
+        }
+
+        $document = implode(" || ' ' || ", array_map(static fn (string $column): string => "coalesce({$column}, '')", $quoted));
+
+        return "to_tsvector('{$config}', {$document}) @@ plainto_tsquery('{$config}', ?)";
+    }
+
+    /**
+     * The term as the full-text predicate binds it, or '' when it holds
+     * no word. PostgreSQL's plainto_tsquery() takes the text as typed and
+     * requires every word. MySQL's boolean mode is given the words alone,
+     * so no operator of the user's survives: each is required (`+word`),
+     * except one InnoDB's defaults leave out of the index — shorter than
+     * innodb_ft_min_token_size (3 characters, counted as code points, as
+     * InnoDB counts them), or a default stopword — which, required, would
+     * match no row at all.
+     *
+     * @param 'mysql'|'pgsql' $dialect
+     */
+    private static function fullTextTerm(string $dialect, string $term): string
+    {
+        // a combining mark (an accent typed apart, a vowel sign) belongs to its word
+        $words = preg_split('/[^\p{L}\p{M}\p{N}_]+/u', $term, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        if ($words === [] || $dialect === Connections::PGSQL) {
+            return $words === [] ? '' : $term;
+        }
+
+        $terms = [];
+
+        foreach ($words as $word) {
+            $lower = mb_strtolower($word);
+            $terms[$lower] = (mb_strlen($word) < 3 || in_array($lower, self::INNODB_STOPWORDS, true) ? '' : '+') . $word;
+        }
+
+        return implode(' ', $terms);
+    }
+
+    /** INFORMATION_SCHEMA.INNODB_FT_DEFAULT_STOPWORD. */
+    private const array INNODB_STOPWORDS = ['a', 'about', 'an', 'are', 'as', 'at', 'be', 'by', 'com', 'de', 'en', 'for', 'from', 'how', 'i', 'in', 'is', 'it', 'la', 'of', 'on', 'or', 'that', 'the', 'this', 'to', 'und', 'was', 'what', 'when', 'where', 'who', 'will', 'with', 'www'];
 
     /**
      * Every declared summary in one aggregate statement over the same

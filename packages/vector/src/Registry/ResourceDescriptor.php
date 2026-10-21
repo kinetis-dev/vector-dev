@@ -82,6 +82,14 @@ final readonly class ResourceDescriptor
         $data['fields'] = array_values(array_filter($data['fields'], static fn (array $field): bool => !in_array($field['name'], $hidden, true)));
         $data['columns'] = array_diff_key($data['columns'], array_flip($hidden));
         $data['searchColumns'] = array_diff_key($data['searchColumns'], array_flip($hidden));
+        $data['searchRelations'] = array_diff_key($data['searchRelations'] ?? [], array_flip($hidden));
+
+        // MySQL matches only the exact column list of an index: without one of its fields, the rest fall back to LIKE
+        if (isset($data['fullText']) && array_intersect_key($data['fullText']['columns'], array_flip($hidden)) !== []) {
+            $data['searchColumns'] += array_diff_key($data['fullText']['columns'], array_flip($hidden));
+            unset($data['fullText']);
+        }
+
         $data['summaryPlan'] = array_diff_key($data['summaryPlan'], array_flip($hidden));
         $data['table_view']['columns'] = $keep($data['table_view']['columns']);
         $data['table_view']['extra'] = $keep($data['table_view']['extra']);
@@ -100,7 +108,7 @@ final readonly class ResourceDescriptor
                 'show' => LayoutCompiler::prune($data['layout']['show'], $visible),
             ];
         }
-        $data['globallySearchable'] = $data['globallySearchable'] && $data['searchColumns'] !== [];
+        $data['globallySearchable'] = $data['globallySearchable'] && ($data['searchColumns'] !== [] || $data['searchRelations'] !== [] || isset($data['fullText']));
         $data['searchResult'] = array_map(static fn (?string $field): ?string => in_array($field, $hidden, true) ? null : $field, $data['searchResult']);
 
         if (in_array($data['titleField'], $hidden, true)) {
@@ -184,10 +192,33 @@ final readonly class ResourceDescriptor
         return $this->data['softDelete'];
     }
 
-    /** @return array<string, string> field name => column, for every searchable field */
+    /** @return array<string, string> field name => column, for every field search matches with LIKE */
     public function searchColumns(): array
     {
         return $this->data['searchColumns'];
+    }
+
+    /**
+     * The searchable belongsTo fields: search matches the related
+     * record's title through the foreign key column.
+     *
+     * @return array<string, array{column: string, resource: string}> field name => foreign key column and target slug
+     */
+    public function searchRelations(): array
+    {
+        return $this->data['searchRelations'] ?? [];
+    }
+
+    /** @return array{columns: array<string, string>, config: string}|null the columns search matches through the full-text index */
+    public function fullText(): ?array
+    {
+        return $this->data['fullText'] ?? null;
+    }
+
+    /** Whether `q` applies: the resource has a searchable field, a searchable relation or a full-text index. */
+    public function searchable(): bool
+    {
+        return $this->searchColumns() !== [] || $this->searchRelations() !== [] || $this->fullText() !== null;
     }
 
     /** @return array<string, array{function: string, column: string}> */
@@ -412,6 +443,18 @@ final readonly class ResourceDescriptor
         return $this->data['table_view']['maxPerPage'];
     }
 
+    /** Whether an offset page skips the COUNT: `total` and `lastPage` null, `hasMore` instead. */
+    public function withoutCount(): bool
+    {
+        return $this->data['table_view']['withoutCount'] ?? false;
+    }
+
+    /** Whether the admin pages the list by cursor rather than by page number. */
+    public function cursorPaging(): bool
+    {
+        return $this->data['table_view']['cursorPaging'] ?? false;
+    }
+
     /** @return class-string<\Kinetis\Vector\Auth\ResourcePolicyInterface>|null */
     public function policy(): ?string
     {
@@ -426,7 +469,7 @@ final readonly class ResourceDescriptor
     public function toArray(): array
     {
         $public = $this->data;
-        unset($public['class'], $public['entity'], $public['connection'], $public['columns'], $public['versionColumn'], $public['policy'], $public['entityProperties'], $public['timestamps'], $public['ownedRelations'], $public['searchColumns'], $public['summaryPlan']);
+        unset($public['class'], $public['entity'], $public['connection'], $public['columns'], $public['versionColumn'], $public['policy'], $public['entityProperties'], $public['timestamps'], $public['ownedRelations'], $public['searchColumns'], $public['searchRelations'], $public['fullText'], $public['summaryPlan']);
         $public['softDelete'] = $public['softDelete'] === null ? null : ['field' => $public['softDelete']['field']];
         $public['actions'] = array_map(static function (array $action): array {
             unset($action['class']);
@@ -439,7 +482,7 @@ final readonly class ResourceDescriptor
 
             return $widget;
         }, $public['widgets']);
-        $public['table'] = $public['table_view'];
+        $public['table'] = $public['table_view'] + ['withoutCount' => false, 'cursorPaging' => false];
         $public['show'] = $public['show_view'];
         unset($public['table_view'], $public['show_view']);
         $public['fields'] = array_map(self::publicField(...), $public['fields']);

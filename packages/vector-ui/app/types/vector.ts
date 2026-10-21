@@ -350,6 +350,10 @@ export interface VectorResource {
         summaries: string[]
         exportLimit: number
         bulkLimit: number
+        /** The list's offset pages carry no total: previous and next only. Optional for a descriptor from before it existed. */
+        withoutCount?: boolean
+        /** The list pages by cursor: no sort, grouping, page numbers, total or summaries. Optional for a descriptor from before it existed. */
+        cursorPaging?: boolean
     }
     show: { fields: string[] }
     /** Whether a record may be duplicated into a new one's form. */
@@ -424,13 +428,23 @@ export interface VectorCountValue {
 
 export type VectorRecord = Record<string, unknown> & { id: number | string }
 
+/** An offset page. A withoutCount resource's has `total` and `lastPage` null and says whether another page follows. */
 export interface VectorPage {
     data: VectorRecord[]
     currentPage: number
     perPage: number
-    total: number
-    lastPage: number
+    total: number | null
+    lastPage: number | null
+    hasMore?: boolean
     summaries?: Record<string, number | null>
+}
+
+/** A keyset page: the cursor of the next one, null after the last. */
+export interface VectorCursorPage {
+    data: VectorRecord[]
+    nextCursor: string | null
+    hasMore: boolean
+    perPage: number
 }
 
 export function fieldProps(field: VectorField): Record<string, unknown> {

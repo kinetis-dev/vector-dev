@@ -36,6 +36,9 @@ export default {
         deleteTitle: 'Delete {count} {noun}?',
         restoreTitle: 'Restore {count} {noun}?',
         forceDeleteTitle: 'Delete {count} {noun} forever?',
+        deleteAllTitle: 'Delete all matching {noun}?',
+        restoreAllTitle: 'Restore all matching {noun}?',
+        forceDeleteAllTitle: 'Delete all matching {noun} forever?',
         toTrash: 'They move to the trash and can be restored.',
         irreversible: 'This cannot be undone.',
         restored: '{count} {noun} restored.',
@@ -43,18 +46,22 @@ export default {
     },
     bulk: {
         allMatching: 'All {total} matching',
+        allMatchingUncounted: 'All matching records',
         selected: '{count} selected',
         selectAllMatching: 'Select all {total} matching',
+        selectAllMatchingUncounted: 'Select all matching records',
         onlyChecked: 'Only checked rows',
         clearSelection: 'Clear selection',
     },
     bulkEdit: {
         everyMatching: 'every matching {noun} ({count})',
+        everyMatchingUncounted: 'every matching {noun}',
         some: '{count} {noun}',
         title: 'Edit {subject}',
         fieldsToChange: 'Fields to change',
         fieldsHint: 'Only the fields you pick are written; every other value stays as it is.',
         applyTo: 'Apply to {count}',
+        applyToAll: 'Apply to all matching',
         updated: '{count} {noun} updated.',
     },
     columns: {
@@ -141,6 +148,9 @@ export default {
             update: 'Each row updates the record whose value matches; a row that matches none goes to the failed-rows file.',
             upsert: 'Each row updates the record whose value matches, or creates one when none does.',
         },
+    },
+    pager: {
+        page: 'Page {page}',
     },
     page: {
         create: 'New {noun}',

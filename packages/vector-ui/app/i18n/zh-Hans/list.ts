@@ -36,6 +36,9 @@ export default {
         deleteTitle: '删除 {count} 个{noun}？',
         restoreTitle: '恢复 {count} 个{noun}？',
         forceDeleteTitle: '永久删除 {count} 个{noun}？',
+        deleteAllTitle: '删除所有匹配的{noun}？',
+        restoreAllTitle: '恢复所有匹配的{noun}？',
+        forceDeleteAllTitle: '永久删除所有匹配的{noun}？',
         toTrash: '它们将移至回收站，可以恢复。',
         irreversible: '此操作无法撤销。',
         restored: '已恢复 {count} 个{noun}。',
@@ -43,18 +46,22 @@ export default {
     },
     bulk: {
         allMatching: '全部 {total} 个匹配项',
+        allMatchingUncounted: '所有匹配的记录',
         selected: '已选择 {count} 个',
         selectAllMatching: '选择全部 {total} 个匹配项',
+        selectAllMatchingUncounted: '选择所有匹配的记录',
         onlyChecked: '仅勾选的行',
         clearSelection: '清除选择',
     },
     bulkEdit: {
         everyMatching: '所有匹配的{noun}（{count}）',
+        everyMatchingUncounted: '所有匹配的{noun}',
         some: '{count} 个{noun}',
         title: '编辑{subject}',
         fieldsToChange: '要更改的字段',
         fieldsHint: '只写入你选择的字段；其他值保持不变。',
         applyTo: '应用到 {count} 个',
+        applyToAll: '应用到所有匹配项',
         updated: '已更新 {count} 个{noun}。',
     },
     columns: {
@@ -141,6 +148,9 @@ export default {
             update: '每一行更新值匹配的记录；没有匹配记录的行会写入失败行文件。',
             upsert: '每一行更新值匹配的记录；没有匹配时则新建一条记录。',
         },
+    },
+    pager: {
+        page: '第 {page} 页',
     },
     page: {
         create: '新建{noun}',

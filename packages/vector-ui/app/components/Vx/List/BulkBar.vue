@@ -3,11 +3,15 @@ import type { VectorAction, VectorResource } from '#vector/app/types/vector'
 
 // What a selection can do: the built-in edit, delete, restore and
 // force-delete of the resource and every index action. "All matching" widens the
-// selection from the checked rows to every record the list matches.
+// selection from the checked rows to every record the list matches; on a
+// list that is not counted it says so without a number.
 defineProps<{
     resource: VectorResource
     selected: number
-    total: number
+    /** null: the list is not counted */
+    total: number | null
+    /** Whether, uncounted, the match may hold more than the checked rows. */
+    more?: boolean
     allMatching: boolean
     trashedOnly: boolean
     actions: VectorAction[]
@@ -26,8 +30,8 @@ const { t } = useVectorT()
 
 <template>
     <v-sheet color="primary" rounded class="d-flex align-center flex-wrap ga-2 px-4 py-2 mb-2">
-        <span class="font-weight-medium">{{ allMatching ? t('list.bulk.allMatching', { total }) : t('list.bulk.selected', { count: selected }) }}</span>
-        <v-btn v-if="!allMatching && total > selected" size="small" variant="outlined" @click="emit('update:allMatching', true)">{{ t('list.bulk.selectAllMatching', { total }) }}</v-btn>
+        <span class="font-weight-medium">{{ allMatching ? (total === null ? t('list.bulk.allMatchingUncounted') : t('list.bulk.allMatching', { total })) : t('list.bulk.selected', { count: selected }) }}</span>
+        <v-btn v-if="!allMatching && (total === null ? more : total > selected)" size="small" variant="outlined" @click="emit('update:allMatching', true)">{{ total === null ? t('list.bulk.selectAllMatchingUncounted') : t('list.bulk.selectAllMatching', { total }) }}</v-btn>
         <v-btn v-else-if="allMatching" size="small" variant="outlined" @click="emit('update:allMatching', false)">{{ t('list.bulk.onlyChecked') }}</v-btn>
         <v-spacer />
         <template v-if="resource.softDelete && trashedOnly">

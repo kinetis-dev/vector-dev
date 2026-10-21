@@ -3,6 +3,7 @@ export default {
     // "Run {action} on {subject}?", with the action's label in bold.
     runOn: 'Eseguire {action} su {subject}?',
     subjectAll: 'tutti i {label} corrispondenti ({count})',
+    subjectAllUncounted: 'tutti i {label} corrispondenti',
     subjectCount: '{count} {label}',
     done: '{label} completato.',
     declined: 'L’azione è stata rifiutata.',

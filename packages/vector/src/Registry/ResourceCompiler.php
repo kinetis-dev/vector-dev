@@ -293,7 +293,30 @@ final class ResourceCompiler
 
         ksort($compiled, SORT_STRING);
 
-        return self::linkCarried(self::linkRepeaters($compiled));
+        return self::linkSearchRelations(self::linkCarried(self::linkRepeaters($compiled)));
+    }
+
+    /**
+     * A searchable belongsTo matches the related record's title, so the
+     * target resource's title field must be a string column.
+     *
+     * @param array<string, array<string, mixed>> $compiled
+     * @return array<string, array<string, mixed>>
+     */
+    private static function linkSearchRelations(array $compiled): array
+    {
+        foreach ($compiled as $resource) {
+            foreach ($resource['searchRelations'] ?? [] as $name => $relation) {
+                $target = $compiled[$relation['resource']];
+                $title = array_column($target['fields'], null, 'name')[$target['titleField']];
+
+                if (($title['valueType'] ?? null) !== 'string') {
+                    throw ResourceCompileException::field($resource['class'], $name, "is searchable, but the title field \"{$target['titleField']}\" of {$target['slug']} is not a string column");
+                }
+            }
+        }
+
+        return $compiled;
     }
 
     /**
@@ -369,7 +392,7 @@ final class ResourceCompiler
 
                 foreach ($repeater['fields'] ?? [] as $name) {
                     if (!in_array($name, $writable, true)) {
-                        throw ResourceCompileException::field($owner, $field['name'], "names \"{$name}\", which is not a field a {$child['labelSingular']} row can write");
+                        throw ResourceCompileException::field($owner, $field['name'], "names \"{$name}\", which is not a writable field of {$child['labelSingular']}");
                     }
                 }
 
@@ -456,7 +479,8 @@ final class ResourceCompiler
                 throw ResourceCompileException::field($class, $name, 'maps no column and cannot be sortable');
             }
 
-            if ($array['searchable'] === true && ($array['valueType'] ?? null) !== 'string') {
+            // a searchable belongsTo matches the related record's title (linkSearchRelations)
+            if ($array['searchable'] === true && $array['type'] !== 'belongsTo' && ($array['valueType'] ?? null) !== 'string') {
                 throw ResourceCompileException::field($class, $name, 'is not a string column and cannot be searchable');
             }
 
@@ -689,12 +713,21 @@ final class ResourceCompiler
             $softDelete = ['field' => $softProperty, 'column' => $mapped['column']];
         }
 
+        $fullText = self::fullText($instance, $compiledFields, $class);
         $searchColumns = [];
+        $searchRelations = [];
+        $search = [];
 
         foreach ($compiledFields as $name => $field) {
-            if ($field['searchable'] === true && isset($field['column'])) {
+            if (isset($fullText['columns'][$name])) {
+                $search[] = $name;
+            } elseif ($field['searchable'] === true && $field['type'] === 'belongsTo') {
+                $searchRelations[$name] = ['column' => $field['column'], 'resource' => $field['relation']['resource']];
+                $search[] = $name;
+            } elseif ($field['searchable'] === true && isset($field['column'])) {
                 // a rich-text field is searched through its plain-text column
                 $searchColumns[$name] = $field['searchColumn'] ?? $field['column'];
+                $search[] = $name;
             }
         }
 
@@ -782,13 +815,13 @@ final class ResourceCompiler
                 'perPage' => $instance->perPage(),
                 'perPageOptions' => $instance->perPageOptions(),
                 'maxPerPage' => $instance->maxPerPage(),
-                'search' => array_keys($searchColumns),
+                'search' => $search,
                 'groupable' => $groupable,
                 'summaries' => array_keys($summaries),
                 'exportLimit' => $instance->exportLimit(),
                 'exportQueueLimit' => $instance->exportQueueLimit(),
                 'bulkLimit' => $instance->bulkLimit(),
-            ],
+            ] + array_filter(['withoutCount' => $instance->withoutCount(), 'cursorPaging' => $instance->cursorPaging()]),
             'show_view' => ['fields' => $showFields, 'extra' => $dependencies($showFields)],
             'policy' => $instance->policy(),
             'entityProperties' => $entityProperties,
@@ -799,12 +832,63 @@ final class ResourceCompiler
             'searchColumns' => $searchColumns,
             'summaryPlan' => $summaries,
             'replicable' => $instance->replicable(),
-            'globallySearchable' => $instance->globallySearchable() && $searchColumns !== [],
+            'globallySearchable' => $instance->globallySearchable() && $search !== [],
             'searchResult' => self::searchResult($instance, $compiledFields, $class),
             'badge' => self::badge($instance, $compiledFields, $class),
             'actions' => array_values($actions),
             'widgets' => WidgetCompiler::widgets($instance->widgets(), $class),
-        ];
+        ] + array_filter(['searchRelations' => $searchRelations, 'fullText' => $fullText]);
+    }
+
+    /** The field types full-text search covers: text stored as it is shown. */
+    private const array FULL_TEXT_TYPES = ['string', 'text', 'markdown', 'email', 'url', 'slug'];
+
+    /**
+     * The resource's full-text declaration: the columns its index covers,
+     * each a searchable text field's, and the PostgreSQL text search
+     * configuration, which reaches SQL as a literal and so must be a plain
+     * name.
+     *
+     * @param array<string, array<string, mixed>> $fields
+     * @return array{columns: array<string, string>, config: string}|null
+     */
+    private static function fullText(VectorResource $instance, array $fields, string $class): ?array
+    {
+        $declared = $instance->fullText();
+
+        if ($declared === null) {
+            return null;
+        }
+
+        if ($declared->fields === []) {
+            throw ResourceCompileException::resource($class, 'fullText() names no field');
+        }
+
+        if (preg_match('/^[a-z_][a-z0-9_]{0,62}$/', $declared->config) !== 1) {
+            throw ResourceCompileException::resource($class, "fullText() configures \"{$declared->config}\", which is not a PostgreSQL text search configuration name");
+        }
+
+        $columns = [];
+
+        foreach ($declared->fields as $name) {
+            $field = $fields[$name] ?? null;
+
+            if ($field === null || ($field['valueType'] ?? null) !== 'string' || !in_array($field['type'], self::FULL_TEXT_TYPES, true)) {
+                throw ResourceCompileException::resource($class, "fullText() names \"{$name}\", which is not a text field of the resource");
+            }
+
+            if ($field['searchable'] !== true) {
+                throw ResourceCompileException::resource($class, "fullText() names \"{$name}\", which is not searchable");
+            }
+
+            if (isset($columns[$name])) {
+                throw ResourceCompileException::resource($class, "fullText() names \"{$name}\" twice");
+            }
+
+            $columns[$name] = $field['column'];
+        }
+
+        return ['columns' => $columns, 'config' => $declared->config];
     }
 
     /** How a computed value is typed on the wire, by what it is shown as. */
@@ -887,7 +971,7 @@ final class ResourceCompiler
         }
 
         if (trim($badge['color']) === '') {
-            throw new ResourceCompileException("{$class}::badge() has no colour.");
+            throw new ResourceCompileException("{$class}::badge() has no color.");
         }
 
         self::checkBadgeFilter($badge['filter'], $fields, $class);

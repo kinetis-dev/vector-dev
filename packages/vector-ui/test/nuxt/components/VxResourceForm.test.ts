@@ -225,7 +225,9 @@ describe('VxResourceForm: unsaved changes and save variants', () => {
 
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true }))
 
-        await vi.waitFor(() => expect(update.requests).toHaveLength(1))
+        // the request is recorded before it is answered, and saved is emitted after: wait for the latter
+        await vi.waitFor(() => expect(form.emitted('saved')).toBeDefined())
+        expect(update.requests).toHaveLength(1)
         expect(form.emitted('saved')![0]![1]).toBe('close')
     })
 
@@ -295,6 +297,24 @@ describe('VxResourceForm: a copy of a record', () => {
 
         await vi.waitFor(() => expect(create.requests).toHaveLength(1))
         expect(create.requests[0]!.body).toEqual({ sku: 'SKU-6', name: 'Mug', status: 'active', category: 3, photo: null, tags: [1, 4] })
+    })
+
+    it('copies every membership of an uncounted target, page by page while another follows', async () => {
+        const tags = mock('/vector/r/products/5/tags', (request) => {
+            const page = Number(new URL(request.path, 'http://x').searchParams.get('page'))
+
+            return { body: { data: page === 1 ? [{ id: 1 }] : [{ id: 4 }], currentPage: page, perPage: 1, total: null, lastPage: null, hasMore: page === 1 } }
+        })
+        const create = mock('/vector/r/products', { status: 201, body: { data: { id: 6 }, permissions: {} } }, 'POST')
+        const form = await mountForm({ resource: products, operation: 'create', copyOf: source })
+        await vi.waitFor(() => expect(tags.requests).toHaveLength(2))
+        await flushPromises()
+        await input(form, 'SKU').find('input').setValue('SKU-6')
+
+        await submit(form)
+
+        await vi.waitFor(() => expect(create.requests).toHaveLength(1))
+        expect(create.requests[0]!.body).toMatchObject({ tags: [1, 4] })
     })
 })
 

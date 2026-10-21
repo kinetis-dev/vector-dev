@@ -36,6 +36,9 @@ export default {
         deleteTitle: 'Удалить {noun} ({count})?',
         restoreTitle: 'Восстановить {noun} ({count})?',
         forceDeleteTitle: 'Удалить {noun} ({count}) навсегда?',
+        deleteAllTitle: 'Удалить все подходящие {noun}?',
+        restoreAllTitle: 'Восстановить все подходящие {noun}?',
+        forceDeleteAllTitle: 'Удалить все подходящие {noun} навсегда?',
         toTrash: 'Записи будут перемещены в корзину и могут быть восстановлены.',
         irreversible: 'Это действие нельзя отменить.',
         restored: '{noun}: восстановлено {count}.',
@@ -43,18 +46,22 @@ export default {
     },
     bulk: {
         allMatching: 'Все подходящие ({total})',
+        allMatchingUncounted: 'Все подходящие записи',
         selected: 'Выбрано: {count}',
         selectAllMatching: 'Выбрать все подходящие ({total})',
+        selectAllMatchingUncounted: 'Выбрать все подходящие записи',
         onlyChecked: 'Только отмеченные строки',
         clearSelection: 'Снять выделение',
     },
     bulkEdit: {
         everyMatching: 'все подходящие {noun} ({count})',
+        everyMatchingUncounted: 'все подходящие {noun}',
         some: '{noun} ({count})',
         title: 'Изменить: {subject}',
         fieldsToChange: 'Изменяемые поля',
         fieldsHint: 'Записываются только выбранные поля; все остальные значения остаются без изменений.',
         applyTo: 'Применить к {count}',
+        applyToAll: 'Применить ко всем подходящим',
         updated: '{noun}: обновлено {count}.',
     },
     columns: {
@@ -141,6 +148,9 @@ export default {
             update: 'Каждая строка обновляет запись с совпадающим значением; строка без совпадений попадает в файл строк с ошибками.',
             upsert: 'Каждая строка обновляет запись с совпадающим значением или создаёт новую, если совпадений нет.',
         },
+    },
+    pager: {
+        page: 'Страница {page}',
     },
     page: {
         create: 'Создать: {noun}',

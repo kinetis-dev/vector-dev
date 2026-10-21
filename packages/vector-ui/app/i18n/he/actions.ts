@@ -3,6 +3,7 @@ export default {
     // "Run {action} on {subject}?", with the action's label in bold.
     runOn: 'להריץ את {action} על {subject}?',
     subjectAll: 'כל הרשומות התואמות מסוג {label} ({count})',
+    subjectAllUncounted: 'כל הרשומות התואמות מסוג {label}',
     subjectCount: '{count} {label}',
     done: 'הפעולה "{label}" הושלמה.',
     declined: 'הפעולה נדחתה.',

@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-20
+
+### Added
+
+- `GET /vector/openapi.json`: Vector's REST API as an OpenAPI 3.1
+  document with concrete paths for the resources the caller may list,
+  filtered through the same per-identity overlay as the descriptor, so a
+  hidden resource, field or action never appears. It is served where the
+  framework serves its own `/openapi.json`, per `OPENAPI_ENVIRONMENTS`
+  and `APP_ENV`; elsewhere its path answers 404 before authentication.
+- A searchable `belongsTo` makes `q` match the related record's title,
+  through a subquery that applies neither the target's `scope()` nor its
+  trash. Compilation refuses one whose target's title is not a string
+  column.
+- `VectorResource::fullText()`: `q` matches the named searchable text
+  fields by whole words through their full-text index, `MATCH ...
+  AGAINST` in boolean mode on MySQL and `to_tsvector @@ plainto_tsquery`
+  on PostgreSQL. LIKE stays on the other searchable columns.
+- `VectorResource::withoutCount()`: an offset list page skips its COUNT.
+  The page is `{data, currentPage, perPage, total: null, lastPage: null,
+  hasMore}`, with `hasMore` read from one row past the page through the
+  same policy, scope and trash predicate; summaries still work. A counted
+  resource's page is unchanged and carries no `hasMore`. Its export does
+  not count the match either: `ResourceService::exportCount()` takes a
+  `$cap` and reads at most one row past it, which is enough to choose
+  between inline and queued, and a refusal says "more than N records".
+- `VectorResource::cursorPaging()`: the admin pages the list by cursor.
+  The REST API is unchanged: `?page=` and `?cursor=` work on every
+  resource.
+- Both flags are published in the schema's `table` (`withoutCount`,
+  `cursorPaging`). The OpenAPI document gives a withoutCount resource's
+  list `total` and `lastPage` as `null` and documents `hasMore`;
+  `vector_describe` marks it `withoutCount`, and `vector_query` says so.
+- `VectorResponse::assertHasMore()`. `assertTotal()` on an uncounted page
+  now fails with a message pointing to it.
+
+### Changed
+
+- Ships the `@kinetis/vector-ui` 0.10.0 hosted bundle, which pages
+  uncounted and cursor lists, and makes `VectorPage.total` and
+  `lastPage` nullable.
+
+### Fixed
+
+- `ListRequest::fromQueryParams()` takes a caller's `perPageCap` only as a
+  tighter bound: a cap above the resource's `maxPerPage()` no longer raises
+  the page size a request may ask for.
+- Two compile refusals read correctly: a badge without a color says
+  "color", and a repeater naming a field its rows cannot write no longer
+  puts "a" before the child's label ("not a writable field of Order
+  line").
+
 ## [0.9.5] - 2026-10-19
 
 ### Changed

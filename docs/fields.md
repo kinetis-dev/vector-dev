@@ -222,6 +222,7 @@ publishes `computed: {as, from}`; the method's name stays on the server.
 
 - `BelongsTo` shows the target's title and edits with a searchable
   picker. `titleField()` overrides which field names the target.
+  `searchable()` makes the list's search match that title.
 - `HasMany` and `ManyToMany` show a count in lists and a panel on the
   record page. A many-to-many is edited in the form, or attached and
   detached from the panel.

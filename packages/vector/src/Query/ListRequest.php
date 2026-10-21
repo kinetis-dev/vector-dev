@@ -63,12 +63,15 @@ final readonly class ListRequest
         public array $groups = [],
     ) {}
 
-    /** @param array<array-key, mixed> $params the request's query parameters */
+    /**
+     * @param array<array-key, mixed> $params the request's query parameters
+     * @param int|null $perPageCap a tighter page size bound; it never raises the resource's maxPerPage()
+     */
     public static function fromQueryParams(array $params, ResourceDescriptor $resource, ValueConverter $converter, ?int $perPageCap = null): self
     {
         $page = self::positiveInt($params['page'] ?? 1, 'page');
         $perPage = self::positiveInt($params['perPage'] ?? $resource->perPage(), 'perPage');
-        $cap = $perPageCap ?? $resource->maxPerPage();
+        $cap = min($perPageCap ?? $resource->maxPerPage(), $resource->maxPerPage());
 
         if ($perPage > $cap) {
             throw new InvalidListRequestException("perPage must be at most {$cap}.");
@@ -100,7 +103,7 @@ final readonly class ListRequest
 
         $search = $search === null ? null : trim($search);
 
-        if ($search !== null && $search !== '' && $resource->searchColumns() === []) {
+        if ($search !== null && $search !== '' && !$resource->searchable()) {
             throw new InvalidListRequestException("{$resource->slug()} has no searchable fields.");
         }
 

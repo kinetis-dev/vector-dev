@@ -53,6 +53,13 @@ final class OrderResource extends VectorResource
         return ['-placedAt'];
     }
 
+    /** Orders only grow: the list pages by previous and next instead of counting every order. */
+    #[\Override]
+    public function withoutCount(): bool
+    {
+        return true;
+    }
+
     #[\Override]
     public function beforeCreate(object $entity, WriteContext $context): void
     {

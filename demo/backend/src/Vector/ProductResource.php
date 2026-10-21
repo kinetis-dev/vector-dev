@@ -29,6 +29,7 @@ use Kinetis\Vector\Fields\Money;
 use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\Fields\Slug;
 use Kinetis\Vector\Fields\Text;
+use Kinetis\Vector\FullText;
 use Kinetis\Vector\VectorResource;
 
 /**
@@ -59,7 +60,8 @@ final class ProductResource extends VectorResource
             Enum::make('status')->of(\App\Domain\ProductStatus::class)
                 ->colors(['draft' => 'warning', 'active' => 'success', 'archived' => 'grey'])
                 ->sortable()->filterable()->inlineEditable(),
-            BelongsTo::to('category', CategoryResource::class)->sortable()->filterable(),
+            // search matches the category's name too
+            BelongsTo::to('category', CategoryResource::class)->sortable()->filterable()->searchable(),
             Money::make('priceCents', 'Price')->currencyField('currency')->sortable()->filterable()->summarize('avg')->inlineEditable(),
             Currency::make('currency')->allowed(['EUR', 'USD', 'GBP'])->filterable()->hideFromIndex(),
             Number::make('stock')->sortable()->filterable()->summarize('sum')->component('stock-level')->inlineEditable(),
@@ -77,6 +79,13 @@ final class ProductResource extends VectorResource
             DateTime::make('createdAt')->readonly()->sortable()->hideFromForms(),
             DateTime::make('updatedAt')->readonly()->hideFromForms()->hideFromIndex(),
         ];
+    }
+
+    /** The name is searched by words, through the FULLTEXT index of migration 20261020000001. */
+    #[\Override]
+    public function fullText(): FullText
+    {
+        return FullText::on('name');
     }
 
     #[\Override]

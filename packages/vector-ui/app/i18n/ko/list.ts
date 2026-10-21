@@ -36,6 +36,9 @@ export default {
         deleteTitle: '{noun} {count}개를 삭제하시겠습니까?',
         restoreTitle: '{noun} {count}개를 복원하시겠습니까?',
         forceDeleteTitle: '{noun} {count}개를 영구 삭제하시겠습니까?',
+        deleteAllTitle: '일치하는 {noun} 모두를 삭제하시겠습니까?',
+        restoreAllTitle: '일치하는 {noun} 모두를 복원하시겠습니까?',
+        forceDeleteAllTitle: '일치하는 {noun} 모두를 영구 삭제하시겠습니까?',
         toTrash: '휴지통으로 이동되며 복원할 수 있습니다.',
         irreversible: '이 작업은 되돌릴 수 없습니다.',
         restored: '{noun} {count}개를 복원했습니다.',
@@ -43,18 +46,22 @@ export default {
     },
     bulk: {
         allMatching: '일치하는 {total}개 모두',
+        allMatchingUncounted: '일치하는 모든 레코드',
         selected: '{count}개 선택됨',
         selectAllMatching: '일치하는 {total}개 모두 선택',
+        selectAllMatchingUncounted: '일치하는 모든 레코드 선택',
         onlyChecked: '선택한 행만',
         clearSelection: '선택 해제',
     },
     bulkEdit: {
         everyMatching: '일치하는 모든 {noun} ({count})',
+        everyMatchingUncounted: '일치하는 모든 {noun}',
         some: '{noun} {count}개',
         title: '{subject} 편집',
         fieldsToChange: '변경할 필드',
         fieldsHint: '선택한 필드만 저장되며, 다른 값은 모두 그대로 유지됩니다.',
         applyTo: '{count}개에 적용',
+        applyToAll: '일치하는 모든 항목에 적용',
         updated: '{noun} {count}개를 업데이트했습니다.',
     },
     columns: {
@@ -141,6 +148,9 @@ export default {
             update: '각 행은 값이 일치하는 레코드를 업데이트합니다. 일치하는 레코드가 없는 행은 실패한 행 파일로 이동합니다.',
             upsert: '각 행은 값이 일치하는 레코드를 업데이트하거나, 일치하는 레코드가 없으면 새로 만듭니다.',
         },
+    },
+    pager: {
+        page: '{page}페이지',
     },
     page: {
         create: '새 {noun}',
