@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-21
+
 ### Added
 
 - `Kinetis\Vector\Import\CsvReadException` and
@@ -23,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   refused like any other non-integer — 404 for a record, job,
   notification, view or history entry, 422 for a list parameter or a
   field value.
+- Ships the `@kinetis/vector-ui` 0.10.2 hosted bundle, with its keyboard
+  and screen-reader fixes and its linear-time e-mail and Regex rule
+  checks.
 
 ## [0.10.1] - 2026-10-21
 
