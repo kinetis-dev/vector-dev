@@ -140,8 +140,12 @@ jobs:
         # The fpm target of the stack's own Dockerfile, so CI runs on the
         # extensions the demo runs on; see .github/scripts/php. Plain
         # progress keeps every RUN's output in the log, so a failed
-        # php-extensions.sh shows which download or compile broke.
-        run: docker build --progress=plain --build-arg PHP_VERSION=${{ matrix.php-version }} --target fpm -t "$VECTOR_PHP_IMAGE" -f demo/docker/Dockerfile demo
+        # php-extensions.sh shows which download or compile broke. The
+        # token, a BuildKit secret, lifts PIE's GitHub API downloads off
+        # the runner IP's anonymous rate limit and never enters a layer.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: docker build --progress=plain --secret id=github_token,env=GITHUB_TOKEN --build-arg PHP_VERSION=${{ matrix.php-version }} --target fpm -t "$VECTOR_PHP_IMAGE" -f demo/docker/Dockerfile demo
 
       - name: Validate composer.json
         run: |

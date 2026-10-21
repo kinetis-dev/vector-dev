@@ -73,9 +73,12 @@ PDO under PHP-FPM, the queue worker and the CLI. Its Caddyfile is
 `app`, `worker` and `frankenphp` are built from one `docker/Dockerfile`.
 PHP-FPM's PHP and FrankenPHP's are separate builds (one thread-safe, one
 not), so a compiled extension cannot move between them. Both targets
-run the same recipe instead, `docker/php-extensions.sh`. The PHP minor
-version and the FrankenPHP release are set once, at the top of the
-Dockerfile, and one `docker compose build` rebuilds every PHP image.
+run the same recipe instead, `docker/php-extensions.sh`. It builds
+pcov, uv and event with [PIE](https://github.com/php/pie), pinned to
+exact versions, from a binary mounted only while the recipe runs. The
+PHP minor version, the FrankenPHP release and the PIE release are set
+once, at the top of the Dockerfile, and one `docker compose build`
+rebuilds every PHP image.
 
 Two scripts check and measure it:
 
@@ -168,9 +171,10 @@ extension in a worker image. Both images carry two:
 
 - **ext-event 3.1.6**, the stable driver the guide requires. It is the
   one Revolt uses if uv is ever dropped.
-- **ext-uv 0.3.0**, which Revolt prefers when both are loaded. Its only
-  release is a beta, so it is pinned to the exact version the guide
-  names, rather than the floating `uv-beta` the image installed before.
+- **ext-uv 0.3.1**, which Revolt prefers when both are loaded. It has
+  only 0.x releases, so it is pinned to an exact version. The guide
+  names PECL's `uv-0.3.0`; the images install through PIE, and
+  `amphp/uv`, uv's PIE package, publishes 0.3.1 and nothing earlier.
   It is kept because it is also kinetis/storage's native file driver:
   amphp/file does filesystem I/O through uv only when the loop runs on
   uv, and otherwise sends every call to a pool of helper processes.

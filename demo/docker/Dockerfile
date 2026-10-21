@@ -5,10 +5,17 @@
 # builds both from this file, so one `docker compose build` can never
 # leave one runtime on the previous extensions.
 #
-# The PHP minor version and the FrankenPHP release are set here and
-# nowhere else.
+# The PHP minor version, the FrankenPHP release and the PIE release are
+# set here and nowhere else.
 ARG PHP_VERSION=8.4
 ARG FRANKENPHP_VERSION=1.13.1
+ARG PIE_VERSION=1.5.2
+
+# PIE's binary-only image (ghcr.io/php/pie:<version>-bin), pinned rather
+# than the floating `bin` tag. php-extensions.sh runs with it bind-mounted
+# and with the optional github_token secret mounted, so neither PIE nor
+# the token ends up in a layer.
+FROM ghcr.io/php/pie:${PIE_VERSION}-bin AS pie
 
 FROM php:${PHP_VERSION}-fpm-alpine AS fpm-base
 
@@ -18,7 +25,9 @@ FROM dunglas/frankenphp:${FRANKENPHP_VERSION}-php${PHP_VERSION}-alpine AS franke
 FROM fpm-base AS fpm
 
 COPY docker/php-extensions.sh /usr/local/bin/php-extensions.sh
-RUN php-extensions.sh
+RUN --mount=type=bind,from=pie,source=/pie,target=/usr/local/bin/pie \
+    --mount=type=secret,id=github_token,required=false \
+    php-extensions.sh
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY docker/kinetis.ini /usr/local/etc/php/conf.d/zz-kinetis.ini
@@ -32,7 +41,9 @@ CMD ["php-fpm", "-F"]
 FROM frankenphp-base AS frankenphp
 
 COPY docker/php-extensions.sh /usr/local/bin/php-extensions.sh
-RUN php-extensions.sh
+RUN --mount=type=bind,from=pie,source=/pie,target=/usr/local/bin/pie \
+    --mount=type=secret,id=github_token,required=false \
+    php-extensions.sh
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY docker/kinetis.ini /usr/local/etc/php/conf.d/zz-kinetis.ini
