@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   already renewed is repeated with the new token instead of renewing the
   session a second time, which spent the new refresh token and could end
   a session that was still good.
+- A relation input whose search fails says why under the input and keeps
+  the choices it listed, instead of failing silently with an unhandled
+  promise rejection.
 
 ### Security
 
