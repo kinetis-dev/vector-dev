@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The admin refuses a descriptor whose `version` is not the contract it
   reads (4), naming both versions, instead of rendering it as if it were.
 
+### Security
+
+- An action answering `ActionResponse::openUrl()` opens the URL only
+  when it is http(s), mailto or relative — the rule a URL cell and a
+  rich-text link follow. A `javascript:` or `data:` URL, which an action
+  echoing a record's value could return, is no longer opened.
+
 ## [0.10.2] - 2026-10-21
 
 ### Fixed

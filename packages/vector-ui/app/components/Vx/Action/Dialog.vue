@@ -60,7 +60,8 @@ async function run(event: SubmitEventPromise) {
                 return
             case 'url':
                 if (response.message) notifications.success(response.message)
-                if (response.url && import.meta.client) window.open(response.url, '_blank', 'noopener')
+                // only where a link could go, as a URL cell: an action may echo a record's value
+                if (response.url && allowedHref(response.url) && import.meta.client) window.open(response.url, '_blank', 'noopener')
                 break
             case 'download':
                 notifications.success(t('actions.downloadStarted'))
