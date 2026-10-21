@@ -20,13 +20,24 @@ const error = ref<string | null>(null)
 const mode = ref<VectorImportMode>(props.resource.permissions.create ? 'create' : 'update')
 const key = ref('')
 
+/** Whether the user may import in a mode: an upsert both creates and updates. */
+function permits(m: VectorImportMode): boolean {
+    const { create, update } = props.resource.permissions
+    if (m === 'create') return create
+    if (m === 'update') return update
+    return create && update
+}
+
 const modes = computed(() => (['create', 'update', 'upsert'] as const)
-    .filter(m => m === 'create' ? props.resource.permissions.create : m === 'update' ? props.resource.permissions.update : props.resource.permissions.create && props.resource.permissions.update)
+    .filter(permits)
     .map(m => ({ title: t(`list.import.modes.${m}`), value: m })))
+
+// the form views whose fields each mode writes
+const modeViews: Record<VectorImportMode, string[]> = { create: ['create'], update: ['update'], upsert: ['create', 'update'] }
 
 // what the mode writes; an update also maps the column it matches rows by
 const fields = computed(() => {
-    const views = mode.value === 'create' ? ['create'] : mode.value === 'update' ? ['update'] : ['create', 'update']
+    const views = modeViews[mode.value]
     const writable = props.resource.fields.filter(f => !f.readonly && f.views.some(v => views.includes(v)) && !['id', 'hasOne', 'hasMany', 'computed'].includes(f.type))
     const keys = mode.value === 'create' ? [] : keyFields.value.filter(f => !writable.includes(f))
 
@@ -110,7 +121,7 @@ async function start() {
                     </div>
                     <p v-if="mode !== 'create'" class="text-body-2 text-medium-emphasis mb-3">{{ t(`list.import.modeHelp.${mode}`) }}</p>
                     <v-table density="compact">
-                        <thead><tr><th>{{ t('list.import.csvColumn') }}</th><th>{{ t('list.import.sample') }}</th><th style="width: 260px">{{ t('list.field') }}</th></tr></thead>
+                        <thead><tr><th scope="col">{{ t('list.import.csvColumn') }}</th><th scope="col">{{ t('list.import.sample') }}</th><th scope="col" style="width: 260px">{{ t('list.field') }}</th></tr></thead>
                         <tbody>
                             <tr v-for="header in preview.headers" :key="header">
                                 <td>{{ header }}</td>

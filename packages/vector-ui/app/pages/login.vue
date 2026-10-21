@@ -18,7 +18,7 @@ const notice = computed(() => route.query.reason === 'idle' ? t('shell.login.sig
 
 const rules = {
     required: (value: string) => value.trim() !== '' || t('common.required'),
-    email: (value: string) => /.+@.+\..+/.test(value) || t('shell.login.invalidEmail'),
+    email: (value: string) => hasEmailShape(value) || t('shell.login.invalidEmail'),
 }
 
 const runtime = useVectorRuntime()

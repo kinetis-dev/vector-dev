@@ -7,8 +7,11 @@
 export function dataUrl(blob: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader()
-        reader.onload = () => resolve(String(reader.result))
-        reader.onerror = () => reject(reader.error)
+        reader.onload = () => {
+            if (typeof reader.result === 'string') resolve(reader.result)
+            else reject(new Error('The file was not read as a data URL'))
+        }
+        reader.onerror = () => reject(reader.error ?? new Error('The file could not be read'))
         reader.readAsDataURL(blob)
     })
 }

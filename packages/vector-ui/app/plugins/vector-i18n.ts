@@ -1,6 +1,6 @@
 import { createI18n } from 'vue-i18n'
 import type { VectorI18n } from '#vector/app/utils/translate'
-import { bundledMessages, isRtl, pluralRule, rtlLanguages, vuetifyLocale } from '#vector/app/i18n'
+import { bundledMessages, isRtl, knownVuetifyLocale, pluralRule, rtlLanguages } from '#vector/app/i18n'
 
 /**
  * The admin's own strings, translated through vue-i18n, in the language
@@ -61,7 +61,7 @@ export default defineNuxtPlugin({
         nuxtApp.hook('vuetify:before-create', async ({ vuetifyOptions }) => {
             const all = await import('vuetify/locale') as Record<string, unknown>
             const messages = Object.fromEntries(Object.entries(all).filter(([, value]) => value && typeof value === 'object' && !Array.isArray(value)))
-            const current = messages[vuetifyLocale(locale)] ? vuetifyLocale(locale) : (messages[locale.split('-')[0]!] ? locale.split('-')[0]! : 'en')
+            const current = knownVuetifyLocale(locale, messages)
             vuetifyOptions.locale = {
                 ...(typeof vuetifyOptions.locale === 'object' ? vuetifyOptions.locale : {}),
                 locale: current,

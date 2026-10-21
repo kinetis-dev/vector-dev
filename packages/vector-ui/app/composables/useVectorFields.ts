@@ -38,6 +38,12 @@ const cells: Record<string, Component> = {
     manyToMany: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Count.vue')),
 }
 
+/** The cell type a computed field is shown as: what it is computed as, text as a string. */
+function computedCell(field: VectorField): string {
+    const as = field.computed?.as
+    return as === 'text' ? 'string' : as ?? 'string'
+}
+
 export function useVectorFields() {
     const appConfig = useAppConfig()
 
@@ -59,7 +65,7 @@ export function useVectorFields() {
         }
 
         // a computed value is shown by the cell of what it is computed as
-        const type = field.type === 'computed' ? (field.computed?.as === 'text' ? 'string' : field.computed?.as ?? 'string') : field.type
+        const type = field.type === 'computed' ? computedCell(field) : field.type
 
         return cells[type] ?? cells.string!
     }

@@ -32,6 +32,12 @@ const inputs: Record<string, Component> = {
     hasMany: defineAsyncComponent(() => import('#vector/app/components/Vx/Input/Repeater.vue')),
 }
 
+/** Whether a field is edited in this operation at all. */
+function editable(field: VectorField, operation: 'create' | 'update'): boolean {
+    if (field.type === 'hasMany') return !!field.repeater && field.views.includes(operation)
+    return !field.readonly && field.views.includes(operation) && !['id', 'hasOne'].includes(field.type)
+}
+
 export function useVectorInputs() {
     const appConfig = useAppConfig()
 
@@ -49,12 +55,6 @@ export function useVectorInputs() {
         }
 
         return overrides[field.type] ?? inputs[field.type] ?? inputs.string!
-    }
-
-    /** Whether a field is edited in this operation at all. */
-    function editable(field: VectorField, operation: 'create' | 'update'): boolean {
-        if (field.type === 'hasMany') return !!field.repeater && field.views.includes(operation)
-        return !field.readonly && field.views.includes(operation) && !['id', 'hasOne'].includes(field.type)
     }
 
     return { inputFor, editable }

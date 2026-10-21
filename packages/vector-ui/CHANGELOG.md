@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A row of the jobs list, and a linked row of a dashboard table widget,
+  takes keyboard focus and opens with Enter or Space, as a click opens
+  it.
+- An inline-editable list cell is a button, so Space starts editing it
+  as Enter does.
+- Table column headers are marked as column headers; a trend widget's
+  sparkline is hidden from screen readers, which read its range and total
+  beside it; the rich text editor's image picker is labelled.
+- A key-value input, a repeater's rows and the filter bar's "any of"
+  groups are fieldsets, with the accessible names they had.
+- The Email rule, the sign-in form's e-mail check and the Regex rule's
+  delimiter parsing run in linear time, accepting exactly what they
+  accepted before.
+
 ## [0.10.1] - 2026-10-21
 
 ### Security

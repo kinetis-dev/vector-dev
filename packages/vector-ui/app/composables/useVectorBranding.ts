@@ -21,7 +21,7 @@ export function useVectorBranding() {
         primaryColorDark: null,
         theme: null,
         footerText: null,
-        ...(schema.value?.branding ?? hosted ?? {}),
+        ...(schema.value?.branding ?? hosted),
     }))
 
     /** Pushes the colours into Vuetify's theme and picks the default theme once per session. */

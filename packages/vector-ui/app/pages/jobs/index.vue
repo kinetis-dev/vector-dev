@@ -14,6 +14,10 @@ onUnmounted(pause)
 
 useHead({ title: () => t('jobs.title') })
 
+function open(job: VectorJob) {
+    navigateTo(`${appConfig.vector.basePath}/jobs/${job.id}`)
+}
+
 const color: Record<VectorJob['status'], string> = { queued: 'grey', running: 'info', done: 'success', failed: 'error', stalled: 'warning' }
 </script>
 
@@ -23,10 +27,19 @@ const color: Record<VectorJob['status'], string> = { queued: 'grey', running: 'i
         <v-card>
             <v-table hover>
                 <thead>
-                    <tr><th>{{ t('jobs.columns.job') }}</th><th>{{ t('jobs.columns.resource') }}</th><th>{{ t('jobs.columns.status') }}</th><th class="text-end">{{ t('jobs.columns.progress') }}</th><th>{{ t('jobs.columns.started') }}</th><th /></tr>
+                    <tr><th scope="col">{{ t('jobs.columns.job') }}</th><th scope="col">{{ t('jobs.columns.resource') }}</th><th scope="col">{{ t('jobs.columns.status') }}</th><th scope="col" class="text-end">{{ t('jobs.columns.progress') }}</th><th scope="col">{{ t('jobs.columns.started') }}</th><th scope="col" /></tr>
                 </thead>
                 <tbody>
-                    <tr v-for="job in data ?? []" :key="job.id" style="cursor: pointer" @click="navigateTo(`${appConfig.vector.basePath}/jobs/${job.id}`)">
+                    <tr
+                        v-for="job in data ?? []"
+                        :key="job.id"
+                        style="cursor: pointer"
+                        tabindex="0"
+                        role="link"
+                        @click="open(job)"
+                        @keydown.enter.self.prevent="open(job)"
+                        @keydown.space.self.prevent="open(job)"
+                    >
                         <td><span class="text-capitalize">{{ t(`jobs.kind.${job.kind}`) }}</span> <span class="text-medium-emphasis">{{ job.name }}</span></td>
                         <td>{{ job.resource }}</td>
                         <td><v-chip size="small" :color="color[job.status]" variant="tonal">{{ t(`jobs.status.${job.status}`) }}</v-chip></td>

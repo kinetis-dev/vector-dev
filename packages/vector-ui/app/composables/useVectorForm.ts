@@ -26,7 +26,8 @@ export function applyViolations(error: unknown, values: Record<string, unknown>,
         const key = String(violation.path[0] ?? '')
 
         if (key && key in values) {
-            (serverErrors[key] ??= []).push(`${violation.message.charAt(0).toUpperCase()}${violation.message.slice(1)}`)
+            serverErrors[key] ??= []
+            serverErrors[key].push(`${violation.message.charAt(0).toUpperCase()}${violation.message.slice(1)}`)
         } else {
             general = violation.message
         }

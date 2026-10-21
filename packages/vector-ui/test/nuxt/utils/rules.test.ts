@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fieldState, rulesFor } from '#vector/app/utils/rules'
+import { fieldState, hasEmailShape, isEmailAddress, phpRegex, rulesFor } from '#vector/app/utils/rules'
 import { field, rule } from '../fixtures'
 
 /** Every rule's verdict on one value: the first message, or true. */
@@ -100,6 +100,60 @@ describe('rulesFor: constraints', () => {
 
     it('leaves a constraint with no client equivalent to the server', () => {
         expect(rulesOf(rule('UniqueEntity', 'tags', 'name'))).toHaveLength(0)
+    })
+})
+
+describe('isEmailAddress', () => {
+    it('takes one @ with text before it and a dotted domain after it', () => {
+        for (const value of ['a@b.c', 'admin@vector.local', 'a.b@c.d.e', 'a@b..c', 'a@.b.c', '+x@y.z', 'a@b.c.']) {
+            expect(isEmailAddress(value), value).toBe(true)
+        }
+    })
+
+    it('rejects whitespace, a second @, an empty side and a domain without an inner dot', () => {
+        for (const value of ['', 'a@b', 'a@b.', 'a@.b', '@b.c', 'a@', 'a@@b.c', 'a@b@c.d', 'a b@c.d', 'a@b.c ', ' a@b.c', 'a@b.c\n', 'a@b\t.c', 'a@b.c\u00a0', 'ab.c']) {
+            expect(isEmailAddress(value), JSON.stringify(value)).toBe(false)
+        }
+    })
+})
+
+describe('hasEmailShape', () => {
+    it('takes text, an @, text, a dot and text anywhere on one line', () => {
+        for (const value of ['a@b.c', 'x a@b.c y', '@@@.@', 'a b@c d.e', 'name: a@b.c', 'a@b.c\nnext', 'first\na@b.c', '.a@b.c', 'a@@.c']) {
+            expect(hasEmailShape(value), JSON.stringify(value)).toBe(true)
+        }
+    })
+
+    it('rejects a missing part, or the parts split across lines', () => {
+        for (const value of ['', 'a@b', '@b.c', 'a@.c', 'a@b.', 'a.b@c', 'a@b\n.c', 'a\n@b.c', 'a@b\r.c', 'a@b\u2028.c', 'a@b\u2029.c']) {
+            expect(hasEmailShape(value), JSON.stringify(value)).toBe(false)
+        }
+    })
+})
+
+describe('phpRegex', () => {
+    it('reads the first character as the delimiter and the letters after its last occurrence as flags', () => {
+        expect(phpRegex('/abc/i')).toMatchObject({ source: 'abc', flags: 'i' })
+        expect(phpRegex('#a/b#')).toMatchObject({ source: 'a\\/b', flags: '' })
+        expect(phpRegex('/a/b/')).toMatchObject({ source: 'a\\/b', flags: '' })
+        expect(phpRegex('//')).toMatchObject({ source: '(?:)', flags: '' })
+        expect(phpRegex('aba')).toMatchObject({ source: 'b', flags: '' })
+        expect(phpRegex('/a\nb/m')).toMatchObject({ source: 'a\\nb', flags: 'm' })
+    })
+
+    it('keeps the flags JavaScript has and drops PCRE-only ones', () => {
+        expect(phpRegex('~^a b$~xiu')).toMatchObject({ source: '^a b$', flags: 'iu' })
+        expect(phpRegex('/a/D')).toMatchObject({ source: 'a', flags: '' })
+    })
+
+    it('takes a pattern without a closing delimiter, or with anything but letters after it, as it is', () => {
+        expect(phpRegex('abc')).toMatchObject({ source: 'abc', flags: '' })
+        expect(phpRegex('/')).toMatchObject({ source: '\\/', flags: '' })
+        expect(phpRegex('/abc/i1')).toMatchObject({ source: '\\/abc\\/i1', flags: '' })
+        expect(phpRegex('/abc/ i')).toMatchObject({ source: '\\/abc\\/ i', flags: '' })
+        expect(phpRegex('^[a-z]+$')).toMatchObject({ source: '^[a-z]+$', flags: '' })
+        // a line terminator is never a delimiter
+        expect(phpRegex('\nabc\n')).toMatchObject({ source: '\\nabc\\n', flags: '' })
     })
 })
 

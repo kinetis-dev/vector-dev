@@ -5,7 +5,8 @@ const props = defineProps<{ field: VectorField, rules: ((v: unknown) => true | s
 const model = defineModel<number | null>()
 const decimals = computed(() => {
     const d = fieldProps(props.field).decimals
-    return typeof d === 'number' ? d : (props.field.valueType === 'float' ? 2 : 0)
+    if (typeof d === 'number') return d
+    return props.field.valueType === 'float' ? 2 : 0
 })
 </script>
 

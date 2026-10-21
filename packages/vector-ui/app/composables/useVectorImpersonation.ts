@@ -49,17 +49,6 @@ export function useVectorImpersonation() {
         }
     }
 
-    /** The `sub` of a JWT, read without verifying it: the server already did, and this only labels the session. */
-    function subjectOf(token: string): string | null {
-        try {
-            const payload = JSON.parse(atob(token.split('.')[1]?.replace(/-/g, '+').replace(/_/g, '/') ?? '')) as { sub?: unknown }
-
-            return typeof payload.sub === 'string' || typeof payload.sub === 'number' ? String(payload.sub) : null
-        } catch {
-            return null
-        }
-    }
-
     async function start(userId: number | string) {
         await apply(await api<Swap>(`/vector/impersonate/${encodeURIComponent(String(userId))}`, { method: 'POST' }))
     }
@@ -75,4 +64,15 @@ export function useVectorImpersonation() {
     }
 
     return { impersonator, start, stop, refresh }
+}
+
+/** The `sub` of a JWT, read without verifying it: the server already did, and this only labels the session. */
+function subjectOf(token: string): string | null {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]?.replaceAll('-', '+').replaceAll('_', '/') ?? '')) as { sub?: unknown }
+
+        return typeof payload.sub === 'string' || typeof payload.sub === 'number' ? String(payload.sub) : null
+    } catch {
+        return null
+    }
 }

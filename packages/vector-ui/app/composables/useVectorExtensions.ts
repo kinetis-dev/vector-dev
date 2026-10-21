@@ -38,7 +38,7 @@ export function useVectorPages() {
     const { pages } = useVectorExtensions()
 
     return computed<Record<string, VectorPageDefinition>>(() => ({
-        ...(appConfig.vector.pages ?? {}),
+        ...appConfig.vector.pages,
         ...Object.fromEntries(pages.entries()),
     }))
 }

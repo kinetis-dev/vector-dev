@@ -38,6 +38,19 @@ export function vuetifyLocale(tag: string): string {
     return tag.replace(/-([a-z])/gi, (_, c: string) => c.toUpperCase())
 }
 
+/** The Vuetify locale a tag switches to, of those `known`: its own, else its language's, else English. */
+export function knownVuetifyLocale(tag: string, known: Record<string, unknown>): string {
+    const own = vuetifyLocale(tag)
+    if (known[own]) return own
+    const language = tag.split('-')[0]!
+    return known[language] ? language : 'en'
+}
+
+/** The direction a language tag is written in. */
+export function textDirection(tag: string): 'ltr' | 'rtl' {
+    return isRtl(tag) ? 'rtl' : 'ltr'
+}
+
 /**
  * A language's name in the viewer's language (`de` shown in English is
  * "German", in Hebrew "גרמנית"), from the browser's own CLDR data: a
@@ -103,7 +116,8 @@ export function pluralRule(locale: string): (choice: number, choicesLength: numb
                 category = 'other'
             }
             const index = forms.indexOf(category)
-            return index >= 0 ? index : forms.includes('other') ? forms.indexOf('other') : choicesLength - 1
+            if (index >= 0) return index
+            return forms.includes('other') ? forms.indexOf('other') : choicesLength - 1
         }
         if (choicesLength === 2) return Math.abs(choice) === 1 ? 0 : 1
         return Math.min(Math.max(choicesLength - 1, 0), Math.abs(choice) === 1 ? 0 : choicesLength - 1)

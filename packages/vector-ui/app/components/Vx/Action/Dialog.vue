@@ -28,13 +28,12 @@ for (const field of props.action.fields) {
     values[field.name] = initialValue(field)
 }
 
-const subject = computed(() => props.action.standalone
-    ? ''
-    : props.selection?.all
-        ? props.count === null
-            ? t('actions.subjectAllUncounted', { label: noun(props.resource.labelSingular) })
-            : t('actions.subjectAll', { label: noun(props.resource.labelSingular), count: props.count })
-        : t('actions.subjectCount', { count: props.count, label: noun(props.count === 1 ? props.resource.labelSingular : props.resource.label) }))
+const subject = computed(() => {
+    if (props.action.standalone) return ''
+    if (!props.selection?.all) return t('actions.subjectCount', { count: props.count, label: noun(props.count === 1 ? props.resource.labelSingular : props.resource.label) })
+    if (props.count === null) return t('actions.subjectAllUncounted', { label: noun(props.resource.labelSingular) })
+    return t('actions.subjectAll', { label: noun(props.resource.labelSingular), count: props.count })
+})
 
 async function run(event: SubmitEventPromise) {
     const { valid } = await event
