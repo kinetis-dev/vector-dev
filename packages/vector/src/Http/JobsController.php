@@ -56,7 +56,7 @@ final readonly class JobsController
     /** @return array<string, mixed> */
     private function owned(string $id): array
     {
-        $job = preg_match('/^[1-9][0-9]{0,17}$/', $id) === 1 ? $this->jobs->find((int) $id) : null;
+        $job = preg_match('/^[1-9]\d{0,17}$/D', $id) === 1 ? $this->jobs->find((int) $id) : null;
 
         if ($job === null || $job['actorId'] !== (string) $this->user->id()) {
             throw RecordNotFoundException::of('jobs', $id);

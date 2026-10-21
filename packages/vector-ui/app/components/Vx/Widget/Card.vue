@@ -47,7 +47,8 @@ const builtIn: Record<string, Component> = {
 
 const component = computed(() => {
     const override = appConfig.vector.widgets[props.widget.type] ?? useVectorExtensions().widgets.get(props.widget.type)
-    return override ? (typeof override === 'string' ? resolveComponent(override) : override) : builtIn[props.widget.type] ?? builtIn.stat!
+    if (!override) return builtIn[props.widget.type] ?? builtIn.stat!
+    return typeof override === 'string' ? resolveComponent(override) : override
 })
 </script>
 

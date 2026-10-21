@@ -68,7 +68,11 @@ final readonly class RowMapper
             }
 
             $compiled = $resource->field($field);
-            $views = $mode === 'create' ? ['create'] : ($mode === 'update' ? ['update'] : ['create', 'update']);
+            $views = match ($mode) {
+                'create' => ['create'],
+                'update' => ['update'],
+                default => ['create', 'update'],
+            };
             $writable = $compiled !== null && $compiled['readonly'] !== true && array_intersect($views, $compiled['views']) !== []
                 && !in_array($compiled['type'], ['id', 'hasOne', 'hasMany', 'computed'], true);
 

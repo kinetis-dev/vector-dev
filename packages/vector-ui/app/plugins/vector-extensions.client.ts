@@ -56,7 +56,7 @@ export default defineNuxtPlugin(() => {
 
     const urls = [...(window.__VECTOR__?.extensions ?? []), ...((config.public.vector as { extensions?: string[] }).extensions ?? [])]
 
-    Promise.allSettled(urls.map(url => import(/* @vite-ignore */ url)
+    void Promise.allSettled(urls.map(url => import(/* @vite-ignore */ url)
         .then(module => (typeof module.default === 'function' ? module.default(api) : undefined))
         .catch(error => console.error(`Vector extension ${url} failed to load`, error))))
         .then(() => { registries.ready.value = true })

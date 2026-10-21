@@ -1160,6 +1160,10 @@ final class ResourceCompiler
                 $relation['inverseJoinColumn'] = $join['inverseJoinColumn'];
                 $array['nullable'] = false;
                 break;
+
+            default:
+                // another RelationField subclass: the target, its table and key above are the whole relation
+                break;
         }
 
         $array['relation'] = $relation;

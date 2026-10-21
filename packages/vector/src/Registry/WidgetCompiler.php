@@ -91,7 +91,13 @@ final class WidgetCompiler
             ];
         }
 
-        uksort($dashboards, static fn (string $a, string $b): int => ($a === 'main' ? 0 : 1) <=> ($b === 'main' ? 0 : 1) ?: strcmp($a, $b));
+        uksort($dashboards, static function (string $a, string $b): int {
+            if (($a === 'main') !== ($b === 'main')) {
+                return $a === 'main' ? -1 : 1;
+            }
+
+            return strcmp($a, $b);
+        });
 
         return $dashboards;
     }

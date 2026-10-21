@@ -755,7 +755,7 @@ final readonly class RecordWriter
 
         /** @var list<object> $named */
         $existing = $this->writer->read($entity, $relation);
-        $existing = is_iterable($existing) ? array_values(is_array($existing) ? $existing : iterator_to_array($existing)) : [];
+        $existing = self::listOf($existing);
         $idOf = fn (object $e): string => (string) $this->writer->read($e, $key);
         $present = array_map($idOf, $existing);
         $list = $verb === 'attach'
@@ -889,11 +889,7 @@ final readonly class RecordWriter
 
             $target = $this->reader->resource($field['relation']['resource']);
             $key = $target->primaryKeyField();
-            $idsOf = function (mixed $entities) use ($key): array {
-                return is_iterable($entities)
-                    ? array_values(array_map(fn (object $e): string => (string) $this->writer->read($e, $key), is_array($entities) ? $entities : iterator_to_array($entities)))
-                    : [];
-            };
+            $idsOf = fn (mixed $entities): array => array_map(fn (object $e): string => (string) $this->writer->read($e, $key), self::listOf($entities));
             $before = $idsOf($this->writer->read($entity, $name));
             $after = $idsOf($related);
             $added = array_values(array_diff($after, $before));
@@ -1062,6 +1058,21 @@ final readonly class RecordWriter
     private function impersonator(): ?string
     {
         return $this->actor->impersonatorId;
+    }
+
+    /**
+     * The values of a to-many relation as read off an entity: an array or
+     * a collection, as a list; anything else as no values.
+     *
+     * @return list<mixed>
+     */
+    private static function listOf(mixed $value): array
+    {
+        if (!is_iterable($value)) {
+            return [];
+        }
+
+        return array_values(is_array($value) ? $value : iterator_to_array($value));
     }
 
     /**

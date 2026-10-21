@@ -13,7 +13,10 @@ const { data, status, error, refresh } = await useAsyncData(() => `vector.audit.
 const entries = computed<VectorAuditEntry[]>(() => data.value?.data ?? [])
 
 const label = (name: string) => props.resource.fields.find(f => f.name === name)?.label ?? name
-const show = (value: unknown) => value === null || value === undefined ? t('common.none') : typeof value === 'object' ? JSON.stringify(value) : String(value)
+function show(value: unknown): string {
+    if (value === null || value === undefined) return t('common.none')
+    return typeof value === 'object' ? JSON.stringify(value) : String(value)
+}
 const icon: Record<string, string> = { create: 'mdi-plus-circle-outline', update: 'mdi-pencil-outline', revert: 'mdi-undo-variant', delete: 'mdi-delete-outline', restore: 'mdi-restore', forceDelete: 'mdi-delete-forever-outline' }
 
 /** The fields of an entry a revert would put back: shown, and editable on update. */

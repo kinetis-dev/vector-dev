@@ -90,7 +90,7 @@ final readonly class ListRequest
             }
 
             // the cursor is the last key of the page before; '' asks for the first page
-            if ($cursor !== '' && $resource->primaryKeyType() === 'int' && preg_match('/^-?[0-9]{1,18}$/', $cursor) !== 1) {
+            if ($cursor !== '' && $resource->primaryKeyType() === 'int' && preg_match('/^-?\d{1,18}$/D', $cursor) !== 1) {
                 throw new InvalidListRequestException('cursor must be an identifier of this resource.');
             }
         }
@@ -350,7 +350,7 @@ final readonly class ListRequest
             }
         };
         $list = static function (string|array $raw) use ($convert): array {
-            $items = is_array($raw) ? array_map(static fn (mixed $v): string => is_scalar($v) ? (string) $v : '', array_values($raw)) : explode(',', $raw);
+            $items = is_array($raw) ? self::texts($raw) : explode(',', $raw);
             $items = array_values(array_filter(array_map('trim', $items), static fn (string $v): bool => $v !== ''));
 
             if ($items === [] || count($items) > 200) {
@@ -390,6 +390,9 @@ final readonly class ListRequest
                 }
 
                 return [['column' => $column, 'op' => $op, 'value' => '%' . addcslashes(trim($value), '%_\\') . '%']];
+            default:
+                // a comparison operator: one typed value, below
+                break;
         }
 
         if (!is_string($value)) {
@@ -411,13 +414,22 @@ final readonly class ListRequest
         return [['column' => $column, 'op' => $op, 'value' => $typed]];
     }
 
+    /**
+     * @param array<array-key, mixed> $values
+     * @return list<string>
+     */
+    private static function texts(array $values): array
+    {
+        return array_map(static fn (mixed $v): string => is_scalar($v) ? (string) $v : '', array_values($values));
+    }
+
     private static function positiveInt(mixed $value, string $name): int
     {
         if (is_int($value) && $value > 0) {
             return $value;
         }
 
-        if (is_string($value) && preg_match('/^[1-9][0-9]{0,8}$/', $value) === 1) {
+        if (is_string($value) && preg_match('/^[1-9]\d{0,8}$/D', $value) === 1) {
             return (int) $value;
         }
 

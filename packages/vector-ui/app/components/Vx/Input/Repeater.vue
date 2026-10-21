@@ -39,8 +39,14 @@ watch(() => rows.value.length, (length) => {
     if (keys.value.length !== length) keys.value = Array.from({ length }, () => next++)
 }, { immediate: true })
 
+/** A new row's value for a column: its default, else unchecked for a checkbox, else empty. */
+function blankValue(f: VectorField): unknown {
+    if (f.hasDefault) return f.default
+    return f.type === 'boolean' ? false : null
+}
+
 function blank(): Record<string, unknown> {
-    return Object.fromEntries(columns.value.map(f => [f.name, f.hasDefault ? f.default : f.type === 'boolean' ? false : null]))
+    return Object.fromEntries(columns.value.map(f => [f.name, blankValue(f)]))
 }
 
 function add() {
@@ -93,11 +99,10 @@ onMounted(() => {
         <v-alert v-for="message in errorMessages" :key="message" type="error" variant="tonal" density="compact" class="mb-2" :text="message" />
         <p v-if="!child" class="text-medium-emphasis text-body-2">{{ t('fields.repeater.unavailable') }}</p>
         <template v-else>
-            <div
+            <fieldset
                 v-for="(row, index) in rows"
                 :key="keys[index]"
-                class="d-flex ga-2 align-start mb-1"
-                role="group"
+                class="vx-fieldset d-flex ga-2 align-start mb-1"
                 :aria-label="t('fields.repeater.row', { label: child.labelSingular, n: index + 1 })"
             >
                 <v-row density="compact" class="flex-grow-1">
@@ -125,10 +130,15 @@ onMounted(() => {
                     :aria-label="t('fields.repeater.remove', { label: noun(child.labelSingular), n: index + 1 })"
                     @click="remove(index)"
                 />
-            </div>
+            </fieldset>
             <v-btn variant="tonal" size="small" prepend-icon="mdi-plus" :disabled="disabled || rows.length >= max" @click="add">
                 {{ t('fields.repeater.add', { label: noun(child.labelSingular) }) }}
             </v-btn>
         </template>
     </v-card>
 </template>
+
+<style scoped>
+/* a fieldset that groups without a fieldset's own border, padding and margin */
+.vx-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+</style>

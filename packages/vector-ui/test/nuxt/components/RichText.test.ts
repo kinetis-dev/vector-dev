@@ -51,7 +51,7 @@ const emitted = (wrapper: VueWrapper) => (wrapper.emitted('update:modelValue') ?
 function expectInert(html: string) {
     const holder = document.createElement('div')
     holder.innerHTML = html
-    expect(holder.querySelectorAll('script, iframe, object, embed, svg, style, link, meta, form').length).toBe(0)
+    expect(holder.querySelectorAll('script, iframe, object, embed, svg, style, link, meta, form')).toHaveLength(0)
     for (const element of holder.querySelectorAll('*')) {
         for (const { name, value } of [...element.attributes]) {
             expect(name.startsWith('on'), `${element.tagName} ${name}`).toBe(false)

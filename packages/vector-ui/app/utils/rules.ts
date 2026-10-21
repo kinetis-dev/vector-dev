@@ -1,4 +1,5 @@
 import type { VectorCondition, VectorField, VectorFieldState, VectorRule } from '#vector/app/types/vector'
+import { isEmailAddress, phpRegex } from '#vector/app/utils/internal/patterns'
 
 type Rule = (value: unknown) => true | string
 
@@ -41,7 +42,7 @@ function compile(rule: VectorRule): Rule | null {
         case 'MinLength':
             return value => empty(value) || typeof value !== 'string' || [...value].length >= Number(a) || vt('fields.rules.minLength', { min: String(a) })
         case 'Email':
-            return value => empty(value) || (typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) || vt('fields.rules.email')
+            return value => empty(value) || (typeof value === 'string' && isEmailAddress(value)) || vt('fields.rules.email')
         case 'Url':
         case 'WebUrl':
             return value => empty(value) || (typeof value === 'string' && /^https?:\/\/\S+$/i.test(value)) || vt('fields.rules.url')
@@ -60,17 +61,6 @@ function compile(rule: VectorRule): Rule | null {
         default:
             return null
     }
-}
-
-/** A PCRE pattern with its delimiters and flags, as the framework's Regex constraint takes it, as a JavaScript RegExp. */
-function phpRegex(pattern: string): RegExp {
-    const match = pattern.match(/^(.)([\s\S]*)\1([a-zA-Z]*)$/)
-
-    if (!match) return new RegExp(pattern)
-
-    const flags = [...match[3]!].filter(f => 'gimsuy'.includes(f)).join('')
-
-    return new RegExp(match[2]!, flags)
 }
 
 /**

@@ -46,7 +46,12 @@ final readonly class Badge
             }
 
             foreach (is_array($condition) ? $condition : ['eq' => $condition] as $operator => $value) {
-                $normalized[$field][(string) $operator] = is_bool($value) ? ($value ? 'true' : 'false') : (is_scalar($value) ? (string) $value : '');
+                $normalized[$field][(string) $operator] = match (true) {
+                    $value === true => 'true',
+                    $value === false => 'false',
+                    is_scalar($value) => (string) $value,
+                    default => '',
+                };
             }
         }
 

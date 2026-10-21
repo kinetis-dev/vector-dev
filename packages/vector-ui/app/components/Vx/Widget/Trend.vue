@@ -25,7 +25,7 @@ const hover = ref<number | null>(null)
             <span v-if="data.total !== null && data.total !== undefined" class="font-weight-medium">{{ t('dashboard.trend.total', { value: formatWidgetValue(data.total, data.format) }) }}</span>
             <span>{{ points[points.length - 1]?.x ?? '' }}</span>
         </div>
-        <svg :viewBox="`0 0 ${width} ${height}`" preserveAspectRatio="none" class="w-100" style="height: 140px" @mouseleave="hover = null">
+        <svg aria-hidden="true" :viewBox="`0 0 ${width} ${height}`" preserveAspectRatio="none" class="w-100" style="height: 140px" @mouseleave="hover = null">
             <path :d="area" fill="rgb(var(--v-theme-primary))" fill-opacity="0.12" />
             <path :d="path" fill="none" stroke="rgb(var(--v-theme-primary))" stroke-width="2" vector-effect="non-scaling-stroke" />
             <rect v-for="(p, i) in points" :key="p.x" :x="(i * (width / Math.max(1, points.length - 1))) - width / Math.max(1, points.length - 1) / 2" y="0" :width="width / Math.max(1, points.length - 1)" :height="height" fill="transparent" @mouseenter="hover = i" />

@@ -84,7 +84,7 @@ final readonly class ViewsController
     /** @return array{id: int, resource: string, ownerId: string, name: string, shared: bool, isDefault: bool, resourceDefault: bool, state: array<string, mixed>, mine: bool} */
     private function owned(string $resource, string $id): array
     {
-        $view = preg_match('/^[1-9][0-9]{0,17}$/', $id) === 1 ? $this->views->find((int) $id, (string) $this->user->id()) : null;
+        $view = preg_match('/^[1-9]\d{0,17}$/D', $id) === 1 ? $this->views->find((int) $id, (string) $this->user->id()) : null;
 
         if ($view === null || $view['resource'] !== $resource) {
             throw RecordNotFoundException::of('views', $id);

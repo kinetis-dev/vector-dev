@@ -38,46 +38,47 @@ export function filterQuery(filter: VectorFilterQuery | undefined, prefix = 'fil
     return query
 }
 
+/** The query string of a list request. */
+function listQuery(options: VectorListOptions): Record<string, string | number> {
+    const query: Record<string, string | number> = {}
+
+    if (options.page) {
+        query.page = options.page
+    }
+
+    if (options.perPage) {
+        query.perPage = options.perPage
+    }
+
+    if (options.sort && options.sort.length > 0) {
+        query.sort = options.sort.map(s => (s.order === 'desc' ? '-' : '') + s.field).join(',')
+    }
+
+    if (options.q) {
+        query.q = options.q
+    }
+
+    if (options.group) {
+        query.group = options.group
+    }
+
+    if (options.summaries) {
+        query.summaries = '1'
+    }
+
+    if (options.columns && options.columns.length > 0) {
+        query.columns = options.columns.join(',')
+    }
+
+    return { ...query, ...filterQuery(options.filter) }
+}
+
 /** The record endpoints for one resource. */
 export function useVectorResource(slug: MaybeRefOrGetter<string>) {
     const api = useVectorApi()
 
     function base() {
         return `/vector/r/${encodeURIComponent(toValue(slug))}`
-    }
-
-    function listQuery(options: VectorListOptions): Record<string, string | number> {
-        const query: Record<string, string | number> = {}
-
-        if (options.page) {
-            query.page = options.page
-        }
-
-        if (options.perPage) {
-            query.perPage = options.perPage
-        }
-
-        if (options.sort && options.sort.length > 0) {
-            query.sort = options.sort.map(s => (s.order === 'desc' ? '-' : '') + s.field).join(',')
-        }
-
-        if (options.q) {
-            query.q = options.q
-        }
-
-        if (options.group) {
-            query.group = options.group
-        }
-
-        if (options.summaries) {
-            query.summaries = '1'
-        }
-
-        if (options.columns && options.columns.length > 0) {
-            query.columns = options.columns.join(',')
-        }
-
-        return { ...query, ...filterQuery(options.filter) }
     }
 
     function list(options: VectorListOptions = {}): Promise<VectorPage> {
@@ -174,7 +175,7 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
         try {
             response = await asFile(() => api.raw(`${base()}/actions/${encodeURIComponent(name)}`, {
                 method: 'POST',
-                body: { ...(selection ?? {}), fields },
+                body: { ...selection, fields },
                 responseType: 'blob',
             }))
         } catch (error) {

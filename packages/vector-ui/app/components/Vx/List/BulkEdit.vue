@@ -34,11 +34,11 @@ watch(chosen, (names) => {
     }
 })
 
-const subject = computed(() => props.selection.all
-    ? props.count === null
-        ? t('list.bulkEdit.everyMatchingUncounted', { noun: noun(props.resource.labelSingular) })
-        : t('list.bulkEdit.everyMatching', { noun: noun(props.resource.labelSingular), count: props.count })
-    : t('list.bulkEdit.some', { count: props.count, noun: noun(props.count === 1 ? props.resource.labelSingular : props.resource.label) }))
+const subject = computed(() => {
+    if (!props.selection.all) return t('list.bulkEdit.some', { count: props.count, noun: noun(props.count === 1 ? props.resource.labelSingular : props.resource.label) })
+    if (props.count === null) return t('list.bulkEdit.everyMatchingUncounted', { noun: noun(props.resource.labelSingular) })
+    return t('list.bulkEdit.everyMatching', { noun: noun(props.resource.labelSingular), count: props.count })
+})
 
 async function save(event: SubmitEventPromise) {
     const { valid } = await event

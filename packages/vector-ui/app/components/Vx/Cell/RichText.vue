@@ -27,7 +27,7 @@ watch([html, root], async () => {
     if (!root.value || !imageField || id === undefined || id === null) return
 
     for (const img of root.value.querySelectorAll<HTMLImageElement>('img[data-vector-key]')) {
-        const key = img.getAttribute('data-vector-key')!
+        const key = img.dataset.vectorKey!
         client.fileBlob(id as string | number, imageField, key).then(dataUrl).then((url) => { img.src = url }).catch(() => undefined)
     }
 }, { immediate: true })

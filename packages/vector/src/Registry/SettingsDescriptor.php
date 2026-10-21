@@ -62,7 +62,11 @@ final readonly class SettingsDescriptor
         $defaults = [];
 
         foreach ($this->fields as $name => $field) {
-            $defaults[$name] = $field['hasDefault'] === true ? $field['default'] : ($field['type'] === 'boolean' ? false : null);
+            $defaults[$name] = match (true) {
+                $field['hasDefault'] === true => $field['default'],
+                $field['type'] === 'boolean' => false,
+                default => null,
+            };
         }
 
         return $defaults;

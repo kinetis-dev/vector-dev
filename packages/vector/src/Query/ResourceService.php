@@ -1097,7 +1097,7 @@ final readonly class ResourceService
     private function identifier(ResourceDescriptor $resource, string $id): int|string
     {
         if ($resource->primaryKeyType() === 'int') {
-            return preg_match('/^-?[0-9]{1,18}$/', $id) === 1 ? (int) $id : throw RecordNotFoundException::of($resource->slug(), $id);
+            return preg_match('/^-?\d{1,18}$/D', $id) === 1 ? (int) $id : throw RecordNotFoundException::of($resource->slug(), $id);
         }
 
         return $id;

@@ -1,5 +1,5 @@
 import type { VectorLocale, VectorSchemaI18n } from '#vector/app/types/vector'
-import { isRtl, vuetifyLocale } from '#vector/app/i18n'
+import { isRtl, knownVuetifyLocale, textDirection } from '#vector/app/i18n'
 
 // The latest language the user picked: an earlier pick still in flight
 // must not apply its answer over it. The UI runs in the browser only, one
@@ -25,15 +25,13 @@ export function useVectorLocale() {
 
         const vuetify = nuxtApp.$vuetify as { locale?: { current: { value: string }, messages: { value: Record<string, unknown> } } } | undefined
         if (vuetify?.locale) {
-            const tag = vuetifyLocale(code)
-            const known = vuetify.locale.messages.value
-            vuetify.locale.current.value = known[tag] ? tag : (known[code.split('-')[0]!] ? code.split('-')[0]! : 'en')
+            vuetify.locale.current.value = knownVuetifyLocale(code, vuetify.locale.messages.value)
         }
 
         if (import.meta.client) {
             const known = locales.value.find(l => l.code === code)
             document.documentElement.lang = code
-            document.documentElement.dir = known ? known.dir : (isRtl(code) ? 'rtl' : 'ltr')
+            document.documentElement.dir = known ? known.dir : textDirection(code)
             try {
                 window.localStorage.setItem('vector.locale', code)
             } catch {

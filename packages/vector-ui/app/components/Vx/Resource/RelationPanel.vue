@@ -148,7 +148,8 @@ async function created() {
 }
 
 function label(n: number): string {
-    return target.value ? noun(n === 1 ? target.value.labelSingular : target.value.label) : t('record.panel.records')
+    if (!target.value) return t('record.panel.records')
+    return noun(n === 1 ? target.value.labelSingular : target.value.label)
 }
 </script>
 

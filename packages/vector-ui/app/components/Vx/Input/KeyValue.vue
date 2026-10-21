@@ -50,9 +50,9 @@ const messages = computed(() => [...(repeated.value.length ? [t('fields.keyValue
 </script>
 
 <template>
-    <div role="group" :aria-label="field.label">
+    <fieldset class="vx-fieldset" :aria-label="field.label">
         <div class="text-body-2 text-medium-emphasis mb-1">{{ field.label }}</div>
-        <div v-for="(row, index) in rows" :key="index" class="d-flex ga-2 align-start mb-1" role="group" :aria-label="t('fields.keyValue.entry', { n: index + 1 })">
+        <fieldset v-for="(row, index) in rows" :key="index" class="vx-fieldset d-flex ga-2 align-start mb-1" :aria-label="t('fields.keyValue.entry', { n: index + 1 })">
             <v-text-field
                 v-model="row.key"
                 :label="keyLabel"
@@ -70,9 +70,14 @@ const messages = computed(() => [...(repeated.value.length ? [t('fields.keyValue
                 @update:model-value="sync"
             />
             <v-btn icon="mdi-close" variant="text" size="small" class="mt-1" :disabled="disabled" :aria-label="t('fields.keyValue.remove', { n: index + 1 })" @click="remove(index)" />
-        </div>
+        </fieldset>
         <v-btn variant="text" size="small" prepend-icon="mdi-plus" :disabled="disabled || rows.length >= max" @click="add">{{ t('fields.keyValue.add') }}</v-btn>
         <div v-for="message in messages" :key="message" class="text-error text-caption" role="alert">{{ message }}</div>
         <div v-if="field.help" class="text-caption text-medium-emphasis">{{ field.help }}</div>
-    </div>
+    </fieldset>
 </template>
+
+<style scoped>
+/* a fieldset that groups without a fieldset's own border, padding and margin */
+.vx-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+</style>

@@ -54,9 +54,19 @@ final class Locales
 
         return [
             'code' => $tag,
-            'name' => self::SHIPPED[$tag] ?? self::SHIPPED[$language] ?? (class_exists(\Locale::class) ? (\Locale::getDisplayName($tag, $tag) ?: $tag) : $tag),
+            'name' => self::SHIPPED[$tag] ?? self::SHIPPED[$language] ?? self::displayName($tag),
             'dir' => in_array($language, self::RTL, true) ? 'rtl' : 'ltr',
         ];
+    }
+
+    /** The tag's own name for itself, where intl is installed; the tag itself otherwise. */
+    private static function displayName(string $tag): string
+    {
+        if (!class_exists(\Locale::class)) {
+            return $tag;
+        }
+
+        return \Locale::getDisplayName($tag, $tag) ?: $tag;
     }
 
     /**

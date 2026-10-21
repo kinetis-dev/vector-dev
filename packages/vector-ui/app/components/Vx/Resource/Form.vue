@@ -53,14 +53,17 @@ const clone = (value: unknown) => value === undefined ? undefined : JSON.parse(J
 const copies = (field: VectorField) => props.operation === 'create' && props.copyOf !== undefined
     && field.unique !== true && !['file', 'image', 'manyToMany', 'hasMany'].includes(field.type)
 
+/** What a field starts with when nothing gives it a value: on create its declared default, else its type's empty one. */
+function initialValue(field: VectorField): unknown {
+    return props.operation === 'create' && field.hasDefault ? JSON.parse(JSON.stringify(field.default ?? null)) : defaultFor(field)
+}
+
 /** Fills the values from the record, the preset, the record being copied, or each field's default. */
 function start() {
     for (const field of fields.value) {
         const current = props.preset?.[field.name] ?? props.record?.[field.name] ?? (copies(field) ? props.copyOf![field.name] : undefined)
         // a new record starts from each field's default, which the server would apply as well
-        let value: unknown = current !== undefined
-            ? current
-            : props.operation === 'create' && field.hasDefault ? JSON.parse(JSON.stringify(field.default ?? null)) : defaultFor(field)
+        let value: unknown = current === undefined ? initialValue(field) : current
 
         if (field.type === 'belongsTo' && current && typeof current === 'object' && 'id' in current) {
             value = (current as { id: unknown }).id
@@ -155,7 +158,8 @@ const chosen = computed<SaveVariant>(() => {
 })
 const variantLabel = (variant: SaveVariant) => {
     const verb = props.operation === 'create' ? 'create' : 'save'
-    return variant === 'close' ? t(`common.${verb}`) : t(`record.variants.${verb}${variant === 'continue' ? 'Continue' : 'Another'}`)
+    if (variant === 'close') return t(`common.${verb}`)
+    return t(`record.variants.${verb}${variant === 'continue' ? 'Continue' : 'Another'}`)
 }
 
 const formRef = ref<{ validate: () => Promise<{ valid: boolean, errors: { id: string | number }[] }>, resetValidation: () => void } | null>(null)
@@ -224,7 +228,8 @@ async function save({ valid, errors }: { valid: boolean, errors: { id: string | 
                 const key = repeated ? violation.path.slice(0, 3).join('.') : String(violation.path[0] ?? '')
 
                 if (key && (key in values || repeated)) {
-                    (serverErrors[key] ??= []).push(`${violation.message.charAt(0).toUpperCase()}${violation.message.slice(1)}`)
+                    serverErrors[key] ??= []
+                    serverErrors[key].push(`${violation.message.charAt(0).toUpperCase()}${violation.message.slice(1)}`)
                 } else {
                     formError.value = violation.message
                 }
@@ -284,7 +289,7 @@ defineExpose({ dirty, reset })
 // Conditions (visibleWhen, requiredWhen, disabledWhen) follow the values as they are edited.
 // Like the server, they read the stored record overlaid with the values being edited.
 const states = computed<Record<string, VectorFieldState>>(() => {
-    const current = { ...(props.record ?? {}), ...values }
+    const current = { ...props.record, ...values }
     return Object.fromEntries(fields.value.map(f => [f.name, fieldState(f, current)]))
 })
 const shownFields = computed(() => fields.value.filter(f => states.value[f.name]?.visible !== false && !(props.preset && f.name in props.preset)))

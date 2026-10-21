@@ -18,7 +18,9 @@ use Kinetis\Vector\Exception\ResourceCompileException;
 use Kinetis\Vector\Fields\Computed;
 use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Number;
+use Kinetis\Vector\Query\RowSerializer;
 use Kinetis\Vector\Registry\ResourceCompiler;
+use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\VectorResource;
 
 /**
@@ -224,6 +226,43 @@ final class ComputedFieldTest extends VectorTestCase
         });
     }
 
+    public function testTheValueIsTypedByWhatItIsShownAs(): void
+    {
+        $resource = new #[Resource(OrderLine::class, slug: 'computed-lines', title: 'id')] class extends VectorResource {
+            public mixed $value = null;
+
+            public function fields(): array
+            {
+                return [
+                    Id::make(),
+                    Computed::make('asNumber')->as('number')->method('value'),
+                    Computed::make('asDate')->as('date')->method('value'),
+                    Computed::make('asDatetime')->as('datetime')->method('value'),
+                ];
+            }
+
+            /** @param array<string, mixed> $row */
+            public function value(array $row): mixed
+            {
+                return $this->value;
+            }
+        };
+        $descriptor = new ResourceDescriptor(self::compile($resource)['computed-lines']);
+        $serialize = static function (mixed $value) use ($resource, $descriptor): array {
+            $resource->value = $value;
+
+            return new RowSerializer()->serialize($descriptor, [], ['asNumber', 'asDate', 'asDatetime'], [], $resource);
+        };
+
+        $instant = new \DateTimeImmutable('2026-10-21 23:30:00', new \DateTimeZone('+02:00'));
+        self::assertSame(['asNumber' => null, 'asDate' => '2026-10-21', 'asDatetime' => '2026-10-21T21:30:00.000Z'], $serialize($instant));
+        self::assertSame(['asNumber' => 7, 'asDate' => '7', 'asDatetime' => '7'], $serialize(7));
+        self::assertSame(['asNumber' => 2.5, 'asDate' => '2.5', 'asDatetime' => '2.5'], $serialize('2.5'));
+        self::assertSame(['asNumber' => null, 'asDate' => 'soon', 'asDatetime' => 'soon'], $serialize('soon'));
+        self::assertSame(['asNumber' => null, 'asDate' => null, 'asDatetime' => null], $serialize(['not', 'scalar']));
+        self::assertSame(['asNumber' => null, 'asDate' => null, 'asDatetime' => null], $serialize(null));
+    }
+
     public function testAsIsOneOfTheKnownKinds(): void
     {
         $this->expectException(\InvalidArgumentException::class);
@@ -237,10 +276,12 @@ final class ComputedFieldTest extends VectorTestCase
         self::compile($resource);
     }
 
-    private static function compile(VectorResource $resource): void
+    /** @return array<string, array<string, mixed>> slug => compiled resource */
+    private static function compile(VectorResource $resource): array
     {
         $metadata = MetadataRegistry::fromArray(new DiscoveryContext(dirname(__DIR__, 2))->compiled(OrmMetadata::class));
-        (new ResourceCompiler($metadata, [$resource::class]))->compile();
+
+        return (new ResourceCompiler($metadata, [$resource::class]))->compile();
     }
 }
 

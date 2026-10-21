@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SubmitEventPromise } from 'vuetify'
+import { hasEmailShape } from '#vector/app/utils/internal/patterns'
 
 definePageMeta({ layout: 'default' })
 
@@ -18,7 +19,7 @@ const notice = computed(() => route.query.reason === 'idle' ? t('shell.login.sig
 
 const rules = {
     required: (value: string) => value.trim() !== '' || t('common.required'),
-    email: (value: string) => /.+@.+\..+/.test(value) || t('shell.login.invalidEmail'),
+    email: (value: string) => hasEmailShape(value) || t('shell.login.invalidEmail'),
 }
 
 const runtime = useVectorRuntime()

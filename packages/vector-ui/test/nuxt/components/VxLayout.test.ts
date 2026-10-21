@@ -108,7 +108,7 @@ describe('VxResourceForm with a layout', () => {
         unregister = endpoint('/vector/r/products', { status: 422, body: { errors: [{ path: ['sku'], message: 'this SKU is taken.' }] } }, 'POST').unregister
         const form = await mountSuspended(VxResourceForm, { props: { resource: products, operation: 'create' } })
         await flushPromises()
-        await vi.waitFor(() => expect(form.findAll('input').length).toBe(2))
+        await vi.waitFor(() => expect(form.findAll('input')).toHaveLength(2))
         const section = () => form.find('[data-layout-section="Codes"] .v-expansion-panel')
         expect(section().classes()).not.toContain('v-expansion-panel--active')
 

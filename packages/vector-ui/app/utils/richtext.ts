@@ -108,7 +108,7 @@ function vectorImage(imageSource?: (key: string) => Promise<string | null>): Any
             return ['img', { ...rest, 'data-vector-key': src }]
         },
         parseHTML() {
-            return [{ tag: 'img[src]' }, { tag: 'img[data-vector-key]', getAttrs: element => ({ src: (element as HTMLElement).getAttribute('data-vector-key') }) }]
+            return [{ tag: 'img[src]' }, { tag: 'img[data-vector-key]', getAttrs: element => ({ src: (element as HTMLElement).dataset.vectorKey ?? null }) }]
         },
         addNodeView() {
             return ({ node }) => {
@@ -116,7 +116,7 @@ function vectorImage(imageSource?: (key: string) => Promise<string | null>): Any
                 img.alt = String(node.attrs.alt ?? '')
                 img.className = 'vx-richtext-image'
                 const key = String(node.attrs.src ?? '')
-                img.setAttribute('data-vector-key', key)
+                img.dataset.vectorKey = key
                 imageSource?.(key).then((url) => {
                     if (url) img.src = url
                 }).catch(() => undefined)

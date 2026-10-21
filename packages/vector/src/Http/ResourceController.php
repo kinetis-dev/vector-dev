@@ -47,6 +47,8 @@ use Psr\Http\Message\ServerRequestInterface;
 #[Middleware('@vector')]
 final readonly class ResourceController
 {
+    private const string RECORD = '/{resource}/{id}';
+
     public function __construct(
         private ResourceService $service,
         private RecordWriter $writer,
@@ -304,7 +306,7 @@ final readonly class ResourceController
     {
         $descriptor = $this->service->resource($resource);
 
-        if (preg_match('/^[1-9][0-9]{0,17}$/', $entry) !== 1) {
+        if (preg_match('/^[1-9]\d{0,17}$/D', $entry) !== 1) {
             throw new RecordNotFoundException("No history entry {$entry}.");
         }
 
@@ -361,7 +363,7 @@ final readonly class ResourceController
     }
 
     /** @return array<string, mixed> */
-    #[Get('/{resource}/{id}')]
+    #[Get(self::RECORD)]
     public function show(string $resource, string $id): array
     {
         $descriptor = $this->service->resource($resource);
@@ -391,7 +393,7 @@ final readonly class ResourceController
     }
 
     /** @return array<string, mixed> */
-    #[Patch('/{resource}/{id}')]
+    #[Patch(self::RECORD)]
     public function update(string $resource, string $id, ServerRequestInterface $request): array
     {
         $descriptor = $this->service->resource($resource);
@@ -402,7 +404,7 @@ final readonly class ResourceController
     }
 
     /** Deletes — into the trash on a soft-deleting resource unless `?force=1`; a hard-deleting resource removes the row either way. */
-    #[Delete('/{resource}/{id}', status: 204)]
+    #[Delete(self::RECORD, status: 204)]
     public function delete(string $resource, string $id, ServerRequestInterface $request): ResponseInterface
     {
         $descriptor = $this->service->resource($resource);

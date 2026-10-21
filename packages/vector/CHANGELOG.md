@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-21
+
+### Added
+
+- `Kinetis\Vector\Import\CsvReadException` and
+  `Kinetis\Vector\Query\ExportWriteException`, thrown where the CSV
+  reader and the CSV and XLSX export writers threw a bare
+  `\RuntimeException`, with the same messages. Both extend
+  `\RuntimeException`, so an existing `catch` still catches them.
+
+### Fixed
+
+- An integer identifier, list cursor, `page`, `perPage` or integer
+  value no longer accepts a trailing newline: `"42\n"` read as `42`,
+  because the patterns ended in `$` without the `D` modifier. It is now
+  refused like any other non-integer — 404 for a record, job,
+  notification, view or history entry, 422 for a list parameter or a
+  field value.
+- Ships the `@kinetis/vector-ui` 0.10.2 hosted bundle, with its keyboard
+  and screen-reader fixes and its linear-time e-mail and Regex rule
+  checks.
+
 ## [0.10.1] - 2026-10-21
 
 ### Security

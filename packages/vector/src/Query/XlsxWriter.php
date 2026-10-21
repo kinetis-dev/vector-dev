@@ -42,7 +42,7 @@ final class XlsxWriter
         $path = tempnam(sys_get_temp_dir(), 'vector-xlsx-');
 
         if ($path === false) {
-            throw new \RuntimeException('Could not create a temporary file for the XLSX export.');
+            throw new ExportWriteException('Could not create a temporary file for the XLSX export.');
         }
 
         try {
@@ -67,7 +67,7 @@ final class XlsxWriter
             $writer->close();
             $contents = file_get_contents($path);
 
-            return $contents === false ? throw new \RuntimeException('Could not read the XLSX export back.') : $contents;
+            return $contents === false ? throw new ExportWriteException('Could not read the XLSX export back.') : $contents;
         } finally {
             @unlink($path);
         }
@@ -125,7 +125,11 @@ final class XlsxWriter
         if (!is_string($currency) && is_string($path)) {
             [$first, $rest] = array_pad(explode('.', $path, 2), 2, null);
             $carrier = $record[(string) $first] ?? null;
-            $currency = $rest === null ? $carrier : (is_array($carrier) ? $carrier[$rest] ?? null : null);
+            $currency = match (true) {
+                $rest === null => $carrier,
+                is_array($carrier) => $carrier[$rest] ?? null,
+                default => null,
+            };
         }
 
         if (!is_string($currency) || $currency === '') {

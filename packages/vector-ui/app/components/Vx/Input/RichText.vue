@@ -151,7 +151,7 @@ const inTable = computed(() => active('table'))
                 </template>
                 <template v-if="on('image') && rich.imageField">
                     <v-btn icon="mdi-image-plus" size="small" variant="text" :loading="uploading" :aria-label="t('fields.richtext.image')" @click="picker?.click()" />
-                    <input ref="picker" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="d-none" @change="insertImage">
+                    <input ref="picker" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="d-none" :aria-label="t('fields.richtext.image')" @change="insertImage">
                 </template>
                 <v-spacer />
                 <v-btn icon="mdi-undo" size="small" variant="text" :aria-label="t('fields.richtext.undo')" @click="run(e => e.chain().focus().undo().run())" />

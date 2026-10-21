@@ -36,7 +36,8 @@ const dependency = computed<string | number | null>(() => {
     if (!dependsOn.value) return null
     const value = props.record?.[dependsOn.value.field]
     const key = value && typeof value === 'object' && 'id' in value ? (value as { id: unknown }).id : value
-    return typeof key === 'number' || (typeof key === 'string' && key !== '') ? key : typeof key === 'boolean' ? Number(key) : null
+    if (typeof key === 'number' || (typeof key === 'string' && key !== '')) return key
+    return typeof key === 'boolean' ? Number(key) : null
 })
 const waiting = computed(() => dependsOn.value !== null && dependency.value === null)
 
@@ -77,11 +78,15 @@ watch(dependency, (now, before) => {
     fetchOptions('')
 })
 
+/** The identifiers the input starts with. */
+function initialIds(): (number | string)[] {
+    if (multiple.value) return Array.isArray(model.value) ? model.value : []
+    return model.value === null || model.value === undefined || Array.isArray(model.value) ? [] : [model.value]
+}
+
 // Resolve the labels of an initial value once.
 onMounted(async () => {
-    const initial: (number | string)[] = multiple.value
-        ? (Array.isArray(model.value) ? model.value : [])
-        : (model.value === null || model.value === undefined || Array.isArray(model.value) ? [] : [model.value])
+    const initial = initialIds()
     await fetchOptions('', initial.length ? initial : [])
     if (initial.length) await fetchOptions('')
 })

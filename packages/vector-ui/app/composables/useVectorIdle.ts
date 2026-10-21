@@ -14,7 +14,9 @@ import { useEventListener, useIdle } from '@vueuse/core'
 export function useVectorIdle(onIdle: () => void | Promise<void>): void {
     const minutes = useAppConfig().vector.idleMinutes
 
-    if (!import.meta.client || !(minutes > 0)) return
+    const enabled = minutes > 0
+
+    if (!import.meta.client || !enabled) return
 
     const timeout = minutes * 60_000
     const { idle, lastActive, reset } = useIdle(timeout, { listenForVisibilityChange: false })

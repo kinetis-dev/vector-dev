@@ -44,6 +44,14 @@ final class TranslationTest extends VectorTestCase
         self::assertSame('ltr', $locales['zh-Hans']['dir']);
     }
 
+    public function testALanguageTheUiDoesNotShipIsNamedByIntlAndKeepsItsDirection(): void
+    {
+        self::assertSame(['code' => 'fr-CA', 'name' => 'Français', 'dir' => 'ltr'], Locales::describe('fr-CA'), 'a regional tag takes its language\'s name');
+        self::assertSame(['code' => 'sw', 'name' => \Locale::getDisplayName('sw', 'sw'), 'dir' => 'ltr'], Locales::describe('sw'));
+        self::assertSame(['code' => 'fa', 'name' => \Locale::getDisplayName('fa', 'fa'), 'dir' => 'rtl'], Locales::describe('fa'));
+        self::assertNotSame('', Locales::describe('sw')['name']);
+    }
+
     public function testWithoutAChoiceTheDefaultAppliesWhateverTheBrowserAsksFor(): void
     {
         $viewer = $this->headersIn(null);

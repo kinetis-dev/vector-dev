@@ -98,14 +98,14 @@ function add() {
     const where = target.value
 
     if (where === null) {
-        model.value = { ...model.value, [name]: { ...(model.value[name] ?? {}), ...condition } }
+        model.value = { ...model.value, [name]: { ...model.value[name], ...condition } }
     } else if (where.group === -1) {
         groups.value = [...groups.value, [{ [name]: condition }]]
     } else {
         groups.value = groups.value.map((group, g) => {
             if (g !== where.group) return group
             if (where.alternative === -1) return [...group, { [name]: condition }]
-            return group.map((alternative, a) => (a === where.alternative ? { ...alternative, [name]: { ...(alternative[name] ?? {}), ...condition } } : alternative))
+            return group.map((alternative, a) => (a === where.alternative ? { ...alternative, [name]: { ...alternative[name], ...condition } } : alternative))
         })
     }
 
@@ -120,7 +120,7 @@ function removeFromGroup(g: number, a: number, name: string, op: string) {
             : group.map((alternative, ai) => {
                 if (ai !== a) return alternative
                 const next = { ...alternative }
-                const ops = { ...(next[name] ?? {}) }
+                const ops = { ...next[name] }
                 delete ops[op as VectorOperator]
                 if (Object.keys(ops).length === 0) delete next[name]
                 else next[name] = ops
@@ -139,7 +139,7 @@ function clearAll() {
 
 function remove(name: string, op: string) {
     const next = { ...model.value }
-    const ops = { ...(next[name] ?? {}) }
+    const ops = { ...next[name] }
     delete ops[op as VectorOperator]
 
     if (Object.keys(ops).length === 0) delete next[name]
@@ -175,26 +175,25 @@ const anything = computed(() => active.value.length > 0 || groups.value.length >
         <v-chip v-for="chip in active" :key="`${chip.name}.${chip.op}`" closable size="small" variant="tonal" color="primary" @click:close="remove(chip.name, chip.op)">
             {{ chipText(chip.name, chip.op, chip.value) }}
         </v-chip>
-        <div
+        <fieldset
             v-for="(group, g) in groups"
             :key="`group-${g}`"
-            class="d-inline-flex align-center flex-wrap ga-1 px-2 py-1 rounded border"
-            role="group"
+            class="vx-fieldset d-inline-flex align-center flex-wrap ga-1 px-2 py-1 rounded border"
             :aria-label="t('list.filter.anyOfGroup', { n: g + 1 })"
         >
             <span class="text-caption text-medium-emphasis">{{ t('list.filter.anyOf') }}</span>
             <template v-for="(alternative, a) in group" :key="`alternative-${g}-${a}`">
                 <span v-if="a > 0" class="text-caption font-weight-medium">{{ t('list.filter.or') }}</span>
-                <span class="d-inline-flex align-center ga-1" role="group" :aria-label="t('list.filter.alternative', { n: a + 1 })">
+                <fieldset class="vx-fieldset d-inline-flex align-center ga-1" :aria-label="t('list.filter.alternative', { n: a + 1 })">
                     <v-chip v-for="chip in chipsOf(alternative)" :key="`${chip.name}.${chip.op}`" closable size="small" variant="tonal" color="primary" @click:close="removeFromGroup(g, a, chip.name, chip.op)">
                         {{ chipText(chip.name, chip.op, chip.value) }}
                     </v-chip>
                     <v-btn icon="mdi-plus" size="x-small" variant="text" :aria-label="t('list.filter.addToAlternative', { n: a + 1 })" @click="openAdd({ group: g, alternative: a }, $event)" />
-                </span>
+                </fieldset>
             </template>
             <v-btn size="x-small" variant="text" prepend-icon="mdi-plus" @click="openAdd({ group: g, alternative: -1 }, $event)">{{ t('list.filter.orCondition') }}</v-btn>
             <v-btn icon="mdi-close" size="x-small" variant="text" :aria-label="t('list.filter.removeGroup', { n: g + 1 })" @click="groups = groups.filter((_, i) => i !== g)" />
-        </div>
+        </fieldset>
         <v-chip v-for="(node, i) in advanced" :key="`advanced-${i}`" closable size="small" variant="outlined" prepend-icon="mdi-code-braces" :title="JSON.stringify(node)" @click:close="advanced = advanced.filter((_, j) => j !== i)">
             {{ t('list.filter.advanced') }}
         </v-chip>
@@ -222,3 +221,8 @@ const anything = computed(() => active.value.length > 0 || groups.value.length >
         <v-btn v-if="anything" size="small" variant="text" @click="clearAll">{{ t('list.filter.clear') }}</v-btn>
     </div>
 </template>
+
+<style scoped>
+/* a fieldset that groups without a fieldset's own border, padding and margin */
+.vx-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+</style>

@@ -92,6 +92,12 @@ let requestId = 0
 /** Whether the next load goes back to the first page: a changed search, filter, sort or page size asked for it. */
 let restart = false
 
+/** How many pages a step moves from the current one. */
+function pageOffset(step: VectorPageStep): number {
+    if (step === 'forward') return 1
+    return step === 'back' ? -1 : 0
+}
+
 /**
  * Loads the page shown now, or the one $step away on a list that is not
  * counted. The step is taken only once its page has arrived: a request
@@ -121,7 +127,7 @@ async function load(step: VectorPageStep = 'stay') {
             return
         }
 
-        const target = step === 'first' ? 1 : page.value + (step === 'forward' ? 1 : step === 'back' ? -1 : 0)
+        const target = step === 'first' ? 1 : page.value + pageOffset(step)
         const sort: VectorSort[] = sortBy.value.map(s => ({ field: s.key, order: s.order === 'desc' ? 'desc' : 'asc' }))
         const result: VectorPage = await client.list({
             page: target, perPage: itemsPerPage.value, sort, filter: rawFilters(), q: term.value || undefined,
@@ -204,7 +210,7 @@ function decodeFilter(filter: VectorFilterQuery, known: Set<string>) {
         } else if (key === 'and' && Array.isArray(spec)) {
             for (const child of spec) {
                 const inner = decodeFilter(child, known)
-                for (const [name, ops] of Object.entries(inner.filters)) out.filters[name] = { ...(out.filters[name] ?? {}), ...ops }
+                for (const [name, ops] of Object.entries(inner.filters)) out.filters[name] = { ...out.filters[name], ...ops }
                 out.groups.push(...inner.groups)
                 out.advanced.push(...inner.advanced)
             }
@@ -231,7 +237,8 @@ function applyView(view: VectorSavedView | null) {
     // a cursor list orders by the identifier: a view's grouping, sort and summaries do not apply to it
     group.value = !byCursor.value && s.group && known.has(s.group) ? s.group : null
     const sorts = s.sort ? s.sort.split(',').map(e => ({ key: e.replace(/^-/, ''), order: e.startsWith('-') ? 'desc' as const : 'asc' as const })).filter(x => known.has(x.key)) : []
-    sortBy.value = byCursor.value ? [] : sorts.length ? sorts : props.resource.table.defaultSort.map(x => ({ key: x.field, order: x.order }))
+    if (byCursor.value) sortBy.value = []
+    else sortBy.value = sorts.length ? sorts : props.resource.table.defaultSort.map(x => ({ key: x.field, order: x.order }))
     if (s.columns) columns.value = s.columns.split(',').filter(c => props.resource.table.columns.includes(c))
     itemsPerPage.value = s.perPage ?? props.resource.table.perPage
     summaries.value = !byCursor.value && (s.summaries ?? summaries.value)
@@ -261,6 +268,12 @@ const standaloneActions = computed(() => props.resource.actions.filter(a => a.sh
 const dialogAction = ref<VectorAction | null>(null)
 const bulkEditing = ref(false)
 
+/** What confirming an operation warns of: nothing for a restore. */
+function operationWarning(op: 'delete' | 'restore' | 'forceDelete'): string | undefined {
+    if (op === 'restore') return undefined
+    return props.resource.softDelete && op === 'delete' ? t('list.operation.toTrash') : t('list.operation.irreversible')
+}
+
 async function operation(op: 'delete' | 'restore' | 'forceDelete') {
     const n = selectionCount.value
     const subject = noun(n === 1 ? props.resource.labelSingular : props.resource.label)
@@ -268,7 +281,7 @@ async function operation(op: 'delete' | 'restore' | 'forceDelete') {
         ? { delete: t('list.operation.deleteAllTitle', { noun: subject }), restore: t('list.operation.restoreAllTitle', { noun: subject }), forceDelete: t('list.operation.forceDeleteAllTitle', { noun: subject }) }
         : { delete: t('list.operation.deleteTitle', { count: n, noun: subject }), restore: t('list.operation.restoreTitle', { count: n, noun: subject }), forceDelete: t('list.operation.forceDeleteTitle', { count: n, noun: subject }) }
 
-    if (!await confirm({ title: titles[op], text: op === 'restore' ? undefined : (props.resource.softDelete && op === 'delete' ? t('list.operation.toTrash') : t('list.operation.irreversible')), confirmText: op === 'restore' ? t('common.restore') : t('common.delete'), destructive: op !== 'restore' })) return
+    if (!await confirm({ title: titles[op], text: operationWarning(op), confirmText: op === 'restore' ? t('common.restore') : t('common.delete'), destructive: op !== 'restore' })) return
 
     try {
         const { affected } = await client.batch(op, selection.value)
@@ -310,12 +323,16 @@ function actionDone() {
 // --- rendering helpers ------------------------------------------------
 const groupField = computed(() => props.resource.fields.find(f => f.name === group.value) ?? null)
 
+/** The currency a money summary is shown in: the field's own, else the first row's, else euros. */
+function summaryCurrency(field: VectorField): string {
+    const p = fieldProps(field)
+    if (typeof p.currency === 'string') return p.currency
+    return typeof p.currencyField === 'string' ? String(items.value[0]?.[p.currencyField] ?? 'EUR') : 'EUR'
+}
+
 function formatSummary(field: VectorField, value: number | null): string {
     if (value === null) return t('common.none')
-    if (field.type === 'money') {
-        const p = fieldProps(field)
-        return formatMoney(Math.round(value), typeof p.currency === 'string' ? p.currency : (typeof p.currencyField === 'string' ? String(items.value[0]?.[p.currencyField] ?? 'EUR') : 'EUR'))
-    }
+    if (field.type === 'money') return formatMoney(Math.round(value), summaryCurrency(field))
     return formatNumber(value, field.summary === 'avg' ? 2 : undefined)
 }
 
@@ -517,18 +534,17 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
                         @update:model-value="(v: unknown) => setCell(item, field, v)"
                     />
                 </div>
-                <span
+                <button
                     v-else-if="field.inline && item._trashed !== true && resource.permissions.update"
+                    type="button"
                     class="vx-inline-cell"
-                    role="button"
-                    tabindex="0"
                     :aria-label="t('list.inline.editLabel', { label: field.label })"
                     @click.stop="startEdit(item, field)"
                     @keydown.enter.stop.prevent="startEdit(item, field)"
                 >
                     <VxCell :field="field" :value="item[field.name]" :record="item" :resource="resource" context="index" />
                     <v-icon icon="mdi-pencil-outline" size="x-small" class="vx-inline-pencil" />
-                </span>
+                </button>
                 <span v-else :class="{ 'text-disabled': item._trashed === true }">
                     <VxCell :field="field" :value="item[field.name]" :record="item" :resource="resource" context="index" />
                 </span>
@@ -591,7 +607,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
 </template>
 
 <style scoped>
-.vx-inline-cell { display: inline-flex; align-items: center; gap: 4px; cursor: text; border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
+.vx-inline-cell { display: inline-flex; align-items: center; gap: 4px; cursor: text; border-radius: 4px; padding: 2px 4px; margin: -2px -4px; border: 0; background: none; color: inherit; font: inherit; text-align: inherit; }
 .vx-inline-cell:hover, .vx-inline-cell:focus-visible { outline: 1px dashed rgba(var(--v-theme-primary), 0.6); }
 .vx-inline-pencil { opacity: 0; }
 .vx-inline-cell:hover .vx-inline-pencil, .vx-inline-cell:focus-visible .vx-inline-pencil { opacity: 0.6; }

@@ -136,14 +136,23 @@ final readonly class RowSerializer
 
         return match ($field['computed']['as'] ?? 'text') {
             'money' => (int) round(is_numeric($value) ? (float) $value : 0.0),
-            'number' => is_int($value) ? $value : (is_numeric($value) ? (float) $value : null),
+            'number' => match (true) {
+                is_int($value) => $value,
+                is_numeric($value) => (float) $value,
+                default => null,
+            },
             'boolean' => (bool) $value,
-            'date' => $value instanceof \DateTimeInterface ? $value->format('Y-m-d') : (is_scalar($value) ? (string) $value : null),
+            'date' => $value instanceof \DateTimeInterface ? $value->format('Y-m-d') : self::scalarText($value),
             'datetime' => $value instanceof \DateTimeInterface
                 ? \DateTimeImmutable::createFromInterface($value)->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.v\Z')
-                : (is_scalar($value) ? (string) $value : null),
+                : self::scalarText($value),
             default => is_scalar($value) || $value instanceof \Stringable ? (string) $value : null,
         };
+    }
+
+    private static function scalarText(mixed $value): ?string
+    {
+        return is_scalar($value) ? (string) $value : null;
     }
 
     /** @param array<string, mixed> $field */
