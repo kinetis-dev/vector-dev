@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a body — answered `500` with a `TypeError` from `tryFrom()`. A list
   filter now matches an int-backed enum by its digits, and any other
   value is refused as `invalid_choice` (`422`).
+- A CSV import refused a non-empty cell of a date-only field
+  (`Kinetis\Orm\Date`) on every row with "must be a date as
+  YYYY-MM-DD.": the parsed date reached the writer as an object rather
+  than the text a body carries.
 
 ## [0.11.0] - 2026-10-21
 
