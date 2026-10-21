@@ -25,6 +25,9 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class JobContext
 {
+    /** What the row says about a failure whose own message is not the admin's to read. */
+    public const string UNEXPECTED = 'The job failed unexpectedly; the server log has the details.';
+
     public function __construct(
         private RequestScope $scope,
         private ActorResolverInterface $actors,
@@ -102,6 +105,6 @@ final readonly class JobContext
 
         $this->log->error('A Vector job failed: ' . $e->getMessage(), ['exception' => $e]);
 
-        return 'The job failed unexpectedly; the server log has the details.';
+        return self::UNEXPECTED;
     }
 }

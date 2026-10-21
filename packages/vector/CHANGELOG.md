@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- A job whose push the queue backend refused stored the backend's own
+  message on its row — hosts, ports, and whatever else the driver put in
+  it — where the admin's Jobs page shows it. The row now says only that
+  the job failed unexpectedly, as a job failing in the worker does; the
+  message reaches the log with the rethrown exception.
+
 ### Fixed
 
 - An enum value of the scalar type its enum is not backed by — any
