@@ -213,6 +213,24 @@ final class OpenApiVisibilityTest extends VectorTestCase
     }
 
     /**
+     * The MCP `vector://schema` resource is the descriptor too: an action
+     * this identity may not run is not in it, as it is not in
+     * `GET /vector/schema`.
+     */
+    public function testTheMcpSchemaResourceOmitsAnActionThePolicyRefuses(): void
+    {
+        $headers = ['Authorization' => 'Bearer ' . $this->tokenFor(self::RESTRICTED), 'MCP-Protocol-Version' => '2025-06-18', 'Content-Type' => 'application/json'];
+        $read = $this->client->raw('POST', '/mcp', json_encode(['jsonrpc' => '2.0', 'id' => 1, 'method' => 'resources/read', 'params' => ['uri' => 'vector://schema']], JSON_THROW_ON_ERROR), $headers)->assertOk()->json();
+        self::assertIsArray($read);
+        $schema = json_decode($read['result']['contents'][0]['text'], true, 64, JSON_THROW_ON_ERROR);
+        self::assertIsArray($schema);
+        $actions = array_column($schema['resources']['products']['actions'], 'name');
+
+        self::assertContains('archive-products', $actions);
+        self::assertNotContains('publish-products', $actions);
+    }
+
+    /**
      * @param array<string, mixed> $document
      * @return array<string, mixed>
      */

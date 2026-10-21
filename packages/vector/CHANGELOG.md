@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it — where the admin's Jobs page shows it. The row now says only that
   the job failed unexpectedly, as a job failing in the worker does; the
   message reaches the log with the rethrown exception.
+- The MCP `vector://schema` resource listed every action of a resource,
+  including those the policy's `runAction()` or the action's own
+  `canRun()` refuses this user, which `GET /vector/schema` leaves out.
+  It now publishes the same actions.
 
 ### Fixed
 

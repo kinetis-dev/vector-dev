@@ -206,6 +206,9 @@ final readonly class VectorTools
         foreach ($this->reader->resources() as $slug => $descriptor) {
             if ($this->reader->permissions($descriptor)['viewAny']) {
                 $resources[$slug] = $descriptor->toArray();
+                // only the actions this user may run, as GET /vector/schema publishes them
+                $runnable = $this->reader->visibleActions($descriptor, null);
+                $resources[$slug]['actions'] = array_values(array_filter($resources[$slug]['actions'], static fn (array $a): bool => in_array($a['name'], $runnable, true)));
             }
         }
 
