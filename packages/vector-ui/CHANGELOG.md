@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The admin refuses a descriptor whose `version` is not the contract it
   reads (4), naming both versions, instead of rendering it as if it were.
+- Following a job no longer adds a listener to the page's abort signal on
+  every poll without removing it; a long job's page held one per poll.
 
 ### Security
 
