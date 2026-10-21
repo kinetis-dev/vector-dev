@@ -35,10 +35,23 @@ apk add --no-cache unzip su-exec libpq libuv libevent libzip icu-libs
 # without uv.
 apk add --no-cache --virtual .build-deps $PHPIZE_DEPS postgresql-dev linux-headers libuv-dev libevent-dev openssl-dev libzip-dev icu-dev
 docker-php-ext-install pdo_mysql mysqli pdo_pgsql pgsql sockets pcntl zip intl
-pecl install pcov
-printf '\n' | pecl install uv-0.3.0
+
+# Each PECL extension is pinned, downloaded with retries, and installed
+# from the local archive. `pecl install <name>` first asks PECL's REST
+# API for release and dependency metadata, and when that lookup fails
+# ("does not have REST dependency information available") the install
+# fails with it; a local archive skips the lookup entirely.
+pecl_install() {
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 3 \
+        -o "/tmp/$1.tgz" "https://pecl.php.net/get/$1.tgz"
+    pecl install "/tmp/$1.tgz"
+    rm -f "/tmp/$1.tgz"
+}
+
+pecl_install pcov-1.0.12
+printf '\n' | pecl_install uv-0.3.0
 # event's configure questions keep their defaults (sockets support on).
-yes '' | pecl install event-3.1.6
+yes '' | pecl_install event-3.1.6
 docker-php-ext-enable pcov uv
 # event's sockets support needs ext-sockets loaded first: conf.d loads in
 # name order, and docker-php-ext-sockets.ini sorts before this file.
