@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-10-21
+
+### Security
+
+- `markdown-it` is now required at `^15.0.3`, which fixes two
+  quadratic-time denials of service: a multi-line link reference
+  definition (GHSA-gfr2-rv44-r23c), and inline HTML parsing with HTML
+  enabled (GHSA-vfgh-jcmw-g37q).
+
 ## [0.10.0] - 2026-10-20
 
 ### Added
