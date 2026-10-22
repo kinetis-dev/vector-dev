@@ -4,6 +4,12 @@
          bootstrap="tests/bootstrap.php"
          colors="true"
          cacheDirectory=".phpunit.cache">
+    <php>
+        <!-- FailedRowsFileTest writes and reads back a failed-rows file
+             at a job file's 12 MiB limit, which with coverage collected
+             (SonarQube, Infection) outgrows PHP's default 128M -->
+        <ini name="memory_limit" value="512M"/>
+    </php>
     <testsuites>
         <testsuite name="App">
             <directory>tests</directory>
