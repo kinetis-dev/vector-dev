@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Several requests refused (401) together, whose shared renewal of the
+  session fails, sign the user out once: one trip to the login page
+  instead of one per request.
 - The admin refuses a descriptor whose `version` is not the contract it
   reads (4), naming both versions, instead of rendering it as if it were.
 - Following a job no longer adds a listener to the page's abort signal on

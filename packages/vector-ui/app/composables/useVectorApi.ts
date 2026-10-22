@@ -1,15 +1,22 @@
 import type { $Fetch } from 'nitropack'
 
+// The sign-out a 401 started, and the token whose session it ends: every
+// request refused with that token (several waiting on one failed renewal)
+// joins it rather than signing out again. One per module is one per session,
+// the UI running in the browser only.
+let ending: { token: string | null | undefined, done: Promise<void> } | null = null
+
 /**
  * The one HTTP client every Vector request goes through. Bearer mode
  * attaches the in-memory token — renewed first when it has under two
  * minutes left — and on a 401 renews it once and repeats the request
  * (a 401 for a token another request already renewed only repeats it),
- * sending the user to the login page only when that fails too (a 401
- * means the request did nothing, so repeating even a POST is safe);
- * cookie mode (hosted) rides the application's session cookie,
- * sends the CSRF token on every unsafe method, and hands a 401 to the
- * application's own login URL.
+ * sending the user to the login page — once, however many requests
+ * that renewal failed — only when that fails too (a 401 means the
+ * request did nothing, so repeating even a POST is safe); cookie mode
+ * (hosted) rides the application's session cookie, sends the CSRF token
+ * on every unsafe method, and hands a 401 to the application's own login
+ * URL.
  */
 export function useVectorApi(): $Fetch {
     const config = useRuntimeConfig()
@@ -30,6 +37,7 @@ export function useVectorApi(): $Fetch {
                 }
             } else {
                 const token = await auth.fresh()
+                if (token !== null) ending = null // a new session: its own 401 signs out again
                 Object.assign(options, { vectorToken: token }) // which token this request carried, for its 401
                 if (token) options.headers.set('Authorization', `Bearer ${token}`)
             }
@@ -55,10 +63,18 @@ export function useVectorApi(): $Fetch {
                     return
                 }
 
+                if (ending !== null && ending.token === once.vectorToken && auth.token === null) {
+                    await ending.done
+
+                    return
+                }
+
                 auth.clear()
                 // back to this page after signing in again, as the route middleware would send a visitor
                 const current = router.currentRoute.value.fullPath
-                await navigateTo({ path: `${appConfig.vector.basePath || ''}/login`, query: current.startsWith(`${appConfig.vector.basePath || ''}/login`) ? {} : { redirect: current } })
+                const done = navigateTo({ path: `${appConfig.vector.basePath || ''}/login`, query: current.startsWith(`${appConfig.vector.basePath || ''}/login`) ? {} : { redirect: current } })
+                ending = { token: once.vectorToken, done: Promise.resolve(done).then(() => undefined, () => undefined) }
+                await done
             }
         },
     }) as $Fetch

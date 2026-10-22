@@ -100,6 +100,24 @@ describe('useVectorApi, standalone (bearer)', () => {
         expect(auth.refreshToken).toBe('r-2')
     })
 
+    it('signs out once when the renewal several refused requests wait on fails', async () => {
+        const auth = useVectorAuthStore()
+        mock('/auth/login', { body: { accessToken: 'revoked', tokenType: 'Bearer', expiresIn: 900, refreshToken: 'r-1', refreshExpiresIn: 3600, user: { id: 1, name: 'Vector Admin' } } }, 'POST')
+        const refresh = mock('/auth/refresh', { status: 401, body: { error: 'Invalid refresh token.' } }, 'POST')
+        mock('/vector/probe', { status: 401, body: { error: 'Unauthenticated.' } })
+        await auth.login('admin@vector.local', 'password')
+        const push = vi.spyOn(useRouter(), 'push')
+        const api = useVectorApi()
+
+        const answers = await Promise.allSettled([api('/vector/probe'), api('/vector/probe'), api('/vector/probe')])
+
+        expect(answers.map(answer => answer.status)).toEqual(['rejected', 'rejected', 'rejected'])
+        expect(refresh.requests).toHaveLength(1)
+        expect(push).toHaveBeenCalledTimes(1)
+        expect(auth.token).toBeNull()
+        expect(useRouter().currentRoute.value.path).toBe('/login')
+    })
+
     it('leaves the session alone on other errors', async () => {
         const auth = useVectorAuthStore()
         auth.adopt('token-123', 3600, { id: 1, name: 'Vector Admin' })
