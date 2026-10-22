@@ -15,6 +15,7 @@ use Kinetis\Vector\Import\CsvReader;
 use Kinetis\Vector\Import\RowMapper;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Registry\VectorRegistry;
+use Kinetis\Vector\Store\JobStore;
 use Kinetis\Vector\Write\RecordWriter;
 
 /**
@@ -121,7 +122,7 @@ final readonly class ImportJob implements Job
             }
 
             $context->jobs->clearFile($this->jobId);
-            $failedCsv = $failed === [] ? null : CsvReader::toCsv([...$reader->headers(), 'error'], $failed);
+            $failedCsv = $failed === [] ? null : CsvReader::toCsv([...$reader->headers(), 'error'], $failed, JobStore::MAX_FILE_BYTES);
 
             return [
                 'result' => ['created' => $created, 'updated' => $updated, 'failed' => count($failed)],

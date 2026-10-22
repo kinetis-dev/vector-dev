@@ -12,7 +12,7 @@
 | Filter nesting and size | 4 groups deep, 50 conditions |
 | A saved view or a preference value | 16 KiB |
 | Preference keys per account | 500 |
-| A job's file | 12 MiB (16 MiB as base64); a CSV export job stops at that size and reports it |
+| A job's file | 12 MiB (16 MiB as base64); a CSV export job stops at that size and reports it, an import's failed-rows file keeps the rows that fit and says how many it left out |
 | An image upload / a file upload (`maxBytes()`) | 5 MB / 10 MB |
 
 The per-resource bounds are methods on the resource; see

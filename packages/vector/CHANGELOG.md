@@ -41,6 +41,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A job whose completion notification could not be stored was marked
   failed after its row had already been finished. The row now stays
   done, and the failed notification is logged.
+- An import whose failed-rows file came to more than 12 MiB, the most a
+  job file holds, failed at the end with a `LengthException` although
+  every row had been processed. The file now keeps the failed rows that
+  fit, whole, the last one's `error` saying how many more are not in it,
+  and the import completes.
 - An enum value of the scalar type its enum is not backed by — any
   `filter[field]=…` on an int-backed enum, or a string sent for one in
   a body — answered `500` with a `TypeError` from `tryFrom()`. A list

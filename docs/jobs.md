@@ -114,7 +114,10 @@ into a file on the finished job, with the reason for each in an `error`
 column. Its cells get the exports' formula guard: one starting with `=`,
 `+`, `-`, `@`, a tab or a carriage return, other than a signed number,
 gets an apostrophe in front, so remove it from a value you fix and
-import again.
+import again. The file holds at most 12 MiB: past that it keeps the
+failed rows that fit, and the last one's `error` ends with how many
+more are not in it. The job still completes, and its `failed` count is
+every failed row.
 
 What a row does depends on the mode:
 
