@@ -26,7 +26,6 @@ alphabetically, then Cyrillic, Hebrew, Arabic, Korean, Japanese and
 Chinese. The settings page lists them the same way. Choosing one
 switches the whole admin at once — menus, labels, dates and numbers —
 and is remembered as your preference, on every device you sign in from.
-Hebrew and Arabic turn the layout right to left.
 
 Until you choose, the admin is in the default language the administrator
 set; your browser's language plays no part.
@@ -91,9 +90,9 @@ The layer ships English (the base and the fallback, key by key) and the
 catalogs above, with the codes `pt` (European) and `pt-BR`, and
 `zh-Hans` for Simplified Chinese. The descriptor's `i18n` names the
 user's language and the languages on offer. The language menu lists
-them in the server's order, `Locales::SHIPPED`'s, naming each in itself
-with its name in the current language beneath (`languageName()`, from
-`Intl.DisplayNames`), and switching calls
+them in the server's order, naming each in itself with its name in the
+current language beneath (`languageName()`, from `Intl.DisplayNames`);
+switching calls
 `useVectorLocale().choose(code)`, which stores the user's `locale`
 preference and reloads the descriptor.
 
