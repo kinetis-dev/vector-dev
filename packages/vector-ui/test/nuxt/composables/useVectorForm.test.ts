@@ -42,6 +42,13 @@ describe('applyViolations', () => {
         expect(errors).toEqual({})
     })
 
+    it('shows a violation inside a field\'s value on that field: its inputs take no deeper key', () => {
+        const errors: Record<string, string[]> = {}
+
+        expect(applyViolations(unprocessable([{ path: ['tags', 2], message: 'this value is too long.' }, { path: ['options', 'colors', 0, 'hex'], message: 'this value is not valid.' }]), { tags: [], options: {} }, errors)).toBeNull()
+        expect(errors).toEqual({ tags: ['This value is too long.'], options: ['This value is not valid.'] })
+    })
+
     it('says the server rejected the request when a 422 carries no violation', () => {
         expect(applyViolations(unprocessable([]), {}, {})).toBe('The server rejected the request.')
     })

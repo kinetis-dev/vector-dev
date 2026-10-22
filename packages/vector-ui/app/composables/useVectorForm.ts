@@ -11,7 +11,10 @@ export function initialValue(field: VectorField): unknown {
 
 /**
  * Maps the framework's 422 document onto field names; returns the
- * message that names no field, if any.
+ * message that names no field, if any. A violation deeper in a value
+ * (`tags.2`) shows on its field: the loose field lists this serves
+ * (settings, bulk edit, action dialogs) hold no repeater, the one input
+ * that takes a deeper key (`Vx/Resource/Form.vue` maps those).
  */
 export function applyViolations(error: unknown, values: Record<string, unknown>, serverErrors: Record<string, string[]>): string | null {
     const failure = error as { status?: number, statusCode?: number, data?: { errors?: unknown } } | null
