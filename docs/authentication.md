@@ -88,8 +88,18 @@ returns them to the dashboard; the refused request is not repeated as
 them. When that renewal is not possible, the login page says the
 impersonation ran out. `kinetis/auth-jwt` issues and verifies access
 tokens, and its `RefreshTokenStore` keeps single-use refresh tokens in a
-cache. The demo does not detect a replayed refresh token: the replay is
-refused, and nothing else is revoked.
+cache.
+
+The demo also detects a replayed refresh token. Each sign-in starts a
+token family, and every refresh token rotated from it belongs to that
+family. When a token that was already redeemed is presented again, the
+whole family is revoked: neither the owner nor whoever replayed it can
+renew any more, and both have to sign in again. The replay gets the same
+`401` as any invalid token. **Sign out** revokes the family too.
+Revocation stops renewals only: an access token already issued stays
+valid until it expires, fifteen minutes at most. There is no grace
+period, so two tabs sharing one refresh token, as a duplicated tab does,
+both end up signed out.
 
 ## Protecting the sign-in
 

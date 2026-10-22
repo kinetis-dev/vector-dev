@@ -152,9 +152,11 @@ worker for Vector's jobs ({doc}`jobs`).
 
 ### Known limits
 
-- The demo's refresh tokens are single-use, but there is no reuse
-  detection: replaying a redeemed token is refused, and the token that
-  replaced it stays valid.
+- Replaying a redeemed refresh token revokes its whole family, with no
+  grace period: a duplicated browser tab that renews with the same token
+  signs both tabs out. Revocation lives in the application cache: if
+  the cache loses those records, a later replay is refused but revokes
+  nothing. Access tokens already issued run until they expire.
 - An impersonation token is never renewed. In bearer mode it expires no
   later than the token that started it; in cookie mode it lasts as long
   as the session.
