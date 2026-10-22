@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   promise rejection.
 - Opening a notification whose mark-as-read fails says why, instead of
   failing silently with an unhandled promise rejection.
+- A problem+json error without a `detail` shows its `title` instead of
+  the request's generic failure message.
 
 ### Security
 

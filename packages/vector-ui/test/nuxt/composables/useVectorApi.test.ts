@@ -158,4 +158,10 @@ describe('vectorErrorMessage', () => {
         expect(vectorErrorMessage(new Error('Boom'))).toBe('Boom')
         expect(vectorErrorMessage('plain')).toBe('plain')
     })
+
+    it('reads a problem+json detail, then its title, before the error itself', () => {
+        expect(vectorErrorMessage({ data: { title: 'Conflict', detail: 'The record changed.' }, message: '[PATCH] 409' })).toBe('The record changed.')
+        expect(vectorErrorMessage({ data: { type: 'about:blank', title: 'Too Many Requests', status: 429 }, message: '[GET] 429' })).toBe('Too Many Requests')
+        expect(vectorErrorMessage({ data: { title: 42 }, message: '[GET] 500' })).toBe('[GET] 500')
+    })
 })

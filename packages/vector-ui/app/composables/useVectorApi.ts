@@ -64,14 +64,15 @@ export function useVectorApi(): $Fetch {
     }) as $Fetch
 }
 
-/** The message a failed request should show, from either Kinetis error shape. */
+/** The message a failed request should show, from either Kinetis error shape: `error`, or problem+json's `detail`, then its `title`. */
 export function vectorErrorMessage(error: unknown): string {
-    const failure = error as { data?: { error?: string, detail?: string }, message?: string } | null
+    const failure = error as { data?: { error?: string, detail?: string, title?: string }, message?: string } | null
     const data = failure?.data
 
     if (data && typeof data === 'object') {
         if (typeof data.error === 'string') return data.error
         if (typeof data.detail === 'string') return data.detail
+        if (typeof data.title === 'string') return data.title
     }
 
     return typeof failure?.message === 'string' ? failure.message : String(error)
