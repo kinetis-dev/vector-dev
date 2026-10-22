@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { fieldProps, type VectorAction, type VectorExportFormat, type VectorField, type VectorFilterGroup, type VectorFilterQuery, type VectorFilters, type VectorListState, type VectorPage, type VectorRecord, type VectorResource, type VectorSelection, type VectorSort, type VectorSavedView } from '#vector/app/types/vector'
 import type { VectorPageStep } from '#vector/app/composables/useVectorCursorPager'
-import { violationsOf } from '#vector/app/utils/internal/violations'
+import { type Violation, violationsOf } from '#vector/app/utils/internal/violations'
 
 // The list view: a server-driven table whose every option — page, size,
 // sort, filters, search, grouping, columns — becomes one list request,
@@ -192,36 +192,60 @@ function setPerPage(perPage: number) {
 // --- views ------------------------------------------------------------
 const viewMenu = ref<{ views: VectorSavedView[] } | null>(null)
 
+/** A stored filter as the bar edits it. */
+interface DecodedFilter {
+    filters: VectorFilters
+    groups: VectorFilterGroup[]
+    advanced: VectorFilterQuery[]
+    trashed: 'without' | 'only' | 'with'
+}
+
 /**
  * A stored filter back into what the bar edits: its conditions, its
  * "any of" groups of plain alternatives, and anything deeper kept as it
  * is. Conditions on fields this account cannot see are dropped.
  */
-function decodeFilter(filter: VectorFilterQuery, known: Set<string>) {
-    const out = { filters: {} as VectorFilters, groups: [] as VectorFilterGroup[], advanced: [] as VectorFilterQuery[], trashed: 'without' as 'without' | 'only' | 'with' }
-    const plain = (node: VectorFilterQuery): node is VectorFilters => Object.entries(node).every(([k, v]) => k !== 'or' && k !== 'and' && k !== 'trashed' && typeof v === 'object' && !Array.isArray(v))
+function decodeFilter(filter: VectorFilterQuery, known: Set<string>): DecodedFilter {
+    const out: DecodedFilter = { filters: {}, groups: [], advanced: [], trashed: 'without' }
 
     for (const [key, spec] of Object.entries(filter)) {
-        if (key === 'trashed') {
-            const value = typeof spec === 'string' ? spec : (spec as Record<string, string> | undefined)?.eq ?? (spec as Record<string, string> | undefined)?.['']
-            out.trashed = (value === 'only' || value === 'with' ? value : 'without')
-        } else if (key === 'or' && Array.isArray(spec)) {
-            if (spec.every(plain)) out.groups.push(spec.map(a => Object.fromEntries(Object.entries(a).filter(([name]) => known.has(name)))).filter(a => Object.keys(a).length > 0))
-            else out.advanced.push({ or: spec })
-        } else if (key === 'and' && Array.isArray(spec)) {
-            for (const child of spec) {
-                const inner = decodeFilter(child, known)
-                for (const [name, ops] of Object.entries(inner.filters)) out.filters[name] = { ...out.filters[name], ...ops }
-                out.groups.push(...inner.groups)
-                out.advanced.push(...inner.advanced)
-            }
-        } else if (known.has(key) && spec !== undefined && !Array.isArray(spec)) {
-            out.filters[key] = typeof spec === 'string' ? { eq: spec } : { ...spec }
-        }
+        if (key === 'trashed') out.trashed = decodeTrashed(spec)
+        else if (key === 'or' && Array.isArray(spec)) decodeAlternatives(out, spec, known)
+        else if (key === 'and' && Array.isArray(spec)) decodeConjunction(out, spec, known)
+        else if (known.has(key) && spec !== undefined && !Array.isArray(spec)) out.filters[key] = typeof spec === 'string' ? { eq: spec } : { ...spec }
     }
 
     out.groups = out.groups.filter(g => g.length > 0)
     return out
+}
+
+/** Whether a filter node is plain conditions: no `or`, `and` or `trashed`, every value an operator object. */
+const plainConditions = (node: VectorFilterQuery): node is VectorFilters => Object.entries(node).every(([k, v]) => k !== 'or' && k !== 'and' && k !== 'trashed' && typeof v === 'object' && !Array.isArray(v))
+
+/** A stored `trashed`, as a string or an operator: anything it does not know is "without". */
+function decodeTrashed(spec: VectorFilterQuery[string]): DecodedFilter['trashed'] {
+    const value = typeof spec === 'string' ? spec : (spec as Record<string, string> | undefined)?.eq ?? (spec as Record<string, string> | undefined)?.['']
+    return value === 'only' || value === 'with' ? value : 'without'
+}
+
+/** An `or` the bar can edit as a group of plain alternatives, its unknown fields dropped; any deeper one kept as it is. */
+function decodeAlternatives(out: DecodedFilter, spec: VectorFilterQuery[], known: Set<string>) {
+    if (!spec.every(plainConditions)) {
+        out.advanced.push({ or: spec })
+        return
+    }
+
+    out.groups.push(spec.map(a => Object.fromEntries(Object.entries(a).filter(([name]) => known.has(name)))).filter(a => Object.keys(a).length > 0))
+}
+
+/** An `and`: each of its children decoded and merged into `out`. */
+function decodeConjunction(out: DecodedFilter, spec: VectorFilterQuery[], known: Set<string>) {
+    for (const child of spec) {
+        const inner = decodeFilter(child, known)
+        for (const [name, ops] of Object.entries(inner.filters)) out.filters[name] = { ...out.filters[name], ...ops }
+        out.groups.push(...inner.groups)
+        out.advanced.push(...inner.advanced)
+    }
 }
 
 function applyView(view: VectorSavedView | null) {
@@ -405,24 +429,32 @@ async function saveChanges() {
         discardChanges()
         await load()
     } catch (error) {
-        const failure = error as { status?: number, statusCode?: number, data?: { errors?: unknown } } | null
-        const status = failure?.status ?? failure?.statusCode
-
-        if (status === 422 && Array.isArray(failure?.data?.errors)) {
-            for (const violation of violationsOf(failure.data.errors)) {
-                const [, index, field] = violation.path
-                const change = typeof index === 'number' ? list[index] : undefined
-                if (change && typeof field === 'string' && field in change.values) cellErrors[cellKey(change.id, field)] = violation.message
-                else notifications.error(field ? `${String(field)}: ${violation.message}` : violation.message)
-            }
-        } else if (status === 409) {
-            notifications.error(t('list.inline.conflict'))
-        } else {
-            notifications.error(vectorErrorMessage(error))
-        }
+        showChangesFailure(error, list)
     } finally {
         savingChanges.value = false
     }
+}
+
+/** A changeset the server refused: a 422 on the cells it names, a conflict or any other failure as a notification. */
+function showChangesFailure(error: unknown, list: { id: string | number, values: Record<string, unknown> }[]) {
+    const failure = error as { status?: number, statusCode?: number, data?: { errors?: unknown } } | null
+    const status = failure?.status ?? failure?.statusCode
+
+    if (status === 422 && Array.isArray(failure?.data?.errors)) {
+        for (const violation of violationsOf(failure.data.errors)) showChangeViolation(violation, list)
+    } else if (status === 409) {
+        notifications.error(t('list.inline.conflict'))
+    } else {
+        notifications.error(vectorErrorMessage(error))
+    }
+}
+
+/** One violation of a changeset, `changes.{index}.{field}`: on its cell when that cell changed, else as a notification. */
+function showChangeViolation(violation: Violation, list: { id: string | number, values: Record<string, unknown> }[]) {
+    const [, index, field] = violation.path
+    const change = typeof index === 'number' ? list[index] : undefined
+    if (change && typeof field === 'string' && field in change.values) cellErrors[cellKey(change.id, field)] = violation.message
+    else notifications.error(field ? `${String(field)}: ${violation.message}` : violation.message)
 }
 
 async function mayLeave(): Promise<boolean> {

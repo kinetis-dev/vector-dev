@@ -10,6 +10,7 @@ use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\RichText\Document;
+use League\Flysystem\FilesystemOperator;
 use League\Flysystem\StorageAttributes;
 
 /**
@@ -58,47 +59,84 @@ final readonly class FilePruner
 
         foreach ($this->registry->resources() as $resource) {
             foreach ($resource->fields() as $name => $field) {
-                if (!in_array($field['type'], ['file', 'image'], true)) {
-                    continue;
+                if (in_array($field['type'], ['file', 'image'], true)) {
+                    $count += $this->pruneFolder($filesystem, $resource, $name, $cutoff, $columns, $dryRun, $each);
                 }
-
-                $prefix = "vector/{$resource->slug()}/{$name}/";
-                $embedded = null; // read once a folder holds a candidate
-                $batch = [];
-                $flush = function () use (&$batch, &$count, $columns, $dryRun, $each, $filesystem): void {
-                    foreach ($this->unreferenced($batch, $columns) as $key) {
-                        if (!$dryRun) {
-                            $filesystem->delete($key);
-                        }
-
-                        $each($key);
-                        $count++;
-                    }
-
-                    $batch = [];
-                };
-
-                foreach ($filesystem->listContents(rtrim($prefix, '/'), false) as $item) {
-                    $key = $item->path();
-
-                    if (!$item->isFile() || !str_starts_with($key, $prefix) || preg_match(self::ISSUED, substr($key, strlen($prefix))) !== 1
-                        || $this->modified($item) > $cutoff) {
-                        continue;
-                    }
-
-                    $embedded ??= $this->embedded($resource, $name, $prefix);
-
-                    if (!isset($embedded[$key])) {
-                        $batch[] = $key;
-                    }
-
-                    if (count($batch) >= self::BATCH) {
-                        $flush();
-                    }
-                }
-
-                $flush();
             }
+        }
+
+        return $count;
+    }
+
+    /**
+     * Prunes the folder of one file or image field, `vector/{resource}/{field}/`.
+     *
+     * @param list<array{connection: string, table: string, column: string}> $columns
+     * @param \Closure(string): void $each
+     * @return int how many files were deleted, or would be
+     */
+    private function pruneFolder(FilesystemOperator $filesystem, ResourceDescriptor $resource, string $name, int $cutoff, array $columns, bool $dryRun, \Closure $each): int
+    {
+        $prefix = "vector/{$resource->slug()}/{$name}/";
+        $embedded = null; // read once a folder holds a candidate
+        $batch = [];
+        $count = 0;
+
+        foreach ($filesystem->listContents(rtrim($prefix, '/'), false) as $item) {
+            if (!$this->isCandidate($item, $prefix, $cutoff)) {
+                continue;
+            }
+
+            $key = $item->path();
+            $embedded ??= $this->embedded($resource, $name, $prefix);
+
+            if (!isset($embedded[$key])) {
+                $batch[] = $key;
+            }
+
+            if (count($batch) >= self::BATCH) {
+                $count += $this->deleteUnreferenced($filesystem, $batch, $columns, $dryRun, $each);
+                $batch = [];
+            }
+        }
+
+        return $count + $this->deleteUnreferenced($filesystem, $batch, $columns, $dryRun, $each);
+    }
+
+    /**
+     * Whether $item is a file of the shape the upload endpoint issues,
+     * directly under $prefix, and older than $cutoff.
+     */
+    private function isCandidate(StorageAttributes $item, string $prefix, int $cutoff): bool
+    {
+        $key = $item->path();
+
+        return $item->isFile()
+            && str_starts_with($key, $prefix)
+            && preg_match(self::ISSUED, substr($key, strlen($prefix))) === 1
+            && $this->modified($item) <= $cutoff;
+    }
+
+    /**
+     * Deletes the keys of $batch no file or image column holds, or only
+     * reports them on a dry run.
+     *
+     * @param list<string> $batch
+     * @param list<array{connection: string, table: string, column: string}> $columns
+     * @param \Closure(string): void $each
+     * @return int how many files were deleted, or would be
+     */
+    private function deleteUnreferenced(FilesystemOperator $filesystem, array $batch, array $columns, bool $dryRun, \Closure $each): int
+    {
+        $count = 0;
+
+        foreach ($this->unreferenced($batch, $columns) as $key) {
+            if (!$dryRun) {
+                $filesystem->delete($key);
+            }
+
+            $each($key);
+            $count++;
         }
 
         return $count;
@@ -168,18 +206,49 @@ final readonly class FilePruner
     private function embedded(ResourceDescriptor $resource, string $fieldName, string $prefix): array
     {
         $keys = [];
-        $collect = function (string $value) use (&$keys, $prefix): void {
-            if (str_starts_with($value, $prefix)) {
-                $keys[$value] = true;
-            } elseif (str_contains($value, '"image"') || stripos($value, '<img') !== false) { // a document, its slashes escaped or not
-                foreach ($this->document->imageKeys($value) as $key) {
-                    if (str_starts_with($key, $prefix)) {
-                        $keys[$key] = true;
-                    }
+
+        // the documents are read first, then the audit trail: each generator queries only once iterated
+        foreach ([$this->documentValues($resource, $fieldName), $this->auditValues($resource)] as $values) {
+            foreach ($values as $value) {
+                foreach ($this->keysUnder($value, $prefix) as $key) {
+                    $keys[$key] = true;
                 }
             }
-        };
+        }
 
+        return $keys;
+    }
+
+    /**
+     * The keys under $prefix that $value is, or that it shows as a
+     * rich-text document's images.
+     *
+     * @return list<string>
+     */
+    private function keysUnder(string $value, string $prefix): array
+    {
+        if (str_starts_with($value, $prefix)) {
+            return [$value];
+        }
+
+        if (!str_contains($value, '"image"') && stripos($value, '<img') === false) { // a document, its slashes escaped or not
+            return [];
+        }
+
+        return array_values(array_filter(
+            $this->document->imageKeys($value),
+            static fn (string $key): bool => str_starts_with($key, $prefix),
+        ));
+    }
+
+    /**
+     * The stored values of the rich-text fields of $resource that use
+     * $fieldName for their images, on any row.
+     *
+     * @return \Generator<int, string>
+     */
+    private function documentValues(ResourceDescriptor $resource, string $fieldName): \Generator
+    {
         foreach ($resource->fields() as $name => $field) {
             $column = $resource->columns()[$name] ?? null;
 
@@ -191,26 +260,38 @@ final readonly class FilePruner
 
             foreach (self::chunks($query, $resource->primaryKeyColumn(), [$column]) as $row) {
                 if (is_string($row[$column])) {
-                    $collect($row[$column]);
+                    yield $row[$column];
                 }
             }
         }
+    }
 
+    /**
+     * Every string the audit trail of $resource holds, at any depth of
+     * its recorded changes.
+     *
+     * @return \Generator<int, string>
+     */
+    private function auditValues(ResourceDescriptor $resource): \Generator
+    {
         $audit = fn (): Query => $this->db->query()->table('vector_audit')->where('resource', '=', $resource->slug());
 
         foreach (self::chunks($audit, 'id', ['changes']) as $row) {
             $changes = json_decode((string) $row['changes'], true);
 
-            if (is_array($changes)) {
-                array_walk_recursive($changes, static function (mixed $value) use ($collect): void {
-                    if (is_string($value)) {
-                        $collect($value);
-                    }
-                });
+            if (!is_array($changes)) {
+                continue;
             }
-        }
 
-        return $keys;
+            $strings = [];
+            array_walk_recursive($changes, static function (mixed $value) use (&$strings): void {
+                if (is_string($value)) {
+                    $strings[] = $value;
+                }
+            });
+
+            yield from $strings;
+        }
     }
 
     /**
