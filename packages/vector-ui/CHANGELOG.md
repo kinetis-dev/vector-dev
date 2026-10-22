@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The file and image inputs, and a rich-text field's image upload, send
+  the id of the record they edit in the upload's multipart `record`
+  part, which kinetis/vector now requires to upload while editing
+  without create permission. `useVectorResource().upload()` takes it as
+  an optional argument.
+
 ### Fixed
 
 - A 401 while impersonating in bearer mode ends the impersonation in the
