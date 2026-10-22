@@ -65,12 +65,12 @@ describe('VxInbox', () => {
         const read = mock('/vector/notifications/5/read', { body: {} }, 'POST')
         const push = vi.spyOn(useRouter(), 'push')
 
-        for (const link of ['//evil.example/phish', '/\\evil.example', 'https://evil.example', 'javascript:alert(1)']) {
+        for (const link of ['//evil.example/phish', '/\\evil.example', 'https://evil.example', 'javascript:alert(1)', '/\t/evil.example']) {
             await openFirst(link)
             mounted.splice(0).forEach(wrapper => wrapper.unmount())
         }
 
-        expect(read.requests).toHaveLength(4)
+        expect(read.requests).toHaveLength(5)
         expect(push).not.toHaveBeenCalled()
         expect(unhandled).toEqual([])
         expect(useVectorNotifications().queue.value).toEqual([])

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SubmitEventPromise } from 'vuetify'
 import { hasEmailShape } from '#vector/app/utils/internal/patterns'
+import { isAdminPath } from '#vector/app/utils/internal/paths'
 
 definePageMeta({ layout: 'default' })
 
@@ -61,9 +62,9 @@ async function submit(event: SubmitEventPromise) {
 
         notifications.success(t('shell.login.welcome', { name: auth.user?.name ?? email.value }))
 
-        // only a path of this app: `//host`, `/\host` and anything with a scheme are not places to go back to
+        // only a path of this app: `//host`, `/\host`, `/\t/host` and anything with a scheme are not places to go back to
         const wanted = typeof route.query.redirect === 'string' ? route.query.redirect : ''
-        const redirect = /^\/(?![/\\])/.test(wanted) ? wanted : (appConfig.vector.basePath || '/')
+        const redirect = isAdminPath(wanted) ? wanted : (appConfig.vector.basePath || '/')
         await navigateTo(redirect, { replace: true })
     } catch (caught) {
         error.value = vectorErrorMessage(caught)

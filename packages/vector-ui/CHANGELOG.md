@@ -32,6 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A notification's link is followed only when it is a path of the
   admin, the rule the sign-in page's `redirect` follows; `//host`,
   `/\host` and a URL with a scheme are not.
+- The sign-in page's `redirect`, and a notification's link, are refused
+  when they hold a backslash, whitespace or a control character anywhere:
+  a browser strips tab, CR and LF from a URL, so `/<tab>/host` was
+  followed as `//host`, another origin.
 
 ## [0.10.2] - 2026-10-21
 
