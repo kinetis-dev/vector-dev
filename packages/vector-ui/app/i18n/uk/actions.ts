@@ -7,6 +7,7 @@ export default {
     subjectCount: '{count} {label}',
     done: '{label}: виконано.',
     declined: 'Дію відхилено.',
+    redirectRefused: 'Дія намагалася відкрити сторінку поза панеллю; її не відкрито.',
     downloadStarted: 'Завантаження розпочато.',
     queued: '{label}: додано до черги.',
 }

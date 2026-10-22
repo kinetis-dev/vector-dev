@@ -40,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of the admin, by the same rule, and a row whose link is not is not
   offered as a link; a failed navigation is reported instead of
   rejecting unhandled.
+- An action answering `ActionResponse::redirect()` is followed only when
+  its URL is a path of the admin, checked before the dialog reports the
+  action done; any other URL, or none, is reported and not followed.
 
 ## [0.10.2] - 2026-10-21
 

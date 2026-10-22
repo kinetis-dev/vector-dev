@@ -7,6 +7,7 @@ export default {
     subjectCount: '{count} {label}',
     done: '{label} done.',
     declined: 'The action declined.',
+    redirectRefused: 'The action asked to open a page outside the admin; it was not opened.',
     downloadStarted: 'Download started.',
     queued: '{label} was queued.',
 }

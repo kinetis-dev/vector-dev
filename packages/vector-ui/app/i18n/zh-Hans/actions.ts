@@ -7,6 +7,7 @@ export default {
     subjectCount: '{count} 个{label}',
     done: '{label}已完成。',
     declined: '该操作已被拒绝。',
+    redirectRefused: '该操作要求打开管理后台之外的页面，未予打开。',
     downloadStarted: '已开始下载。',
     queued: '{label}已加入队列。',
 }

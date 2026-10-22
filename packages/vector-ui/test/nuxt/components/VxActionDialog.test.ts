@@ -24,8 +24,15 @@ afterEach(() => {
 
 /** Runs the action against an answer of type `url` with $url, and reports what window.open was asked. */
 async function runAnswering(url: string) {
-    cleanups.push(endpoint('/vector/r/tags/actions/visit', { body: { type: 'url', message: null, url, affected: 1 } }, 'POST').unregister)
     const opened = vi.spyOn(window, 'open').mockReturnValue(null)
+    await run({ type: 'url', message: null, url, affected: 1 })
+
+    return opened
+}
+
+/** Runs the action against $answer, until the dialog is done. */
+async function run(answer: Record<string, unknown>) {
+    cleanups.push(endpoint('/vector/r/tags/actions/visit', { body: answer }, 'POST').unregister)
     const wrapper = await mountSuspended(VxActionDialog, { props: { resource: resource(), action, selection: { ids: [1] }, count: 1 } })
     mounted.push(wrapper)
     await flushPromises()
@@ -33,8 +40,9 @@ async function runAnswering(url: string) {
     const submit = [...document.querySelectorAll<HTMLButtonElement>('.v-overlay__content button[type="submit"]')].find(b => b.textContent?.trim() === 'Visit')
     submit!.click()
     await vi.waitFor(() => expect(wrapper.emitted('done')).toBeTruthy())
+    await flushPromises()
 
-    return opened
+    return wrapper
 }
 
 describe('VxActionDialog', () => {
@@ -48,5 +56,24 @@ describe('VxActionDialog', () => {
         const opened = await runAnswering(url)
 
         expect(opened).not.toHaveBeenCalled()
+    })
+
+    it('goes to the path of the admin a redirect answers', async () => {
+        const push = vi.spyOn(useRouter(), 'push').mockResolvedValue(undefined)
+
+        await run({ type: 'redirect', message: null, url: '/r/tags/1', affected: 1 })
+
+        expect(push).toHaveBeenCalledWith('/r/tags/1')
+    })
+
+    it.each(['//evil.example', '/\\evil.example', 'https://evil.example', '/\t/evil.example', null])('goes nowhere for a redirect to %s, and says so', async (url) => {
+        useVectorNotifications().queue.value = []
+        const push = vi.spyOn(useRouter(), 'push').mockResolvedValue(undefined)
+
+        const wrapper = await run({ type: 'redirect', message: 'Merged.', url, affected: 2 })
+
+        expect(push).not.toHaveBeenCalled()
+        expect(wrapper.emitted('done')).toEqual([[2]])
+        expect(useVectorNotifications().queue.value.map(n => n.text)).toEqual(['Merged.', 'The action asked to open a page outside the admin; it was not opened.'])
     })
 })

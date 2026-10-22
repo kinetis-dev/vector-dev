@@ -7,6 +7,7 @@ export default {
     subjectCount: '{count} {label}',
     done: '{label} tamamlandı.',
     declined: 'Eylem reddedildi.',
+    redirectRefused: 'Eylem, yönetim paneli dışında bir sayfa açmak istedi; sayfa açılmadı.',
     downloadStarted: 'İndirme başladı.',
     queued: '{label} kuyruğa alındı.',
 }

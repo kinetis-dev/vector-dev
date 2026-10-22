@@ -7,6 +7,7 @@ export default {
     subjectCount: '{count} {label}',
     done: 'تم تنفيذ {label}.',
     declined: 'رُفض الإجراء.',
+    redirectRefused: 'طلب الإجراء فتح صفحة خارج لوحة الإدارة، ولم تُفتح.',
     downloadStarted: 'بدأ التنزيل.',
     queued: 'أُضيف {label} إلى قائمة الانتظار.',
 }

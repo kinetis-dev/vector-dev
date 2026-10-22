@@ -7,6 +7,7 @@ export default {
     subjectCount: '{count} 件の{label}',
     done: '{label} が完了しました。',
     declined: 'アクションは拒否されました。',
+    redirectRefused: 'アクションが管理画面外のページを開こうとしたため、開きませんでした。',
     downloadStarted: 'ダウンロードを開始しました。',
     queued: '{label} をキューに追加しました。',
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SubmitEventPromise } from 'vuetify'
 import type { VectorAction, VectorResource, VectorSelection } from '#vector/app/types/vector'
+import { isAdminPath } from '#vector/app/utils/internal/paths'
 
 // Runs one action: the confirmation, the dialog's fields, the request,
 // and what the response asks the client to do.
@@ -55,8 +56,13 @@ async function run(event: SubmitEventPromise) {
                 return
             case 'redirect':
                 if (response.message) notifications.success(response.message)
+                // only a path of this admin, as a notification's link, checked before the dialog is done
+                if (!response.url || !isAdminPath(response.url)) {
+                    notifications.error(t('actions.redirectRefused'))
+                    break
+                }
                 emit('done', response.affected)
-                await navigateTo(`${appConfig.vector.basePath}${response.url ?? ''}`)
+                await navigateTo(`${appConfig.vector.basePath}${response.url}`)
                 return
             case 'url':
                 if (response.message) notifications.success(response.message)
