@@ -36,8 +36,7 @@ sign in again.
 The home page shows the *main* dashboard, when your application has
 one: cards of figures, trends, breakdowns and short tables. A card with
 several ranges (7 days, 30 days, 90 days, a year) has a range selector;
-a table card may link to the full list with **See all**. Every resource
-is in the navigation drawer.
+a table card may link to the full list with **See all**.
 
 ## Search
 
@@ -73,7 +72,10 @@ footer line. Save a group and it applies at once.
 An administrator allowed to impersonate sees **Impersonate** on a
 user's page. While you act as someone else, a banner says so, and
 everything you do is recorded as theirs with you as the impersonator.
-**Stop impersonating** returns you to your own account.
+**Stop impersonating** returns you to your own account. When the
+impersonation runs out, the admin returns you to your own account and
+says so, or asks you to sign in again when your own session has ended
+too.
 
 ## See also
 

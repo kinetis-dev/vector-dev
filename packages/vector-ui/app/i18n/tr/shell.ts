@@ -8,6 +8,7 @@ export default {
     toggleTheme: 'Temayı değiştir',
     language: 'Dil: {name}',
     languageFailed: 'Dil kaydedilemedi: {error}',
+    unsupportedDescriptor: 'API, tanımlayıcı sürümü {version} yayımlıyor; bu yönetim paneli sürüm {supported} okuyor. kinetis/vector ve vector-ui için uyumlu sürümleri yükleyin.',
     nav: {
         main: 'Ana',
         dashboard: 'Pano',
@@ -26,6 +27,7 @@ export default {
         stop: 'Kimliğine bürünmeyi bitir',
         noAccess: '{name} yönetim paneline erişemiyor, bu yüzden onun gözünden görülecek bir şey yok. Kimliğine bürünme sonlandırıldı.',
         noToken: 'Uygulama belirteç veya yeniden yükleme olmadan yanıt verdi; hiçbir şey değişmedi.',
+        ended: 'Kimliğe bürünme süresi doldu; kendi hesabınıza geri döndünüz.',
     },
     palette: {
         placeholder: 'Kayıt ve kaynak ara…',
@@ -47,6 +49,7 @@ export default {
         invalidEmail: 'Geçerli bir e-posta adresi girin',
         welcome: 'Tekrar hoş geldiniz, {name}.',
         signedOutIdle: '{minutes} dakika boyunca işlem yapılmadığı için oturumunuz kapatıldı. Kaldığınız yerden devam etmek için yeniden giriş yapın.',
+        impersonationEnded: 'Kimliğe bürünme süresi doldu ve kendi oturumunuz yenilenemedi. Devam etmek için yeniden oturum açın.',
     },
     home: {
         title: 'Pano',

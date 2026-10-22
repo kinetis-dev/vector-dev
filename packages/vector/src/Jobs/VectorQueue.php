@@ -15,6 +15,7 @@ use Kinetis\Queue\QueueInterface;
 use Kinetis\Queue\Exception\QueueUnavailableException;
 use Kinetis\Vector\Auth\ActorResolverInterface;
 use Kinetis\Vector\Exception\ForbiddenOperationException;
+use Kinetis\Vector\Exception\VectorException;
 use Kinetis\Vector\Store\JobStore;
 
 /**
@@ -126,7 +127,8 @@ final class VectorQueue
         try {
             $this->push($job);
         } catch (\Throwable $e) {
-            $jobs->fail($jobId, $e->getMessage());
+            // a backend's own message names hosts and ports: the row gets Vector's reasons only, the log the rest
+            $jobs->fail($jobId, $e instanceof VectorException ? $e->getMessage() : JobContext::UNEXPECTED);
 
             throw $e;
         }

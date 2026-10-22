@@ -108,7 +108,7 @@ final readonly class ValueConverter
 
         if ($enum !== null) {
             /** @var class-string<BackedEnum> $enum */
-            $case = $enum::tryFrom($raw) ?? (is_numeric($raw) ? $enum::tryFrom((int) $raw) : null);
+            $case = self::enumCase($enum, self::intBacked($enum) && preg_match('/^-?\d{1,18}$/D', $raw) === 1 ? (int) $raw : $raw);
 
             return $case === null ? throw new InputViolation(new Violation([], 'invalid_choice', 'is not one of the allowed values.')) : $case->value;
         }
@@ -263,7 +263,7 @@ final readonly class ValueConverter
 
         if ($enum !== null) {
             /** @var class-string<BackedEnum> $enum */
-            $case = is_int($raw) || is_string($raw) ? $enum::tryFrom($raw) : null;
+            $case = is_int($raw) || is_string($raw) ? self::enumCase($enum, $raw) : null;
 
             return $case ?? throw new InputViolation(new Violation(
                 [],
@@ -281,6 +281,24 @@ final readonly class ValueConverter
             'date' => $this->day($raw),
             default => is_string($raw) ? $raw : throw self::mismatch('a string'),
         };
+    }
+
+    /**
+     * The case whose value is $raw, or null. Under strict types tryFrom()
+     * throws a TypeError for the other scalar — a string for an int-backed
+     * enum, an int for a string-backed one — so that is no case either.
+     *
+     * @param class-string<BackedEnum> $enum
+     */
+    private static function enumCase(string $enum, int|string $raw): ?BackedEnum
+    {
+        return is_int($raw) === self::intBacked($enum) ? $enum::tryFrom($raw) : null;
+    }
+
+    /** @param class-string<BackedEnum> $enum */
+    private static function intBacked(string $enum): bool
+    {
+        return (string) (new \ReflectionEnum($enum))->getBackingType() === 'int';
     }
 
     /**
@@ -325,7 +343,7 @@ final readonly class ValueConverter
      */
     private static function isInstant(string $raw): bool
     {
-        if (preg_match('/^\d{4}-\d{2}-\d{2}(?<time>[T ][\d:.]+)?(?<zone>Z|[+-][\d:]+)?$/', $raw, $m, PREG_UNMATCHED_AS_NULL) !== 1) {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}(?<time>[T ][\d:.]+)?(?<zone>Z|[+-][\d:]+)?$/D', $raw, $m, PREG_UNMATCHED_AS_NULL) !== 1) {
             return false;
         }
 

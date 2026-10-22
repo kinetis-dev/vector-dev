@@ -54,6 +54,7 @@ final readonly class ViewsController
     public function create(string $resource, ServerRequestInterface $request): ResponseInterface
     {
         $descriptor = $this->service->resource($resource);
+        $this->service->authorizeViewAny($descriptor);
         [$name, $shared, $isDefault, $state, $resourceDefault] = $this->input($descriptor->slug(), $this->body($request));
         $id = $this->views->create($descriptor->slug(), (string) $this->user->id(), $name, $shared, $isDefault, $state, $resourceDefault);
 

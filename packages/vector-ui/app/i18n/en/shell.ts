@@ -8,6 +8,7 @@ export default {
     toggleTheme: 'Toggle theme',
     language: 'Language: {name}',
     languageFailed: 'The language could not be saved: {error}',
+    unsupportedDescriptor: 'The API publishes descriptor version {version}; this admin reads version {supported}. Install matching releases of kinetis/vector and vector-ui.',
     nav: {
         main: 'Main',
         dashboard: 'Dashboard',
@@ -26,6 +27,7 @@ export default {
         stop: 'Stop impersonating',
         noAccess: '{name} has no access to the admin, so there is nothing to see as them. Impersonation was stopped.',
         noToken: 'The application answered without a token or a reload, so nothing changed.',
+        ended: 'Your impersonation ran out, so you are back in your own account.',
     },
     palette: {
         placeholder: 'Search records and resources…',
@@ -47,6 +49,7 @@ export default {
         invalidEmail: 'Enter a valid e-mail address',
         welcome: 'Welcome back, {name}.',
         signedOutIdle: 'You were signed out after {minutes} minutes of inactivity. Sign in again to continue where you left off.',
+        impersonationEnded: 'Your impersonation ran out and your own session could not be renewed. Sign in again to continue.',
     },
     home: {
         title: 'Dashboard',

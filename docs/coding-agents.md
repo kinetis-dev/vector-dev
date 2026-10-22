@@ -82,9 +82,6 @@ Codex reads `.codex/config.toml` only for a trusted project. Gemini CLI
 may ignore workspace settings in an untrusted workspace, where a server
 without `trust` keeps its default, `false`.
 
-Reload or restart the client when this configuration was added or
-changed after the current session started.
-
 ## Client differences
 
 | Client | Reads instructions from | Project MCP configuration |

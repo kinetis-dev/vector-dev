@@ -73,8 +73,8 @@ Installing this package auto-registers, via `extra.kinetis`:
   which asks the application's `VectorAccessInterface`, and
   `VectorShellAccessMiddleware`, which redirects a request without a
   user to `VECTOR_LOGIN_URL`.
-- **Commands** on `vendor/bin/kinetis`: `vector:install`, `vector:list`
-  and `vector:jobs:reap`.
+- **Commands** on `vendor/bin/kinetis`: `vector:install`, `vector:list`,
+  `vector:jobs:reap` and `vector:files:prune`.
 - **MCP tools** `vector_resources`, `vector_describe`, `vector_query`,
   `vector_get`, `vector_create`, `vector_update`, `vector_delete`,
   `vector_run_action` and `vector_widget`, and the resource

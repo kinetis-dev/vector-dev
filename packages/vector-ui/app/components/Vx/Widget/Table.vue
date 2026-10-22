@@ -1,16 +1,22 @@
 <script setup lang="ts">
 import type { VectorWidgetData } from '#vector/app/types/vector'
+import { isAdminPath } from '#vector/app/utils/internal/paths'
 
 const props = defineProps<{ data: VectorWidgetData }>()
 const appConfig = useAppConfig()
 const { t } = useVectorT()
 const rows = computed(() => props.data.rows ?? [])
 
-// a row with a link opens it, by mouse or by keyboard
-const linked = (row: Record<string, unknown>) => typeof row._link === 'string'
+// a row with a link opens it, by mouse or by keyboard: only a path of this admin, as a notification's link
+const linked = (row: Record<string, unknown>): row is { _link: string } => typeof row._link === 'string' && isAdminPath(row._link)
 
-function open(row: Record<string, unknown>) {
-    if (typeof row._link === 'string') navigateTo(`${appConfig.vector.basePath}${row._link}`)
+async function open(row: Record<string, unknown>) {
+    if (!linked(row)) return
+    try {
+        await navigateTo(`${appConfig.vector.basePath}${row._link}`)
+    } catch (error) {
+        useVectorNotifications().error(vectorErrorMessage(error))
+    }
 }
 </script>
 

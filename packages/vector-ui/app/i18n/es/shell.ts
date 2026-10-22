@@ -8,6 +8,7 @@ export default {
     toggleTheme: 'Cambiar tema',
     language: 'Idioma: {name}',
     languageFailed: 'No se pudo guardar el idioma: {error}',
+    unsupportedDescriptor: 'La API publica la versión {version} del descriptor; este panel lee la versión {supported}. Instale versiones compatibles de kinetis/vector y vector-ui.',
     nav: {
         main: 'Principal',
         dashboard: 'Panel',
@@ -26,6 +27,7 @@ export default {
         stop: 'Dejar de actuar como otro usuario',
         noAccess: '{name} no tiene acceso a la administración, así que no hay nada que ver en su nombre. Se dejó de actuar en su nombre.',
         noToken: 'La aplicación respondió sin un token ni una recarga, así que no cambió nada.',
+        ended: 'Tu suplantación ha caducado, así que vuelves a estar en tu propia cuenta.',
     },
     palette: {
         placeholder: 'Buscar registros y recursos…',
@@ -47,6 +49,7 @@ export default {
         invalidEmail: 'Introduzca una dirección de correo electrónico válida',
         welcome: 'Hola de nuevo, {name}.',
         signedOutIdle: 'Se cerró la sesión tras {minutes} minutos de inactividad. Inicie sesión de nuevo para continuar donde lo dejó.',
+        impersonationEnded: 'Tu suplantación ha caducado y no se pudo renovar tu propia sesión. Inicia sesión de nuevo para continuar.',
     },
     home: {
         title: 'Panel',

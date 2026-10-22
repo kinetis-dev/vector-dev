@@ -8,6 +8,7 @@ export default {
     toggleTheme: 'テーマの切り替え',
     language: '言語：{name}',
     languageFailed: '言語を保存できませんでした：{error}',
+    unsupportedDescriptor: 'API はディスクリプタのバージョン {version} を公開していますが、この管理画面が読めるのはバージョン {supported} です。対応する kinetis/vector と vector-ui をインストールしてください。',
     nav: {
         main: 'メイン',
         dashboard: 'ダッシュボード',
@@ -26,6 +27,7 @@ export default {
         stop: '代理操作を終了',
         noAccess: '{name} は管理画面へのアクセス権がないため、表示できる内容がありません。代理操作を終了しました。',
         noToken: 'アプリケーションがトークンも再読み込みも返さなかったため、何も変更されていません。',
+        ended: 'なりすましの有効期限が切れたため、ご自身のアカウントに戻りました。',
     },
     palette: {
         placeholder: 'レコードとリソースを検索…',
@@ -47,6 +49,7 @@ export default {
         invalidEmail: '有効なメールアドレスを入力してください',
         welcome: 'おかえりなさい、{name} さん。',
         signedOutIdle: '{minutes} 分間操作がなかったためサインアウトしました。もう一度サインインすると、続きから再開できます。',
+        impersonationEnded: 'なりすましの有効期限が切れ、ご自身のセッションを更新できませんでした。続けるには再度サインインしてください。',
     },
     home: {
         title: 'ダッシュボード',

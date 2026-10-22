@@ -60,13 +60,10 @@ bin/check-frankenphp                                                            
 
 PHPUnit runs with Vector's tables on PostgreSQL, where `backend/.env`
 puts them, and again on MySQL. It handles its requests in-process and
-goes through neither web server. `bin/check-frankenphp` covers the
-running worker on `:8081`: worker mode, the drivers it selected, and
-request isolation across interleaved principals on the same threads
-({doc}`demo`).
-`frankenphp` keeps the code it booted with, so run
-`docker compose restart frankenphp` after a PHP change, before checking
-it.
+goes through neither web server. `bin/check-frankenphp` checks the
+running worker on `:8081` ({doc}`demo`). `frankenphp` keeps the code it
+booted with, so run `docker compose restart frankenphp` after a PHP
+change, before checking it.
 
 The UI layer's Vitest suite is in `packages/vector-ui/test/nuxt/`. Each
 file runs inside a Nuxt app built from the layer (`@nuxt/test-utils`,

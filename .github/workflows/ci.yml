@@ -86,8 +86,14 @@ jobs:
       fail-fast: false
       matrix:
         # composer.json requires ^8.4; demo/docker/Dockerfile defaults to
-        # 8.4 and builds on 8.5 with the same extension recipe.
-        php-version: ['8.4', '8.5']
+        # 8.4 and builds on 8.5 with the same extension recipe. php-image
+        # is the patch release each job builds on: at least 8.4.27 and
+        # 8.5.12, raised with the Dockerfile's default.
+        include:
+          - php-version: '8.4'
+            php-image: '8.4.27'
+          - php-version: '8.5'
+            php-image: '8.5.12'
     # The suite boots the demo against its seeded databases, as it does
     # in the Compose stack: the shop on MySQL, Vector's own tables and
     # the support desk on PostgreSQL, the queue and cache on Redis. Same
@@ -145,7 +151,7 @@ jobs:
         # the runner IP's anonymous rate limit and never enters a layer.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: docker build --progress=plain --secret id=github_token,env=GITHUB_TOKEN --build-arg PHP_VERSION=${{ matrix.php-version }} --target fpm -t "$VECTOR_PHP_IMAGE" -f demo/docker/Dockerfile demo
+        run: docker build --progress=plain --secret id=github_token,env=GITHUB_TOKEN --build-arg PHP_VERSION=${{ matrix.php-image }} --target fpm -t "$VECTOR_PHP_IMAGE" -f demo/docker/Dockerfile demo
 
       - name: Validate composer.json
         run: |

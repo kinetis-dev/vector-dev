@@ -143,7 +143,7 @@ jobs:
         # nothing is installed on top of the image the stack runs.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: docker build --progress=plain --secret id=github_token,env=GITHUB_TOKEN --build-arg PHP_VERSION=8.4 --target fpm -t "$VECTOR_PHP_IMAGE" -f demo/docker/Dockerfile demo
+        run: docker build --progress=plain --secret id=github_token,env=GITHUB_TOKEN --build-arg PHP_VERSION=8.4.27 --target fpm -t "$VECTOR_PHP_IMAGE" -f demo/docker/Dockerfile demo
 
       - name: Install dependencies
         if: steps.scope.outputs.run == 'true'

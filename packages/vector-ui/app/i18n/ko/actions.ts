@@ -7,6 +7,7 @@ export default {
     subjectCount: '{label} {count}개',
     done: '{label} 작업을 완료했습니다.',
     declined: '액션이 거부되었습니다.',
+    redirectRefused: '액션이 관리자 밖의 페이지를 열려고 해서 열지 않았습니다.',
     downloadStarted: '다운로드가 시작되었습니다.',
     queued: '{label} 작업이 대기열에 추가되었습니다.',
 }

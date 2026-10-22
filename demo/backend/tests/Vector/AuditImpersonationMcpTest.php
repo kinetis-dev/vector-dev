@@ -79,6 +79,63 @@ final class AuditImpersonationMcpTest extends VectorTestCase
     }
 
     /**
+     * Each start and stop hands out a new access token. Each once lasted
+     * fifteen minutes whatever the token presented had left, so cycling
+     * the two kept an access token alive for ever: past logout, which
+     * revokes only the refresh token, and past the session's end.
+     */
+    public function testImpersonationNeverOutlivesTheTokenThatStartedIt(): void
+    {
+        $link = $this->link();
+        $admin = (new Query($link))->table('users')->select('id')->where('email', '=', 'admin@vector.local')->first();
+        $editor = (new Query($link))->table('users')->select('id')->where('email', '=', 'editor@vector.local')->first();
+        self::assertIsArray($admin);
+        self::assertIsArray($editor);
+        $token = $this->tokenFor((string) $admin['id']); // five minutes
+        $expires = self::expiry($token);
+
+        $started = $this->client->post("/vector/impersonate/{$editor['id']}", headers: ['Authorization' => "Bearer {$token}"])->assertOk()->json();
+        self::assertIsArray($started);
+        self::assertLessThanOrEqual($expires, self::expiry($started['accessToken']), 'the impersonation token outlives the one that started it');
+        self::assertLessThanOrEqual(300, $started['expiresIn']);
+
+        $back = $this->client->delete('/vector/impersonate', headers: ['Authorization' => "Bearer {$started['accessToken']}"])->assertOk()->json();
+        self::assertIsArray($back);
+        self::assertLessThanOrEqual($expires, self::expiry($back['accessToken']), 'stopping renewed the admin past the original token');
+        self::assertLessThanOrEqual(300, $back['expiresIn']);
+    }
+
+    private static function expiry(string $jwt): int
+    {
+        $claims = json_decode(base64_decode(strtr(explode('.', $jwt)[1], '-_', '+/')), true, 8, JSON_THROW_ON_ERROR);
+        self::assertIsArray($claims);
+        self::assertIsInt($claims['exp']);
+
+        return $claims['exp'];
+    }
+
+    /**
+     * `$` without `D` matches before a trailing newline: "2\n" once named
+     * user 2, and the admin's own id with one slipped past the "already
+     * yourself" check, which compares the text.
+     */
+    public function testAnIdWithATrailingNewlineNamesNoUser(): void
+    {
+        $link = $this->link();
+        $admin = (new Query($link))->table('users')->select('id')->where('email', '=', 'admin@vector.local')->first();
+        $editor = (new Query($link))->table('users')->select('id')->where('email', '=', 'editor@vector.local')->first();
+        self::assertIsArray($admin);
+        self::assertIsArray($editor);
+        $adminHeaders = ['Authorization' => 'Bearer ' . $this->tokenFor((string) $admin['id'])];
+
+        $this->client->post("/vector/impersonate/{$admin['id']}%0A", headers: $adminHeaders)->assertNotFound();
+        $this->client->post("/vector/impersonate/{$editor['id']}%0A", headers: $adminHeaders)->assertNotFound();
+
+        self::assertNull((new \App\Auth\DemoActorResolver($link))->resolve("{$editor['id']}\n"));
+        self::assertNotNull((new \App\Auth\DemoActorResolver($link))->resolve((string) $editor['id']));
+    }
+
+    /**
      * @param array<string, mixed> $admin
      * @param array<string, mixed> $editor
      * @param array<string, string> $adminHeaders

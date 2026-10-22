@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Vector;
 
+use Kinetis\Vector\Import\CsvReader;
 use Kinetis\Vector\Query\CsvWriter;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -67,6 +68,21 @@ final class CsvFormulaGuardTest extends TestCase
             . "report,false\r\n"
             . "-5,true\r\n"
             . ",true\r\n",
+            $csv,
+        );
+    }
+
+    public function testTheFailedRowsFileGuardsTheUploadedCells(): void
+    {
+        $csv = CsvReader::toCsv(['=name', 'stock', 'error'], [
+            ['=name' => '=HYPERLINK("http://x")', 'stock' => '-5', 'error' => 'name is taken.'],
+            ['=name' => "\t@x", 'stock' => '+cmd', 'error' => '@stock must be a number.'],
+        ]);
+
+        self::assertSame(
+            "\xEF\xBB\xBF'=name,stock,error\r\n"
+            . "\"'=HYPERLINK(\"\"http://x\"\")\",-5,\"name is taken.\"\r\n"
+            . "\"'\t@x\",'+cmd,\"'@stock must be a number.\"\r\n",
             $csv,
         );
     }

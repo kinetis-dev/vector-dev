@@ -60,4 +60,30 @@ describe('VxInputRelation', () => {
         expect(wrapper.find('.v-avatar').exists()).toBe(false)
         expect(file.requests).toHaveLength(0)
     })
+
+    it('keeps its choices and says so when a search fails, leaving no rejection unhandled', async () => {
+        let fail = false
+        mock('/vector/r/order-lines/fields/product/options', () => fail ? { status: 500, body: { error: 'Down.' } } : { body: { data: [{ id: 7, label: 'Desk lamp' }] } })
+        const unhandled: unknown[] = []
+        const record = (event: PromiseRejectionEvent) => unhandled.push(event.reason)
+        window.addEventListener('unhandledrejection', record)
+        const onNode = (reason: unknown) => unhandled.push(reason)
+        process.on('unhandledRejection', onNode)
+
+        try {
+            const wrapper = await mountRelation(7)
+            await vi.waitFor(() => expect(wrapper.text()).toContain('Desk lamp'))
+
+            fail = true
+            await wrapper.findComponent({ name: 'VAutocomplete' }).vm.$emit('update:search', 'chair')
+            await vi.waitFor(() => expect(wrapper.text()).toContain('Down.'), { timeout: 2000 })
+            await new Promise(resolve => setTimeout(resolve, 50))
+
+            expect(unhandled).toEqual([])
+            expect(wrapper.text()).toContain('Desk lamp')
+        } finally {
+            window.removeEventListener('unhandledrejection', record)
+            process.off('unhandledRejection', onNode)
+        }
+    })
 })

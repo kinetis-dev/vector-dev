@@ -134,12 +134,18 @@ final readonly class ResourceClient
         return $this->get("{$this->base}/export", ['format' => 'csv', ...$query]);
     }
 
-    /** Uploads $contents for a file or image field; the answer's `key` is the value to write. */
-    public function upload(string $field, string $contents, string $filename = 'upload.bin'): VectorResponse
+    /**
+     * Uploads $contents for a file or image field; the answer's `key` is
+     * the value to write. $record is the id of the record being edited,
+     * which an upload allowed by update permission needs.
+     */
+    public function upload(string $field, string $contents, string $filename = 'upload.bin', int|string|null $record = null): VectorResponse
     {
         $boundary = 'vector' . bin2hex(random_bytes(8));
         $name = str_replace(['"', "\r", "\n"], ['%22', '%0D', '%0A'], $filename); // as a browser encodes it
-        $body = "--{$boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{$name}\"\r\nContent-Type: application/octet-stream\r\n\r\n{$contents}\r\n--{$boundary}--\r\n";
+        $body = "--{$boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{$name}\"\r\nContent-Type: application/octet-stream\r\n\r\n{$contents}\r\n"
+            . ($record === null ? '' : "--{$boundary}\r\nContent-Disposition: form-data; name=\"record\"\r\n\r\n{$record}\r\n")
+            . "--{$boundary}--\r\n";
 
         return new VectorResponse($this->client->raw('POST', "{$this->base}/fields/{$field}/upload", $body, [...$this->headers, 'Content-Type' => "multipart/form-data; boundary={$boundary}"]));
     }

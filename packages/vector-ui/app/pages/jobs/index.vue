@@ -6,7 +6,7 @@ definePageMeta({ layout: 'vector', middleware: 'vector-auth' })
 const appConfig = useAppConfig()
 const jobs = useVectorJobs()
 const { t } = useVectorT()
-const { data, refresh } = await useAsyncData('vector.jobs', () => jobs.list())
+const { data, error, refresh } = await useAsyncData('vector.jobs', () => jobs.list())
 const running = computed(() => (data.value ?? []).some(j => j.status === 'queued' || j.status === 'running'))
 const { pause, resume } = useIntervalFn(() => refresh(), 3000, { immediate: false })
 watch(running, r => (r ? resume() : pause()), { immediate: true })
@@ -24,6 +24,7 @@ const color: Record<VectorJob['status'], string> = { queued: 'grey', running: 'i
 <template>
     <div>
         <h1 class="text-h4 mb-4">{{ t('jobs.heading') }}</h1>
+        <v-alert v-if="error" type="error" variant="tonal" class="mb-4" :text="vectorErrorMessage(error)" />
         <v-card>
             <v-table hover>
                 <thead>
@@ -47,7 +48,7 @@ const color: Record<VectorJob['status'], string> = { queued: 'grey', running: 'i
                         <td>{{ formatDateTime(job.createdAt) }}</td>
                         <td class="text-end"><v-btn v-if="job.hasFile && job.status === 'done'" size="small" variant="text" icon="mdi-download-outline" :aria-label="t('common.download')" @click.stop="jobs.download(job)" /></td>
                     </tr>
-                    <tr v-if="(data ?? []).length === 0"><td colspan="6" class="text-medium-emphasis">{{ t('jobs.empty') }}</td></tr>
+                    <tr v-if="!error && (data ?? []).length === 0"><td colspan="6" class="text-medium-emphasis">{{ t('jobs.empty') }}</td></tr>
                 </tbody>
             </v-table>
         </v-card>

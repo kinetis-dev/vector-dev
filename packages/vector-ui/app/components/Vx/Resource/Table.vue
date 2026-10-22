@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { fieldProps, type VectorAction, type VectorExportFormat, type VectorField, type VectorFilterGroup, type VectorFilterQuery, type VectorFilters, type VectorListState, type VectorPage, type VectorRecord, type VectorResource, type VectorSelection, type VectorSort, type VectorSavedView } from '#vector/app/types/vector'
 import type { VectorPageStep } from '#vector/app/composables/useVectorCursorPager'
+import { violationsOf } from '#vector/app/utils/internal/violations'
 
 // The list view: a server-driven table whose every option — page, size,
 // sort, filters, search, grouping, columns — becomes one list request,
@@ -404,11 +405,11 @@ async function saveChanges() {
         discardChanges()
         await load()
     } catch (error) {
-        const failure = error as { status?: number, statusCode?: number, data?: { errors?: { path: (string | number)[], message: string }[] } } | null
+        const failure = error as { status?: number, statusCode?: number, data?: { errors?: unknown } } | null
         const status = failure?.status ?? failure?.statusCode
 
         if (status === 422 && Array.isArray(failure?.data?.errors)) {
-            for (const violation of failure.data.errors) {
+            for (const violation of violationsOf(failure.data.errors)) {
                 const [, index, field] = violation.path
                 const change = typeof index === 'number' ? list[index] : undefined
                 if (change && typeof field === 'string' && field in change.values) cellErrors[cellKey(change.id, field)] = violation.message

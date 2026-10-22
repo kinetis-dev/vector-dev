@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { isAdminPath } from '#vector/app/utils/internal/paths'
+
 // The bell: unread count polled every 30 seconds, the latest messages in a menu.
 const appConfig = useAppConfig()
 const inbox = useVectorNotificationsInbox()
@@ -10,10 +12,15 @@ const { pause } = useIntervalFn(() => inbox.refresh().catch(() => undefined), 30
 onUnmounted(pause)
 watch(open, o => { if (o) inbox.refresh().catch(() => undefined) })
 
+// A link is a path of this admin: `//host`, `/\host`, `/\t/host` and anything with a scheme are not followed, as the login redirect.
 async function go(id: number, link: string | null) {
-    await inbox.markRead(id)
-    open.value = false
-    if (link) navigateTo(`${appConfig.vector.basePath}${link}`)
+    try {
+        await inbox.markRead(id)
+        open.value = false
+        if (link && isAdminPath(link)) await navigateTo(`${appConfig.vector.basePath}${link}`)
+    } catch (error) {
+        useVectorNotifications().error(vectorErrorMessage(error))
+    }
 }
 </script>
 

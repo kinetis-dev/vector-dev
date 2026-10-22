@@ -29,6 +29,8 @@ function loadThumbs(options: VectorRelationValue[]) {
 
 const search = ref('')
 const loading = ref(false)
+/** Why the last search found nothing to show: the choices already listed stay. */
+const loadError = ref<string | null>(null)
 let requestId = 0
 
 const dependsOn = computed(() => props.field.relation?.dependsOn ?? null)
@@ -57,7 +59,10 @@ async function fetchOptions(query: string, ids: (number | string)[] = []) {
             const merged = [...selected, ...result.data.filter(r => !selected.some(s => s.id === r.id))]
             items.value = merged
             loadThumbs(result.data)
+            loadError.value = null
         }
+    } catch (error) {
+        if (id === requestId) loadError.value = vectorErrorMessage(error)
     } finally {
         if (id === requestId) loading.value = false
     }
@@ -105,7 +110,7 @@ onMounted(async () => {
         :closable-chips="multiple"
         :loading="loading"
         :rules="rules"
-        :error-messages="errorMessages"
+        :error-messages="loadError ? [...errorMessages, loadError] : errorMessages"
         :clearable="field.nullable === true || multiple"
         :disabled="disabled || waiting"
         no-filter

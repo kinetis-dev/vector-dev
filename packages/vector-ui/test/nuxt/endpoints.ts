@@ -8,7 +8,8 @@ export interface Received {
     body: unknown
 }
 
-type Reply = { status?: number, body?: unknown } | ((request: Received) => { status?: number, body?: unknown })
+type Answer = { status?: number, body?: unknown }
+type Reply = Answer | ((request: Received) => Answer | Promise<Answer>)
 
 interface H3Event {
     method: string
@@ -50,7 +51,7 @@ export function endpoint(url: string, reply: Reply = {}, method?: string) {
         }
         requests.push(request)
 
-        const answer = typeof reply === 'function' ? reply(request) : reply
+        const answer = typeof reply === 'function' ? await reply(request) : reply
         event.node.res.statusCode = answer.status ?? 200
 
         return answer.body ?? {}

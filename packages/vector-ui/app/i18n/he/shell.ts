@@ -8,6 +8,7 @@ export default {
     toggleTheme: 'החלפת ערכת נושא',
     language: 'שפה: {name}',
     languageFailed: 'לא ניתן לשמור את השפה: {error}',
+    unsupportedDescriptor: 'ה-API מפרסם את גרסה {version} של המתאר; ממשק הניהול הזה קורא את גרסה {supported}. התקינו גרסאות תואמות של kinetis/vector ו-vector-ui.',
     nav: {
         main: 'ראשי',
         dashboard: 'לוח בקרה',
@@ -26,6 +27,7 @@ export default {
         stop: 'הפסקת ההתחזות',
         noAccess: 'ל־{name} אין גישה לממשק הניהול, כך שאין מה להציג בשם משתמש זה. ההתחזות הופסקה.',
         noToken: 'האפליקציה השיבה בלי אסימון ובלי טעינה מחדש, ולכן דבר לא השתנה.',
+        ended: 'תוקף ההתחזות פג, ולכן חזרת לחשבון שלך.',
     },
     palette: {
         placeholder: 'חיפוש רשומות ומשאבים…',
@@ -47,6 +49,7 @@ export default {
         invalidEmail: 'יש להזין כתובת דוא״ל תקינה',
         welcome: 'שמחים לראות אותך שוב, {name}.',
         signedOutIdle: 'יצאת מהמערכת לאחר {minutes} דקות ללא פעילות. יש להיכנס שוב כדי להמשיך מאותו מקום.',
+        impersonationEnded: 'תוקף ההתחזות פג ולא ניתן היה לחדש את ההפעלה שלך. התחבר מחדש כדי להמשיך.',
     },
     home: {
         title: 'לוח בקרה',

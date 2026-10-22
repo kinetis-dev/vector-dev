@@ -10,6 +10,7 @@ use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Http\Responses\FileResponse;
 use Kinetis\Validation\Exception\ValidationException;
 use Kinetis\Validation\Violation;
+use Kinetis\Vector\Exception\ForbiddenOperationException;
 use Kinetis\Vector\Exception\RecordNotFoundException;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Registry\ResourceDescriptor;
@@ -19,7 +20,8 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\UploadedFileInterface;
 
 /**
- * Uploads and downloads for file and image fields. An upload's format is
+ * Uploads and downloads for file and image fields. An upload needs write
+ * permission on a record the field can end up on, and its format is
  * detected from its bytes and must be one the field accepts; the stored
  * key is generated here, private, under `vector/{resource}/{field}/`, and
  * the client's filename is returned as data, never used as a path. A
@@ -39,12 +41,17 @@ final readonly class FileService
         private \Kinetis\Vector\RichText\Document $document,
     ) {}
 
-    /** @return array{key: string, name: string|null, size: int, type: string} */
-    public function upload(ResourceDescriptor $resource, string $fieldName, UploadedFileInterface $file): array
+    /**
+     * $recordId names the record being edited, when there is one: an
+     * update is decided per record, so only with it can update grant the
+     * upload.
+     *
+     * @return array{key: string, name: string|null, size: int, type: string}
+     */
+    public function upload(ResourceDescriptor $resource, string $fieldName, UploadedFileInterface $file, ?string $recordId = null): array
     {
-        $policy = $this->reader->policy($resource);
-        $this->gate->authorize($this->user, static fn (CurrentUserInterface $u): bool|AuthorizationResponse => $policy->viewAny($u));
         $field = $this->uploadField($resource, $fieldName);
+        $this->authorizeUpload($resource, $fieldName, $recordId);
 
         if ($file->getError() !== UPLOAD_ERR_OK) {
             throw self::refused('did not arrive whole; upload it again.');
@@ -88,8 +95,7 @@ final readonly class FileService
             throw RecordNotFoundException::of("{$resource->slug()}.{$fieldName}", $id);
         }
 
-
-        if (!is_string($key) || $key === '' || !$filesystem->fileExists($key)) {
+        if (!is_string($key) || !self::servable($resource, $fieldName, $key) || !$filesystem->fileExists($key)) {
             throw RecordNotFoundException::of("{$resource->slug()}.{$fieldName}", $id);
         }
 
@@ -144,6 +150,80 @@ final readonly class FileService
             && $this->storage->filesystem()->fileExists($value);
     }
 
+    /**
+     * Whether a stored value may be served for $fieldName: a relative
+     * path with no empty, `.` or `..` segment, no backslash and no
+     * control character, so the storage cannot resolve it elsewhere;
+     * and, inside Vector's own `vector/` prefix, only under this
+     * field's. A key written outside Vector — the application's own, or
+     * one typed while uploads were unavailable — keeps being served.
+     */
+    private static function servable(ResourceDescriptor $resource, string $fieldName, string $key): bool
+    {
+        if ($key === '' || preg_match('~[\\\\\x00-\x1F\x7F]~', $key) === 1) {
+            return false;
+        }
+
+        foreach (explode('/', $key) as $segment) {
+            if ($segment === '' || $segment === '.' || $segment === '..') {
+                return false;
+            }
+        }
+
+        // compared without case first: a case-insensitive disk reads `Vector/` as `vector/`
+        return strncasecmp($key, 'vector/', 7) !== 0 || str_starts_with($key, "vector/{$resource->slug()}/{$fieldName}/");
+    }
+
+    /**
+     * An upload to $fieldName is allowed only to someone who may write a
+     * record it can end up on: through a writer of the field that is on
+     * the create form while the user may create, or on the update form
+     * while the user may update $recordId. Refused, it is a 403.
+     */
+    private function authorizeUpload(ResourceDescriptor $resource, string $fieldName, ?string $recordId): void
+    {
+        $views = array_merge(...array_map(static fn (array $writer): array => $writer['views'], self::writers($resource, $fieldName)));
+
+        if (in_array('create', $views, true) && $this->reader->permissions($resource)['create']) {
+            return;
+        }
+
+        if ($recordId !== null && in_array('update', $views, true)) {
+            $record = $this->reader->show($resource, $recordId); // exists and is viewable
+            $policy = $this->reader->policy($resource);
+
+            if (($record['_trashed'] ?? false) !== true
+                && $this->gate->allows($this->user, static fn (CurrentUserInterface $u): bool|AuthorizationResponse => $policy->update($u, $record))) {
+                return;
+            }
+        }
+
+        throw new ForbiddenOperationException($recordId === null
+            ? 'This account may not create records here.'
+            : 'This account may not create records here or update this record.');
+    }
+
+    /**
+     * The editable fields whose value an upload to $fieldName becomes: the
+     * field itself, and every rich-text field that uploads its images
+     * through it — the image field need not be on a form of its own.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function writers(ResourceDescriptor $resource, string $fieldName): array
+    {
+        $writers = [];
+
+        foreach ($resource->fields() as $name => $field) {
+            if (($name === $fieldName || ($field['type'] === 'richtext' && ($field['richtext']['imageField'] ?? null) === $fieldName))
+                && $field['readonly'] !== true && array_intersect(['create', 'update'], $field['views']) !== []) {
+                $writers[] = $field;
+            }
+        }
+
+        return $writers;
+    }
+
     /** @return array<string, mixed> */
     private function uploadField(ResourceDescriptor $resource, string $fieldName, bool $forWrite = true): array
     {
@@ -153,7 +233,7 @@ final readonly class FileService
             throw ValidationException::fromViolations([new Violation(['field'], 'unexpected_field', "is not a file or image field of {$resource->slug()}.")]);
         }
 
-        if ($forWrite && ($field['readonly'] === true || array_intersect(['create', 'update'], $field['views']) === [])) {
+        if ($forWrite && self::writers($resource, $fieldName) === []) {
             throw ValidationException::fromViolations([new Violation(['field'], 'read_only', 'is not edited here.')]);
         }
 

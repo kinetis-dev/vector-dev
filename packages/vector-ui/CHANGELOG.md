@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.3] - 2026-10-22
+
+### Changed
+
+- The file and image inputs, and a rich-text field's image upload, send
+  the id of the record they edit in the upload's multipart `record`
+  part, which kinetis/vector now requires to upload while editing
+  without create permission. `useVectorResource().upload()` takes it as
+  an optional argument.
+
+### Fixed
+
+- A 401 while impersonating in bearer mode ends the impersonation in the
+  signed-in user's own session, renewed with their refresh token, and
+  says so, instead of discarding that session and sending them to sign
+  in; when it cannot be renewed, the login page says the impersonation
+  ran out. The impersonation's expiry no longer forgets the signer's
+  refresh token, and a request refused for the impersonation token is
+  never repeated as the signer.
+- The jobs list and the settings page say why when they fail to load,
+  as the record page does, instead of showing no jobs or "no settings".
+- Several requests refused (401) together, whose shared renewal of the
+  session fails, sign the user out once: one trip to the login page
+  instead of one per request.
+- The admin refuses a descriptor whose `version` is not the contract it
+  reads (4), naming both versions, instead of rendering it as if it were.
+- Following a job no longer adds a listener to the page's abort signal on
+  every poll without removing it; a long job's page held one per poll.
+- A request refused (401) for an access token another request has
+  already renewed is repeated with the new token instead of renewing the
+  session a second time, which spent the new refresh token and could end
+  a session that was still good.
+- A relation input whose search fails says why under the input and keeps
+  the choices it listed, instead of failing silently with an unhandled
+  promise rejection.
+- Opening a notification whose mark-as-read fails says why, instead of
+  failing silently with an unhandled promise rejection.
+- A problem+json error without a `detail` shows its `title` instead of
+  the request's generic failure message.
+- An entry of a 422 document's `errors` that is not a violation (no
+  `path` list of names and indexes, or no `message` text) is ignored by
+  the forms, the settings, bulk edit, action dialogs, inline list edits
+  and uploads, instead of being read as one: a `null` entry made a form
+  or the list's changeset fail without showing anything.
+- A record form shows a server error on a field it does not show — hidden
+  by `visibleWhen`, or preset by the relation the form was opened from —
+  above the form, under the field's label; it was shown nowhere, and the
+  save failed without a reason.
+
+### Security
+
+- An action answering `ActionResponse::openUrl()` opens the URL only
+  when it is http(s), mailto or relative — the rule a URL cell and a
+  rich-text link follow. A `javascript:` or `data:` URL, which an action
+  echoing a record's value could return, is no longer opened.
+- A notification's link is followed only when it is a path of the
+  admin, the rule the sign-in page's `redirect` follows; `//host`,
+  `/\host` and a URL with a scheme are not.
+- The sign-in page's `redirect`, and a notification's link, are refused
+  when they hold a backslash, whitespace or a control character anywhere:
+  a browser strips tab, CR and LF from a URL, so `/<tab>/host` was
+  followed as `//host`, another origin.
+- A dashboard table widget's row opens its `_link` only when it is a path
+  of the admin, by the same rule, and a row whose link is not is not
+  offered as a link; a failed navigation is reported instead of
+  rejecting unhandled.
+- An action answering `ActionResponse::redirect()` is followed only when
+  its URL is a path of the admin, checked before the dialog reports the
+  action done; any other URL, or none, is reported and not followed.
+
 ## [0.10.2] - 2026-10-21
 
 ### Fixed

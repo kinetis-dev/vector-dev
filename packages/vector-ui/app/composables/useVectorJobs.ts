@@ -28,12 +28,15 @@ export function useVectorJobs() {
                 return job
             }
 
+            // the wait ends on the timer or the abort, and takes its listener off the signal either way
             await new Promise<void>((resolve) => {
-                const timer = setTimeout(resolve, delay)
-                signal?.addEventListener('abort', () => {
+                const done = () => {
                     clearTimeout(timer)
+                    signal?.removeEventListener('abort', done)
                     resolve()
-                }, { once: true })
+                }
+                const timer = setTimeout(done, delay)
+                signal?.addEventListener('abort', done, { once: true })
             })
 
             if (signal?.aborted) {

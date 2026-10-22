@@ -20,7 +20,12 @@ use Psr\Http\Message\ServerRequestInterface;
  * token and a single-use refresh token that renews both. Failed attempts
  * are throttled per e-mail and per client address (LoginAttempts); a
  * refresh reloads the user, so a changed role takes effect at the next
- * renewal; logout revokes the refresh token.
+ * renewal; logout revokes the session's whole token family.
+ *
+ * A redeemed refresh token presented again is a replay: one of the two
+ * holders is not the owner. It revokes the family (RefreshTokenFamilies),
+ * so every token rotated from that sign-in stops renewing, and it answers
+ * exactly what an unknown token does.
  *
  * A session has an absolute end: twelve hours after the sign-in. A
  * refresh hands out a refresh token that expires when the one it
@@ -36,6 +41,7 @@ final readonly class LoginController
         private JwtIssuer $issuer,
         private Credentials $credentials,
         private LoginAttempts $attempts,
+        private RefreshTokenFamilies $families,
     ) {}
 
     #[Post('/auth/login')]
@@ -66,35 +72,68 @@ final readonly class LoginController
         }
     }
 
-    /** Redeems a refresh token — once — for a new pair. */
+    /** Redeems a refresh token — once — for a new pair; a second time revokes its whole family. */
     #[Post('/auth/refresh')]
     public function refresh(#[Body] RefreshRequest $data): ResponseInterface
     {
         try {
             $redeemed = $this->attempts->refreshTokens()->redeem($data->refreshToken);
-            $user = $redeemed === null ? null : $this->credentials->find($redeemed['subject']);
-            $endsAt = $redeemed['claims']['sessionEndsAt'] ?? null;
 
-            if ($user === null || !is_int($endsAt)) {
-                return ErrorResponse::create(401, 'Invalid or expired refresh token.');
+            if ($redeemed === null) {
+                $this->revokeFamilyOfRedeemed($data->refreshToken);
+
+                return self::invalidRefreshToken();
+            }
+
+            $endsAt = $redeemed['claims']['sessionEndsAt'] ?? null;
+            $family = $redeemed['claims']['family'] ?? null;
+
+            if (!is_int($endsAt) || !is_string($family)) {
+                return self::invalidRefreshToken();
+            }
+
+            // remembered before anything else is decided, so a replay of this token is caught whatever follows
+            $this->families->redeemed($data->refreshToken, $family, $endsAt);
+
+            if ($this->families->isRevoked($family)) {
+                return self::invalidRefreshToken();
+            }
+
+            $user = $this->credentials->find($redeemed['subject']);
+
+            if ($user === null) {
+                return self::invalidRefreshToken();
             }
 
             if ($endsAt <= time()) {
                 return ErrorResponse::create(401, 'The session has reached its end; sign in again.');
             }
 
-            return $this->tokens($user, $endsAt);
+            return $this->tokens($user, $endsAt, $family);
         } catch (LoginUnavailableException $e) {
             return ErrorResponse::create(503, $e->getMessage());
+        } catch (RefreshTokenUnavailableException) {
+            return ErrorResponse::create(503, 'The session could not be renewed; try again.');
         }
     }
 
-    /** Signs this device out: its refresh token no longer renews anything. The access token runs out on its own. */
+    /**
+     * Signs this session out: no refresh token of its family renews anything any more. The access
+     * token runs out on its own.
+     */
     #[Post('/auth/logout')]
     public function logout(#[Body] RefreshRequest $data): ResponseInterface
     {
         try {
-            $this->attempts->refreshTokens()->revoke($data->refreshToken);
+            $redeemed = $this->attempts->refreshTokens()->redeem($data->refreshToken);
+            $endsAt = $redeemed['claims']['sessionEndsAt'] ?? null;
+            $family = $redeemed['claims']['family'] ?? null;
+
+            if (is_int($endsAt) && is_string($family)) {
+                $this->families->revoke($family, $endsAt);
+            } elseif ($redeemed === null) {
+                $this->revokeFamilyOfRedeemed($data->refreshToken);
+            }
         } catch (LoginUnavailableException $e) {
             return ErrorResponse::create(503, $e->getMessage());
         } catch (RefreshTokenUnavailableException) {
@@ -105,18 +144,20 @@ final readonly class LoginController
     }
 
     /**
-     * @param int|null $sessionEndsAt when the session signed in, as a Unix timestamp; null starts a new one now
+     * @param int|null $sessionEndsAt when the session ends, as a Unix timestamp; null starts a new session now
+     * @param string|null $family the session's token family; null starts a new one
      * @throws LoginUnavailableException
      */
-    private function tokens(User $user, ?int $sessionEndsAt = null): ResponseInterface
+    private function tokens(User $user, ?int $sessionEndsAt = null, ?string $family = null): ResponseInterface
     {
         $claims = ['name' => $user->name(), 'vector' => $user->isAdmin()];
         $endsAt = $sessionEndsAt ?? time() + self::REFRESH_TTL_SECONDS;
         $remaining = max(1, $endsAt - time());
+        $family ??= $this->families->start();
 
         try {
-            // the refresh token remembers the session's end and lives no longer than that
-            $refresh = $this->attempts->refreshTokens()->issue((string) $user->id(), ['sessionEndsAt' => $endsAt], ttlSeconds: $remaining);
+            // the refresh token remembers the session's end and family, and lives no longer than the session
+            $refresh = $this->attempts->refreshTokens()->issue((string) $user->id(), ['sessionEndsAt' => $endsAt, 'family' => $family], ttlSeconds: $remaining);
         } catch (RefreshTokenUnavailableException) {
             // never stored: hand out no token that cannot be redeemed
             return ErrorResponse::create(503, 'The session could not be stored; try again.');
@@ -130,6 +171,26 @@ final readonly class LoginController
             'refreshExpiresIn' => $remaining,
             'user' => ['id' => $user->id(), 'name' => $user->name(), 'email' => $user->email()],
         ], 200, ['Cache-Control' => 'no-store']);
+    }
+
+    /**
+     * A token the store no longer holds: when it was redeemed before, this is a replay, and its family is revoked.
+     *
+     * @throws RefreshTokenUnavailableException
+     */
+    private function revokeFamilyOfRedeemed(#[\SensitiveParameter] string $token): void
+    {
+        $used = $this->families->redeemedFamily($token);
+
+        if ($used !== null) {
+            $this->families->revoke($used['family'], $used['sessionEndsAt']);
+        }
+    }
+
+    /** One answer for every refused token — unknown, expired, replayed or revoked — so none of them is told apart. */
+    private static function invalidRefreshToken(): ResponseInterface
+    {
+        return ErrorResponse::create(401, 'Invalid or expired refresh token.');
     }
 
     /** The client's address as this worker sees it: behind the demo's nginx, the connecting peer. */

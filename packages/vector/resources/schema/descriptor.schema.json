@@ -429,6 +429,10 @@
                         "inverse": {
                             "type": "string"
                         },
+                        "owned": {
+                            "description": "A hasOne or hasMany whose children belong to the record: removed with it, and the only kind a repeater may edit.",
+                            "type": "boolean"
+                        },
                         "dependsOn": {
                             "description": "A dependent choice list: the options are the target records whose `on` equals this form's `field`.",
                             "type": [
@@ -889,6 +893,12 @@
                     ],
                     "properties": {
                         "fields": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "extra": {
                             "type": "array",
                             "items": {
                                 "type": "string"

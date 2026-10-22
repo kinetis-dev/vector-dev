@@ -8,6 +8,7 @@ export default {
     toggleTheme: 'Alternar tema',
     language: 'Idioma: {name}',
     languageFailed: 'Não foi possível guardar o idioma: {error}',
+    unsupportedDescriptor: 'A API publica a versão {version} do descritor; este painel lê a versão {supported}. Instale versões correspondentes de kinetis/vector e vector-ui.',
     nav: {
         main: 'Principal',
         dashboard: 'Painel',
@@ -26,6 +27,7 @@ export default {
         stop: 'Parar de personificar',
         noAccess: '{name} não tem acesso à administração, por isso não há nada para ver em seu nome. A personificação foi interrompida.',
         noToken: 'A aplicação respondeu sem um token nem um recarregamento, por isso nada mudou.',
+        ended: 'A sua personificação expirou, por isso voltou à sua própria conta.',
     },
     palette: {
         placeholder: 'Pesquisar registos e recursos…',
@@ -47,6 +49,7 @@ export default {
         invalidEmail: 'Insira um endereço de e-mail válido',
         welcome: 'Bem-vindo de volta, {name}.',
         signedOutIdle: 'A sessão terminou após {minutes} minutos de inatividade. Inicie sessão novamente para continuar onde estava.',
+        impersonationEnded: 'A sua personificação expirou e não foi possível renovar a sua própria sessão. Inicie sessão novamente para continuar.',
     },
     home: {
         title: 'Painel',

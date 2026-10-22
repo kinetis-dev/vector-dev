@@ -48,6 +48,11 @@ middleware, which knows the mode. The user object reports who is
 impersonating it through `ImpersonatedUserInterface`, and every audit
 and log row records both.
 
+The UI never renews an impersonation token, so its lifetime is yours to
+bound. The demo's lasts no longer than the token that started it; in
+cookie mode, impersonation lasts as long as the session (see the
+[known limits](deployment.md#known-limits)).
+
 In the UI, set `usersResource` in `app.config` to the resource whose
 records are users; its record pages then offer **Impersonate**.
 

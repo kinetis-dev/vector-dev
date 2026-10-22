@@ -85,8 +85,8 @@ impossible for that user, and the descriptor says so.
 ## Membership
 
 `attach($user, $record, $relation, $related)` and `detach(...)` decide
-adding and removing one record in a many-to-many relation; both follow
-`update` unless overridden. They decide the
+adding and removing one record in a many-to-many relation (both follow
+`update` unless overridden). They decide the
 `POST …/{id}/{relation}/attach` and `…/detach` endpoints the UI's
 relation panels use, and an update that writes the whole list: every id
 it adds is an attach, every id it drops a detach, and one refusal

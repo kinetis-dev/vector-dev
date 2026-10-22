@@ -13,5 +13,7 @@ final readonly class UploadRequest
     public function __construct(
         #[FileSize(maxBytes: 50_000_000, minBytes: 1)]
         public UploadedFileInterface $file,
+        /** The id of the record being edited, if any: without one, only create permission allows the upload. */
+        public string $record = '',
     ) {}
 }

@@ -130,9 +130,9 @@ final class LoginSecurityTest extends VectorTestCase
         self::assertSame($login['user'], $renewed['user']);
         $this->client->get('/vector/me', headers: ['Authorization' => 'Bearer ' . $renewed['accessToken']])->assertOk();
 
-        // single use: the redeemed token is refused, the new one still works once
-        $this->client->post('/auth/refresh', body: ['refreshToken' => $login['refreshToken']])->assertStatus(401);
+        // single use: the new one works once, and presenting a redeemed token is refused
         $this->client->post('/auth/refresh', body: ['refreshToken' => $renewed['refreshToken']])->assertOk();
+        $this->client->post('/auth/refresh', body: ['refreshToken' => $login['refreshToken']])->assertStatus(401);
     }
 
     public function testASessionEndsTwelveHoursAfterTheSignInHoweverOftenItRenews(): void
@@ -152,16 +152,18 @@ final class LoginSecurityTest extends VectorTestCase
         self::assertIsArray($admin);
 
         // near the end, a renewal answers only what is left
-        $late = $attempts->refreshTokens()->issue((string) $admin['id'], ['sessionEndsAt' => time() + 10], 60);
+        $late = $attempts->refreshTokens()->issue((string) $admin['id'], ['sessionEndsAt' => time() + 10, 'family' => bin2hex(random_bytes(16))], 60);
         $last = $this->client->post('/auth/refresh', body: ['refreshToken' => $late])->assertOk()->json();
         self::assertIsArray($last);
         self::assertLessThanOrEqual(10, $last['refreshExpiresIn']);
 
-        // past the end, no renewal at all, and a token that carries no end is not trusted either
-        $over = $attempts->refreshTokens()->issue((string) $admin['id'], ['sessionEndsAt' => time() - 1], 60);
+        // past the end, no renewal at all, and a token that carries no end, or no family, is not trusted either
+        $over = $attempts->refreshTokens()->issue((string) $admin['id'], ['sessionEndsAt' => time() - 1, 'family' => bin2hex(random_bytes(16))], 60);
         $this->client->post('/auth/refresh', body: ['refreshToken' => $over])->assertStatus(401);
-        $endless = $attempts->refreshTokens()->issue((string) $admin['id'], [], 60);
+        $endless = $attempts->refreshTokens()->issue((string) $admin['id'], ['family' => bin2hex(random_bytes(16))], 60);
         $this->client->post('/auth/refresh', body: ['refreshToken' => $endless])->assertStatus(401);
+        $orphan = $attempts->refreshTokens()->issue((string) $admin['id'], ['sessionEndsAt' => time() + 60], 60);
+        $this->client->post('/auth/refresh', body: ['refreshToken' => $orphan])->assertStatus(401);
     }
 
     public function testLogoutRevokesTheRefreshToken(): void

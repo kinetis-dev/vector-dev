@@ -19,7 +19,7 @@ final readonly class DemoActorResolver implements ActorResolverInterface
     #[\Override]
     public function resolve(string $actorId): ?CurrentUserInterface
     {
-        if (preg_match('/^[1-9][0-9]{0,17}$/', $actorId) !== 1) {
+        if (preg_match('/^[1-9][0-9]{0,17}$/D', $actorId) !== 1) {
             return null;
         }
 

@@ -7,6 +7,7 @@ export default {
     subjectCount: '{label} ({count})',
     done: '{label}: выполнено.',
     declined: 'Действие отклонено.',
+    redirectRefused: 'Действие пыталось открыть страницу вне панели; она не открыта.',
     downloadStarted: 'Загрузка началась.',
     queued: '{label}: поставлено в очередь.',
 }

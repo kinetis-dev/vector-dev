@@ -1,4 +1,5 @@
 import type { VectorField } from '#vector/app/types/vector'
+import { violationsOf } from '#vector/app/utils/internal/violations'
 
 /** The value a fresh input holds: the field's default, or the type's empty value. */
 export function initialValue(field: VectorField): unknown {
@@ -10,7 +11,10 @@ export function initialValue(field: VectorField): unknown {
 
 /**
  * Maps the framework's 422 document onto field names; returns the
- * message that names no field, if any.
+ * message that names no field, if any. A violation deeper in a value
+ * (`tags.2`) shows on its field: the loose field lists this serves
+ * (settings, bulk edit, action dialogs) hold no repeater, the one input
+ * that takes a deeper key (`Vx/Resource/Form.vue` maps those).
  */
 export function applyViolations(error: unknown, values: Record<string, unknown>, serverErrors: Record<string, string[]>): string | null {
     const failure = error as { status?: number, statusCode?: number, data?: { errors?: unknown } } | null
@@ -22,7 +26,7 @@ export function applyViolations(error: unknown, values: Record<string, unknown>,
 
     let general: string | null = null
 
-    for (const violation of violations as { path: (string | number)[], message: string }[]) {
+    for (const violation of violationsOf(violations)) {
         const key = String(violation.path[0] ?? '')
 
         if (key && key in values) {

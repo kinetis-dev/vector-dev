@@ -439,17 +439,17 @@ final readonly class Document
                 'link.href' => self::href($value),
                 'link.target' => $value === null || $value === '_blank' ? null : 'must be _blank or null.',
                 // the editor sends its own defaults for these two; a value of the author's own would reach the rendered anchor
-                'link.rel' => $value === null || (is_string($value) && preg_match('/^(?:(?:noopener|noreferrer|nofollow)(?: |$))*$/', $value) === 1) ? null : 'must be noopener, noreferrer or nofollow.',
+                'link.rel' => $value === null || (is_string($value) && preg_match('/^(?:(?:noopener|noreferrer|nofollow)(?: |$))*$/D', $value) === 1) ? null : 'must be noopener, noreferrer or nofollow.',
                 'link.class' => $value === null || $value === '' ? null : 'must be empty.',
                 'heading.level' => is_int($value) && $value >= 1 && $value <= 6 ? null : 'must be a heading level from 1 to 6.',
                 'orderedList.start' => $value === null || (is_int($value) && $value >= 0) ? null : 'must be a whole number.',
-                'codeBlock.language' => $value === null || (is_string($value) && preg_match('/^[A-Za-z0-9+#._-]{0,32}$/', $value) === 1) ? null : 'is not a language name.',
+                'codeBlock.language' => $value === null || (is_string($value) && preg_match('/^[A-Za-z0-9+#._-]{0,32}$/D', $value) === 1) ? null : 'is not a language name.',
                 'tableCell.colspan', 'tableCell.rowspan', 'tableHeader.colspan', 'tableHeader.rowspan' => is_int($value) && $value >= 1 && $value <= 1000 ? null : 'must be a whole number of cells.',
                 'tableCell.align', 'tableHeader.align' => $value === null || in_array($value, ['left', 'center', 'right'], true) ? null : 'must be left, center, right or null.',
                 'tableCell.colwidth', 'tableHeader.colwidth' => $value === null || (is_array($value) && array_is_list($value) && array_all($value, static fn (mixed $w): bool => is_int($w) && $w >= 0)) ? null : 'must be a list of widths.',
-                'image.src' => is_string($value) && $value !== '' && preg_match('~^[A-Za-z0-9/_.-]+$~', $value) === 1 && !str_contains($value, '..') && ($imageAllowed === null || $imageAllowed($value))
+                'image.src' => is_string($value) && $value !== '' && preg_match('~^[A-Za-z0-9/_.-]+$~D', $value) === 1 && !str_contains($value, '..') && ($imageAllowed === null || $imageAllowed($value))
                     ? null : 'is not an image uploaded for this field.',
-                'image.width', 'image.height' => $value === null || (is_int($value) && $value >= 0) || (is_string($value) && preg_match('/^\d{1,5}$/', $value) === 1) ? null : 'must be a size in pixels.',
+                'image.width', 'image.height' => $value === null || (is_int($value) && $value >= 0) || (is_string($value) && preg_match('/^\d{1,5}$/D', $value) === 1) ? null : 'must be a size in pixels.',
                 default => $value === null || is_scalar($value) ? null : 'must be text.',
             };
 

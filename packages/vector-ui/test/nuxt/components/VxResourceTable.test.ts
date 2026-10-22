@@ -294,3 +294,32 @@ describe('VxResourceTable, uncounted and by cursor', () => {
         expect(wrapper.text()).not.toContain('Sum')
     })
 })
+
+describe('VxResourceTable, inline editing', () => {
+    const cleanups: (() => void)[] = []
+
+    beforeEach(() => {
+        standaloneApi()
+        for (const [url, body] of [['/vector/preferences', { data: {} }], ['/vector/views/tags', { data: [] }]] as const) {
+            cleanups.push(endpoint(url, { body }).unregister)
+        }
+    })
+    afterEach(() => cleanups.splice(0).forEach(unregister => unregister()))
+
+    it('puts an inline change\'s 422 on its cell, ignoring an entry that is not a violation', async () => {
+        const base = resource()
+        const inline = resource({ fields: base.fields.map(f => f.name === 'name' ? { ...f, inline: true } : f) })
+        cleanups.push(endpoint('/vector/r/tags', () => ({ body: { data: rows([1, 2]), total: 2, page: 1, perPage: 2 } })).unregister)
+        cleanups.push(endpoint('/vector/r/tags/changes', { status: 422, body: { errors: [null, { path: 'changes' }, { path: ['changes', 0, 'name'], message: 'is already used.' }] } }, 'POST').unregister)
+        const wrapper = await mountSuspended(VxResourceTable, { props: { resource: { ...inline, table: { ...inline.table, perPage: 2, perPageOptions: [2, 10] } } } })
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Tag 1'))
+        await flushPromises()
+
+        await wrapper.get('button[aria-label="Edit Name"]').trigger('click')
+        await vi.waitFor(() => expect(wrapper.find('.vx-inline-editor input').exists()).toBe(true))
+        await wrapper.get('.vx-inline-editor input').setValue('Tag 2')
+        await wrapper.findAll('button').find(b => b.text() === 'Save changes')!.trigger('click')
+
+        await vi.waitFor(() => expect(wrapper.get('.vx-inline-editor').text()).toContain('is already used.'))
+    })
+})

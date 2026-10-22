@@ -43,8 +43,8 @@ The repository is mounted at `/workspace`. `demo/backend/vendor/` and
 the `node_modules/` directories are named volumes. Uploaded files live
 on the private `storage` volume, shared by `app`, `worker` and
 `frankenphp` and never served by nginx or Caddy. The file sessions are a
-volume too, so one browser session holds on both ports. Request bodies may be up to 12 MB (`MAX_BODY_SIZE` and
-nginx's `client_max_body_size`).
+volume too, so one browser session holds on both ports. Request bodies
+may be up to 12 MB (`MAX_BODY_SIZE` and nginx's `client_max_body_size`).
 
 A PHP change applies on the next request on `:8080`, and the admin UI
 hot-reloads. `:8081` keeps the code each worker thread booted with, so
@@ -199,14 +199,14 @@ Then open `http://localhost:8080/vector/ui`, or
 `http://localhost:8081/vector/ui` for the same admin under FrankenPHP.
 There the restart matters: a worker that booted before the bundle was
 published keeps answering a signed-in visitor `503` until it restarts.
-An anonymous visitor is redirected to the sign-in page either way. A sign-in form left open until its
-session expired comes back with a notice and the e-mail typed, not an
+An anonymous visitor is redirected to the sign-in page either way. A
+sign-in form left open until its session expired comes back with a notice and the e-mail typed, not an
 error, and signs in from there.
 
 The hosted admin is same-origin on either port. It signs in with the
 session cookie, so it needs no CORS. `VECTOR_UI_ORIGIN` names the
 standalone admin's origin (`localhost:3000`), which calls the API on
-`:8080` with a bearer token. That is unchanged.
+`:8080` with a bearer token.
 
 ## Seed data
 

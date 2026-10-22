@@ -25,6 +25,9 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class JobContext
 {
+    /** What the row says about a failure whose own message is not the admin's to read. */
+    public const string UNEXPECTED = 'The job failed unexpectedly; the server log has the details.';
+
     public function __construct(
         private RequestScope $scope,
         private ActorResolverInterface $actors,
@@ -62,9 +65,11 @@ final readonly class JobContext
 
     /**
      * Runs a job body against its row: running → done, or failed with the
-     * message, and a notification either way. A row that is not queued —
-     * a redelivery of a job that already ran, or was already marked
-     * failed — is left alone: every Vector job runs at most once.
+     * message, and a notification either way; a finished row stays done
+     * when its notification fails, which only the log records. A row
+     * that is not queued — a redelivery of a job that already ran, or was
+     * already marked failed — is left alone: every Vector job runs at
+     * most once.
      */
     public function run(int $jobId, string $actorId, string $title, \Closure $body): void
     {
@@ -77,13 +82,19 @@ final readonly class JobContext
             /** @var array{result: array<string, mixed>, processed?: int, file?: string|null, fileName?: string|null, fileType?: string|null, notice?: string} $outcome */
             $outcome = $body($user);
             $this->jobs->finish($jobId, $outcome['result'], $outcome['processed'] ?? null, $outcome['file'] ?? null, $outcome['fileName'] ?? null, $outcome['fileType'] ?? null);
-            $this->notifications->notify($actorId, $title, $outcome['notice'] ?? null, "/jobs/{$jobId}", 'success');
         } catch (\Throwable $e) {
             $failure = self::reportable($e);
             $this->jobs->fail($jobId, $failure);
             $this->notifications->notify($actorId, "{$title} failed", $failure, "/jobs/{$jobId}", 'error');
 
             throw $e;
+        }
+
+        // the row is done: a notification that cannot be sent does not undo it
+        try {
+            $this->notifications->notify($actorId, $title, $outcome['notice'] ?? null, "/jobs/{$jobId}", 'success');
+        } catch (\Throwable $e) {
+            $this->log->error("Vector job {$jobId} finished, but its notification failed: " . $e->getMessage(), ['exception' => $e]);
         }
     }
 
@@ -102,6 +113,6 @@ final readonly class JobContext
 
         $this->log->error('A Vector job failed: ' . $e->getMessage(), ['exception' => $e]);
 
-        return 'The job failed unexpectedly; the server log has the details.';
+        return self::UNEXPECTED;
     }
 }

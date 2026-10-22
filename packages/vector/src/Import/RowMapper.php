@@ -215,7 +215,12 @@ final readonly class RowMapper
                     $payload[$name] = $this->converter->fromQuery($field, $raw);
                 } else {
                     $value = $this->converter->fromQuery($field, $raw);
-                    $payload[$name] = $value instanceof \DateTimeInterface ? $value->format('Y-m-d\TH:i:s.v\Z') : $value;
+                    // back to the text a JSON body carries: the writer converts the payload again
+                    $payload[$name] = match (true) {
+                        $value instanceof \DateTimeInterface => $value->format('Y-m-d\TH:i:s.v\Z'),
+                        $value instanceof \Kinetis\Orm\Date => (string) $value,
+                        default => $value,
+                    };
                 }
             } catch (InputViolation $e) {
                 $violations[] = $e->violation->under($name);

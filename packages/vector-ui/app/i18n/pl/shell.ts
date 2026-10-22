@@ -8,6 +8,7 @@ export default {
     toggleTheme: 'Przełącz motyw',
     language: 'Język: {name}',
     languageFailed: 'Nie udało się zapisać języka: {error}',
+    unsupportedDescriptor: 'API publikuje deskryptor w wersji {version}; ten panel odczytuje wersję {supported}. Zainstaluj zgodne wydania kinetis/vector i vector-ui.',
     nav: {
         main: 'Główne',
         dashboard: 'Pulpit',
@@ -26,6 +27,7 @@ export default {
         stop: 'Wróć do swojego konta',
         noAccess: '{name} nie ma dostępu do panelu administracyjnego, więc nie ma nic do wyświetlenia w jego imieniu. Działanie jako ten użytkownik zostało zakończone.',
         noToken: 'Aplikacja odpowiedziała bez tokenu i bez przeładowania, więc nic się nie zmieniło.',
+        ended: 'Podszywanie się wygasło, więc wróciłeś na własne konto.',
     },
     palette: {
         placeholder: 'Szukaj rekordów i zasobów…',
@@ -47,6 +49,7 @@ export default {
         invalidEmail: 'Podaj prawidłowy adres e-mail',
         welcome: 'Witaj ponownie, {name}.',
         signedOutIdle: 'Sesja została zakończona po {minutes} minutach bezczynności. Zaloguj się ponownie, aby wrócić do przerwanej pracy.',
+        impersonationEnded: 'Podszywanie się wygasło i nie udało się odnowić Twojej sesji. Zaloguj się ponownie, aby kontynuować.',
     },
     home: {
         title: 'Pulpit',

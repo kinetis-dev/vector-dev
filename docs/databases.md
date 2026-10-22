@@ -27,7 +27,8 @@ such as a shop customer's id on a support ticket, is an ordinary field.
 
 Each connection commits on its own: an action or batch over one
 resource is one flush, and Vector's own rows (action log, audit, jobs)
-commit on Vector's connection after it.
+commit on Vector's connection after it, separately when that is another
+connection.
 
 ## Vector's own tables
 
@@ -58,17 +59,12 @@ a link from the `DB_ADMIN_*` keys and closes it with the worker.
 
 Only Vector's tables move: your entities stay on the connection their
 `#[Entity]` names, and Vector's jobs go where
-[Where the jobs go](jobs.md#where-the-jobs-go) describes. When the
-connections differ, Vector's own rows commit after, and separately
-from, the entity changes they describe.
+[Where the jobs go](jobs.md#where-the-jobs-go) describes.
 
 A connection name is lowercase letters and digits, starting with a
 letter. `default` names the default connection, and `app` is reserved.
 
 ## Dialect notes
-
-Both dialects are supported on every connection — Vector's own, the
-default, and every named one an entity uses.
 
 - Search, the *contains* filter and relation option search ignore case
   on both (`ILIKE` on PostgreSQL).

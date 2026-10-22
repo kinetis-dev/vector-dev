@@ -42,6 +42,13 @@ describe('applyViolations', () => {
         expect(errors).toEqual({})
     })
 
+    it('shows a violation inside a field\'s value on that field: its inputs take no deeper key', () => {
+        const errors: Record<string, string[]> = {}
+
+        expect(applyViolations(unprocessable([{ path: ['tags', 2], message: 'this value is too long.' }, { path: ['options', 'colors', 0, 'hex'], message: 'this value is not valid.' }]), { tags: [], options: {} }, errors)).toBeNull()
+        expect(errors).toEqual({ tags: ['This value is too long.'], options: ['This value is not valid.'] })
+    })
+
     it('says the server rejected the request when a 422 carries no violation', () => {
         expect(applyViolations(unprocessable([]), {}, {})).toBe('The server rejected the request.')
     })
@@ -50,6 +57,25 @@ describe('applyViolations', () => {
         const errors: Record<string, string[]> = {}
         applyViolations({ statusCode: 422, data: { errors: [{ path: ['name'], message: 'bad' }] } }, { name: '' }, errors)
         expect(errors.name).toEqual(['Bad'])
+    })
+
+    it('ignores an entry that is not a violation', () => {
+        const errors: Record<string, string[]> = {}
+
+        const general = applyViolations({ status: 422, data: { errors: [
+            null,
+            'name is bad',
+            { message: 'no path' },
+            { path: 'name', message: 'path not a list' },
+            { path: ['name', { deep: true }], message: 'segment not a name or an index' },
+            { path: ['name', 1.5], message: 'segment not an index' },
+            { path: ['name'], message: 42 },
+            { path: ['name'], message: 'this value is too long.' },
+        ] } }, { name: 'x' }, errors)
+
+        expect(general).toBeNull()
+        expect(errors).toEqual({ name: ['This value is too long.'] })
+        expect(applyViolations({ status: 422, data: { errors: [{ path: ['name'] }] } }, { name: 'x' }, {})).toBe('The server rejected the request.')
     })
 
     it('shows any other failure as its message', () => {

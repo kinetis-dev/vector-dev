@@ -7,6 +7,7 @@ export default {
     subjectCount: '{count} {label}',
     done: '{label} terminé.',
     declined: 'L’action a été refusée.',
+    redirectRefused: 'L’action demandait d’ouvrir une page hors de l’administration ; elle n’a pas été ouverte.',
     downloadStarted: 'Téléchargement lancé.',
     queued: '{label} a été mis en file d’attente.',
 }

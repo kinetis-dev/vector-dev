@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Auth;
 
 use Kinetis\AuthJwt\JwtIssuer;
+use Kinetis\AuthJwt\JwtUser;
 use Kinetis\Container\RequestScope;
 use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Session\Session;
@@ -104,10 +105,15 @@ final readonly class DemoImpersonation implements ImpersonationInterface
             $claims['impersonatorName'] = $impersonator->displayName();
         }
 
+        // never past the token this request presented: a start and a stop would otherwise renew it for ever
+        $exp = $this->scope->isRegistered(JwtUser::class) ? $this->scope->get(JwtUser::class) : null;
+        $exp = $exp instanceof JwtUser ? $exp->claim('exp') : null;
+        $ttl = is_int($exp) ? max(1, min(self::TTL, $exp - time())) : self::TTL;
+
         return [
-            'accessToken' => $this->issuer->issue((string) $subject->id(), $claims, ttlSeconds: self::TTL),
+            'accessToken' => $this->issuer->issue((string) $subject->id(), $claims, ttlSeconds: $ttl),
             'tokenType' => 'Bearer',
-            'expiresIn' => self::TTL,
+            'expiresIn' => $ttl,
             'user' => ['id' => $subject->id(), 'name' => $subject->displayName()],
         ];
     }

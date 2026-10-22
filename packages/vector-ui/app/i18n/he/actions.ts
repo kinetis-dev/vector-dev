@@ -7,6 +7,7 @@ export default {
     subjectCount: '{count} {label}',
     done: 'הפעולה "{label}" הושלמה.',
     declined: 'הפעולה נדחתה.',
+    redirectRefused: 'הפעולה ביקשה לפתוח דף מחוץ לממשק הניהול, והוא לא נפתח.',
     downloadStarted: 'ההורדה החלה.',
     queued: 'הפעולה "{label}" נוספה לתור.',
 }

@@ -1,3 +1,4 @@
+import { DESCRIPTOR_VERSION } from '#vector/app/composables/useVectorSchema'
 import type { VectorField, VectorResource, VectorSchema } from '#vector/app/types/vector'
 
 /** A descriptor field as the server publishes it, with the defaults a plain text column has. */
@@ -73,7 +74,7 @@ export function schema(resources: VectorResource[], overrides: Partial<VectorSch
     for (const r of resources) groups.set(r.group ?? 'Resources', [...(groups.get(r.group ?? 'Resources') ?? []), r.slug])
 
     return {
-        version: 1,
+        version: DESCRIPTOR_VERSION,
         resources: Object.fromEntries(resources.map(r => [r.slug, r])),
         menu: [...groups.entries()].map(([label, slugs]) => ({ label, resources: slugs })),
         settings: [],

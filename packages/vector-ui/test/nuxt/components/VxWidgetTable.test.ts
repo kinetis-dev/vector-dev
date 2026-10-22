@@ -35,6 +35,35 @@ describe('VxWidgetTable', () => {
         expect(navigate).toHaveBeenCalledTimes(3)
     })
 
+    it('opens no link outside the admin', async () => {
+        const links = ['//evil.example', '/\\evil.example', 'https://evil.example', 'javascript:alert(1)', '/\t/evil.example']
+        const wrapper = await mountSuspended(VxWidgetTable, { props: { data: { ...data, rows: links.map(_link => ({ name: 'Out', _link })) } } })
+
+        for (const row of wrapper.findAll('tbody tr')) {
+            expect(row.attributes('role')).toBeUndefined()
+            await row.trigger('click')
+            await row.trigger('keydown', { key: 'Enter' })
+        }
+
+        expect(navigate).not.toHaveBeenCalled()
+    })
+
+    it('says so when opening a row fails', async () => {
+        const unhandled: unknown[] = []
+        const onNode = (reason: unknown) => unhandled.push(reason)
+        process.on('unhandledRejection', onNode)
+        useVectorNotifications().queue.value = []
+        navigate.mockRejectedValueOnce(new Error('Navigation aborted.'))
+        const wrapper = await mountSuspended(VxWidgetTable, { props: { data } })
+
+        await wrapper.findAll('tbody tr')[0]!.trigger('click')
+        await new Promise(resolve => setTimeout(resolve, 20))
+        process.off('unhandledRejection', onNode)
+
+        expect(unhandled).toEqual([])
+        expect(useVectorNotifications().queue.value.map(n => n.text)).toContain('Navigation aborted.')
+    })
+
     it('names each column header as a column header', async () => {
         const wrapper = await mountSuspended(VxWidgetTable, { props: { data } })
 

@@ -7,6 +7,7 @@ export default {
     subjectCount: '{count} {label}',
     done: '{label} voltooid.',
     declined: 'De actie is geweigerd.',
+    redirectRefused: 'De actie vroeg een pagina buiten de beheeromgeving te openen; die is niet geopend.',
     downloadStarted: 'Download gestart.',
     queued: '{label} is in de wachtrij geplaatst.',
 }

@@ -14,7 +14,7 @@ const { load: loadSchema } = useVectorSchema()
 
 // fetched again in a new language, whose labels the server translates
 const { current: locale } = useVectorLocale()
-const { data, refresh } = await useAsyncData('vector.settings', () => api<{ data: VectorSettingsGroup[] }>('/vector/settings'), { watch: [locale] })
+const { data, error, refresh } = await useAsyncData('vector.settings', () => api<{ data: VectorSettingsGroup[] }>('/vector/settings'), { watch: [locale] })
 // Vector's own Languages group: each language keeps its own name, with its name in the admin's language beneath
 const groups = computed(() => (data.value?.data ?? []).map(group => group.name === 'languages' ? withLanguageNames(group, locale.value) : group))
 // what each group held when it was loaded: a group edited since keeps its edits when the page is fetched again
@@ -79,8 +79,9 @@ function withLanguageNames(group: VectorSettingsGroup, inLanguage: string): Vect
 <template>
     <div>
         <h1 class="text-h4 mb-4">{{ t('settings.heading') }}</h1>
-        <v-empty-state v-if="groups.length === 0" icon="mdi-cog-off-outline" :title="t('settings.empty.title')" :text="t('settings.empty.text')" />
-        <v-card v-else>
+        <v-alert v-if="error" type="error" variant="tonal" class="mb-4" :text="vectorErrorMessage(error)" />
+        <v-empty-state v-if="!error && groups.length === 0" icon="mdi-cog-off-outline" :title="t('settings.empty.title')" :text="t('settings.empty.text')" />
+        <v-card v-else-if="groups.length > 0">
             <v-tabs v-model="tab" color="primary">
                 <v-tab v-for="group in groups" :key="group.name" :value="group.name" :prepend-icon="group.icon ?? undefined">{{ group.label }}</v-tab>
             </v-tabs>

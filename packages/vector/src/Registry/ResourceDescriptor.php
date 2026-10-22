@@ -470,6 +470,7 @@ final readonly class ResourceDescriptor
     {
         $public = $this->data;
         unset($public['class'], $public['entity'], $public['connection'], $public['columns'], $public['versionColumn'], $public['policy'], $public['entityProperties'], $public['timestamps'], $public['ownedRelations'], $public['searchColumns'], $public['searchRelations'], $public['fullText'], $public['summaryPlan']);
+        $public['primaryKey'] = ['field' => $public['primaryKey']['field'], 'type' => $public['primaryKey']['type']];
         $public['softDelete'] = $public['softDelete'] === null ? null : ['field' => $public['softDelete']['field']];
         $public['actions'] = array_map(static function (array $action): array {
             unset($action['class']);

@@ -1,8 +1,8 @@
 # Lists
 
-A resource's list is where most work starts. Everything on it — search,
-sort, filters, grouping, the page — is one request to the server, so it
-works the same on ten records or ten million.
+A resource's list is where most work starts. Search, sort, filters, grouping
+and the page are one request to the server, so it works the same on ten
+records or ten million.
 
 ## Search, sort and page
 
@@ -54,9 +54,9 @@ the *Trash*, or both.
 ## Group and summarize
 
 **Group by** gathers the rows under a header per value, with the number
-of rows; expand or collapse each group. A resource that summarizes columns shows a
-totals row — a sum, an average, a minimum, a maximum or a count — over every
-record that matches, not just the page.
+of rows; expand or collapse each group. A resource that summarizes
+columns shows a totals row — a sum, an average, a minimum, a maximum or
+a count — over every record that matches, not just the page.
 
 ## Columns
 

@@ -139,6 +139,39 @@ final class JobsTest extends VectorTestCase
         (new Query($link))->table('products')->where('sku', 'LIKE', "IMP-{$stamp}-%")->delete();
     }
 
+    /**
+     * A failed flush keeps its insert pending in the manager: a row the
+     * database refused once went out again with the next row's flush,
+     * failing that row too, with the first row's reason.
+     */
+    public function testARowTheDatabaseRefusesDoesNotFailTheRowsAfterIt(): void
+    {
+        $link = $this->link();
+        $categoryId = (int) (new Query($link))->table('categories')->select('id')->orderBy('id', 'ASC')->value('id');
+        $stamp = bin2hex(random_bytes(3));
+        $headers = 'sku,name,slug,status,category,priceCents,currency,stock,weightKg,isFeatured';
+        // SKU-00020 is seeded: the first row passes validation and fails on the unique index
+        $csv = "{$headers}\r\n"
+            . "SKU-00020,Duplicate,dup-{$stamp},draft,{$categoryId},1500,EUR,3,0.4,false\r\n"
+            . "NEW-{$stamp},After the duplicate,new-{$stamp},draft,{$categoryId},1500,EUR,3,0.4,false\r\n";
+        $mapping = array_combine($fields = explode(',', $headers), $fields);
+
+        try {
+            $queued = $this->upload('/vector/r/products/import', $csv, ['mapping' => json_encode($mapping, JSON_THROW_ON_ERROR)])->assertStatus(202)->json();
+            self::assertIsArray($queued);
+            $job = $this->client->get("/vector/jobs/{$queued['jobId']}", headers: $this->realAdminHeaders())->assertOk()->assertJsonPath('data.status', 'done');
+            $this->assertResult(['created' => 1, 'failed' => 1, 'updated' => 0], $job);
+
+            $failed = $this->client->get("/vector/jobs/{$queued['jobId']}/download", headers: $this->realAdminHeaders())->assertOk()->body();
+            self::assertStringContainsString('sku is already taken.', $failed);
+            self::assertStringNotContainsString("NEW-{$stamp}", $failed, 'the row after the refused one was written');
+            self::assertSame(1, (new Query($link))->table('products')->where('sku', '=', "NEW-{$stamp}")->count());
+            self::assertSame(0, (new Query($link))->table('products')->where('slug', '=', "dup-{$stamp}")->count());
+        } finally {
+            (new Query($link))->table('products')->where('sku', '=', "NEW-{$stamp}")->delete();
+        }
+    }
+
     public function testReImportingAnExportWithUpsertByKeyUpdatesWithoutCreating(): void
     {
         $link = $this->link();

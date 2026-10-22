@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SubmitEventPromise } from 'vuetify'
 import type { VectorField, VectorFieldState, VectorLayoutNode, VectorRecord, VectorResource } from '#vector/app/types/vector'
+import { violationsOf } from '#vector/app/utils/internal/violations'
 
 // A create or edit form generated from the descriptor: one input per
 // editable field, client rules mirroring the server's, and the server's
@@ -222,7 +223,7 @@ async function save({ valid, errors }: { valid: boolean, errors: { id: string | 
         const violations = failure?.data?.errors
 
         if ((failure?.status ?? failure?.statusCode) === 422 && Array.isArray(violations)) {
-            for (const violation of violations as { path: (string | number)[], message: string }[]) {
+            for (const violation of violationsOf(violations)) {
                 // a repeater row's own violation stays with its row: `lines.2.quantity`
                 const repeated = violation.path.length >= 3 && fields.value.some(f => f.name === violation.path[0] && f.repeater)
                 const key = repeated ? violation.path.slice(0, 3).join('.') : String(violation.path[0] ?? '')
@@ -311,13 +312,22 @@ const errorNames = computed(() => [...new Set([
     ...Object.entries(serverErrors).filter(([, messages]) => messages.length > 0).map(([key]) => key.split('.')[0]!),
     ...clientErrors.value,
 ])])
+
+/** The server's errors on a field the form does not show (visibleWhen, or preset): above the form, under the field's label. */
+const hiddenErrors = computed(() => Object.entries(serverErrors)
+    .map(([key, messages]) => [key.split('.')[0]!, messages] as const)
+    .filter(([name]) => !shownNames.value.has(name))
+    .flatMap(([name, messages]) => messages.map(message => `${fieldsByName.value.get(name)?.label ?? name}: ${message}`)))
 </script>
 
 <template>
     <v-form ref="formRef" validate-on="blur lazy" @submit.prevent="submit">
         <v-card>
             <v-card-text>
-                <v-alert v-if="formError" type="error" variant="tonal" class="mb-4" :text="formError" />
+                <v-alert v-if="formError || hiddenErrors.length" type="error" variant="tonal" class="mb-4">
+                    <div v-if="formError">{{ formError }}</div>
+                    <div v-for="message in hiddenErrors" :key="message">{{ message }}</div>
+                </v-alert>
                 <VxLayout :nodes="layout" :shown="name => shownNames.has(name)" :errors="errorNames" :default-span="defaultSpan">
                     <template #field="{ field: name }">
                         <component

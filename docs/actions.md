@@ -78,10 +78,7 @@ limit.
 | `ActionResponse::redirect()` | The admin navigates to a page. |
 | `ActionResponse::openUrl()` | A URL opens. |
 | `ActionResponse::download()` | A file downloads. |
-| queued | A job to follow on **Jobs**. |
-
-A queued action runs in chunks; {doc}`jobs` covers how it is delivered
-and what it must tolerate.
+| queued | A job to follow on **Jobs**; {doc}`jobs` covers its delivery and what it must tolerate. |
 
 ## See also
 

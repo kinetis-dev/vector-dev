@@ -105,6 +105,10 @@ configuration, and the only way to add script to the page.
 
 ## Production
 
+Set `APP_ENV=production`. In any other environment an unhandled error
+answers `500` with the exception class, its message and the file and
+line it came from.
+
 Build the registry into the release, as for any Kinetis application:
 
 ```console
@@ -117,7 +121,56 @@ rebuild after changing a resource. Build the compiled cache inside the
 release or image itself: an existing valid `.kinetis-cache/compiled.php`
 is used as it is, without comparing it to the source that produced it
 (see [Caching](https://kinetis.dev/docs/caching.html)). Run a queue
-worker for Vector's jobs ({doc}`jobs`).
+worker for Vector's jobs ({doc}`jobs`), and schedule
+`kinetis vector:jobs:reap` and `kinetis vector:files:prune`
+({doc}`files`).
+
+## Security checklist
+
+- **`APP_ENV=production`**, as above.
+- **Cookie mode:** `SESSION_SECURE=true` (the default; `false` is for
+  plain-HTTP development). A `SESSION_COOKIE` name starting with
+  `__Host-` makes the browser enforce it: the cookie must be Secure,
+  `Path=/` and carry no Domain. `kinetis/session` writes every cookie
+  with `Path=/` and no Domain, and refuses to start with a `__Host-` or
+  `__Secure-` name while `SESSION_SECURE` is off.
+- **`JWT_SECRET`** (the demo's, for bearer tokens) must be at least
+  32 bytes for HS256; a shorter key stops the boot. Changing it
+  invalidates every access and impersonation token already issued.
+  Refresh tokens are random values kept in the cache, not signed with
+  it: they survive a rotation and renew into tokens signed with the new
+  key. To sign everyone out, clear the cache's refresh tokens as well.
+- **Bearer mode:** `VECTOR_UI_ORIGIN` must be the UI's exact origin —
+  scheme, host and port, no path. It is the only origin CORS allows.
+- **CSP:** `SECURITY_CSP` must contain `{nonce}` (or set
+  `VECTOR_SHELL_CSP`); a policy without it blocks the shell's inline
+  scripts. `VECTOR_SHELL_HEAD` and `VECTOR_UI_EXTENSIONS` put script on
+  the admin page: set them in deployment configuration only, never from
+  anything a user can edit.
+- **Uploads:** keep the storage root private, outside the web root
+  (`public/`). Files are meant to be served only through
+  `GET /vector/r/{resource}/{id}/files/{field}`, which checks access.
+  Schedule `kinetis vector:files:prune` to delete uploads no record
+  uses. {doc}`files` covers both, and who may upload.
+
+### Known limits
+
+- Replaying a redeemed refresh token revokes its whole family, with no
+  grace period ({doc}`authentication`). Revocation lives in the
+  application cache: if the cache loses those records, a later replay is
+  refused but revokes nothing.
+- An impersonation token is never renewed. In bearer mode it expires no
+  later than the token that started it; in cookie mode it lasts as long
+  as the session.
+- The standalone UI keeps its tokens in `sessionStorage`, which any
+  script running on the admin's origin can read. A strict CSP is what
+  keeps other script off that origin.
+- An unused upload stays in storage until `vector:files:prune` runs and
+  its grace period (24 hours by default) has passed; one an audit entry
+  holds stays as long as that entry.
+- A download serves any stored key outside `vector/` — keys your
+  application writes. A key under `vector/` is served only from that
+  field's own `vector/{resource}/{field}/`.
 
 ## See also
 

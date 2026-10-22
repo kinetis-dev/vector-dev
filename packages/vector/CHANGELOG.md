@@ -7,6 +7,99 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-22
+
+### Added
+
+- `kinetis vector:files:prune` deletes uploads no record uses: a file
+  under a declared file or image field's `vector/{resource}/{field}/`,
+  older than `--grace-hours=<n>` (24), that no file or image column of
+  any row holds (trashed rows included), no rich-text document using
+  the field as its `imageField` shows, and no entry of the resource's
+  audit trail holds, since a revert writes an old value back.
+  `--dry-run` lists what would be deleted. Nothing outside `vector/` is
+  ever touched. Run it from a scheduler.
+
+### Changed
+
+- Uploading to a file or image field needs write permission, not just
+  list (`viewAny`): the field — or a rich-text field uploading its
+  images through it — on the create form while the policy allows
+  `create()`, or on the update form while it allows `update()` on the
+  record the upload names in its new multipart `record` part. Otherwise
+  the upload answers `403`. The UI's inputs send the id of the record
+  they edit; a client of its own that uploads while editing must send
+  `record` too, or the account needs create permission. A rich-text
+  field's image field no longer needs to be on a form itself.
+- Ships the `@kinetis/vector-ui` 0.10.3 hosted bundle, whose upload
+  inputs send that `record` part.
+
+### Security
+
+- A job whose push the queue backend refused stored the backend's own
+  message on its row — hosts, ports, and whatever else the driver put in
+  it — where the admin's Jobs page shows it. The row now says only that
+  the job failed unexpectedly, as a job failing in the worker does; the
+  message reaches the log with the rethrown exception.
+- The MCP `vector://schema` resource listed every action of a resource,
+  including those the policy's `runAction()` or the action's own
+  `canRun()` refuses this user, which `GET /vector/schema` leaves out.
+  It now publishes the same actions.
+- `POST /vector/views/{resource}` saved a view of a resource whose list
+  the policy's `viewAny()` refuses this user, which the views index
+  already refused. Creating a view now asks `viewAny()` first and
+  answers the same `403`.
+- An import's failed-rows file echoed the uploaded cells as they came,
+  so a cell such as `=HYPERLINK(…)` ran as a formula when the admin
+  opened the file in a spreadsheet. Its headers and cells now get the
+  same formula guard as CSV and XLSX exports.
+- `GET /vector/r/{resource}/{id}/files/{field}` served whatever key the
+  record held. Only a write checks the key, and only when storage was
+  available at the time, so a value written otherwise could point at
+  another field's upload or walk out of its prefix with `..`. A download
+  now answers `404` for a key with an empty, `.` or `..` segment, a
+  leading `/`, a backslash or a control character, or one under
+  `vector/` but outside the field's own `vector/{resource}/{field}/`.
+  Keys outside `vector/`, which applications and uploads-off forms
+  write, are still served.
+- Several request-value patterns ended in `$` without the `D` flag, so a
+  trailing newline slipped through: a rich-text link's `rel`, a code
+  block's `language`, an image's `src` and size, a date-time value, a
+  widget's `range`, a preference key and the branding colours. Each now
+  refuses it as it refuses any other value outside its pattern.
+
+### Fixed
+
+- A job whose completion notification could not be stored was marked
+  failed after its row had already been finished. The row now stays
+  done, and the failed notification is logged.
+- An import whose failed-rows file came to more than 12 MiB, the most a
+  job file holds, failed at the end with a `LengthException` although
+  every row had been processed. The file now keeps the failed rows that
+  fit, whole, the last one's `error` saying how many more are not in it,
+  and the import completes.
+- An enum value of the scalar type its enum is not backed by — any
+  `filter[field]=…` on an int-backed enum, or a string sent for one in
+  a body — answered `500` with a `TypeError` from `tryFrom()`. A list
+  filter now matches an int-backed enum by its digits, and any other
+  value is refused as `invalid_choice` (`422`).
+- A CSV import refused a non-empty cell of a date-only field
+  (`Kinetis\Orm\Date`) on every row with "must be a date as
+  YYYY-MM-DD.": the parsed date reached the writer as an object rather
+  than the text a body carries.
+- A row of a CSV import that the database refused — a duplicate unique
+  value, a value too long for its column — stayed pending in the entity
+  manager, so the next row's write sent it again and failed with that
+  row's reason, up to the next hundred rows. A refused row's pending
+  changes are now discarded before the next row.
+- The descriptor published each resource's `primaryKey.column`, the
+  key's database column, which its JSON schema does not declare and no
+  client reads; every other column it already leaves out. The key is
+  `{field, type}`, as the MCP description has it.
+- `descriptor.schema.json` did not declare two keys the descriptor
+  publishes: a resource's `show.extra` (as `table.extra` is) and a
+  relation's `owned`.
+
 ## [0.11.0] - 2026-10-21
 
 ### Added

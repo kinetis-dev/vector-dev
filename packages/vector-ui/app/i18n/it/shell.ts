@@ -8,6 +8,7 @@ export default {
     toggleTheme: 'Cambia tema',
     language: 'Lingua: {name}',
     languageFailed: 'Impossibile salvare la lingua: {error}',
+    unsupportedDescriptor: 'L’API pubblica la versione {version} del descrittore; questo pannello legge la versione {supported}. Installa versioni corrispondenti di kinetis/vector e vector-ui.',
     nav: {
         main: 'Principale',
         dashboard: 'Dashboard',
@@ -26,6 +27,7 @@ export default {
         stop: 'Termina impersonazione',
         noAccess: '{name} non ha accesso all’amministrazione, quindi non c’è nulla da vedere al suo posto. L’impersonazione è stata interrotta.',
         noToken: 'L’applicazione ha risposto senza un token né un ricaricamento, quindi non è cambiato nulla.',
+        ended: 'L’impersonificazione è scaduta: sei di nuovo nel tuo account.',
     },
     palette: {
         placeholder: 'Cerca record e risorse…',
@@ -47,6 +49,7 @@ export default {
         invalidEmail: 'Inserisci un indirizzo e-mail valido',
         welcome: 'Ti diamo il bentornato, {name}.',
         signedOutIdle: 'Sei stato disconnesso dopo {minutes} minuti di inattività. Accedi di nuovo per riprendere da dove eri rimasto.',
+        impersonationEnded: 'L’impersonificazione è scaduta e non è stato possibile rinnovare la tua sessione. Accedi di nuovo per continuare.',
     },
     home: {
         title: 'Dashboard',

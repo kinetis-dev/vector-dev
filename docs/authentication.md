@@ -70,7 +70,9 @@ The standalone UI signs in with `POST {apiBase}/auth/login`, sending
 
 It then sends `Authorization: Bearer <token>` on every request and keeps
 the tokens for the browser tab only: in memory, mirrored to
-`sessionStorage` for reloads, never in `localStorage`.
+`sessionStorage` for reloads, never in `localStorage`. Any script on the
+admin's origin can read `sessionStorage`, so serve the UI under a strict
+CSP ([security checklist](deployment.md#security-checklist)).
 
 `refreshToken` is optional. When your login answers one, the UI renews
 the session itself, one renewal at a time: with under two minutes left
@@ -80,9 +82,24 @@ request is then repeated), it calls `POST {apiBase}/auth/refresh` with
 out** calls `POST {apiBase}/auth/logout` with `{"refreshToken"}` to revoke
 it. When the renewal is refused, or there is no refresh token, the UI
 signs out when the access token expires, and a `401` goes to `/login`.
-An impersonation token is never renewed. `kinetis/auth-jwt` issues and
-verifies access tokens, and its `RefreshTokenStore` keeps single-use
-refresh tokens in a cache.
+An impersonation token is never renewed. When the API refuses it, the
+UI renews the signed-in user's own session with their refresh token and
+returns them to the dashboard; the refused request is not repeated as
+them. When that renewal is not possible, the login page says the
+impersonation ran out. `kinetis/auth-jwt` issues and verifies access
+tokens, and its `RefreshTokenStore` keeps single-use refresh tokens in a
+cache.
+
+The demo also detects a replayed refresh token. Each sign-in starts a
+token family, and every refresh token rotated from it belongs to that
+family. When a token that was already redeemed is presented again, the
+whole family is revoked: neither the owner nor whoever replayed it can
+renew any more, and both have to sign in again. The replay gets the same
+`401` as any invalid token. **Sign out** revokes the family too.
+Revocation stops renewals only: an access token already issued stays
+valid until it expires, fifteen minutes at most. There is no grace
+period, so two tabs sharing one refresh token, as a duplicated tab does,
+both end up signed out.
 
 ## Protecting the sign-in
 
@@ -105,8 +122,9 @@ twelve hours, reloading the user at each renewal so a changed role
 applies. Without a cache it refuses to sign anyone in (`503`) rather than
 run unthrottled.
 
-The UI lives on another origin, so register `CorsMiddleware` for it,
-allowing the `Authorization`, `Content-Type`, `X-CSRF-Token` and
+The UI lives on another origin, so register `CorsMiddleware` for its
+exact origin (scheme, host and port; the demo reads it from
+`VECTOR_UI_ORIGIN`), allowing the `Authorization`, `Content-Type`, `X-CSRF-Token` and
 `If-Match` headers and exposing `Content-Disposition` and `ETag`.
 
 ## Hosted: the session cookie
@@ -124,7 +142,9 @@ the page in this mode.
 Your session middleware (a thin subclass of `SessionMiddleware`) and an
 authentication middleware that reads the session, verifies the CSRF
 token on unsafe methods and registers the user join both the `vector`
-and `vector-shell` groups. A monolith on a view adapter keeps its own
+and `vector-shell` groups. In production keep `SESSION_SECURE=true`
+(see the [security checklist](deployment.md#security-checklist) for
+the `__Host-` cookie prefix). A monolith on a view adapter keeps its own
 login page; Vector adds none.
 
 A user object may implement `VectorShellUserInterface` to give the shell
@@ -134,9 +154,9 @@ impersonating it, which Vector writes to every log and audit row
 
 ## How long a session lasts
 
-A session does not end on its own: the UI renews the token
-before it runs out and polls badges and the inbox, so an open tab would
-stay signed in for as long as it is open. The layer's `app.config`
+A session does not end on its own: the UI renews the token before it
+runs out and polls badges and the inbox, so an open tab stays signed in.
+The layer's `app.config`
 `vector.idleMinutes` (30 by default; 0 turns it off) ends it, in both
 modes, when nobody has used the admin — no pointer, key, touch or
 scroll — for that long. Bearer mode revokes the refresh token and opens
