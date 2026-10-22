@@ -149,8 +149,9 @@ worker for Vector's jobs ({doc}`jobs`), and schedule
   anything a user can edit.
 - **Uploads:** keep the storage root private, outside the web root
   (`public/`). Files are meant to be served only through
-  `GET /vector/r/{resource}/{id}/files/{field}`, which checks access
-  ({doc}`files`), which also covers who may upload.
+  `GET /vector/r/{resource}/{id}/files/{field}`, which checks access.
+  Schedule `kinetis vector:files:prune` to delete uploads no record
+  uses. {doc}`files` covers both, and who may upload.
 
 ### Known limits
 
