@@ -148,8 +148,8 @@ look at. The plan refuses to publish:
   step above the highest version already out. The exception is a
   product's very first release, when nothing is out yet.
 
-Every npm release is `latest`. Versions have no prerelease form, so
-nothing needs keeping off it, and no dist-tag needs moving by hand. No
+Every npm release is `latest`: versions have no prerelease form, so no
+dist-tag needs moving by hand. No
 GitHub Release is created: `vector-dev` has no tags to attach one to.
 The notes live in the CHANGELOGs, which ship with both packages, and on
 the run's summary page.
