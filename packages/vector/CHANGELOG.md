@@ -26,6 +26,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so a cell such as `=HYPERLINK(…)` ran as a formula when the admin
   opened the file in a spreadsheet. Its headers and cells now get the
   same formula guard as CSV and XLSX exports.
+- `GET /vector/r/{resource}/{id}/files/{field}` served whatever key the
+  record held. Only a write checks the key, and only when storage was
+  available at the time, so a value written otherwise could point at
+  another field's upload or walk out of its prefix with `..`. A download
+  now answers `404` for a key with an empty, `.` or `..` segment, a
+  leading `/`, a backslash or a control character, or one under
+  `vector/` but outside the field's own `vector/{resource}/{field}/`.
+  Keys outside `vector/`, which applications and uploads-off forms
+  write, are still served.
 
 ### Fixed
 

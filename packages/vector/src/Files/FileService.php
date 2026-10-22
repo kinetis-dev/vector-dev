@@ -88,8 +88,7 @@ final readonly class FileService
             throw RecordNotFoundException::of("{$resource->slug()}.{$fieldName}", $id);
         }
 
-
-        if (!is_string($key) || $key === '' || !$filesystem->fileExists($key)) {
+        if (!is_string($key) || !self::servable($resource, $fieldName, $key) || !$filesystem->fileExists($key)) {
             throw RecordNotFoundException::of("{$resource->slug()}.{$fieldName}", $id);
         }
 
@@ -142,6 +141,30 @@ final readonly class FileService
         return preg_match("~^{$prefix}[0-9a-f]{32}\\.[a-z0-9]{1,10}$~D", $value) === 1
             && $this->storage->available()
             && $this->storage->filesystem()->fileExists($value);
+    }
+
+    /**
+     * Whether a stored value may be served for $fieldName: a relative
+     * path with no empty, `.` or `..` segment, no backslash and no
+     * control character, so the storage cannot resolve it elsewhere;
+     * and, inside Vector's own `vector/` prefix, only under this
+     * field's. A key written outside Vector — the application's own, or
+     * one typed while uploads were unavailable — keeps being served.
+     */
+    private static function servable(ResourceDescriptor $resource, string $fieldName, string $key): bool
+    {
+        if ($key === '' || preg_match('~[\\\\\x00-\x1F\x7F]~', $key) === 1) {
+            return false;
+        }
+
+        foreach (explode('/', $key) as $segment) {
+            if ($segment === '' || $segment === '.' || $segment === '..') {
+                return false;
+            }
+        }
+
+        // compared without case first: a case-insensitive disk reads `Vector/` as `vector/`
+        return strncasecmp($key, 'vector/', 7) !== 0 || str_starts_with($key, "vector/{$resource->slug()}/{$fieldName}/");
     }
 
     /** @return array<string, mixed> */

@@ -34,6 +34,13 @@ to users who may view the record and the field: images inline, anything
 else as a download, with `nosniff` and a sandboxing policy. `Image`
 accepts raster formats only; SVG can carry script.
 
+The stored key is checked again before it is read, whoever wrote it: a
+key with an empty, `.` or `..` segment, a leading `/`, a backslash or a
+control character, or one under `vector/` but outside that field's own
+`vector/{resource}/{field}/`, answers `404`. A key outside `vector/` —
+one your application stored, or one typed while uploads were
+unavailable — is still served.
+
 ## Good to know
 
 - Vector never deletes a stored file when a value changes.

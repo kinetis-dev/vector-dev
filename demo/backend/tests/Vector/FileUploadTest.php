@@ -82,6 +82,40 @@ final class FileUploadTest extends VectorTestCase
         }
     }
 
+    public function testADownloadServesOnlyAKeyInsideTheFieldsOwnPrefix(): void
+    {
+        $id = $this->productId();
+        $h = $this->realAdminHeaders();
+        $stored = $this->shop()->table('products')->select('image_key')->where('id', '=', $id)->value('image_key');
+        $png = (string) base64_decode(self::PNG, true);
+        $other = 'vector/customers/imageKey/' . str_repeat('d', 32) . '.png';
+        $legacy = 'legacy/photos/product-' . $id . '.png'; // written by the application, outside Vector
+        $this->storage()->write($other, $png);
+        $this->storage()->write($legacy, $png);
+
+        try {
+            foreach ([
+                $other,                                                       // another resource's upload
+                'vector/products/imageKey/../../customers/imageKey/' . str_repeat('d', 32) . '.png',
+                'vector/products/imageKey/./../../customers/imageKey/' . str_repeat('d', 32) . '.png',
+                'Vector/customers/imageKey/' . str_repeat('d', 32) . '.png',  // the same, on a case-insensitive disk
+                '/' . $legacy,
+                'legacy/photos/../photos/product-' . $id . '.png',
+            ] as $refused) {
+                $this->shop()->table('products')->where('id', '=', $id)->update(['image_key' => $refused]);
+                $this->client->get("/vector/r/products/{$id}/files/imageKey", headers: $h)->assertStatus(404);
+            }
+
+            // a key the application wrote outside Vector's prefix is still served
+            $this->shop()->table('products')->where('id', '=', $id)->update(['image_key' => $legacy]);
+            $this->client->get("/vector/r/products/{$id}/files/imageKey", headers: $h)->assertOk()->assertHeader('Content-Type', 'image/png');
+        } finally {
+            $this->shop()->table('products')->where('id', '=', $id)->update(['image_key' => $stored]);
+            $this->storage()->delete($other);
+            $this->storage()->delete($legacy);
+        }
+    }
+
     public function testTheFormatComesFromTheBytesAndTheSizeFromTheField(): void
     {
         $this->upload('imageKey', "not an image at all\n", 'fake.png')->assertValidationError('file');
