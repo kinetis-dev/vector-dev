@@ -161,9 +161,9 @@ public function fullText(): ?FullText
 ```
 
 Every word of the term is required, and the user's operators are read as
-plain text. On MySQL the term is split into words and each is required
-(`MATCH (name, description) AGAINST ('+word …' IN BOOLEAN MODE)`), except
-a word the index does not hold: one shorter than three characters, or on
+plain text. On MySQL the term is split into words
+(`MATCH (name, description) AGAINST ('+word …' IN BOOLEAN MODE)`), each
+required except a word the index does not hold: one shorter than three characters, or on
 InnoDB's default stopword list. On PostgreSQL it is
 `to_tsvector(config, …) @@ plainto_tsquery(config, term)`, with the
 configuration `simple` (no stemming, no stopwords) unless `config()`
