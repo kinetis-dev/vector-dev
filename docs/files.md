@@ -13,7 +13,8 @@ File::make('contract')->accept(['application/pdf' => 'pdf']), // pdf, png, jpeg,
 
 The form uploads a picked file at once, to
 `POST /vector/r/{resource}/fields/{field}/upload` (multipart `file`).
-The server:
+Uploading needs list (`viewAny`) permission on the resource, nothing
+more. The server:
 
 - detects the format from the file's bytes — never from its name or the
   type the browser sent — and refuses one the field does not `accept()`;
@@ -43,7 +44,10 @@ unavailable — is still served.
 
 ## Good to know
 
-- Vector never deletes a stored file when a value changes.
+- Vector never deletes a stored file: not when a value changes, and not
+  when an upload is never saved to a record.
+- Keep the storage root private, outside the web root (`public/`); see
+  the [security checklist](deployment.md#security-checklist).
 - The largest upload is also bounded by the framework's `MAX_BODY_SIZE`
   and your web server's body limit.
 - Without a filesystem, uploads are unavailable: the descriptor reports

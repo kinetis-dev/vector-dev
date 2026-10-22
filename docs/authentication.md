@@ -70,7 +70,9 @@ The standalone UI signs in with `POST {apiBase}/auth/login`, sending
 
 It then sends `Authorization: Bearer <token>` on every request and keeps
 the tokens for the browser tab only: in memory, mirrored to
-`sessionStorage` for reloads, never in `localStorage`.
+`sessionStorage` for reloads, never in `localStorage`. Any script on the
+admin's origin can read `sessionStorage`, so serve the UI under a strict
+CSP ([security checklist](deployment.md#security-checklist)).
 
 `refreshToken` is optional. When your login answers one, the UI renews
 the session itself, one renewal at a time: with under two minutes left
@@ -82,7 +84,8 @@ it. When the renewal is refused, or there is no refresh token, the UI
 signs out when the access token expires, and a `401` goes to `/login`.
 An impersonation token is never renewed. `kinetis/auth-jwt` issues and
 verifies access tokens, and its `RefreshTokenStore` keeps single-use
-refresh tokens in a cache.
+refresh tokens in a cache. The demo does not detect a replayed refresh
+token: the replay is refused, and nothing else is revoked.
 
 ## Protecting the sign-in
 
@@ -105,8 +108,9 @@ twelve hours, reloading the user at each renewal so a changed role
 applies. Without a cache it refuses to sign anyone in (`503`) rather than
 run unthrottled.
 
-The UI lives on another origin, so register `CorsMiddleware` for it,
-allowing the `Authorization`, `Content-Type`, `X-CSRF-Token` and
+The UI lives on another origin, so register `CorsMiddleware` for its
+exact origin (scheme, host and port; the demo reads it from
+`VECTOR_UI_ORIGIN`), allowing the `Authorization`, `Content-Type`, `X-CSRF-Token` and
 `If-Match` headers and exposing `Content-Disposition` and `ETag`.
 
 ## Hosted: the session cookie
@@ -124,7 +128,9 @@ the page in this mode.
 Your session middleware (a thin subclass of `SessionMiddleware`) and an
 authentication middleware that reads the session, verifies the CSRF
 token on unsafe methods and registers the user join both the `vector`
-and `vector-shell` groups. A monolith on a view adapter keeps its own
+and `vector-shell` groups. In production keep `SESSION_SECURE=true`
+(see the [security checklist](deployment.md#security-checklist) for
+the `__Host-` cookie prefix). A monolith on a view adapter keeps its own
 login page; Vector adds none.
 
 A user object may implement `VectorShellUserInterface` to give the shell

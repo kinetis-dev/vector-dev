@@ -36,6 +36,18 @@ A vulnerability in Kinetis itself (`kinetis/framework` and the other
 `kinetis/*` packages Vector depends on) belongs to
 [kinetis-dev/kinetis](https://github.com/kinetis-dev/kinetis/security/advisories/new).
 
+## Deploying Vector
+
+Before going live, work through the
+[security checklist](docs/deployment.md#security-checklist):
+`APP_ENV=production`, a Secure session cookie, a `JWT_SECRET` of at
+least 32 bytes, the exact `VECTOR_UI_ORIGIN`, a `SECURITY_CSP` with
+`{nonce}`, deployment-only `VECTOR_SHELL_HEAD` and
+`VECTOR_UI_EXTENSIONS`, and private upload storage outside `public/`.
+The same page lists the known limits — refresh-token reuse, impersonation
+lifetime, tokens in `sessionStorage`, upload permission and orphaned
+files, and which stored keys a download serves.
+
 ## Supported Versions
 
 Only the **latest released minor** receives security fixes; expect the

@@ -13,7 +13,7 @@
 | `VECTOR_UI_DIR` | Where the hosted bundle lives; `public/vector/ui` by default. |
 | `VECTOR_LOGIN_URL`, `VECTOR_LOGOUT_URL` | The application's pages the hosted admin redirects to and posts to; `/login` and `/logout` by default. |
 | `VECTOR_TRANSLATIONS_DIR` | A directory of `{locale}.php` files translating your labels, relative to the project root; read once at boot. See {doc}`languages`. |
-| `VECTOR_UI_EXTENSIONS` | Comma-separated ES-module URLs the hosted admin imports after boot. |
+| `VECTOR_UI_EXTENSIONS` | Comma-separated ES-module URLs the hosted admin imports after boot. Deployment configuration only. |
 | `VECTOR_SHELL_HEAD` | A raw fragment added before `</head>` of the hosted page; `{nonce}` is replaced. Deployment configuration only. |
 | `VECTOR_SHELL_CSP` | A Content Security Policy for the hosted page alone, sent instead of `SECURITY_CSP`; `{nonce}` is replaced per response. Unset, the application's policy applies, and the shell uses the nonce it put on the request. See {doc}`deployment`. |
 
@@ -36,4 +36,5 @@ In a Nuxt application extending `@kinetis/vector-ui`:
 
 ## See also
 
-- {doc}`deployment` — the keys each mode needs.
+- {doc}`deployment` — the keys each mode needs, and the security
+  checklist.
