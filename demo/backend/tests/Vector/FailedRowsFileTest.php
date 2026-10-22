@@ -37,6 +37,7 @@ final class FailedRowsFileTest extends TestCase
 
         // every row but the last is the failed row as it was; the last carries the note
         $last = array_pop($kept);
+        self::assertIsArray($last);
         self::assertSame(array_slice($rows, 0, count($kept)), $kept);
         self::assertSame($rows[count($kept)]['sku'], $last['sku']);
         self::assertSame(

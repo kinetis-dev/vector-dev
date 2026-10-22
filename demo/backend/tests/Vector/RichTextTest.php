@@ -83,7 +83,7 @@ final class RichTextTest extends VectorTestCase
         ]]);
         $language = static fn (string $language): string => $doc(['type' => 'codeBlock', 'attrs' => ['language' => $language], 'content' => [['type' => 'text', 'text' => 'echo 1;']]]);
         $image = static fn (string $src, string $width): string => $doc(['type' => 'image', 'attrs' => ['src' => $src, 'width' => $width]]);
-        $codes = static fn (string $json, array $features): array => array_map(static fn ($v): string => implode('/', $v->path) . ' ' . $v->code, $document->validate($json, $features));
+        $codes = static fn (string $json, array $features): array => array_map(static fn ($v): string => implode('/', $v->path) . ' ' . $v->code, $document->validate($json, array_values($features)));
 
         self::assertSame([], $codes($rel('noopener noreferrer'), ['link']));
         self::assertSame([], $codes($language('php'), ['codeBlock']));

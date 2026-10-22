@@ -127,12 +127,12 @@ final class CsvReader
         // the cells came from an upload: the export's guard keeps a spreadsheet from evaluating them
         fputcsv($out, array_map(CsvWriter::guarded(...), $headers), ',', '"', '\\', "\r\n");
 
-        $start = ftell($out);
+        $start = (int) ftell($out);
         $ends = [];
 
         foreach ($rows as $i => $row) {
             fputcsv($out, self::guardedRow($headers, $row), ',', '"', '\\', "\r\n");
-            $ends[$i] = ftell($out);
+            $ends[$i] = (int) ftell($out);
 
             if ($maxBytes !== null && $ends[$i] > $maxBytes) {
                 // back to the last row that leaves room for the note, written again with it
@@ -142,7 +142,7 @@ final class CsvReader
                     $kept--;
                 }
 
-                ftruncate($out, $kept > 0 ? $ends[$kept - 1] : $start);
+                ftruncate($out, max(0, $kept > 0 ? $ends[$kept - 1] : $start));
                 fseek($out, 0, SEEK_END);
                 $note = sprintf('%d more failed rows are not in this file, which holds at most %d MiB.', count($rows) - $kept - 1, intdiv($maxBytes, 1048576));
                 $last = $kept >= 0 ? self::guardedRow($headers, $rows[$kept]) : array_fill(0, count($headers), '');
