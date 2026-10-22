@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.3] - 2026-10-22
+
 ### Changed
 
 - The file and image inputs, and a rich-text field's image upload, send

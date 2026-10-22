@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-22
+
 ### Added
 
 - `kinetis vector:files:prune` deletes uploads no record uses: a file
@@ -29,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   they edit; a client of its own that uploads while editing must send
   `record` too, or the account needs create permission. A rich-text
   field's image field no longer needs to be on a form itself.
+- Ships the `@kinetis/vector-ui` 0.10.3 hosted bundle, whose upload
+  inputs send that `record` part.
 
 ### Security
 
