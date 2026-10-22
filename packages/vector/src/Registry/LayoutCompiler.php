@@ -34,45 +34,16 @@ final class LayoutCompiler
         $tree = [];
         $hasLayout = false;
 
-        $field = static function (Field $f) use (&$fields, &$hasLayout): array {
-            $fields[] = $f;
-            $hasLayout = $hasLayout || $f->layoutSpan() !== null;
-
-            return self::node('field', name: $f->name(), span: $f->layoutSpan());
-        };
-
-        $leaf = static function (Field|string $child) use ($field): array {
-            return $child instanceof Field ? $field($child) : self::node('field', name: $child) + ['reference' => true];
-        };
-
-        $section = static function (Section $s) use ($leaf): array {
-            $options = $s->options();
-
-            return self::node('section', label: $s->label(), description: $options['description'], collapsible: $options['collapsible'], collapsed: $options['collapsed'], columns: $options['columns'], children: array_map($leaf, $s->items()));
-        };
-
         foreach ($declared as $item) {
             if ($item instanceof Field) {
-                $tree[] = $field($item);
+                $hasLayout = $hasLayout || $item->layoutSpan() !== null;
+                $tree[] = self::fieldNode($item, $fields);
             } elseif ($item instanceof Section) {
                 $hasLayout = true;
-                $tree[] = $section($item);
+                $tree[] = self::sectionNode($item, $fields);
             } elseif ($item instanceof Tabs) {
                 $hasLayout = true;
-                $tabs = [];
-
-                foreach ($item->tabs() as $tab) {
-                    $tabs[] = self::node('tab', label: $tab['label'], columns: 2, children: array_map(
-                        static fn (Field|string|Section $child): array => $child instanceof Section ? $section($child) : $leaf($child),
-                        $tab['children'],
-                    ));
-                }
-
-                if ($tabs === []) {
-                    throw new ResourceCompileException("{$class}::fields() declares a Tabs with no tab.");
-                }
-
-                $tree[] = self::node('tabs', label: $item->label(), children: $tabs);
+                $tree[] = self::tabsNode($item, $fields, $class);
             } elseif (is_string($item)) {
                 throw new ResourceCompileException("{$class}::fields() names \"{$item}\" at the top level; a field name belongs inside a section or a tab.");
             } else {
@@ -99,47 +70,11 @@ final class LayoutCompiler
 
         // every name placed inside a section or tab: known, and placed once
         $placed = [];
-        $walk = static function (array $nodes, bool $nested) use (&$walk, &$placed, $compiled, $class): void {
-            foreach ($nodes as $node) {
-                if ($node['kind'] !== 'field') {
-                    $walk($node['children'], true);
-
-                    continue;
-                }
-
-                if (!isset($compiled[$node['name']])) {
-                    throw ResourceCompileException::field($class, $node['name'], 'is placed in the layout but is not a field of the resource');
-                }
-
-                if ($nested) {
-                    if (isset($placed[$node['name']])) {
-                        throw ResourceCompileException::field($class, $node['name'], 'is placed in the layout twice');
-                    }
-
-                    $placed[$node['name']] = true;
-                }
-            }
-        };
-        $walk($tree, false);
+        self::place($tree, false, $compiled, $class, $placed);
 
         // a top-level field that a section or tab places moves there
         $tree = array_values(array_filter($tree, static fn (array $node): bool => $node['kind'] !== 'field' || !isset($placed[$node['name']])));
-
-        $resolve = static function (array $nodes) use (&$resolve, $spans): array {
-            return array_map(static function (array $node) use ($resolve, $spans): array {
-                if ($node['kind'] === 'field') {
-                    unset($node['reference']);
-                    $node['span'] = $spans[$node['name']] ?? null;
-
-                    return $node;
-                }
-
-                $node['children'] = $resolve($node['children']);
-
-                return $node;
-            }, $nodes);
-        };
-        $tree = $resolve($tree);
+        $tree = self::resolve($tree, $spans);
 
         $inView = static fn (array $views): \Closure => static fn (string $name): bool => array_intersect($views, $compiled[$name]['views']) !== [];
 
@@ -178,6 +113,128 @@ final class LayoutCompiler
         }
 
         return $kept;
+    }
+
+    /**
+     * A Field declared in fields(), in a section or in a tab: collected
+     * into the flat field list, and placed in the tree by name.
+     *
+     * @param list<Field> $fields
+     * @return array<string, mixed>
+     */
+    private static function fieldNode(Field $field, array &$fields): array
+    {
+        $fields[] = $field;
+
+        return self::node('field', name: $field->name(), span: $field->layoutSpan());
+    }
+
+    /**
+     * A section or tab child: a Field, or the name of one declared elsewhere.
+     *
+     * @param list<Field> $fields
+     * @return array<string, mixed>
+     */
+    private static function leafNode(Field|string $child, array &$fields): array
+    {
+        return $child instanceof Field ? self::fieldNode($child, $fields) : self::node('field', name: $child) + ['reference' => true];
+    }
+
+    /**
+     * @param list<Field> $fields
+     * @return array<string, mixed>
+     */
+    private static function sectionNode(Section $section, array &$fields): array
+    {
+        $options = $section->options();
+        $children = [];
+
+        foreach ($section->items() as $child) {
+            $children[] = self::leafNode($child, $fields);
+        }
+
+        return self::node('section', label: $section->label(), description: $options['description'], collapsible: $options['collapsible'], collapsed: $options['collapsed'], columns: $options['columns'], children: $children);
+    }
+
+    /**
+     * @param list<Field> $fields
+     * @return array<string, mixed>
+     */
+    private static function tabsNode(Tabs $item, array &$fields, string $class): array
+    {
+        $tabs = [];
+
+        foreach ($item->tabs() as $tab) {
+            $children = [];
+
+            foreach ($tab['children'] as $child) {
+                $children[] = $child instanceof Section ? self::sectionNode($child, $fields) : self::leafNode($child, $fields);
+            }
+
+            $tabs[] = self::node('tab', label: $tab['label'], columns: 2, children: $children);
+        }
+
+        if ($tabs === []) {
+            throw new ResourceCompileException("{$class}::fields() declares a Tabs with no tab.");
+        }
+
+        return self::node('tabs', label: $item->label(), children: $tabs);
+    }
+
+    /**
+     * Records every name placed inside a section or tab, refusing one
+     * that is not a field of the resource or is placed twice.
+     *
+     * @param array<int, array<string, mixed>> $nodes
+     * @param array<string, array<string, mixed>> $compiled
+     * @param array<array-key, true> $placed
+     */
+    private static function place(array $nodes, bool $nested, array $compiled, string $class, array &$placed): void
+    {
+        foreach ($nodes as $node) {
+            if ($node['kind'] !== 'field') {
+                self::place($node['children'], true, $compiled, $class, $placed);
+
+                continue;
+            }
+
+            if (!isset($compiled[$node['name']])) {
+                throw ResourceCompileException::field($class, $node['name'], 'is placed in the layout but is not a field of the resource');
+            }
+
+            if (!$nested) {
+                continue;
+            }
+
+            if (isset($placed[$node['name']])) {
+                throw ResourceCompileException::field($class, $node['name'], 'is placed in the layout twice');
+            }
+
+            $placed[$node['name']] = true;
+        }
+    }
+
+    /**
+     * Every field node with the span its Field declared, and no reference marker.
+     *
+     * @param array<int, array<string, mixed>> $nodes
+     * @param array<string, int|string|null> $spans
+     * @return array<int, array<string, mixed>>
+     */
+    private static function resolve(array $nodes, array $spans): array
+    {
+        return array_map(static function (array $node) use ($spans): array {
+            if ($node['kind'] === 'field') {
+                unset($node['reference']);
+                $node['span'] = $spans[$node['name']] ?? null;
+
+                return $node;
+            }
+
+            $node['children'] = self::resolve($node['children'], $spans);
+
+            return $node;
+        }, $nodes);
     }
 
     /**

@@ -158,21 +158,30 @@ final class ResourceCompiler
         foreach ($fields as $name => $field) {
             foreach ($field['conditions'] ?? [] as $kind => $conditions) {
                 foreach ($conditions as $condition) {
-                    $target = $fields[$condition['field']] ?? null;
-
-                    if ($target === null) {
-                        throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on \"{$condition['field']}\", which is not a field of the same form");
-                    }
-
-                    if ($condition['field'] === $name) {
-                        throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on itself");
-                    }
-
-                    if (in_array($target['type'], ['hasOne', 'hasMany', 'manyToMany'], true) && !in_array($condition['op'], ['null', 'nnull'], true)) {
-                        throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on the collection \"{$condition['field']}\"; only null and nnull apply");
-                    }
+                    self::checkCondition($fields, $owner, $name, $kind, $condition);
                 }
             }
+        }
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $fields field name => compiled field
+     * @param array<string, mixed> $condition
+     */
+    private static function checkCondition(array $fields, string $owner, string $name, string $kind, array $condition): void
+    {
+        $target = $fields[$condition['field']] ?? null;
+
+        if ($target === null) {
+            throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on \"{$condition['field']}\", which is not a field of the same form");
+        }
+
+        if ($condition['field'] === $name) {
+            throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on itself");
+        }
+
+        if (in_array($target['type'], ['hasOne', 'hasMany', 'manyToMany'], true) && !in_array($condition['op'], ['null', 'nnull'], true)) {
+            throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on the collection \"{$condition['field']}\"; only null and nnull apply");
         }
     }
 
@@ -243,41 +252,59 @@ final class ResourceCompiler
             }
 
             $resource = $attribute->newInstance();
-            $entity = $this->entities[$resource->entity]
-                ?? throw ResourceCompileException::resource($class, "{$resource->entity} is not a mapped entity");
-            $slug = $resource->slug ?? str_replace('_', '-', $entity['table']);
-
-            if (preg_match('/^[a-z][a-z0-9-]*$/', $slug) !== 1) {
-                throw ResourceCompileException::resource($class, "slug \"{$slug}\" must be lower-case letters, digits and dashes");
-            }
-
-            foreach ($this->resources as $other => $registered) {
-                if ($registered['slug'] === $slug) {
-                    throw ResourceCompileException::resource($class, "slug \"{$slug}\" is already used by {$other}");
-                }
-            }
-
-            $this->resources[$class] = ['attribute' => $resource, 'slug' => $slug];
+            $this->resources[$class] = ['attribute' => $resource, 'slug' => $this->slugOf($class, $resource)];
             $byEntity[$resource->entity][] = $class;
         }
 
-        // A relation that names no resource of its own links to the
-        // entity's only resource, or to the one marked relationTarget.
         foreach ($byEntity as $entityClass => $over) {
-            $marked = array_values(array_filter($over, fn (string $class): bool => $this->resources[$class]['attribute']->relationTarget));
-
-            if (count($over) > 1 && count($marked) !== 1) {
-                throw new ResourceCompileException(sprintf(
-                    '%s has %d resources (%s), and %s; mark exactly one #[Resource(relationTarget: true)] for the relations to it to link to.',
-                    $entityClass,
-                    count($over),
-                    implode(', ', $over),
-                    $marked === [] ? 'none is the relation target' : 'more than one is the relation target (' . implode(', ', $marked) . ')',
-                ));
-            }
-
-            $this->slugByEntity[$entityClass] = $this->resources[$marked[0] ?? $over[0]]['slug'];
+            $this->slugByEntity[$entityClass] = $this->relationTargetSlug($entityClass, $over);
         }
+    }
+
+    /**
+     * The resource's slug, declared or derived from its entity's table:
+     * lower-case letters, digits and dashes, used by no other resource.
+     */
+    private function slugOf(string $class, Resource $resource): string
+    {
+        $entity = $this->entities[$resource->entity]
+            ?? throw ResourceCompileException::resource($class, "{$resource->entity} is not a mapped entity");
+        $slug = $resource->slug ?? str_replace('_', '-', $entity['table']);
+
+        if (preg_match('/^[a-z][a-z0-9-]*$/', $slug) !== 1) {
+            throw ResourceCompileException::resource($class, "slug \"{$slug}\" must be lower-case letters, digits and dashes");
+        }
+
+        foreach ($this->resources as $other => $registered) {
+            if ($registered['slug'] === $slug) {
+                throw ResourceCompileException::resource($class, "slug \"{$slug}\" is already used by {$other}");
+            }
+        }
+
+        return $slug;
+    }
+
+    /**
+     * A relation that names no resource of its own links to the
+     * entity's only resource, or to the one marked relationTarget.
+     *
+     * @param non-empty-list<class-string<VectorResource>> $over the entity's resources, in discovery order
+     */
+    private function relationTargetSlug(string $entityClass, array $over): string
+    {
+        $marked = array_values(array_filter($over, fn (string $class): bool => $this->resources[$class]['attribute']->relationTarget));
+
+        if (count($over) > 1 && count($marked) !== 1) {
+            throw new ResourceCompileException(sprintf(
+                '%s has %d resources (%s), and %s; mark exactly one #[Resource(relationTarget: true)] for the relations to it to link to.',
+                $entityClass,
+                count($over),
+                implode(', ', $over),
+                $marked === [] ? 'none is the relation target' : 'more than one is the relation target (' . implode(', ', $marked) . ')',
+            ));
+        }
+
+        return $this->resources[$marked[0] ?? $over[0]]['slug'];
     }
 
     /**
@@ -377,46 +404,69 @@ final class ResourceCompiler
                     continue;
                 }
 
-                $owner = $resource['class'];
-                $child = $compiled[$field['relation']['resource']];
-                $inverse = $field['relation']['inverse'];
-                $writable = [];
-
-                foreach ($child['fields'] as $candidate) {
-                    if ($candidate['name'] !== $inverse && $candidate['readonly'] !== true
-                        && array_intersect(['create', 'update'], $candidate['views']) !== []
-                        && !in_array($candidate['type'], ['id', 'hasOne', 'hasMany', 'manyToMany'], true)) {
-                        $writable[] = $candidate['name'];
-                    }
-                }
-
-                foreach ($repeater['fields'] ?? [] as $name) {
-                    if (!in_array($name, $writable, true)) {
-                        throw ResourceCompileException::field($owner, $field['name'], "names \"{$name}\", which is not a writable field of {$child['labelSingular']}");
-                    }
-                }
-
-                $fields = $repeater['fields'] ?? $writable;
-
-                foreach ($child['fields'] as $candidate) {
-                    if ($candidate['name'] !== $inverse && !in_array($candidate['name'], $fields, true) && RecordInput::requiredOnCreate($candidate)) {
-                        throw ResourceCompileException::field($owner, $field['name'], "leaves out \"{$candidate['name']}\", which a new {$child['labelSingular']} row requires");
-                    }
-                }
-
-                if ($child['softDelete'] !== null) {
-                    throw ResourceCompileException::field($owner, $field['name'], 'is a repeater over a soft-deleting resource; leaving a row out deletes it for good');
-                }
-
-                if (array_merge(...array_values($field['conditions'])) !== []) {
-                    throw ResourceCompileException::field($owner, $field['name'], 'is a repeater, which takes no visibleWhen, requiredWhen or disabledWhen');
-                }
-
-                $compiled[$slug]['fields'][$index]['repeater'] = ['fields' => $fields, 'min' => $repeater['min'], 'max' => $repeater['max']];
+                $compiled[$slug]['fields'][$index]['repeater'] = self::linkRepeater($resource['class'], $field, $repeater, $compiled[$field['relation']['resource']]);
             }
         }
 
         return $compiled;
+    }
+
+    /**
+     * @param array<string, mixed> $field the repeater field
+     * @param array<string, mixed> $repeater its declaration
+     * @param array<string, mixed> $child the compiled child resource
+     * @return array{fields: list<string>, min: mixed, max: mixed}
+     */
+    private static function linkRepeater(string $owner, array $field, array $repeater, array $child): array
+    {
+        $inverse = $field['relation']['inverse'];
+        $writable = self::repeaterWritable($child, $inverse);
+
+        foreach ($repeater['fields'] ?? [] as $name) {
+            if (!in_array($name, $writable, true)) {
+                throw ResourceCompileException::field($owner, $field['name'], "names \"{$name}\", which is not a writable field of {$child['labelSingular']}");
+            }
+        }
+
+        $fields = $repeater['fields'] ?? $writable;
+
+        foreach ($child['fields'] as $candidate) {
+            if ($candidate['name'] !== $inverse && !in_array($candidate['name'], $fields, true) && RecordInput::requiredOnCreate($candidate)) {
+                throw ResourceCompileException::field($owner, $field['name'], "leaves out \"{$candidate['name']}\", which a new {$child['labelSingular']} row requires");
+            }
+        }
+
+        if ($child['softDelete'] !== null) {
+            throw ResourceCompileException::field($owner, $field['name'], 'is a repeater over a soft-deleting resource; leaving a row out deletes it for good');
+        }
+
+        if (array_merge(...array_values($field['conditions'])) !== []) {
+            throw ResourceCompileException::field($owner, $field['name'], 'is a repeater, which takes no visibleWhen, requiredWhen or disabledWhen');
+        }
+
+        return ['fields' => $fields, 'min' => $repeater['min'], 'max' => $repeater['max']];
+    }
+
+    /**
+     * The child fields a repeater row may write: never the field pointing
+     * back at the parent, an identifier or a collection.
+     *
+     * @param array<string, mixed> $child the compiled child resource
+     * @return list<string>
+     */
+    private static function repeaterWritable(array $child, string $inverse): array
+    {
+        $writable = [];
+
+        foreach ($child['fields'] as $candidate) {
+            if ($candidate['name'] !== $inverse && $candidate['readonly'] !== true
+                && array_intersect(['create', 'update'], $candidate['views']) !== []
+                && !in_array($candidate['type'], ['id', 'hasOne', 'hasMany', 'manyToMany'], true)) {
+                $writable[] = $candidate['name'];
+            }
+        }
+
+        return $writable;
     }
 
     /**
@@ -436,71 +486,7 @@ final class ResourceCompiler
             $properties[$property['name']] = $property;
         }
 
-        $inverses = array_column($entity['inverses'], null, 'name');
-        $joins = array_column($entity['joins'], null, 'name');
-        $compiledFields = [];
-        $columns = [];
-        $spans = [];
-
-        foreach ($fields as $field) {
-            $name = $field->name();
-            $spans[$name] = $field->layoutSpan();
-
-            if (isset($compiledFields[$name])) {
-                throw ResourceCompileException::field($class, $name, 'is declared twice');
-            }
-
-            $array = $field->toArray();
-
-            if ($field instanceof Computed) {
-                $array = self::compileComputed($class, $array);
-            } elseif ($field instanceof RelationField) {
-                $array = $this->compileRelation($class, $field, $array, $properties, $inverses, $joins);
-            } elseif (isset($properties[$name])) {
-                $property = $properties[$name];
-
-                if ($property['target'] !== null) {
-                    throw ResourceCompileException::field($class, $name, 'is a #[BelongsTo] property; declare it with BelongsTo::to()');
-                }
-
-                $array['column'] = $property['column'];
-                $array['nullable'] = $property['nullable'];
-                $array['valueType'] = $property['type'];
-                $array['enum'] = $property['enum'];
-
-                if ($field->type() === 'datetime' && $property['type'] === 'date') {
-                    throw ResourceCompileException::field($class, $name, 'maps a date-only Kinetis\\Orm\\Date property; declare it with Date::make()');
-                }
-            } else {
-                throw ResourceCompileException::field($class, $name, "is not a mapped property of {$entity['class']}");
-            }
-
-            if ($array['sortable'] === true && !isset($array['column'])) {
-                throw ResourceCompileException::field($class, $name, 'maps no column and cannot be sortable');
-            }
-
-            // a searchable belongsTo matches the related record's title (linkSearchRelations)
-            if ($array['searchable'] === true && $array['type'] !== 'belongsTo' && ($array['valueType'] ?? null) !== 'string') {
-                throw ResourceCompileException::field($class, $name, 'is not a string column and cannot be searchable');
-            }
-
-            if ($array['filterable'] === true && self::operatorShape($array['type']) === null) {
-                throw ResourceCompileException::field($class, $name, 'is a collection and cannot be filterable');
-            }
-
-            if ($array['summary'] !== null && (!isset($array['column']) || !in_array($array['valueType'] ?? null, ['int', 'float'], true))) {
-                throw ResourceCompileException::field($class, $name, 'is not a numeric column and cannot carry a summary');
-            }
-
-            $array['operators'] = self::operatorsFor($array);
-
-            if (isset($array['column'])) {
-                $columns[$name] = $array['column'];
-            }
-
-            $compiledFields[$name] = $array;
-        }
-
+        ['fields' => $compiledFields, 'columns' => $columns, 'spans' => $spans] = $this->compileFields($class, $entity, $fields, $properties);
         $idField = $entity['id'];
 
         if (!isset($compiledFields[$idField])) {
@@ -513,283 +499,34 @@ final class ResourceCompiler
             throw ResourceCompileException::resource($class, "title field \"{$title}\" maps no column");
         }
 
-        $defaultSort = [];
-
-        foreach ($instance->defaultSort() as $sort) {
-            $direction = str_starts_with($sort, '-') ? 'desc' : 'asc';
-            $name = ltrim($sort, '-');
-
-            if (($compiledFields[$name]['sortable'] ?? false) !== true) {
-                throw ResourceCompileException::resource($class, "default sort names \"{$name}\", which is not a sortable field");
-            }
-
-            $defaultSort[] = ['field' => $name, 'order' => $direction];
-        }
-
-        if ($defaultSort === []) {
-            $defaultSort = [['field' => $idField, 'order' => 'asc']];
-        }
-
-        $inView = static fn (string $view): array => array_keys(array_filter(
-            $compiledFields,
-            static fn (array $f): bool => in_array($view, $f['views'], true),
-        ));
-
-        // A field another field's display depends on — a money field's
-        // currency — is serialized with every view that shows the
-        // dependent field, whether or not it is displayed itself.
-        $dependencies = static function (array $visible) use ($compiledFields, $class): array {
-            $extra = [];
-
-            foreach ($visible as $name) {
-                $currency = $compiledFields[$name]['props']['currencyField'] ?? null;
-
-                // a computed value is computed from its sources: they travel with it
-                foreach ($compiledFields[$name]['computed']['from'] ?? [] as $source) {
-                    if (!in_array($source, $visible, true) && !in_array($source, $extra, true)) {
-                        $extra[] = $source;
-                    }
-                }
-
-                if ($currency === null) {
-                    continue;
-                }
-
-                // a related record's currency travels with the relation's value: the relation is the dependency
-                if (str_contains($currency, '.')) {
-                    $currency = explode('.', $currency, 2)[0];
-
-                    if (($compiledFields[$currency]['type'] ?? null) !== 'belongsTo') {
-                        throw ResourceCompileException::field($class, $name, "currencyField \"{$compiledFields[$name]['props']['currencyField']}\" does not start with a belongsTo field");
-                    }
-                } elseif (!isset($compiledFields[$currency]['column'])) {
-                    throw ResourceCompileException::field($class, $name, "currencyField \"{$currency}\" is not a column-mapped field");
-                }
-
-                if (!in_array($currency, $visible, true) && !in_array($currency, $extra, true)) {
-                    $extra[] = $currency;
-                }
-            }
-
-            return $extra;
-        };
-        $indexFields = $inView(Field::VIEW_INDEX);
-        $showFields = $inView(Field::VIEW_SHOW);
-
-        // Every property of the entity, administered or not: what the
-        // default writer must initialize on create, and what a delete
-        // must load. hasDefaultValue() is PHP's own answer.
-        $reflection = new ReflectionClass($entity['class']);
-        $entityProperties = [];
-
-        foreach ($entity['properties'] as $property) {
-            $entityProperties[$property['name']] = [
-                'kind' => $property['target'] === null ? 'column' : 'belongsTo',
-                'nullable' => $property['nullable'],
-                'hasDefault' => $reflection->getProperty($property['name'])->hasDefaultValue(),
-                'type' => $property['type'],
-            ];
-        }
-
-        foreach ($entity['inverses'] as $inverse) {
-            $entityProperties[$inverse['name']] = ['kind' => $inverse['kind'], 'nullable' => $inverse['nullable'], 'hasDefault' => false, 'type' => null, 'owned' => $inverse['owned']];
-        }
-
-        foreach ($entity['joins'] as $join) {
-            $entityProperties[$join['name']] = ['kind' => 'manyToMany', 'nullable' => false, 'hasDefault' => false, 'type' => null];
-        }
-
-        $timestamps = $instance->timestamps() ?? [
-            'created' => isset($entityProperties['createdAt']) && $entityProperties['createdAt']['type'] === 'timestamp' ? 'createdAt' : null,
-            'updated' => isset($entityProperties['updatedAt']) && $entityProperties['updatedAt']['type'] === 'timestamp' ? 'updatedAt' : null,
-        ];
-
-        foreach (array_filter($timestamps) as $stamp) {
-            if (($entityProperties[$stamp]['type'] ?? null) !== 'timestamp') {
-                throw ResourceCompileException::resource($class, "timestamp property \"{$stamp}\" is not a DateTimeImmutable property of {$entity['class']}");
-            }
-        }
+        $defaultSort = self::defaultSort($instance, $compiledFields, $idField, $class);
+        $indexFields = self::inView($compiledFields, Field::VIEW_INDEX);
+        $showFields = self::inView($compiledFields, Field::VIEW_SHOW);
+        $entityProperties = self::entityProperties($entity);
+        $timestamps = self::timestamps($instance, $entityProperties, $entity, $class);
 
         self::checkConditions($compiledFields, $class);
         self::checkComputedSources($compiledFields, $class);
         $compiledFields = self::checkDependencies($compiledFields, $class);
-
-        foreach ($compiledFields as $name => $field) {
-            if (in_array($name, ['or', 'and', 'trashed'], true) && $field['filterable'] === true) {
-                throw ResourceCompileException::field($class, $name, 'is a word the filter grammar reserves, so it cannot be filterable');
-            }
-
-            if ($field['type'] === 'currency') {
-                $codes = array_column($field['options'], 'value');
-
-                if (($field['valueType'] ?? null) !== 'string') {
-                    throw ResourceCompileException::field($class, $name, 'is a currency field, which stores its code in a string property');
-                }
-
-                if (($unknown = array_diff($codes, Currency::ISO_4217)) !== []) {
-                    throw ResourceCompileException::field($class, $name, 'allows "' . implode('", "', $unknown) . '", which ISO 4217 does not name');
-                }
-
-                if ($field['hasDefault'] && !in_array($field['default'], $codes, true)) {
-                    throw ResourceCompileException::field($class, $name, 'defaults to a currency it does not allow');
-                }
-            }
-
-            if ($field['type'] === 'password' && isset($field['props']['hasher'])) {
-                $hasher = $field['props']['hasher'];
-
-                if (!is_string($hasher) || !interface_exists($hasher) && !class_exists($hasher) || !is_a($hasher, PasswordHasherInterface::class, true)) {
-                    throw ResourceCompileException::field($class, $name, 'is hashed by ' . (is_string($hasher) ? $hasher : get_debug_type($hasher)) . ', which does not implement ' . PasswordHasherInterface::class);
-                }
-
-                if (($field['valueType'] ?? null) !== 'string') {
-                    throw ResourceCompileException::field($class, $name, 'is a hashed password, which stores its hash in a string property');
-                }
-            }
-
-            if ($field['type'] === 'richtext') {
-                $compiledFields[$name] = self::compileRichText($class, $field, $compiledFields, $properties);
-            }
-
-            if ($field['type'] === 'keyValue') {
-                if (($field['valueType'] ?? null) !== 'string') {
-                    throw ResourceCompileException::field($class, $name, 'is a key-value field, which stores its JSON in a string property');
-                }
-
-                if ($field['sortable'] || $field['filterable'] || $field['searchable'] || ($field['summary'] ?? null) !== null) {
-                    throw ResourceCompileException::field($class, $name, 'is a key-value field, which cannot be sorted, filtered, searched or summarized');
-                }
-            }
-
-            if (($field['inline'] ?? false) !== true) {
-                continue;
-            }
-
-            if (!in_array($field['type'], self::INLINE_TYPES, true)) {
-                throw ResourceCompileException::field($class, $name, "is a {$field['type']} field, which cannot be edited inline");
-            }
-
-            if ($field['readonly'] === true || !in_array(Field::VIEW_UPDATE, $field['views'], true)) {
-                throw ResourceCompileException::field($class, $name, 'is inline-editable but not editable on update');
-            }
-        }
-
-        // Create is possible only when every property a new entity must
-        // hold arrives from somewhere: a writable field, a timestamp
-        // Vector sets, a default, or null.
-        $creation = ['possible' => true, 'reason' => null];
-
-        foreach ($entityProperties as $name => $property) {
-            $writable = isset($compiledFields[$name])
-                && $compiledFields[$name]['readonly'] !== true
-                && in_array(Field::VIEW_CREATE, $compiledFields[$name]['views'], true);
-            $supplied = $writable || $property['nullable'] || $property['hasDefault'] || in_array($name, $timestamps, true)
-                || $name === $entity['id'] || in_array($property['kind'], ['hasOne', 'hasMany', 'manyToMany'], true);
-
-            if (!$supplied) {
-                $creation = ['possible' => false, 'reason' => "the entity's \"{$name}\" property is required but not administered; declare a field for it or override create()"];
-
-                break;
-            }
-        }
+        $compiledFields = self::checkFieldTypes($class, $compiledFields, $properties);
+        $creation = self::creation($entity, $entityProperties, $compiledFields, $timestamps);
 
         $ownedRelations = array_values(array_map(
             static fn (array $inverse): string => $inverse['name'],
             array_filter($entity['inverses'], static fn (array $inverse): bool => $inverse['owned']),
         ));
 
-        // Soft deletion is a resource convention: the named nullable
-        // timestamp property is set instead of the row being removed.
-        $softDelete = null;
-        $softProperty = $instance->softDeletes();
-
-        if ($softProperty !== null) {
-            $mapped = $properties[$softProperty] ?? throw ResourceCompileException::resource($class, "softDeletes() names \"{$softProperty}\", which is not a mapped property of {$entity['class']}");
-
-            if ($mapped['type'] !== 'timestamp' || !$mapped['nullable']) {
-                throw ResourceCompileException::resource($class, "softDeletes() names \"{$softProperty}\", which is not a nullable DateTimeImmutable property");
-            }
-
-            $softDelete = ['field' => $softProperty, 'column' => $mapped['column']];
-        }
-
+        $softDelete = self::softDelete($instance, $entity, $properties, $class);
         $fullText = self::fullText($instance, $compiledFields, $class);
-        $searchColumns = [];
-        $searchRelations = [];
-        $search = [];
-
-        foreach ($compiledFields as $name => $field) {
-            if (isset($fullText['columns'][$name])) {
-                $search[] = $name;
-            } elseif ($field['searchable'] === true && $field['type'] === 'belongsTo') {
-                $searchRelations[$name] = ['column' => $field['column'], 'resource' => $field['relation']['resource']];
-                $search[] = $name;
-            } elseif ($field['searchable'] === true && isset($field['column'])) {
-                // a rich-text field is searched through its plain-text column
-                $searchColumns[$name] = $field['searchColumn'] ?? $field['column'];
-                $search[] = $name;
-            }
-        }
+        ['search' => $search, 'columns' => $searchColumns, 'relations' => $searchRelations] = self::searchPlan($compiledFields, $fullText);
 
         $groupable = array_keys(array_filter(
             $compiledFields,
             static fn (array $f): bool => $f['sortable'] === true && isset($f['column']) && in_array($f['type'], self::GROUPABLE, true),
         ));
 
-        $summaries = [];
-
-        foreach ($compiledFields as $name => $field) {
-            if ($field['summary'] !== null) {
-                $summaries[$name] = ['function' => $field['summary'], 'column' => $field['column']];
-            }
-        }
-
-        $actions = [];
-        $slugByClass = array_map(static fn (array $r): string => $r['slug'], $this->resources);
-
-        foreach ($instance->actions() as $actionClass) {
-            if (!is_subclass_of($actionClass, VectorAction::class)) {
-                throw ResourceCompileException::resource($class, "actions() names {$actionClass}, which is not a VectorAction");
-            }
-
-            $action = (new ReflectionClass($actionClass))->newInstanceWithoutConstructor(); // definitions need no dependencies
-            $actionName = $action->name();
-
-            if (preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $actionName) !== 1) {
-                throw ResourceCompileException::resource($class, "action {$actionClass} has the name \"{$actionName}\"; an action name is lower-case kebab-case");
-            }
-
-            if (isset($actions[$actionName])) {
-                throw ResourceCompileException::resource($class, "two actions are named \"{$actionName}\"");
-            }
-
-            $actionFields = [];
-
-            foreach ($action->fields() as $field) {
-                if (isset($actionFields[$field->name()])) {
-                    throw ResourceCompileException::field($actionClass, $field->name(), 'is declared twice');
-                }
-
-                $actionFields[$field->name()] = self::compileLoose($field, $slugByClass, $actionClass);
-            }
-
-            self::checkConditions($actionFields, $actionClass);
-
-            $actions[$actionName] = [
-                'name' => $actionName,
-                'class' => $actionClass,
-                'label' => $action->label(),
-                'icon' => $action->icon(),
-                'confirmation' => $action->confirmation(),
-                'destructive' => $action->destructive(),
-                'standalone' => $action->standalone(),
-                'queued' => $action->queued(),
-                'chunkSize' => max(1, $action->chunkSize()),
-                'showOnIndex' => $action->showOnIndex(),
-                'showOnDetail' => $action->showOnDetail(),
-                'fields' => array_values($actionFields),
-            ];
-        }
+        $summaries = self::summaryPlan($compiledFields);
+        $actions = $this->compileActions($instance, $class);
 
         return [
             'slug' => $slug,
@@ -810,7 +547,7 @@ final class ResourceCompiler
             'columns' => $columns,
             'table_view' => [
                 'columns' => $indexFields,
-                'extra' => $dependencies($indexFields),
+                'extra' => self::dependencies($indexFields, $compiledFields, $class),
                 'defaultSort' => $defaultSort,
                 'perPage' => $instance->perPage(),
                 'perPageOptions' => $instance->perPageOptions(),
@@ -822,7 +559,7 @@ final class ResourceCompiler
                 'exportQueueLimit' => $instance->exportQueueLimit(),
                 'bulkLimit' => $instance->bulkLimit(),
             ] + array_filter(['withoutCount' => $instance->withoutCount(), 'cursorPaging' => $instance->cursorPaging()]),
-            'show_view' => ['fields' => $showFields, 'extra' => $dependencies($showFields)],
+            'show_view' => ['fields' => $showFields, 'extra' => self::dependencies($showFields, $compiledFields, $class)],
             'policy' => $instance->policy(),
             'entityProperties' => $entityProperties,
             'timestamps' => $timestamps,
@@ -838,6 +575,527 @@ final class ResourceCompiler
             'actions' => array_values($actions),
             'widgets' => WidgetCompiler::widgets($instance->widgets(), $class),
         ] + array_filter(['searchRelations' => $searchRelations, 'fullText' => $fullText]);
+    }
+
+    /**
+     * Every field the resource administers, compiled against the entity's
+     * mapping, with the column each maps and the span each declared.
+     *
+     * @param class-string<VectorResource> $class
+     * @param EntityMapping $entity
+     * @param list<Field> $fields
+     * @param array<string, PropertyMapping> $properties
+     * @return array{fields: array<string, array<string, mixed>>, columns: array<string, mixed>, spans: array<string, int|string|null>}
+     */
+    private function compileFields(string $class, array $entity, array $fields, array $properties): array
+    {
+        $inverses = array_column($entity['inverses'], null, 'name');
+        $joins = array_column($entity['joins'], null, 'name');
+        $compiledFields = [];
+        $columns = [];
+        $spans = [];
+
+        foreach ($fields as $field) {
+            $name = $field->name();
+            $spans[$name] = $field->layoutSpan();
+
+            if (isset($compiledFields[$name])) {
+                throw ResourceCompileException::field($class, $name, 'is declared twice');
+            }
+
+            $array = $this->mapField($class, $entity, $field, $properties, $inverses, $joins);
+            self::checkCapabilities($class, $name, $array);
+            $array['operators'] = self::operatorsFor($array);
+
+            if (isset($array['column'])) {
+                $columns[$name] = $array['column'];
+            }
+
+            $compiledFields[$name] = $array;
+        }
+
+        return ['fields' => $compiledFields, 'columns' => $columns, 'spans' => $spans];
+    }
+
+    /**
+     * One field mapped onto what it stores: a computed value, a relation,
+     * or a mapped property of the entity.
+     *
+     * @param class-string<VectorResource> $class
+     * @param EntityMapping $entity
+     * @param array<string, PropertyMapping> $properties
+     * @param array<string, array<string, mixed>> $inverses
+     * @param array<string, array<string, mixed>> $joins
+     * @return array<string, mixed>
+     */
+    private function mapField(string $class, array $entity, Field $field, array $properties, array $inverses, array $joins): array
+    {
+        $name = $field->name();
+        $array = $field->toArray();
+
+        if ($field instanceof Computed) {
+            return self::compileComputed($class, $array);
+        }
+
+        if ($field instanceof RelationField) {
+            return $this->compileRelation($class, $field, $array, $properties, $inverses, $joins);
+        }
+
+        $property = $properties[$name] ?? throw ResourceCompileException::field($class, $name, "is not a mapped property of {$entity['class']}");
+
+        if ($property['target'] !== null) {
+            throw ResourceCompileException::field($class, $name, 'is a #[BelongsTo] property; declare it with BelongsTo::to()');
+        }
+
+        $array['column'] = $property['column'];
+        $array['nullable'] = $property['nullable'];
+        $array['valueType'] = $property['type'];
+        $array['enum'] = $property['enum'];
+
+        if ($field->type() === 'datetime' && $property['type'] === 'date') {
+            throw ResourceCompileException::field($class, $name, 'maps a date-only Kinetis\\Orm\\Date property; declare it with Date::make()');
+        }
+
+        return $array;
+    }
+
+    /**
+     * Sorting, searching and summarizing need a column of the right kind;
+     * filtering needs a field that is not a collection.
+     *
+     * @param array<string, mixed> $array a compiled field
+     */
+    private static function checkCapabilities(string $class, string $name, array $array): void
+    {
+        if ($array['sortable'] === true && !isset($array['column'])) {
+            throw ResourceCompileException::field($class, $name, 'maps no column and cannot be sortable');
+        }
+
+        // a searchable belongsTo matches the related record's title (linkSearchRelations)
+        if ($array['searchable'] === true && $array['type'] !== 'belongsTo' && ($array['valueType'] ?? null) !== 'string') {
+            throw ResourceCompileException::field($class, $name, 'is not a string column and cannot be searchable');
+        }
+
+        if ($array['filterable'] === true && self::operatorShape($array['type']) === null) {
+            throw ResourceCompileException::field($class, $name, 'is a collection and cannot be filterable');
+        }
+
+        if ($array['summary'] !== null && (!isset($array['column']) || !in_array($array['valueType'] ?? null, ['int', 'float'], true))) {
+            throw ResourceCompileException::field($class, $name, 'is not a numeric column and cannot carry a summary');
+        }
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $fields
+     * @return list<array{field: string, order: string}>
+     */
+    private static function defaultSort(VectorResource $instance, array $fields, string $idField, string $class): array
+    {
+        $defaultSort = [];
+
+        foreach ($instance->defaultSort() as $sort) {
+            $direction = str_starts_with($sort, '-') ? 'desc' : 'asc';
+            $name = ltrim($sort, '-');
+
+            if (($fields[$name]['sortable'] ?? false) !== true) {
+                throw ResourceCompileException::resource($class, "default sort names \"{$name}\", which is not a sortable field");
+            }
+
+            $defaultSort[] = ['field' => $name, 'order' => $direction];
+        }
+
+        if ($defaultSort === []) {
+            $defaultSort = [['field' => $idField, 'order' => 'asc']];
+        }
+
+        return $defaultSort;
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $fields
+     * @return list<string>
+     */
+    private static function inView(array $fields, string $view): array
+    {
+        return array_keys(array_filter(
+            $fields,
+            static fn (array $f): bool => in_array($view, $f['views'], true),
+        ));
+    }
+
+    /**
+     * A field another field's display depends on — a money field's
+     * currency — is serialized with every view that shows the
+     * dependent field, whether or not it is displayed itself.
+     *
+     * @param list<string> $visible
+     * @param array<string, array<string, mixed>> $fields
+     * @return list<string>
+     */
+    private static function dependencies(array $visible, array $fields, string $class): array
+    {
+        $extra = [];
+
+        foreach ($visible as $name) {
+            // a computed value is computed from its sources: they travel with it
+            $needs = $fields[$name]['computed']['from'] ?? [];
+            $currency = $fields[$name]['props']['currencyField'] ?? null;
+
+            if ($currency !== null) {
+                $needs[] = self::currencyDependency($fields, $name, $currency, $class);
+            }
+
+            foreach ($needs as $need) {
+                if (!in_array($need, $visible, true) && !in_array($need, $extra, true)) {
+                    $extra[] = $need;
+                }
+            }
+        }
+
+        return $extra;
+    }
+
+    /**
+     * The field a money field's currencyField makes it depend on.
+     *
+     * @param array<string, array<string, mixed>> $fields
+     */
+    private static function currencyDependency(array $fields, string $name, string $currency, string $class): string
+    {
+        // a related record's currency travels with the relation's value: the relation is the dependency
+        if (str_contains($currency, '.')) {
+            $relation = explode('.', $currency, 2)[0];
+
+            if (($fields[$relation]['type'] ?? null) !== 'belongsTo') {
+                throw ResourceCompileException::field($class, $name, "currencyField \"{$currency}\" does not start with a belongsTo field");
+            }
+
+            return $relation;
+        }
+
+        if (!isset($fields[$currency]['column'])) {
+            throw ResourceCompileException::field($class, $name, "currencyField \"{$currency}\" is not a column-mapped field");
+        }
+
+        return $currency;
+    }
+
+    /**
+     * Every property of the entity, administered or not: what the
+     * default writer must initialize on create, and what a delete
+     * must load. hasDefaultValue() is PHP's own answer.
+     *
+     * @param EntityMapping $entity
+     * @return array<string, array{kind: string, nullable: bool, hasDefault: bool, type: string|null, owned?: bool}>
+     */
+    private static function entityProperties(array $entity): array
+    {
+        $reflection = new ReflectionClass($entity['class']);
+        $entityProperties = [];
+
+        foreach ($entity['properties'] as $property) {
+            $entityProperties[$property['name']] = [
+                'kind' => $property['target'] === null ? 'column' : 'belongsTo',
+                'nullable' => $property['nullable'],
+                'hasDefault' => $reflection->getProperty($property['name'])->hasDefaultValue(),
+                'type' => $property['type'],
+            ];
+        }
+
+        foreach ($entity['inverses'] as $inverse) {
+            $entityProperties[$inverse['name']] = ['kind' => $inverse['kind'], 'nullable' => $inverse['nullable'], 'hasDefault' => false, 'type' => null, 'owned' => $inverse['owned']];
+        }
+
+        foreach ($entity['joins'] as $join) {
+            $entityProperties[$join['name']] = ['kind' => 'manyToMany', 'nullable' => false, 'hasDefault' => false, 'type' => null];
+        }
+
+        return $entityProperties;
+    }
+
+    /**
+     * The timestamps Vector sets: declared, or the entity's createdAt and
+     * updatedAt when they are DateTimeImmutable properties.
+     *
+     * @param array<string, array{kind: string, nullable: bool, hasDefault: bool, type: string|null, owned?: bool}> $entityProperties
+     * @param EntityMapping $entity
+     * @return array{created: string|null, updated: string|null}
+     */
+    private static function timestamps(VectorResource $instance, array $entityProperties, array $entity, string $class): array
+    {
+        $timestamps = $instance->timestamps() ?? [
+            'created' => isset($entityProperties['createdAt']) && $entityProperties['createdAt']['type'] === 'timestamp' ? 'createdAt' : null,
+            'updated' => isset($entityProperties['updatedAt']) && $entityProperties['updatedAt']['type'] === 'timestamp' ? 'updatedAt' : null,
+        ];
+
+        foreach (array_filter($timestamps) as $stamp) {
+            if (($entityProperties[$stamp]['type'] ?? null) !== 'timestamp') {
+                throw ResourceCompileException::resource($class, "timestamp property \"{$stamp}\" is not a DateTimeImmutable property of {$entity['class']}");
+            }
+        }
+
+        return $timestamps;
+    }
+
+    /**
+     * What each field type requires of its field once the whole form is
+     * compiled; a rich-text field is compiled here.
+     *
+     * @param array<string, array<string, mixed>> $compiledFields
+     * @param array<string, PropertyMapping> $properties
+     * @return array<string, array<string, mixed>>
+     */
+    private static function checkFieldTypes(string $class, array $compiledFields, array $properties): array
+    {
+        foreach ($compiledFields as $name => $field) {
+            if (in_array($name, ['or', 'and', 'trashed'], true) && $field['filterable'] === true) {
+                throw ResourceCompileException::field($class, $name, 'is a word the filter grammar reserves, so it cannot be filterable');
+            }
+
+            if ($field['type'] === 'currency') {
+                self::checkCurrency($class, $name, $field);
+            }
+
+            if ($field['type'] === 'password' && isset($field['props']['hasher'])) {
+                self::checkHasher($class, $name, $field);
+            }
+
+            if ($field['type'] === 'richtext') {
+                $compiledFields[$name] = self::compileRichText($class, $field, $compiledFields, $properties);
+            }
+
+            if ($field['type'] === 'keyValue') {
+                self::checkKeyValue($class, $name, $field);
+            }
+
+            self::checkInline($class, $name, $field);
+        }
+
+        return $compiledFields;
+    }
+
+    /** @param array<string, mixed> $field */
+    private static function checkCurrency(string $class, string $name, array $field): void
+    {
+        $codes = array_column($field['options'], 'value');
+
+        if (($field['valueType'] ?? null) !== 'string') {
+            throw ResourceCompileException::field($class, $name, 'is a currency field, which stores its code in a string property');
+        }
+
+        if (($unknown = array_diff($codes, Currency::ISO_4217)) !== []) {
+            throw ResourceCompileException::field($class, $name, 'allows "' . implode('", "', $unknown) . '", which ISO 4217 does not name');
+        }
+
+        if ($field['hasDefault'] && !in_array($field['default'], $codes, true)) {
+            throw ResourceCompileException::field($class, $name, 'defaults to a currency it does not allow');
+        }
+    }
+
+    /** @param array<string, mixed> $field */
+    private static function checkHasher(string $class, string $name, array $field): void
+    {
+        $hasher = $field['props']['hasher'];
+
+        if (!is_string($hasher) || !interface_exists($hasher) && !class_exists($hasher) || !is_a($hasher, PasswordHasherInterface::class, true)) {
+            throw ResourceCompileException::field($class, $name, 'is hashed by ' . (is_string($hasher) ? $hasher : get_debug_type($hasher)) . ', which does not implement ' . PasswordHasherInterface::class);
+        }
+
+        if (($field['valueType'] ?? null) !== 'string') {
+            throw ResourceCompileException::field($class, $name, 'is a hashed password, which stores its hash in a string property');
+        }
+    }
+
+    /** @param array<string, mixed> $field */
+    private static function checkKeyValue(string $class, string $name, array $field): void
+    {
+        if (($field['valueType'] ?? null) !== 'string') {
+            throw ResourceCompileException::field($class, $name, 'is a key-value field, which stores its JSON in a string property');
+        }
+
+        if ($field['sortable'] || $field['filterable'] || $field['searchable'] || ($field['summary'] ?? null) !== null) {
+            throw ResourceCompileException::field($class, $name, 'is a key-value field, which cannot be sorted, filtered, searched or summarized');
+        }
+    }
+
+    /** @param array<string, mixed> $field */
+    private static function checkInline(string $class, string $name, array $field): void
+    {
+        if (($field['inline'] ?? false) !== true) {
+            return;
+        }
+
+        if (!in_array($field['type'], self::INLINE_TYPES, true)) {
+            throw ResourceCompileException::field($class, $name, "is a {$field['type']} field, which cannot be edited inline");
+        }
+
+        if ($field['readonly'] === true || !in_array(Field::VIEW_UPDATE, $field['views'], true)) {
+            throw ResourceCompileException::field($class, $name, 'is inline-editable but not editable on update');
+        }
+    }
+
+    /**
+     * Create is possible only when every property a new entity must
+     * hold arrives from somewhere: a writable field, a timestamp
+     * Vector sets, a default, or null.
+     *
+     * @param EntityMapping $entity
+     * @param array<string, array{kind: string, nullable: bool, hasDefault: bool, type: string|null, owned?: bool}> $entityProperties
+     * @param array<string, array<string, mixed>> $fields
+     * @param array{created: string|null, updated: string|null} $timestamps
+     * @return array{possible: bool, reason: string|null}
+     */
+    private static function creation(array $entity, array $entityProperties, array $fields, array $timestamps): array
+    {
+        foreach ($entityProperties as $name => $property) {
+            $writable = isset($fields[$name])
+                && $fields[$name]['readonly'] !== true
+                && in_array(Field::VIEW_CREATE, $fields[$name]['views'], true);
+            $supplied = $writable || $property['nullable'] || $property['hasDefault'] || in_array($name, $timestamps, true)
+                || $name === $entity['id'] || in_array($property['kind'], ['hasOne', 'hasMany', 'manyToMany'], true);
+
+            if (!$supplied) {
+                return ['possible' => false, 'reason' => "the entity's \"{$name}\" property is required but not administered; declare a field for it or override create()"];
+            }
+        }
+
+        return ['possible' => true, 'reason' => null];
+    }
+
+    /**
+     * Soft deletion is a resource convention: the named nullable
+     * timestamp property is set instead of the row being removed.
+     *
+     * @param EntityMapping $entity
+     * @param array<string, PropertyMapping> $properties
+     * @return array{field: string, column: string}|null
+     */
+    private static function softDelete(VectorResource $instance, array $entity, array $properties, string $class): ?array
+    {
+        $softProperty = $instance->softDeletes();
+
+        if ($softProperty === null) {
+            return null;
+        }
+
+        $mapped = $properties[$softProperty] ?? throw ResourceCompileException::resource($class, "softDeletes() names \"{$softProperty}\", which is not a mapped property of {$entity['class']}");
+
+        if ($mapped['type'] !== 'timestamp' || !$mapped['nullable']) {
+            throw ResourceCompileException::resource($class, "softDeletes() names \"{$softProperty}\", which is not a nullable DateTimeImmutable property");
+        }
+
+        return ['field' => $softProperty, 'column' => $mapped['column']];
+    }
+
+    /**
+     * What a search query matches: the full-text columns, the titles of
+     * searchable belongsTo relations, and the other searchable columns.
+     *
+     * @param array<string, array<string, mixed>> $fields
+     * @param array{columns: array<string, string>, config: string}|null $fullText
+     * @return array{search: list<string>, columns: array<string, mixed>, relations: array<string, array{column: mixed, resource: mixed}>}
+     */
+    private static function searchPlan(array $fields, ?array $fullText): array
+    {
+        $plan = ['search' => [], 'columns' => [], 'relations' => []];
+
+        foreach ($fields as $name => $field) {
+            if (isset($fullText['columns'][$name])) {
+                $plan['search'][] = $name;
+            } elseif ($field['searchable'] === true && $field['type'] === 'belongsTo') {
+                $plan['relations'][$name] = ['column' => $field['column'], 'resource' => $field['relation']['resource']];
+                $plan['search'][] = $name;
+            } elseif ($field['searchable'] === true && isset($field['column'])) {
+                // a rich-text field is searched through its plain-text column
+                $plan['columns'][$name] = $field['searchColumn'] ?? $field['column'];
+                $plan['search'][] = $name;
+            }
+        }
+
+        return $plan;
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $fields
+     * @return array<string, array{function: mixed, column: mixed}>
+     */
+    private static function summaryPlan(array $fields): array
+    {
+        $summaries = [];
+
+        foreach ($fields as $name => $field) {
+            if ($field['summary'] !== null) {
+                $summaries[$name] = ['function' => $field['summary'], 'column' => $field['column']];
+            }
+        }
+
+        return $summaries;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>> action name => compiled action
+     */
+    private function compileActions(VectorResource $instance, string $class): array
+    {
+        $actions = [];
+        $slugByClass = array_map(static fn (array $r): string => $r['slug'], $this->resources);
+
+        foreach ($instance->actions() as $actionClass) {
+            if (!is_subclass_of($actionClass, VectorAction::class)) {
+                throw ResourceCompileException::resource($class, "actions() names {$actionClass}, which is not a VectorAction");
+            }
+
+            $action = (new ReflectionClass($actionClass))->newInstanceWithoutConstructor(); // definitions need no dependencies
+            $actionName = $action->name();
+
+            if (preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $actionName) !== 1) {
+                throw ResourceCompileException::resource($class, "action {$actionClass} has the name \"{$actionName}\"; an action name is lower-case kebab-case");
+            }
+
+            if (isset($actions[$actionName])) {
+                throw ResourceCompileException::resource($class, "two actions are named \"{$actionName}\"");
+            }
+
+            $actionFields = self::compileActionFields($action, $actionClass, $slugByClass);
+
+            $actions[$actionName] = [
+                'name' => $actionName,
+                'class' => $actionClass,
+                'label' => $action->label(),
+                'icon' => $action->icon(),
+                'confirmation' => $action->confirmation(),
+                'destructive' => $action->destructive(),
+                'standalone' => $action->standalone(),
+                'queued' => $action->queued(),
+                'chunkSize' => max(1, $action->chunkSize()),
+                'showOnIndex' => $action->showOnIndex(),
+                'showOnDetail' => $action->showOnDetail(),
+                'fields' => array_values($actionFields),
+            ];
+        }
+
+        return $actions;
+    }
+
+    /**
+     * @param array<string, string> $slugByClass resource class => slug
+     * @return array<string, array<string, mixed>> field name => compiled field
+     */
+    private static function compileActionFields(VectorAction $action, string $actionClass, array $slugByClass): array
+    {
+        $actionFields = [];
+
+        foreach ($action->fields() as $field) {
+            if (isset($actionFields[$field->name()])) {
+                throw ResourceCompileException::field($actionClass, $field->name(), 'is declared twice');
+            }
+
+            $actionFields[$field->name()] = self::compileLoose($field, $slugByClass, $actionClass);
+        }
+
+        self::checkConditions($actionFields, $actionClass);
+
+        return $actionFields;
     }
 
     /** The field types full-text search covers: text stored as it is shown. */
@@ -991,23 +1249,38 @@ final class ResourceCompiler
             }
 
             if (in_array($name, ['or', 'and'], true) && is_array($conditions)) {
-                foreach ($conditions as $child) {
-                    self::checkBadgeFilter(is_array($child) ? $child : [], $fields, $class);
-                }
+                self::checkBadgeGroup($conditions, $fields, $class);
 
                 continue;
             }
 
-            $field = $fields[$name] ?? null;
+            self::checkBadgeField($name, $conditions, $fields, $class);
+        }
+    }
 
-            if ($field === null || $field['filterable'] !== true) {
-                throw new ResourceCompileException("{$class}::badge() filters on \"{$name}\", which is not a filterable field of the resource.");
-            }
+    /**
+     * @param array<mixed> $group the filters an `or` or `and` combines
+     * @param array<string, array<string, mixed>> $fields
+     */
+    private static function checkBadgeGroup(array $group, array $fields, string $class): void
+    {
+        foreach ($group as $child) {
+            self::checkBadgeFilter(is_array($child) ? $child : [], $fields, $class);
+        }
+    }
 
-            foreach (array_keys(is_array($conditions) ? $conditions : []) as $operator) {
-                if (!in_array($operator, $field['operators'], true)) {
-                    throw new ResourceCompileException("{$class}::badge() filters \"{$name}\" with \"{$operator}\", which that field does not take.");
-                }
+    /** @param array<string, array<string, mixed>> $fields */
+    private static function checkBadgeField(string $name, mixed $conditions, array $fields, string $class): void
+    {
+        $field = $fields[$name] ?? null;
+
+        if ($field === null || $field['filterable'] !== true) {
+            throw new ResourceCompileException("{$class}::badge() filters on \"{$name}\", which is not a filterable field of the resource.");
+        }
+
+        foreach (array_keys(is_array($conditions) ? $conditions : []) as $operator) {
+            if (!in_array($operator, $field['operators'], true)) {
+                throw new ResourceCompileException("{$class}::badge() filters \"{$name}\" with \"{$operator}\", which that field does not take.");
             }
         }
     }
@@ -1184,45 +1457,11 @@ final class ResourceCompiler
         $fields = [];
 
         foreach ($entity['properties'] as $property) {
-            $name = $property['name'];
+            $field = $this->deriveProperty($entity, $property);
 
-            if ($name === $entity['version']) {
-                continue;
+            if ($field !== null) {
+                $fields[] = $field;
             }
-
-            if ($name === $entity['id']) {
-                $fields[] = Id::make($name);
-
-                continue;
-            }
-
-            if ($property['target'] !== null) {
-                $slug = $this->slugByEntity[$property['target']] ?? null;
-
-                if ($slug !== null) {
-                    $fields[] = BelongsTo::to($name, $this->classOfSlug($slug))->sortable();
-                }
-
-                continue;
-            }
-
-            $field = match (true) {
-                $property['enum'] !== null => Enum::make($name)->of($property['enum'])->filterable(),
-                $property['type'] === 'string' => Text::make($name)->searchable(),
-                $property['type'] === 'int' => Number::make($name),
-                $property['type'] === 'float' => Number::make($name)->decimals(2),
-                $property['type'] === 'bool' => Boolean::make($name)->filterable(),
-                $property['type'] === 'date' => Date::make($name)->filterable(),
-                default => DateTime::make($name)->filterable(),
-            };
-
-            $field->sortable();
-
-            if (in_array($property['column'], ['created_at', 'updated_at', 'deleted_at'], true)) {
-                $field->readonly()->hideFromForms();
-            }
-
-            $fields[] = $field;
         }
 
         foreach ($entity['inverses'] as $inverse) {
@@ -1244,6 +1483,54 @@ final class ResourceCompiler
         }
 
         return $fields;
+    }
+
+    /**
+     * The field a mapped property implies, or null for the version
+     * property and a relationship whose target has no resource.
+     *
+     * @param EntityMapping $entity
+     * @param PropertyMapping $property
+     */
+    private function deriveProperty(array $entity, array $property): ?Field
+    {
+        $name = $property['name'];
+
+        return match (true) {
+            $name === $entity['version'] => null,
+            $name === $entity['id'] => Id::make($name),
+            $property['target'] !== null => $this->deriveBelongsTo($name, $property['target']),
+            default => self::deriveColumn($name, $property),
+        };
+    }
+
+    private function deriveBelongsTo(string $name, string $target): ?Field
+    {
+        $slug = $this->slugByEntity[$target] ?? null;
+
+        return $slug === null ? null : BelongsTo::to($name, $this->classOfSlug($slug))->sortable();
+    }
+
+    /** @param PropertyMapping $property */
+    private static function deriveColumn(string $name, array $property): Field
+    {
+        $field = match (true) {
+            $property['enum'] !== null => Enum::make($name)->of($property['enum'])->filterable(),
+            $property['type'] === 'string' => Text::make($name)->searchable(),
+            $property['type'] === 'int' => Number::make($name),
+            $property['type'] === 'float' => Number::make($name)->decimals(2),
+            $property['type'] === 'bool' => Boolean::make($name)->filterable(),
+            $property['type'] === 'date' => Date::make($name)->filterable(),
+            default => DateTime::make($name)->filterable(),
+        };
+
+        $field->sortable();
+
+        if (in_array($property['column'], ['created_at', 'updated_at', 'deleted_at'], true)) {
+            $field->readonly()->hideFromForms();
+        }
+
+        return $field;
     }
 
     /** @return class-string<VectorResource> */

@@ -71,11 +71,7 @@ final readonly class ResourceDescriptor
         }
 
         // a computed value computed from a hidden field would show it: it goes too
-        foreach ($this->fields as $name => $field) {
-            if (array_intersect($field['computed']['from'] ?? [], $hidden) !== [] && !in_array($name, $hidden, true)) {
-                $hidden[] = $name;
-            }
-        }
+        $hidden = $this->withComputedFrom($hidden);
 
         $keep = static fn (array $names): array => array_values(array_diff($names, $hidden));
         $data = $this->data;
@@ -115,21 +111,53 @@ final readonly class ResourceDescriptor
             $data['titleField'] = $this->primaryKeyField();
         }
 
-        if ($data['creation']['possible'] === true) {
-            foreach ($hidden as $name) {
-                $property = $data['entityProperties'][$name] ?? null;
-                $required = $property !== null && in_array($property['kind'], ['column', 'belongsTo'], true) && $property['nullable'] !== true && $property['hasDefault'] !== true
-                    && !in_array($name, $data['timestamps'], true);
+        $data['creation'] = self::creationWithout($data, $hidden);
 
-                if ($required) {
-                    $data['creation'] = ['possible' => false, 'reason' => "creating a record needs the \"{$name}\" field, which this account cannot see"];
+        return new self($data);
+    }
 
-                    break;
-                }
+    /**
+     * The hidden fields plus every computed field computed from one of them.
+     *
+     * @param list<string> $hidden
+     * @return list<string>
+     */
+    private function withComputedFrom(array $hidden): array
+    {
+        foreach ($this->fields as $name => $field) {
+            if (array_intersect($field['computed']['from'] ?? [], $hidden) !== [] && !in_array($name, $hidden, true)) {
+                $hidden[] = $name;
             }
         }
 
-        return new self($data);
+        return $hidden;
+    }
+
+    /**
+     * Creation as a user who may not see $hidden: impossible once a hidden
+     * field is one a new entity requires.
+     *
+     * @param array<string, mixed> $data
+     * @param list<string> $hidden
+     * @return array{possible: bool, reason: string|null}
+     */
+    private static function creationWithout(array $data, array $hidden): array
+    {
+        if ($data['creation']['possible'] !== true) {
+            return $data['creation'];
+        }
+
+        foreach ($hidden as $name) {
+            $property = $data['entityProperties'][$name] ?? null;
+            $required = $property !== null && in_array($property['kind'], ['column', 'belongsTo'], true) && $property['nullable'] !== true && $property['hasDefault'] !== true
+                && !in_array($name, $data['timestamps'], true);
+
+            if ($required) {
+                return ['possible' => false, 'reason' => "creating a record needs the \"{$name}\" field, which this account cannot see"];
+            }
+        }
+
+        return $data['creation'];
     }
 
     public function slug(): string
