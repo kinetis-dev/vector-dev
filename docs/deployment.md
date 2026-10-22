@@ -150,17 +150,14 @@ worker for Vector's jobs ({doc}`jobs`), and schedule
 - **Uploads:** keep the storage root private, outside the web root
   (`public/`). Files are meant to be served only through
   `GET /vector/r/{resource}/{id}/files/{field}`, which checks access
-  ({doc}`files`). Uploading needs create permission, or update
-  permission on the record being edited. Schedule
-  `kinetis vector:files:prune` to delete uploads no record uses.
+  ({doc}`files`), which also covers who may upload.
 
 ### Known limits
 
 - Replaying a redeemed refresh token revokes its whole family, with no
-  grace period: a duplicated browser tab that renews with the same token
-  signs both tabs out. Revocation lives in the application cache: if
-  the cache loses those records, a later replay is refused but revokes
-  nothing. Access tokens already issued run until they expire.
+  grace period ({doc}`authentication`). Revocation lives in the
+  application cache: if the cache loses those records, a later replay is
+  refused but revokes nothing.
 - An impersonation token is never renewed. In bearer mode it expires no
   later than the token that started it; in cookie mode it lasts as long
   as the session.
