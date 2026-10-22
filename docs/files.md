@@ -89,14 +89,11 @@ and the user uploads it again.
 
 ## Good to know
 
-- Vector deletes stored files only when `vector:files:prune` runs; see
-  above.
 - Keep the storage root private, outside the web root (`public/`); see
   the [security checklist](deployment.md#security-checklist).
 - The largest upload is also bounded by the framework's `MAX_BODY_SIZE`
   and your web server's body limit.
-- Without a filesystem, uploads are unavailable: the descriptor reports
-  `capabilities.uploads: false`, and the form edits the key as text.
+- Without a filesystem, the descriptor reports `capabilities.uploads: false`.
 - `VECTOR_STORAGE_CONNECTION` stores Vector's uploads on a named storage
   connection (`FILESYSTEM_<NAME>_*`) instead of the application's
   `FilesystemOperator` (`FILESYSTEM_DRIVER`).
