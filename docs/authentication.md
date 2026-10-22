@@ -154,9 +154,9 @@ impersonating it, which Vector writes to every log and audit row
 
 ## How long a session lasts
 
-A session does not end on its own: the UI renews the token
-before it runs out and polls badges and the inbox, so an open tab would
-stay signed in for as long as it is open. The layer's `app.config`
+A session does not end on its own: the UI renews the token before it
+runs out and polls badges and the inbox, so an open tab stays signed in.
+The layer's `app.config`
 `vector.idleMinutes` (30 by default; 0 turns it off) ends it, in both
 modes, when nobody has used the admin — no pointer, key, touch or
 scroll — for that long. Bearer mode revokes the refresh token and opens
