@@ -40,27 +40,19 @@ final readonly class RowMapper
     {
         $clean = [];
         $used = [];
-        $violations = [];
 
         if (!in_array($mode, self::MODES, true)) {
             throw ValidationException::fromViolations([new Violation(['mode'], 'invalid_choice', 'must be create, update or upsert.')]);
         }
 
         $key = $key === '' ? null : $key;
-
-        if ($mode === 'create' && $key !== null) {
-            $violations[] = new Violation(['key'], 'unexpected_field', 'matches rows to records, which a create-only import does not do.');
-        }
-
-        if ($mode !== 'create') {
-            $keyField = $key === null ? null : $resource->field($key);
-
-            if ($keyField === null || ($key !== $resource->primaryKeyField() && ($keyField['unique'] ?? false) !== true)) {
-                $violations[] = new Violation(['key'], 'invalid_choice', 'must be the resource\'s key or a unique field: ' . implode(', ', self::keys($resource)) . '.');
-            } elseif (!in_array($key, $mapping, true)) {
-                $violations[] = new Violation(['key'], 'invalid_choice', "\"{$key}\" must be mapped to a column.");
-            }
-        }
+        $violations = self::keyViolations($resource, $mapping, $mode, $key);
+        $views = match ($mode) {
+            'create' => ['create'],
+            'update' => ['update'],
+            default => ['create', 'update'],
+        };
+        $on = $mode === 'upsert' ? 'create or update' : $mode;
 
         foreach ($mapping as $header => $field) {
             if (!is_string($field) || $field === '') {
@@ -68,16 +60,11 @@ final readonly class RowMapper
             }
 
             $compiled = $resource->field($field);
-            $views = match ($mode) {
-                'create' => ['create'],
-                'update' => ['update'],
-                default => ['create', 'update'],
-            };
             $writable = $compiled !== null && $compiled['readonly'] !== true && array_intersect($views, $compiled['views']) !== []
                 && !in_array($compiled['type'], ['id', 'hasOne', 'hasMany', 'computed'], true);
 
             if (!$writable && !($field === $key && $mode !== 'create')) {
-                $violations[] = new Violation(['mapping', (string) $header], 'invalid_choice', "\"{$field}\" is not a field this resource accepts on " . ($mode === 'upsert' ? 'create or update' : $mode) . '.');
+                $violations[] = new Violation(['mapping', (string) $header], 'invalid_choice', "\"{$field}\" is not a field this resource accepts on {$on}.");
 
                 continue;
             }
@@ -97,6 +84,32 @@ final readonly class RowMapper
         }
 
         return $clean;
+    }
+
+    /**
+     * A create matches no rows, so it takes no key; an update or upsert
+     * needs one that identifies a record, mapped to a column.
+     *
+     * @param array<array-key, mixed> $mapping
+     * @return list<Violation>
+     */
+    private static function keyViolations(ResourceDescriptor $resource, array $mapping, string $mode, ?string $key): array
+    {
+        if ($mode === 'create') {
+            return $key === null ? [] : [new Violation(['key'], 'unexpected_field', 'matches rows to records, which a create-only import does not do.')];
+        }
+
+        $keyField = $key === null ? null : $resource->field($key);
+
+        if ($keyField === null || ($key !== $resource->primaryKeyField() && ($keyField['unique'] ?? false) !== true)) {
+            return [new Violation(['key'], 'invalid_choice', 'must be the resource\'s key or a unique field: ' . implode(', ', self::keys($resource)) . '.')];
+        }
+
+        if (!in_array($key, $mapping, true)) {
+            return [new Violation(['key'], 'invalid_choice', "\"{$key}\" must be mapped to a column.")];
+        }
+
+        return [];
     }
 
     /**
@@ -209,19 +222,7 @@ final readonly class RowMapper
             }
 
             try {
-                if ($field['type'] === 'manyToMany') {
-                    $payload[$name] = array_values(array_filter(array_map('trim', explode('|', $raw)), static fn (string $v): bool => $v !== ''));
-                } elseif ($field['type'] === 'belongsTo') {
-                    $payload[$name] = $this->converter->fromQuery($field, $raw);
-                } else {
-                    $value = $this->converter->fromQuery($field, $raw);
-                    // back to the text a JSON body carries: the writer converts the payload again
-                    $payload[$name] = match (true) {
-                        $value instanceof \DateTimeInterface => $value->format('Y-m-d\TH:i:s.v\Z'),
-                        $value instanceof \Kinetis\Orm\Date => (string) $value,
-                        default => $value,
-                    };
-                }
+                $payload[$name] = $this->cell($field, $raw);
             } catch (InputViolation $e) {
                 $violations[] = $e->violation->under($name);
             }
@@ -232,5 +233,31 @@ final readonly class RowMapper
         }
 
         return $payload;
+    }
+
+    /**
+     * A non-empty cell as the value a JSON body carries for its field.
+     *
+     * @param array<string, mixed> $field
+     * @throws InputViolation
+     */
+    private function cell(array $field, string $raw): mixed
+    {
+        if ($field['type'] === 'manyToMany') {
+            return array_values(array_filter(array_map('trim', explode('|', $raw)), static fn (string $v): bool => $v !== ''));
+        }
+
+        if ($field['type'] === 'belongsTo') {
+            return $this->converter->fromQuery($field, $raw);
+        }
+
+        $value = $this->converter->fromQuery($field, $raw);
+
+        // back to the text a JSON body carries: the writer converts the payload again
+        return match (true) {
+            $value instanceof \DateTimeInterface => $value->format('Y-m-d\TH:i:s.v\Z'),
+            $value instanceof \Kinetis\Orm\Date => (string) $value,
+            default => $value,
+        };
     }
 }

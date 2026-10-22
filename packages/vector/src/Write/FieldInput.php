@@ -37,43 +37,7 @@ final readonly class FieldInput
 
         foreach ($fields as $name => $field) {
             $raw = array_key_exists($name, $payload) ? $payload[$name] : self::defaultOf($field);
-            $state = $states[$name] ?? null;
-
-            if ($state !== null && (!$state['visible'] || $state['disabled'])) {
-                // not shown or not editable now: the default stands, and nothing is required
-                $default = self::defaultOf($field);
-                $values[$name] = match (true) {
-                    $default !== null => $this->converter->convert($field, $default),
-                    $field['type'] === 'boolean' => false,
-                    default => null,
-                };
-
-                continue;
-            }
-
-            if ($raw === null || $raw === '') {
-                if ($state !== null && $state['required']) {
-                    $violations[] = new Violation([$name], 'required', 'is required.');
-                } elseif (($field['nullable'] ?? true) === true) {
-                    $values[$name] = $field['type'] === 'boolean' ? false : null;
-                } else {
-                    $violations[] = new Violation([$name], 'required', 'is required.');
-                }
-
-                continue;
-            }
-
-            try {
-                $values[$name] = $this->converter->convert($field, $raw);
-            } catch (InputViolation $e) {
-                $violations[] = $e->violation->under($name);
-
-                continue;
-            }
-
-            foreach ($this->converter->violationsOfRules($field, $raw) as $violation) {
-                $violations[] = $violation->under($name);
-            }
+            array_push($violations, ...$this->field($name, $field, $raw, $states[$name] ?? null, $values));
         }
 
         if ($violations !== []) {
@@ -81,6 +45,48 @@ final readonly class FieldInput
         }
 
         return $values;
+    }
+
+    /**
+     * One field: its converted value into $values, or what is wrong with it.
+     *
+     * @param array<string, mixed> $field
+     * @param array{visible: bool, required: bool, disabled: bool}|null $state
+     * @param array<string, mixed> $values
+     * @param-out array<string, mixed> $values
+     * @return list<Violation>
+     */
+    private function field(string $name, array $field, mixed $raw, ?array $state, array &$values): array
+    {
+        if ($state !== null && (!$state['visible'] || $state['disabled'])) {
+            // not shown or not editable now: the default stands, and nothing is required
+            $default = self::defaultOf($field);
+            $values[$name] = match (true) {
+                $default !== null => $this->converter->convert($field, $default),
+                $field['type'] === 'boolean' => false,
+                default => null,
+            };
+
+            return [];
+        }
+
+        if ($raw === null || $raw === '') {
+            if (($state === null || !$state['required']) && ($field['nullable'] ?? true) === true) {
+                $values[$name] = $field['type'] === 'boolean' ? false : null;
+
+                return [];
+            }
+
+            return [new Violation([$name], 'required', 'is required.')];
+        }
+
+        try {
+            $values[$name] = $this->converter->convert($field, $raw);
+        } catch (InputViolation $e) {
+            return [$e->violation->under($name)];
+        }
+
+        return array_map(static fn (Violation $v): Violation => $v->under($name), $this->converter->violationsOfRules($field, $raw));
     }
 
     /** @param array<string, mixed> $field */
