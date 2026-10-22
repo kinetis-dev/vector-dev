@@ -27,6 +27,7 @@ export default {
         stop: 'Identitätswechsel beenden',
         noAccess: '{name} hat keinen Zugriff auf den Admin, daher gibt es in dieser Rolle nichts zu sehen. Der Identitätswechsel wurde beendet.',
         noToken: 'Die Anwendung hat weder ein Token noch ein Neuladen geliefert, daher wurde nichts geändert.',
+        ended: 'Ihre Identitätsübernahme ist abgelaufen; Sie sind wieder in Ihrem eigenen Konto.',
     },
     palette: {
         placeholder: 'Datensätze und Ressourcen suchen…',
@@ -48,6 +49,7 @@ export default {
         invalidEmail: 'Geben Sie eine gültige E-Mail-Adresse ein',
         welcome: 'Willkommen zurück, {name}.',
         signedOutIdle: 'Sie wurden nach {minutes} Minuten ohne Aktivität abgemeldet. Melden Sie sich erneut an, um dort weiterzumachen, wo Sie aufgehört haben.',
+        impersonationEnded: 'Ihre Identitätsübernahme ist abgelaufen, und Ihre eigene Sitzung konnte nicht erneuert werden. Melden Sie sich erneut an, um fortzufahren.',
     },
     home: {
         title: 'Dashboard',

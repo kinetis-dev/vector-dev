@@ -27,6 +27,7 @@ export default {
         stop: '대리 로그인 종료',
         noAccess: '{name} 계정은 관리자 화면에 접근할 수 없어 해당 사용자로 볼 수 있는 내용이 없습니다. 대리 로그인이 종료되었습니다.',
         noToken: '애플리케이션이 토큰이나 새로고침 없이 응답하여 아무것도 변경되지 않았습니다.',
+        ended: '대리 접속이 만료되어 본인 계정으로 돌아왔습니다.',
     },
     palette: {
         placeholder: '레코드 및 리소스 검색…',
@@ -48,6 +49,7 @@ export default {
         invalidEmail: '올바른 이메일 주소를 입력하세요',
         welcome: '{name}님, 다시 오신 것을 환영합니다.',
         signedOutIdle: '{minutes}분 동안 활동이 없어 로그아웃되었습니다. 다시 로그인하면 중단한 곳에서 계속할 수 있습니다.',
+        impersonationEnded: '대리 접속이 만료되었고 본인 세션을 갱신할 수 없었습니다. 계속하려면 다시 로그인하세요.',
     },
     home: {
         title: '대시보드',

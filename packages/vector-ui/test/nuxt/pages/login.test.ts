@@ -47,6 +47,15 @@ async function signInFrom(redirect: string) {
 }
 
 describe('login page', () => {
+    it('says the impersonation ran out when the admin\'s own session could not be renewed', async () => {
+        query.reason = 'impersonation'
+        const wrapper = await mountSuspended(LoginPage)
+
+        expect(wrapper.text()).toContain(useVectorT().t('shell.login.impersonationEnded'))
+        wrapper.unmount()
+        delete query.reason
+    })
+
     it('goes back to a path of the admin', async () => {
         expect(await signInFrom('/r/products?page=2')).toBe('/r/products?page=2')
     })

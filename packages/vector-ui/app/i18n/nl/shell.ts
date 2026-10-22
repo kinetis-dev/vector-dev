@@ -27,6 +27,7 @@ export default {
         stop: 'Terug naar uw eigen account',
         noAccess: '{name} heeft geen toegang tot het beheer, dus er is niets te zien namens deze gebruiker. Het handelen als deze gebruiker is gestopt.',
         noToken: 'De applicatie antwoordde zonder token of herlaadopdracht, dus er is niets gewijzigd.',
+        ended: 'Uw imitatie is verlopen; u bent weer in uw eigen account.',
     },
     palette: {
         placeholder: 'Records en resources zoeken…',
@@ -48,6 +49,7 @@ export default {
         invalidEmail: 'Voer een geldig e-mailadres in',
         welcome: 'Welkom terug, {name}.',
         signedOutIdle: 'U bent na {minutes} minuten zonder activiteit afgemeld. Meld u opnieuw aan om verder te gaan waar u gebleven was.',
+        impersonationEnded: 'Uw imitatie is verlopen en uw eigen sessie kon niet worden vernieuwd. Meld u opnieuw aan om verder te gaan.',
     },
     home: {
         title: 'Dashboard',

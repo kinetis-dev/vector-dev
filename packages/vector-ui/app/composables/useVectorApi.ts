@@ -38,16 +38,19 @@ export function useVectorApi(): $Fetch {
             } else {
                 const token = await auth.fresh()
                 if (token !== null) ending = null // a new session: its own 401 signs out again
-                Object.assign(options, { vectorToken: token }) // which token this request carried, for its 401
+                // which token, and whose, this request carried, for its 401
+                Object.assign(options, { vectorToken: token, vectorUser: auth.user === null ? null : String(auth.user.id) })
                 if (token) options.headers.set('Authorization', `Bearer ${token}`)
             }
         },
         async onResponseError({ response, options }) {
-            const once = options as typeof options & { vectorRenewed?: boolean, vectorToken?: string | null }
-            // renewed since this request left (another request's 401 did it): repeat it, without renewing again
-            const renewedSince = auth.token !== null && auth.token !== once.vectorToken
+            const once = options as typeof options & { vectorRenewed?: boolean, vectorToken?: string | null, vectorUser?: string | null }
+            // the session changed since this request left: renewed for the same user (another request's 401 did it)
+            // repeats it without renewing again; another user's session (an impersonation ended) is not this request's
+            const moved = auth.token !== once.vectorToken
+            const renewedSince = moved && auth.token !== null && auth.user !== null && String(auth.user.id) === once.vectorUser
 
-            if (response.status === 401 && !runtime.hosted && !once.vectorRenewed && (renewedSince || (auth.canRefresh && await auth.refresh()))) {
+            if (response.status === 401 && !runtime.hosted && !once.vectorRenewed && (renewedSince || (!moved && auth.canRefresh && await auth.refresh()))) {
                 // repeated once, with the renewed token (onRequest sets it)
                 once.vectorRenewed = true
                 options.retry = 1
@@ -63,21 +66,53 @@ export function useVectorApi(): $Fetch {
                     return
                 }
 
-                if (ending !== null && ending.token === once.vectorToken && auth.token === null) {
+                // the session this token belonged to is already ending: join that
+                if (ending !== null && ending.token === once.vectorToken) {
                     await ending.done
 
                     return
                 }
 
-                auth.clear()
-                // back to this page after signing in again, as the route middleware would send a visitor
-                const current = router.currentRoute.value.fullPath
-                const done = navigateTo({ path: `${appConfig.vector.basePath || ''}/login`, query: current.startsWith(`${appConfig.vector.basePath || ''}/login`) ? {} : { redirect: current } })
-                ending = { token: once.vectorToken, done: Promise.resolve(done).then(() => undefined, () => undefined) }
-                await done
+                // refused for a session since replaced by another user's: that one is not this 401's to end
+                if (moved && auth.token !== null) return
+
+                ending = { token: once.vectorToken, done: end() }
+                await ending.done
             }
         },
     }) as $Fetch
+
+    /**
+     * Ends the session a 401 refused. An impersonation (never renewed)
+     * falls back to the signer's own session, renewed with their refresh
+     * token, without repeating the request as them; otherwise, or when
+     * that fails, the login page, saying why for an impersonation.
+     */
+    async function end(): Promise<void> {
+        const impersonating = auth.impersonating
+        const base = appConfig.vector.basePath || ''
+
+        try {
+            if (impersonating && await auth.resume()) {
+                // as stopping the impersonation does: the signer's own preferences and descriptor, and the dashboard
+                useState('vector.impersonator').value = null
+                useVectorPreferences().clear()
+                useVectorNotifications().notify(vt('shell.impersonation.ended'))
+                await useVectorSchema().load(true).catch(() => undefined)
+                await navigateTo(base || '/')
+
+                return
+            }
+
+            auth.clear()
+            // back to this page after signing in again, as the route middleware would send a visitor
+            const current = router.currentRoute.value.fullPath
+            const redirect = current.startsWith(`${base}/login`) ? {} : { redirect: current }
+            await navigateTo({ path: `${base}/login`, query: impersonating ? { ...redirect, reason: 'impersonation' } : redirect })
+        } catch {
+            // the navigation failed: the session is already ended
+        }
+    }
 }
 
 /** The message a failed request should show, from either Kinetis error shape: `error`, or problem+json's `detail`, then its `title`. */

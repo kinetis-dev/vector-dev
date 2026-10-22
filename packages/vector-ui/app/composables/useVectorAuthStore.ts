@@ -46,7 +46,9 @@ const MAX_DELAY = 2 ** 31 - 1
  * 401; a failed renewal signs the user out. Logout revokes the refresh
  * token (`POST /auth/logout`). An impersonation token is never renewed:
  * the refresh token is the signed-in user's own, used only while the
- * session is theirs. Hosted mode rides the application's session instead.
+ * session is theirs or to end an impersonation that ran out, back in
+ * their own session (`resume`). Hosted mode rides the application's
+ * session instead.
  */
 export const useVectorAuthStore = defineStore('vectorAuth', {
     state: () => ({
@@ -55,7 +57,7 @@ export const useVectorAuthStore = defineStore('vectorAuth', {
         user: null as VectorUser | null,
         refreshToken: null as string | null,
         refreshExpiresAt: 0,
-        /** Whose refresh token it is: the user who signed in. */
+        /** The user who signed in: whose refresh token it is, when there is one. */
         refreshSubject: null as string | null,
         restored: false,
         hosted: false,
@@ -67,11 +69,17 @@ export const useVectorAuthStore = defineStore('vectorAuth', {
             && state.refreshExpiresAt > Date.now()
             && state.user !== null
             && String(state.user.id) === state.refreshSubject,
+        /** Whether the session is another user's than the one who signed in: an impersonation. */
+        impersonating: state => state.user !== null && state.refreshSubject !== null && String(state.user.id) !== state.refreshSubject,
+        /** Whether an impersonation can end in the signer's own session: their refresh token is live. */
+        canResume(state): boolean {
+            return this.impersonating && state.refreshToken !== null && state.refreshExpiresAt > Date.now()
+        },
         // A getter is cached until the state changes, and the clock is not
         // state: the session's own timer (expireAt) renews or clears the
         // token when it runs out, which is the change that updates this.
         isAuthenticated(state): boolean {
-            return state.hosted || (state.token !== null && state.expiresAt > Date.now()) || this.canRefresh
+            return state.hosted || (state.token !== null && state.expiresAt > Date.now()) || this.canRefresh || this.canResume
         },
     },
 
@@ -104,7 +112,7 @@ export const useVectorAuthStore = defineStore('vectorAuth', {
                         this.user = saved.user
                         this.refreshToken = refreshable ? saved.refreshToken! : null
                         this.refreshExpiresAt = refreshable ? saved.refreshExpiresAt! : 0
-                        this.refreshSubject = refreshable ? saved.refreshSubject ?? null : null
+                        this.refreshSubject = saved.refreshSubject ?? null
                         this.expireAt(saved.expiresAt)
                     }
                 }
@@ -131,6 +139,22 @@ export const useVectorAuthStore = defineStore('vectorAuth', {
         refresh(): Promise<boolean> {
             if (!this.canRefresh) return Promise.resolve(false)
 
+            return this.renew()
+        },
+
+        /**
+         * Ends an impersonation the API no longer accepts: the signer's own
+         * session is renewed with their refresh token. False when it cannot
+         * be, and the session ended when the renewal is refused.
+         */
+        resume(): Promise<boolean> {
+            if (!this.canResume) return Promise.resolve(false)
+
+            return this.renew()
+        },
+
+        /** POST /auth/refresh with the refresh token, once at a time however many callers ask: `refresh` and `resume` decide when. */
+        renew(): Promise<boolean> {
             refreshing ??= (async () => {
                 try {
                     const config = useRuntimeConfig()
@@ -196,7 +220,8 @@ export const useVectorAuthStore = defineStore('vectorAuth', {
                 if (this.expiresAt !== expiresAt) return // a newer token has its own timer
                 if (Date.now() < due) this.expireAt(expiresAt) // past setTimeout's range: wait again
                 else if (this.canRefresh) void this.refresh()
-                else this.clear()
+                // an impersonation that ran out is left to lapse: the next request's 401 resumes the signer's own session
+                else if (!this.canResume) this.clear()
             }, Math.min(MAX_DELAY, Math.max(0, due - Date.now())))
         },
 
@@ -229,12 +254,12 @@ export const useVectorAuthStore = defineStore('vectorAuth', {
             if (response.refreshToken) {
                 this.refreshToken = response.refreshToken
                 this.refreshExpiresAt = Date.now() + (response.refreshExpiresIn ?? 0) * 1000
-                this.refreshSubject = String(response.user.id)
             } else {
                 this.refreshToken = null
                 this.refreshExpiresAt = 0
-                this.refreshSubject = null
             }
+
+            this.refreshSubject = String(response.user.id)
 
             this.expireAt(this.expiresAt)
             this.save()

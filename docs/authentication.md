@@ -82,10 +82,14 @@ request is then repeated), it calls `POST {apiBase}/auth/refresh` with
 out** calls `POST {apiBase}/auth/logout` with `{"refreshToken"}` to revoke
 it. When the renewal is refused, or there is no refresh token, the UI
 signs out when the access token expires, and a `401` goes to `/login`.
-An impersonation token is never renewed. `kinetis/auth-jwt` issues and
-verifies access tokens, and its `RefreshTokenStore` keeps single-use
-refresh tokens in a cache. The demo does not detect a replayed refresh
-token: the replay is refused, and nothing else is revoked.
+An impersonation token is never renewed. When the API refuses it, the
+UI renews the signed-in user's own session with their refresh token and
+returns them to the dashboard; the refused request is not repeated as
+them. When that renewal is not possible, the login page says the
+impersonation ran out. `kinetis/auth-jwt` issues and verifies access
+tokens, and its `RefreshTokenStore` keeps single-use refresh tokens in a
+cache. The demo does not detect a replayed refresh token: the replay is
+refused, and nothing else is revoked.
 
 ## Protecting the sign-in
 

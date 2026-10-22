@@ -16,7 +16,12 @@ const password = ref('')
 const submitting = ref(false)
 const error = ref<string | null>(null)
 // why the last session ended, when the admin ended it itself
-const notice = computed(() => route.query.reason === 'idle' ? t('shell.login.signedOutIdle', { minutes: appConfig.vector.idleMinutes }) : null)
+const notice = computed(() => {
+    if (route.query.reason === 'idle') return t('shell.login.signedOutIdle', { minutes: appConfig.vector.idleMinutes })
+    if (route.query.reason === 'impersonation') return t('shell.login.impersonationEnded')
+
+    return null
+})
 
 const rules = {
     required: (value: string) => value.trim() !== '' || t('common.required'),

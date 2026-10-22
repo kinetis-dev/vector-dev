@@ -27,6 +27,7 @@ export default {
         stop: '停止模拟登录',
         noAccess: '{name} 无权访问管理后台，因此无法以其身份查看任何内容。模拟登录已停止。',
         noToken: '应用返回的响应中既没有令牌也没有重新加载，因此未做任何更改。',
+        ended: '模拟身份已过期，你已回到自己的账户。',
     },
     palette: {
         placeholder: '搜索记录和资源…',
@@ -48,6 +49,7 @@ export default {
         invalidEmail: '请输入有效的电子邮件地址',
         welcome: '欢迎回来，{name}。',
         signedOutIdle: '由于 {minutes} 分钟内没有操作，你已被登出。重新登录即可从上次离开的地方继续。',
+        impersonationEnded: '模拟身份已过期，且无法续期你自己的会话。请重新登录以继续。',
     },
     home: {
         title: '仪表盘',

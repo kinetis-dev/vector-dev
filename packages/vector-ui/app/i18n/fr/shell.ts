@@ -27,6 +27,7 @@ export default {
         stop: 'Reprendre votre identité',
         noAccess: '{name} n’a pas accès à l’administration, il n’y a donc rien à voir en son nom. L’action en son nom a été arrêtée.',
         noToken: 'L’application a répondu sans jeton ni rechargement, rien n’a donc changé.',
+        ended: 'Votre usurpation d’identité a expiré : vous êtes de retour dans votre propre compte.',
     },
     palette: {
         placeholder: 'Rechercher des enregistrements et des ressources…',
@@ -48,6 +49,7 @@ export default {
         invalidEmail: 'Saisissez une adresse e-mail valide',
         welcome: 'Ravi de vous revoir, {name}.',
         signedOutIdle: 'Vous avez été déconnecté après {minutes} minutes d’inactivité. Reconnectez-vous pour reprendre où vous en étiez.',
+        impersonationEnded: 'Votre usurpation d’identité a expiré et votre propre session n’a pas pu être renouvelée. Reconnectez-vous pour continuer.',
     },
     home: {
         title: 'Tableau de bord',

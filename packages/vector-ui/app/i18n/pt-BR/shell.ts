@@ -27,6 +27,7 @@ export default {
         stop: 'Parar de personificar',
         noAccess: '{name} não tem acesso à administração, então não há nada para ver como essa pessoa. A personificação foi interrompida.',
         noToken: 'O aplicativo respondeu sem um token nem um recarregamento, então nada mudou.',
+        ended: 'Sua personificação expirou, então você voltou para a sua própria conta.',
     },
     palette: {
         placeholder: 'Pesquisar registros e recursos…',
@@ -48,6 +49,7 @@ export default {
         invalidEmail: 'Digite um endereço de e-mail válido',
         welcome: 'Bem-vindo de volta, {name}.',
         signedOutIdle: 'Você foi desconectado após {minutes} minutos de inatividade. Entre novamente para continuar de onde parou.',
+        impersonationEnded: 'Sua personificação expirou e não foi possível renovar a sua própria sessão. Entre novamente para continuar.',
     },
     home: {
         title: 'Painel',

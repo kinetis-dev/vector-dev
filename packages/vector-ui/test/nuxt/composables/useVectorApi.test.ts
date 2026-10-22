@@ -118,6 +118,84 @@ describe('useVectorApi, standalone (bearer)', () => {
         expect(useRouter().currentRoute.value.path).toBe('/login')
     })
 
+    describe('a 401 while impersonating (an impersonation token is never renewed)', () => {
+        const admin = { id: 1, name: 'Vector Admin' }
+
+        async function impersonate() {
+            mock('/auth/login', { body: { accessToken: 'as-admin', tokenType: 'Bearer', expiresIn: 900, refreshToken: 'r-1', refreshExpiresIn: 3600, user: admin } }, 'POST')
+            const auth = useVectorAuthStore()
+            await auth.login('admin@vector.local', 'password')
+            auth.adopt('as-editor', 60, { id: 2, name: 'Demo Editor' })
+            useState('vector.impersonator').value = { id: 1, name: null }
+            useVectorNotifications().queue.value = []
+
+            return auth
+        }
+
+        it('ends the impersonation in the signer\'s own session, once, without repeating the requests as them', async () => {
+            const auth = await impersonate()
+            const refresh = mock('/auth/refresh', { body: { accessToken: 'renewed', tokenType: 'Bearer', expiresIn: 900, refreshToken: 'r-2', refreshExpiresIn: 3600, user: admin } }, 'POST')
+            const probe = mock('/vector/probe', request => request.headers.get('authorization') === 'Bearer renewed' ? { body: { ok: true } } : { status: 401, body: { error: 'Unauthenticated.' } }, 'POST')
+            mock('/vector/schema', { body: { version: DESCRIPTOR_VERSION, resources: [] } })
+            const push = vi.spyOn(useRouter(), 'push')
+            const api = useVectorApi()
+
+            const answers = await Promise.allSettled([1, 2, 3].map(n => api('/vector/probe', { method: 'POST', body: { n } })))
+
+            expect(answers.map(answer => answer.status)).toEqual(['rejected', 'rejected', 'rejected'])
+            expect(probe.requests.map(r => r.headers.get('authorization'))).toEqual(['Bearer as-editor', 'Bearer as-editor', 'Bearer as-editor'])
+            expect(refresh.requests.map(r => r.body)).toEqual([{ refreshToken: 'r-1' }])
+            expect(auth.token).toBe('renewed')
+            expect(auth.user).toEqual(admin)
+            expect(useState('vector.impersonator').value).toBeNull()
+            expect(push).toHaveBeenCalledTimes(1)
+            expect(useRouter().currentRoute.value.path).toBe('/')
+            expect(useVectorNotifications().queue.value.map(toast => toast.text)).toEqual([useVectorT().t('shell.impersonation.ended')])
+        })
+
+        it('sends the admin to sign in again, saying why, when their own session cannot be renewed', async () => {
+            const auth = await impersonate()
+            mock('/auth/refresh', { status: 401, body: { error: 'Invalid refresh token.' } }, 'POST')
+            mock('/vector/probe', { status: 401, body: { error: 'Unauthenticated.' } })
+            const push = vi.spyOn(useRouter(), 'push')
+            const api = useVectorApi()
+
+            await Promise.allSettled([api('/vector/probe'), api('/vector/probe')])
+
+            expect(auth.token).toBeNull()
+            expect(auth.refreshToken).toBeNull()
+            expect(push).toHaveBeenCalledTimes(1)
+            expect(useRouter().currentRoute.value.path).toBe('/login')
+            expect(useRouter().currentRoute.value.query.reason).toBe('impersonation')
+        })
+
+        it('leaves the signer\'s new session alone on a late 401 for the impersonation token', async () => {
+            const auth = await impersonate()
+            mock('/auth/refresh', { body: { accessToken: 'renewed', tokenType: 'Bearer', expiresIn: 900, refreshToken: 'r-2', refreshExpiresIn: 3600, user: admin } }, 'POST')
+            mock('/vector/schema', { body: { version: DESCRIPTOR_VERSION, resources: [] } })
+            let release!: () => void
+            const held = new Promise<void>((resolve) => { release = resolve })
+            const slow = mock('/vector/slow', async () => {
+                await held
+                return { status: 401, body: { error: 'Unauthenticated.' } }
+            })
+            mock('/vector/fast', request => request.headers.get('authorization') === 'Bearer renewed' ? { body: { ok: true } } : { status: 401, body: { error: 'Unauthenticated.' } })
+            const api = useVectorApi()
+
+            const slowAnswer = api('/vector/slow')
+            await vi.waitFor(() => expect(slow.requests).toHaveLength(1))
+            await expect(api('/vector/fast')).rejects.toMatchObject({ status: 401 })
+            await api('/vector/fast')
+            const push = vi.spyOn(useRouter(), 'push')
+            release()
+
+            await expect(slowAnswer).rejects.toMatchObject({ status: 401 })
+            expect(slow.requests).toHaveLength(1) // not repeated as the admin
+            expect(auth.token).toBe('renewed')
+            expect(push).not.toHaveBeenCalled()
+        })
+    })
+
     it('leaves the session alone on other errors', async () => {
         const auth = useVectorAuthStore()
         auth.adopt('token-123', 3600, { id: 1, name: 'Vector Admin' })

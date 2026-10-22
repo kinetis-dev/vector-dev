@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A 401 while impersonating in bearer mode ends the impersonation in the
+  signed-in user's own session, renewed with their refresh token, and
+  says so, instead of discarding that session and sending them to sign
+  in; when it cannot be renewed, the login page says the impersonation
+  ran out. The impersonation's expiry no longer forgets the signer's
+  refresh token, and a request refused for the impersonation token is
+  never repeated as the signer.
 - The jobs list and the settings page say why when they fail to load,
   as the record page does, instead of showing no jobs or "no settings".
 - Several requests refused (401) together, whose shared renewal of the

@@ -209,6 +209,22 @@ describe('useVectorAuthStore', () => {
             login.unregister()
         })
 
+        it('keeps the signer\'s refresh token when an impersonation runs out, for the client to resume their session', async () => {
+            const login = endpoint('/auth/login', { body: pair('jwt-1', 'r-1') }, 'POST')
+            const auth = useVectorAuthStore()
+            await auth.login('admin@vector.local', 'password')
+            vi.useFakeTimers()
+            auth.adopt('as-editor', 60, { id: 2, name: 'Demo Editor' })
+
+            vi.advanceTimersByTime(61_000)
+
+            expect(auth.impersonating).toBe(true)
+            expect(auth.canResume).toBe(true)
+            expect(auth.refreshToken).toBe('r-1')
+            expect(auth.isAuthenticated).toBe(true)
+            login.unregister()
+        })
+
         it('revokes the refresh token on logout', async () => {
             const login = endpoint('/auth/login', { body: pair('jwt-1', 'r-1') }, 'POST')
             const logout = endpoint('/auth/logout', { status: 204 }, 'POST')

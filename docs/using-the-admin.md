@@ -73,7 +73,10 @@ footer line. Save a group and it applies at once.
 An administrator allowed to impersonate sees **Impersonate** on a
 user's page. While you act as someone else, a banner says so, and
 everything you do is recorded as theirs with you as the impersonator.
-**Stop impersonating** returns you to your own account.
+**Stop impersonating** returns you to your own account. When the
+impersonation runs out, the admin returns you to your own account and
+says so, or asks you to sign in again when your own session has ended
+too.
 
 ## See also
 
