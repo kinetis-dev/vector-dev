@@ -5,9 +5,11 @@
 # builds both from this file, so one `docker compose build` can never
 # leave one runtime on the previous extensions.
 #
-# The PHP minor version, the FrankenPHP release and the PIE release are
-# set here and nowhere else.
-ARG PHP_VERSION=8.4
+# The PHP release, the FrankenPHP release and the PIE release are set
+# here and nowhere else. PHP is pinned to a patch release, never a
+# floating minor tag, so a build cannot fall back to an older patch:
+# at least 8.4.27 on 8.4 and 8.5.12 on 8.5 (the CI matrix builds both).
+ARG PHP_VERSION=8.4.27
 ARG FRANKENPHP_VERSION=1.13.1
 ARG PIE_VERSION=1.5.2
 
