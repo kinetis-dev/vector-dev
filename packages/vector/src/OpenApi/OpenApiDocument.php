@@ -143,6 +143,18 @@ final readonly class OpenApiDocument
             ]);
         }
 
+        return [...$paths, ...$this->actionPaths($descriptor, $base), ...$this->optionPaths($descriptor, $base, $listable)];
+    }
+
+    /**
+     * An operation for each action this user may run.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function actionPaths(ResourceDescriptor $descriptor, string $base): array
+    {
+        $paths = [];
+
         foreach ($this->service->visibleActions($descriptor, null) as $name) {
             $action = $descriptor->action($name);
 
@@ -151,11 +163,24 @@ final readonly class OpenApiDocument
             }
         }
 
+        return $paths;
+    }
+
+    /**
+     * The choices of each relation input whose target this user may list.
+     *
+     * @param list<string> $listable the slugs this user may list
+     * @return array<string, array<string, mixed>>
+     */
+    private function optionPaths(ResourceDescriptor $descriptor, string $base, array $listable): array
+    {
+        $paths = [];
+
         foreach ($descriptor->fields() as $name => $field) {
             $target = $field['relation']['resource'] ?? null;
 
             if (in_array($field['type'], ['belongsTo', 'manyToMany'], true) && in_array($target, $listable, true)) {
-                $paths["{$base}/fields/{$name}/options"]['get'] = $this->options($slug, $name, $field);
+                $paths["{$base}/fields/{$name}/options"]['get'] = $this->options($descriptor->slug(), $name, $field);
             }
         }
 
@@ -270,27 +295,7 @@ final readonly class OpenApiDocument
     private function action(ResourceDescriptor $descriptor, array $action): array
     {
         $slug = $descriptor->slug();
-        $fields = $this->cache->schema("{$slug}.action.{$action['name']}", static function () use ($action): array {
-            $properties = [];
-            $required = [];
-
-            foreach ($action['fields'] as $field) {
-                $schema = FieldSchemas::write($field);
-
-                if ($schema !== null) {
-                    $properties[$field['name']] = $schema;
-
-                    if (($field['nullable'] ?? true) !== true && $field['hasDefault'] !== true) {
-                        $required[] = $field['name'];
-                    }
-                }
-            }
-
-            $schema = ['type' => 'object', 'properties' => $properties === [] ? new \stdClass() : $properties, 'additionalProperties' => false];
-
-            return $required === [] ? $schema : [...$schema, 'required' => $required];
-        });
-
+        $fields = $this->cache->schema("{$slug}.action.{$action['name']}", static fn (): array => self::actionFields($action));
         $properties = ['fields' => $fields];
 
         if ($action['standalone'] !== true) {
@@ -324,6 +329,35 @@ final readonly class OpenApiDocument
         ];
 
         return $operation;
+    }
+
+    /**
+     * An action dialog's fields as the body's `fields` object: a dialog's
+     * field is required unless it may be empty or has a default.
+     *
+     * @param array<string, mixed> $action the compiled action
+     * @return array<string, mixed>
+     */
+    private static function actionFields(array $action): array
+    {
+        $properties = [];
+        $required = [];
+
+        foreach ($action['fields'] as $field) {
+            $schema = FieldSchemas::write($field);
+
+            if ($schema !== null) {
+                $properties[$field['name']] = $schema;
+
+                if (($field['nullable'] ?? true) !== true && $field['hasDefault'] !== true) {
+                    $required[] = $field['name'];
+                }
+            }
+        }
+
+        $schema = ['type' => 'object', 'properties' => $properties === [] ? new \stdClass() : $properties, 'additionalProperties' => false];
+
+        return $required === [] ? $schema : [...$schema, 'required' => $required];
     }
 
     /**

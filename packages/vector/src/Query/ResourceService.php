@@ -336,13 +336,23 @@ final readonly class ResourceService
     private static function namesVisibleFields(array $filter, ResourceDescriptor $resource): bool
     {
         foreach ($filter as $name => $conditions) {
-            if (in_array($name, ['or', 'and'], true) && is_array($conditions)) {
-                foreach ($conditions as $child) {
-                    if (!self::namesVisibleFields(is_array($child) ? $child : [], $resource)) {
-                        return false;
-                    }
-                }
-            } elseif ($name !== 'trashed' && $resource->field($name) === null) {
+            $visible = in_array($name, ['or', 'and'], true) && is_array($conditions)
+                ? self::groupNamesVisibleFields($conditions, $resource)
+                : $name === 'trashed' || $resource->field($name) !== null;
+
+            if (!$visible) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** @param array<array-key, mixed> $children an `or` or `and`'s filter objects */
+    private static function groupNamesVisibleFields(array $children, ResourceDescriptor $resource): bool
+    {
+        foreach ($children as $child) {
+            if (!self::namesVisibleFields(is_array($child) ? $child : [], $resource)) {
                 return false;
             }
         }
@@ -391,32 +401,45 @@ final readonly class ResourceService
                 continue;
             }
 
-            ['subtitle' => $subtitle, 'image' => $image] = $resource->searchResult();
-            $subtitleColumn = $subtitle === null ? null : $resource->columns()[$subtitle] ?? null;
-            $imageColumn = $image === null ? null : $resource->columns()[$image] ?? null;
-            $query = $this->query($resource)->table($resource->table())
-                ->select(...array_values(array_unique(array_filter([$resource->primaryKeyColumn(), $resource->titleColumn(), $subtitleColumn, $imageColumn]))))
-                ->limit($perResource)
-                ->orderBy($resource->primaryKeyColumn(), 'DESC');
-            $instance = $this->scope->get($resource->resourceClass());
+            $results = [...$results, ...$this->searchResource($resource, $term, $perResource)];
+        }
 
-            if ($instance instanceof VectorResource) {
-                $query = $instance->scope($query, $this->user);
-            }
+        return $results;
+    }
 
-            $this->applySoftDelete($resource, $query, ListRequest::TRASHED_WITHOUT);
-            $this->applySearch($resource, $query, $term);
+    /**
+     * One resource's global search results.
+     *
+     * @return list<array{resource: string, resourceLabel: string, id: int|string, title: string, subtitle: string|null, image: string|null}>
+     */
+    private function searchResource(ResourceDescriptor $resource, string $term, int $perResource): array
+    {
+        ['subtitle' => $subtitle, 'image' => $image] = $resource->searchResult();
+        $subtitleColumn = $subtitle === null ? null : $resource->columns()[$subtitle] ?? null;
+        $imageColumn = $image === null ? null : $resource->columns()[$image] ?? null;
+        $query = $this->query($resource)->table($resource->table())
+            ->select(...array_values(array_unique(array_filter([$resource->primaryKeyColumn(), $resource->titleColumn(), $subtitleColumn, $imageColumn]))))
+            ->limit($perResource)
+            ->orderBy($resource->primaryKeyColumn(), 'DESC');
+        $instance = $this->scope->get($resource->resourceClass());
 
-            foreach ($query->get() as $row) {
-                $results[] = [
-                    'resource' => $resource->slug(),
-                    'resourceLabel' => $resource->labelSingular(),
-                    'id' => $this->serializer->key($row, $resource),
-                    'title' => (string) $row[$resource->titleColumn()],
-                    'subtitle' => $subtitleColumn === null || $row[$subtitleColumn] === null ? null : (string) $row[$subtitleColumn],
-                    'image' => $imageColumn !== null && is_string($row[$imageColumn]) && $row[$imageColumn] !== '' ? $image : null,
-                ];
-            }
+        if ($instance instanceof VectorResource) {
+            $query = $instance->scope($query, $this->user);
+        }
+
+        $this->applySoftDelete($resource, $query, ListRequest::TRASHED_WITHOUT);
+        $this->applySearch($resource, $query, $term);
+        $results = [];
+
+        foreach ($query->get() as $row) {
+            $results[] = [
+                'resource' => $resource->slug(),
+                'resourceLabel' => $resource->labelSingular(),
+                'id' => $this->serializer->key($row, $resource),
+                'title' => (string) $row[$resource->titleColumn()],
+                'subtitle' => $subtitleColumn === null || $row[$subtitleColumn] === null ? null : (string) $row[$subtitleColumn],
+                'image' => $imageColumn !== null && is_string($row[$imageColumn]) && $row[$imageColumn] !== '' ? $image : null,
+            ];
         }
 
         return $results;
@@ -591,18 +614,7 @@ final readonly class ResourceService
         }
 
         $fullText = $resource->fullText();
-        $relations = [];
-
-        foreach ($resource->searchRelations() as $relation) {
-            $target = $this->resource($relation['resource']);
-
-            // a title this user may not see fell back to the key: there is no title to match
-            if (($target->field($target->titleField())['valueType'] ?? null) === 'string') {
-                $relations[] = [$relation['column'], $this->query($resource)->table($target->table())
-                    ->select($target->primaryKeyColumn())
-                    ->whereRaw(Sql::like($dialect, $target->titleColumn()), [$pattern])];
-            }
-        }
+        $relations = $this->searchedRelations($resource, $dialect, $pattern);
 
         if ($like === [] && $fullText === null && $relations === []) {
             // every searchable field is one this user may not see: nothing matches
@@ -631,6 +643,31 @@ final readonly class ResourceService
                 $group->whereIn($column, $titles, 'OR');
             }
         });
+    }
+
+    /**
+     * For each searchable belongsTo whose title this user may see, its
+     * foreign key and the subquery of the related keys whose title matches.
+     *
+     * @param 'mysql'|'pgsql' $dialect
+     * @return list<array{0: string, 1: Query}>
+     */
+    private function searchedRelations(ResourceDescriptor $resource, string $dialect, string $pattern): array
+    {
+        $relations = [];
+
+        foreach ($resource->searchRelations() as $relation) {
+            $target = $this->resource($relation['resource']);
+
+            // a title this user may not see fell back to the key: there is no title to match
+            if (($target->field($target->titleField())['valueType'] ?? null) === 'string') {
+                $relations[] = [$relation['column'], $this->query($resource)->table($target->table())
+                    ->select($target->primaryKeyColumn())
+                    ->whereRaw(Sql::like($dialect, $target->titleColumn()), [$pattern])];
+            }
+        }
+
+        return $relations;
     }
 
     /**
@@ -919,8 +956,8 @@ final readonly class ResourceService
 
         // what tells two choices apart, from fields this user may see (resource() hid the rest)
         ['subtitle' => $subtitle, 'image' => $image] = $target->searchResult();
-        $subtitleColumn = $subtitle === null || $target->field($subtitle) === null ? null : $target->columns()[$subtitle] ?? null;
-        $imageColumn = $image === null || $target->field($image) === null ? null : $target->columns()[$image] ?? null;
+        $subtitleColumn = self::visibleColumn($target, $subtitle);
+        $imageColumn = self::visibleColumn($target, $image);
 
         // the target as this user may list it: its scope() applies, and a
         // trashed record is not offered, though one already chosen keeps its label
@@ -931,19 +968,8 @@ final readonly class ResourceService
             ->limit($ids === [] ? min($limit, 100) : count($ids)); // every chosen id gets its label back
         $this->applySoftDelete($target, $query, $ids === [] ? ListRequest::TRASHED_WITHOUT : ListRequest::TRASHED_WITH);
 
-        $dependsOn = $relation['dependsOn'] ?? null;
-        $raw = $dependsOn === null ? '' : $depends[$dependsOn['field']] ?? '';
-
-        if ($dependsOn !== null && $raw !== '' && $ids === []) {
-            // the field it depends on, as this user sees it: hidden by viewField, it cannot narrow
-            $dependency = $resource->field($dependsOn['field'])
-                ?? throw new InvalidListRequestException("\"{$dependsOn['field']}\" is not a field this account may filter by.");
-
-            try {
-                $query->where($dependsOn['column'], '=', $this->converter->fromQuery($dependency, $raw));
-            } catch (InputViolation $e) {
-                throw new InvalidListRequestException("\"{$dependsOn['field']}\" {$e->violation->message}");
-            }
+        if ($ids === []) {
+            $this->applyDependency($resource, $query, $relation['dependsOn'] ?? null, $depends);
         }
 
         if ($ids !== []) {
@@ -958,23 +984,66 @@ final readonly class ResourceService
         $options = [];
 
         foreach ($query->get() as $row) {
-            $option = [
-                'id' => $target->primaryKeyType() === 'int' ? (int) $row[$target->primaryKeyColumn()] : (string) $row[$target->primaryKeyColumn()],
-                'label' => (string) $row[$target->titleColumn()],
-            ];
-
-            if ($subtitleColumn !== null) {
-                $option['subtitle'] = $row[$subtitleColumn] === null ? null : (string) $row[$subtitleColumn];
-            }
-
-            if ($imageColumn !== null) {
-                $option['image'] = is_string($row[$imageColumn]) && $row[$imageColumn] !== '' ? $image : null;
-            }
-
-            $options[] = $option;
+            $options[] = self::option($target, $row, $subtitleColumn, $imageColumn, $image);
         }
 
         return $options;
+    }
+
+    /** The column of a target's search field, when the field is declared and visible to this user. */
+    private static function visibleColumn(ResourceDescriptor $target, ?string $name): ?string
+    {
+        return $name === null || $target->field($name) === null ? null : $target->columns()[$name] ?? null;
+    }
+
+    /**
+     * A dependent choice list narrowed to the records matching the form's
+     * value of the field it depends on; without that value it is not narrowed.
+     *
+     * @param array{field: string, column: string}|null $dependsOn
+     * @param array<string, string> $depends field name => the form's current value, as query text
+     */
+    private function applyDependency(ResourceDescriptor $resource, Query $query, ?array $dependsOn, array $depends): void
+    {
+        $raw = $dependsOn === null ? '' : $depends[$dependsOn['field']] ?? '';
+
+        if ($dependsOn === null || $raw === '') {
+            return;
+        }
+
+        // the field it depends on, as this user sees it: hidden by viewField, it cannot narrow
+        $dependency = $resource->field($dependsOn['field'])
+            ?? throw new InvalidListRequestException("\"{$dependsOn['field']}\" is not a field this account may filter by.");
+
+        try {
+            $query->where($dependsOn['column'], '=', $this->converter->fromQuery($dependency, $raw));
+        } catch (InputViolation $e) {
+            throw new InvalidListRequestException("\"{$dependsOn['field']}\" {$e->violation->message}");
+        }
+    }
+
+    /**
+     * One relation option, with the subtitle and image when their columns were selected.
+     *
+     * @param array<string, mixed> $row
+     * @return array{id: int|string, label: string, subtitle?: string|null, image?: string|null}
+     */
+    private static function option(ResourceDescriptor $target, array $row, ?string $subtitleColumn, ?string $imageColumn, ?string $image): array
+    {
+        $option = [
+            'id' => $target->primaryKeyType() === 'int' ? (int) $row[$target->primaryKeyColumn()] : (string) $row[$target->primaryKeyColumn()],
+            'label' => (string) $row[$target->titleColumn()],
+        ];
+
+        if ($subtitleColumn !== null) {
+            $option['subtitle'] = $row[$subtitleColumn] === null ? null : (string) $row[$subtitleColumn];
+        }
+
+        if ($imageColumn !== null) {
+            $option['image'] = is_string($row[$imageColumn]) && $row[$imageColumn] !== '' ? $image : null;
+        }
+
+        return $option;
     }
 
     /**

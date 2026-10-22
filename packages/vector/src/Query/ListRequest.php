@@ -78,71 +78,11 @@ final readonly class ListRequest
         }
 
         $sort = self::sort($params['sort'] ?? '', $resource);
-        $cursor = $params['cursor'] ?? null;
-
-        if ($cursor !== null) {
-            if (!is_string($cursor)) {
-                throw new InvalidListRequestException('cursor must be a string.');
-            }
-
-            if ($sort !== []) {
-                throw new InvalidListRequestException('cursor pagination orders by the identifier; do not pass sort with cursor.');
-            }
-
-            // the cursor is the last key of the page before; '' asks for the first page
-            if ($cursor !== '' && $resource->primaryKeyType() === 'int' && preg_match('/^-?\d{1,18}$/D', $cursor) !== 1) {
-                throw new InvalidListRequestException('cursor must be an identifier of this resource.');
-            }
-        }
-
-        $search = $params['q'] ?? null;
-
-        if ($search !== null && !is_string($search)) {
-            throw new InvalidListRequestException('q must be a string.');
-        }
-
-        $search = $search === null ? null : trim($search);
-
-        if ($search !== null && $search !== '' && !$resource->searchable()) {
-            throw new InvalidListRequestException("{$resource->slug()} has no searchable fields.");
-        }
-
-        if (mb_strlen((string) $search) > 200) {
-            throw new InvalidListRequestException('q must be at most 200 characters.');
-        }
-
+        $cursor = self::cursor($params['cursor'] ?? null, $sort, $resource);
+        $search = self::search($params['q'] ?? null, $resource);
         [$filters, $groups, $trashed] = self::filters($params['filter'] ?? [], $resource, $converter);
-
-        $group = null;
-        $groupName = $params['group'] ?? null;
-
-        if ($groupName !== null && $groupName !== '') {
-            if (!is_string($groupName) || !in_array($groupName, $resource->groupable(), true)) {
-                throw new InvalidListRequestException('group must name a groupable field of ' . $resource->slug() . ': ' . (implode(', ', $resource->groupable()) ?: 'none') . '.');
-            }
-
-            $group = ['field' => $groupName, 'column' => $resource->columns()[$groupName]];
-        }
-
-        $columns = null;
-        $rawColumns = $params['columns'] ?? null;
-
-        if ($rawColumns !== null && $rawColumns !== '') {
-            if (!is_string($rawColumns)) {
-                throw new InvalidListRequestException('columns must be a comma-separated list of field names.');
-            }
-
-            $columns = [];
-
-            foreach (array_filter(array_map('trim', explode(',', $rawColumns))) as $name) {
-                if (!in_array($name, $resource->indexFields(), true) && !in_array($name, $resource->showFields(), true)) {
-                    throw new InvalidListRequestException("\"{$name}\" is not a listable field of {$resource->slug()}.");
-                }
-
-                $columns[] = $name;
-            }
-        }
-
+        $group = self::group($params['group'] ?? null, $resource);
+        $columns = self::columns($params['columns'] ?? null, $resource);
         $summaries = in_array($params['summaries'] ?? null, ['1', 'true', 1, true], true);
 
         return new self(
@@ -213,6 +153,96 @@ final readonly class ListRequest
     }
 
     /**
+     * Keyset pagination's cursor: the last key of the page before, or ''
+     * for the first page. It orders by the identifier, so it takes no sort.
+     *
+     * @param list<array{field: string, order: 'asc'|'desc'}> $sort
+     */
+    private static function cursor(mixed $cursor, array $sort, ResourceDescriptor $resource): ?string
+    {
+        if ($cursor === null) {
+            return null;
+        }
+
+        if (!is_string($cursor)) {
+            throw new InvalidListRequestException('cursor must be a string.');
+        }
+
+        if ($sort !== []) {
+            throw new InvalidListRequestException('cursor pagination orders by the identifier; do not pass sort with cursor.');
+        }
+
+        // the cursor is the last key of the page before; '' asks for the first page
+        if ($cursor !== '' && $resource->primaryKeyType() === 'int' && preg_match('/^-?\d{1,18}$/D', $cursor) !== 1) {
+            throw new InvalidListRequestException('cursor must be an identifier of this resource.');
+        }
+
+        return $cursor;
+    }
+
+    /** `q`, trimmed: null when absent, '' when blank. */
+    private static function search(mixed $search, ResourceDescriptor $resource): ?string
+    {
+        if ($search === null) {
+            return null;
+        }
+
+        if (!is_string($search)) {
+            throw new InvalidListRequestException('q must be a string.');
+        }
+
+        $search = trim($search);
+
+        if ($search !== '' && !$resource->searchable()) {
+            throw new InvalidListRequestException("{$resource->slug()} has no searchable fields.");
+        }
+
+        if (mb_strlen($search) > 200) {
+            throw new InvalidListRequestException('q must be at most 200 characters.');
+        }
+
+        return $search;
+    }
+
+    /** @return array{field: string, column: string}|null */
+    private static function group(mixed $groupName, ResourceDescriptor $resource): ?array
+    {
+        if ($groupName === null || $groupName === '') {
+            return null;
+        }
+
+        if (!is_string($groupName) || !in_array($groupName, $resource->groupable(), true)) {
+            throw new InvalidListRequestException('group must name a groupable field of ' . $resource->slug() . ': ' . (implode(', ', $resource->groupable()) ?: 'none') . '.');
+        }
+
+        return ['field' => $groupName, 'column' => $resource->columns()[$groupName]];
+    }
+
+    /** @return list<string>|null */
+    private static function columns(mixed $rawColumns, ResourceDescriptor $resource): ?array
+    {
+        if ($rawColumns === null || $rawColumns === '') {
+            return null;
+        }
+
+        if (!is_string($rawColumns)) {
+            throw new InvalidListRequestException('columns must be a comma-separated list of field names.');
+        }
+
+        $columns = [];
+
+        foreach (array_filter(array_map('trim', explode(',', $rawColumns))) as $name) {
+            if (!in_array($name, $resource->indexFields(), true) && !in_array($name, $resource->showFields(), true)) {
+                throw new InvalidListRequestException("\"{$name}\" is not a listable field of {$resource->slug()}.");
+            }
+
+            $columns[] = $name;
+        }
+
+        return $columns;
+    }
+
+    /**
      * @return array{0: list<Predicate>, 1: list<list<array<string, mixed>>>, 2: 'without'|'only'|'with'}
      */
     private static function filters(mixed $raw, ResourceDescriptor $resource, ValueConverter $converter): array
@@ -250,84 +280,118 @@ final readonly class ListRequest
             $name = (string) $name;
 
             if ($name === 'trashed') {
-                if ($depth > 1) {
-                    throw new InvalidListRequestException('filter[trashed] applies to the whole filter, not to an or/and group.');
-                }
-
-                if ($resource->softDelete() === null) {
-                    throw new InvalidListRequestException("{$resource->slug()} does not soft-delete; the trashed filter does not apply.");
-                }
-
-                $trashed = match ($spec) {
-                    self::TRASHED_ONLY, self::TRASHED_WITH, self::TRASHED_WITHOUT => $spec,
-                    default => throw new InvalidListRequestException('filter[trashed] must be only, with or without.'),
-                };
+                $trashed = self::trashed($spec, $resource, $depth);
 
                 continue;
             }
 
-            if ($name === 'or' || $name === 'and') {
-                if ($depth >= self::MAX_DEPTH) {
-                    throw new InvalidListRequestException('filter groups nest at most ' . self::MAX_DEPTH . ' deep.');
-                }
-
-                if (!is_array($spec) || $spec === [] || count($spec) > 20) {
-                    throw new InvalidListRequestException("filter[{$name}] must hold 1 to 20 filter objects.");
-                }
-
-                $children = [];
-
-                foreach (array_values($spec) as $child) {
-                    if (!is_array($child) || $child === [] || array_is_list($child)) {
-                        throw new InvalidListRequestException("filter[{$name}] must hold filter objects, each with a condition.");
-                    }
-
-                    $children[] = self::node($child, $resource, $converter, $depth + 1, $conditions, $trashed);
-                }
-
-                if ($name === 'or') {
-                    $groups[] = $children;
-
-                    continue;
-                }
-
-                // and: every object's conditions and groups must hold, as if written here
-                foreach ($children as $child) {
-                    $filters = [...$filters, ...$child['filters']];
-                    $groups = [...$groups, ...$child['groups']];
-                }
+            if ($name !== 'or' && $name !== 'and') {
+                $filters = [...$filters, ...self::conditions($name, $spec, $resource, $converter, $conditions)];
 
                 continue;
             }
 
-            $field = $resource->field($name);
+            $children = self::children($name, $spec, $resource, $converter, $depth, $conditions, $trashed);
 
-            if ($field === null || $field['operators'] === []) {
-                throw new InvalidListRequestException("\"{$name}\" is not a filterable field of {$resource->slug()}.");
+            if ($name === 'or') {
+                $groups[] = $children;
+
+                continue;
             }
 
-            $operators = is_array($spec) ? $spec : ['eq' => $spec];
-
-            foreach ($operators as $op => $value) {
-                $op = (string) $op;
-
-                if (!in_array($op, $field['operators'], true)) {
-                    throw new InvalidListRequestException("\"{$name}\" does not admit the operator \"{$op}\"; it admits " . implode(', ', $field['operators']) . '.');
-                }
-
-                if (!is_string($value) && !is_array($value)) {
-                    throw new InvalidListRequestException("filter[{$name}][{$op}] must be a string.");
-                }
-
-                if (++$conditions > self::MAX_CONDITIONS) {
-                    throw new InvalidListRequestException('a filter holds at most ' . self::MAX_CONDITIONS . ' conditions.');
-                }
-
-                $filters = [...$filters, ...self::predicate($field, $op, $value, $converter, $name)];
+            // and: every object's conditions and groups must hold, as if written here
+            foreach ($children as $child) {
+                $filters = [...$filters, ...$child['filters']];
+                $groups = [...$groups, ...$child['groups']];
             }
         }
 
         return ['filters' => $filters, 'groups' => $groups];
+    }
+
+    /** @return 'without'|'only'|'with' */
+    private static function trashed(mixed $spec, ResourceDescriptor $resource, int $depth): string
+    {
+        if ($depth > 1) {
+            throw new InvalidListRequestException('filter[trashed] applies to the whole filter, not to an or/and group.');
+        }
+
+        if ($resource->softDelete() === null) {
+            throw new InvalidListRequestException("{$resource->slug()} does not soft-delete; the trashed filter does not apply.");
+        }
+
+        return match ($spec) {
+            self::TRASHED_ONLY, self::TRASHED_WITH, self::TRASHED_WITHOUT => $spec,
+            default => throw new InvalidListRequestException('filter[trashed] must be only, with or without.'),
+        };
+    }
+
+    /**
+     * The filter objects an `or` or `and` holds, each one level deeper.
+     *
+     * @param 'or'|'and' $name
+     * @param 'without'|'only'|'with' $trashed
+     * @return list<FilterNode>
+     */
+    private static function children(string $name, mixed $spec, ResourceDescriptor $resource, ValueConverter $converter, int $depth, int &$conditions, string &$trashed): array
+    {
+        if ($depth >= self::MAX_DEPTH) {
+            throw new InvalidListRequestException('filter groups nest at most ' . self::MAX_DEPTH . ' deep.');
+        }
+
+        if (!is_array($spec) || $spec === [] || count($spec) > 20) {
+            throw new InvalidListRequestException("filter[{$name}] must hold 1 to 20 filter objects.");
+        }
+
+        $children = [];
+
+        foreach (array_values($spec) as $child) {
+            if (!is_array($child) || $child === [] || array_is_list($child)) {
+                throw new InvalidListRequestException("filter[{$name}] must hold filter objects, each with a condition.");
+            }
+
+            $children[] = self::node($child, $resource, $converter, $depth + 1, $conditions, $trashed);
+        }
+
+        return $children;
+    }
+
+    /**
+     * One field's conditions — `filter[f][op]=v`, or `filter[f]=v` for
+     * equality — as predicates, counted against MAX_CONDITIONS.
+     *
+     * @return list<Predicate>
+     */
+    private static function conditions(string $name, mixed $spec, ResourceDescriptor $resource, ValueConverter $converter, int &$conditions): array
+    {
+        $field = $resource->field($name);
+
+        if ($field === null || $field['operators'] === []) {
+            throw new InvalidListRequestException("\"{$name}\" is not a filterable field of {$resource->slug()}.");
+        }
+
+        $operators = is_array($spec) ? $spec : ['eq' => $spec];
+        $filters = [];
+
+        foreach ($operators as $op => $value) {
+            $op = (string) $op;
+
+            if (!in_array($op, $field['operators'], true)) {
+                throw new InvalidListRequestException("\"{$name}\" does not admit the operator \"{$op}\"; it admits " . implode(', ', $field['operators']) . '.');
+            }
+
+            if (!is_string($value) && !is_array($value)) {
+                throw new InvalidListRequestException("filter[{$name}][{$op}] must be a string.");
+            }
+
+            if (++$conditions > self::MAX_CONDITIONS) {
+                throw new InvalidListRequestException('a filter holds at most ' . self::MAX_CONDITIONS . ' conditions.');
+            }
+
+            $filters = [...$filters, ...self::predicate($field, $op, $value, $converter, $name)];
+        }
+
+        return $filters;
     }
 
     /**
@@ -359,8 +423,6 @@ final readonly class ListRequest
 
             return array_map($convert, $items);
         };
-        $isDay = static fn (mixed $v): bool => is_string($v) && preg_match('/^\d{4}-\d{2}-\d{2}$/', trim($v)) === 1;
-        $dayEnd = static fn (DateTimeImmutable $d): DateTimeImmutable => $d->setTime(23, 59, 59, 999999);
         $timestamp = ($field['valueType'] ?? null) === 'timestamp';
 
         switch ($op) {
@@ -372,17 +434,7 @@ final readonly class ListRequest
             case 'nin':
                 return [['column' => $column, 'op' => $op, 'value' => $list($value)]];
             case 'between':
-                $bounds = $list($value);
-
-                if (count($bounds) !== 2) {
-                    throw new InvalidListRequestException("filter[{$name}][between] takes exactly two values.");
-                }
-
-                if ($timestamp && is_array($value) === false && $isDay(explode(',', $value)[1] ?? '') && $bounds[1] instanceof DateTimeImmutable) {
-                    $bounds[1] = $dayEnd($bounds[1]);
-                }
-
-                return [['column' => $column, 'op' => 'between', 'value' => $bounds]];
+                return [['column' => $column, 'op' => 'between', 'value' => self::between($list($value), $value, $timestamp, $name)]];
             case 'like':
             case 'nlike':
                 if (!is_string($value)) {
@@ -401,17 +453,57 @@ final readonly class ListRequest
 
         $typed = $convert($value);
 
-        if ($timestamp && $isDay($value) && $typed instanceof DateTimeImmutable) {
-            // a day against an instant column: compare against the day's edges
-            return match ($op) {
-                'eq' => [['column' => $column, 'op' => 'between', 'value' => [$typed, $dayEnd($typed)]]],
-                'ne' => [['column' => $column, 'op' => 'nbetween', 'value' => [$typed, $dayEnd($typed)]]],
-                'lte', 'gt' => [['column' => $column, 'op' => $op, 'value' => $dayEnd($typed)]],
-                default => [['column' => $column, 'op' => $op, 'value' => $typed]],
-            };
+        if ($timestamp && self::isDay($value) && $typed instanceof DateTimeImmutable) {
+            return self::dayComparison($column, $op, $typed);
         }
 
         return [['column' => $column, 'op' => $op, 'value' => $typed]];
+    }
+
+    /**
+     * A between's two typed bounds. A date-only upper bound against a
+     * datetime column lands on the end of its day.
+     *
+     * @param list<mixed> $bounds
+     * @param string|array<array-key, mixed> $value
+     * @return list<mixed>
+     */
+    private static function between(array $bounds, string|array $value, bool $timestamp, string $name): array
+    {
+        if (count($bounds) !== 2) {
+            throw new InvalidListRequestException("filter[{$name}][between] takes exactly two values.");
+        }
+
+        if ($timestamp && is_array($value) === false && self::isDay(explode(',', $value)[1] ?? '') && $bounds[1] instanceof DateTimeImmutable) {
+            $bounds[1] = self::dayEnd($bounds[1]);
+        }
+
+        return $bounds;
+    }
+
+    /**
+     * A day against an instant column: compare against the day's edges.
+     *
+     * @return list<array{column: string, op: string, value: mixed}>
+     */
+    private static function dayComparison(string $column, string $op, DateTimeImmutable $day): array
+    {
+        return match ($op) {
+            'eq' => [['column' => $column, 'op' => 'between', 'value' => [$day, self::dayEnd($day)]]],
+            'ne' => [['column' => $column, 'op' => 'nbetween', 'value' => [$day, self::dayEnd($day)]]],
+            'lte', 'gt' => [['column' => $column, 'op' => $op, 'value' => self::dayEnd($day)]],
+            default => [['column' => $column, 'op' => $op, 'value' => $day]],
+        };
+    }
+
+    private static function isDay(mixed $value): bool
+    {
+        return is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}$/', trim($value)) === 1;
+    }
+
+    private static function dayEnd(DateTimeImmutable $day): DateTimeImmutable
+    {
+        return $day->setTime(23, 59, 59, 999999);
     }
 
     /**

@@ -148,6 +148,22 @@ final readonly class ViewsController
         if ($resourceDefault) {
             $this->service->authorizeDefaultView($descriptor);
         }
+
+        ListRequest::fromQueryParams(self::listParams($state), $descriptor, $this->converter);
+        $state = array_intersect_key($state, array_flip(['filter', 'q', 'sort', 'group', 'columns', 'perPage', 'summaries']));
+
+        /** @var string $name */
+        return [trim($name), ($body['shared'] ?? false) === true, ($body['isDefault'] ?? false) === true, $state, $resourceDefault];
+    }
+
+    /**
+     * The list request a view's state holds: its non-empty list parameters.
+     *
+     * @param array<array-key, mixed> $state
+     * @return array<string, mixed>
+     */
+    private static function listParams(array $state): array
+    {
         $params = [];
 
         foreach (['filter', 'q', 'sort', 'group', 'columns', 'perPage'] as $key) {
@@ -156,11 +172,7 @@ final readonly class ViewsController
             }
         }
 
-        ListRequest::fromQueryParams($params, $descriptor, $this->converter);
-        $state = array_intersect_key($state, array_flip(['filter', 'q', 'sort', 'group', 'columns', 'perPage', 'summaries']));
-
-        /** @var string $name */
-        return [trim($name), ($body['shared'] ?? false) === true, ($body['isDefault'] ?? false) === true, $state, $resourceDefault];
+        return $params;
     }
 
     /** @return array<array-key, mixed> */
