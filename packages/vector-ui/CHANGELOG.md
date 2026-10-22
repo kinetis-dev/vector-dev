@@ -36,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when they hold a backslash, whitespace or a control character anywhere:
   a browser strips tab, CR and LF from a URL, so `/<tab>/host` was
   followed as `//host`, another origin.
+- A dashboard table widget's row opens its `_link` only when it is a path
+  of the admin, by the same rule, and a row whose link is not is not
+  offered as a link; a failed navigation is reported instead of
+  rejecting unhandled.
 
 ## [0.10.2] - 2026-10-21
 
