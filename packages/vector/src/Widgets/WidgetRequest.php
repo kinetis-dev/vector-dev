@@ -54,10 +54,10 @@ final readonly class WidgetRequest
     {
         return match (true) {
             $range === 'all' => false,
-            preg_match('/^(\d{1,3})d$/', $range, $m) === 1 => new \DateInterval("P{$m[1]}D"),
-            preg_match('/^(\d{1,3})h$/', $range, $m) === 1 => new \DateInterval("PT{$m[1]}H"),
-            preg_match('/^(\d{1,2})y$/', $range, $m) === 1 => new \DateInterval("P{$m[1]}Y"),
-            preg_match('/^(\d{1,3})m$/', $range, $m) === 1 => new \DateInterval("P{$m[1]}M"),
+            preg_match('/^(\d{1,3})d$/D', $range, $m) === 1 => new \DateInterval("P{$m[1]}D"),
+            preg_match('/^(\d{1,3})h$/D', $range, $m) === 1 => new \DateInterval("PT{$m[1]}H"),
+            preg_match('/^(\d{1,2})y$/D', $range, $m) === 1 => new \DateInterval("P{$m[1]}Y"),
+            preg_match('/^(\d{1,3})m$/D', $range, $m) === 1 => new \DateInterval("P{$m[1]}M"),
             default => null,
         };
     }

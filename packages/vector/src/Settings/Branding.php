@@ -40,8 +40,8 @@ final class Branding extends SettingsGroup
                 ->help('Shown in the app bar, the browser tab and the navigation drawer.'),
             Url::make('logoUrl', 'Logo URL')->max(500)
                 ->help('An image served by this application or another origin the deployment allows. Empty shows no logo.'),
-            Color::make('primaryColor', 'Primary colour (light theme)')->rule(\Kinetis\Validation\Constraints\Regex::class, '/^#[0-9a-fA-F]{6}$/')->default('#1F5F8B'),
-            Color::make('primaryColorDark', 'Primary colour (dark theme)')->rule(\Kinetis\Validation\Constraints\Regex::class, '/^#[0-9a-fA-F]{6}$/')->default('#5AA9E6'),
+            Color::make('primaryColor', 'Primary colour (light theme)')->rule(\Kinetis\Validation\Constraints\Regex::class, '/^#[0-9a-fA-F]{6}$/D')->default('#1F5F8B'),
+            Color::make('primaryColorDark', 'Primary colour (dark theme)')->rule(\Kinetis\Validation\Constraints\Regex::class, '/^#[0-9a-fA-F]{6}$/D')->default('#5AA9E6'),
             Enum::make('theme', 'Default theme')->of(ThemePreference::class)->default('system'),
             Text::make('footerText', 'Footer text')->max(200)
                 ->help('One line under every page, such as a legal notice or the environment name. Empty shows no footer.'),

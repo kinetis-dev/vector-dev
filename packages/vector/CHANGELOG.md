@@ -35,6 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `vector/` but outside the field's own `vector/{resource}/{field}/`.
   Keys outside `vector/`, which applications and uploads-off forms
   write, are still served.
+- Several request-value patterns ended in `$` without the `D` flag, so a
+  trailing newline slipped through: a rich-text link's `rel`, a code
+  block's `language`, an image's `src` and size, a date-time value, a
+  widget's `range`, a preference key and the branding colours. Each now
+  refuses it as it refuses any other value outside its pattern.
 
 ### Fixed
 

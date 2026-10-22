@@ -74,6 +74,28 @@ final class RichTextTest extends VectorTestCase
         self::assertSame(['content/0/content/0/text invalid_node'], $problems($paragraph(['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => '']]])));
     }
 
+    public function testAnAttributeValueEndsWhereItsPatternDoes(): void
+    {
+        $document = new Document();
+        $doc = static fn (array $node): string => json_encode(['type' => 'doc', 'content' => [$node]], JSON_THROW_ON_ERROR);
+        $rel = static fn (string $rel): string => $doc(['type' => 'paragraph', 'content' => [
+            ['type' => 'text', 'text' => 'x', 'marks' => [['type' => 'link', 'attrs' => ['href' => 'https://example.com', 'rel' => $rel]]]],
+        ]]);
+        $language = static fn (string $language): string => $doc(['type' => 'codeBlock', 'attrs' => ['language' => $language], 'content' => [['type' => 'text', 'text' => 'echo 1;']]]);
+        $image = static fn (string $src, string $width): string => $doc(['type' => 'image', 'attrs' => ['src' => $src, 'width' => $width]]);
+        $codes = static fn (string $json, array $features): array => array_map(static fn ($v): string => implode('/', $v->path) . ' ' . $v->code, $document->validate($json, $features));
+
+        self::assertSame([], $codes($rel('noopener noreferrer'), ['link']));
+        self::assertSame([], $codes($language('php'), ['codeBlock']));
+        self::assertSame([], $codes($image('vector/posts/images/a.png', '120'), ['image']));
+
+        self::assertSame(['content/0/content/0/marks/0/attrs/rel invalid_attribute'], $codes($rel("noopener\n"), ['link']));
+        self::assertSame(['content/0/content/0/marks/0/attrs/rel invalid_attribute'], $codes($rel("noopener\n noreferrer"), ['link']));
+        self::assertSame(['content/0/attrs/language invalid_attribute'], $codes($language("php\n"), ['codeBlock']));
+        self::assertSame(['content/0/attrs/src invalid_attribute'], $codes($image("vector/posts/images/a.png\n", '120'), ['image']));
+        self::assertSame(['content/0/attrs/width invalid_attribute'], $codes($image('vector/posts/images/a.png', "120\n"), ['image']));
+    }
+
     public function testLinksGoOnlyToHttpMailtoOrRelativePlaces(): void
     {
         $document = new Document();

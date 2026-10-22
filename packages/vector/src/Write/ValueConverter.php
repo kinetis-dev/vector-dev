@@ -343,7 +343,7 @@ final readonly class ValueConverter
      */
     private static function isInstant(string $raw): bool
     {
-        if (preg_match('/^\d{4}-\d{2}-\d{2}(?<time>[T ][\d:.]+)?(?<zone>Z|[+-][\d:]+)?$/', $raw, $m, PREG_UNMATCHED_AS_NULL) !== 1) {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}(?<time>[T ][\d:.]+)?(?<zone>Z|[+-][\d:]+)?$/D', $raw, $m, PREG_UNMATCHED_AS_NULL) !== 1) {
             return false;
         }
 

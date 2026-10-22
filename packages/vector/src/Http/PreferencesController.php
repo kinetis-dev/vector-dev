@@ -55,7 +55,7 @@ final readonly class PreferencesController
         $violations = [];
 
         foreach ($body as $key => $value) {
-            if (!is_string($key) || preg_match('/^[a-z0-9][a-z0-9.\-_]{0,79}$/i', $key) !== 1) {
+            if (!is_string($key) || preg_match('/^[a-z0-9][a-z0-9.\-_]{0,79}$/iD', $key) !== 1) {
                 $violations[] = new Violation([(string) $key], 'invalid_key', 'is not a preference key.');
             } elseif (strlen(json_encode($value, JSON_THROW_ON_ERROR)) > PreferenceStore::MAX_VALUE_BYTES) {
                 $violations[] = new Violation([$key], 'too_large', 'must be at most 16 KiB.');
