@@ -38,6 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A job whose completion notification could not be stored was marked
+  failed after its row had already been finished. The row now stays
+  done, and the failed notification is logged.
 - An enum value of the scalar type its enum is not backed by — any
   `filter[field]=…` on an int-backed enum, or a string sent for one in
   a body — answered `500` with a `TypeError` from `tryFrom()`. A list
