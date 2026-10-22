@@ -36,8 +36,7 @@ sign in again.
 The home page shows the *main* dashboard, when your application has
 one: cards of figures, trends, breakdowns and short tables. A card with
 several ranges (7 days, 30 days, 90 days, a year) has a range selector;
-a table card may link to the full list with **See all**. Every resource
-is in the navigation drawer.
+a table card may link to the full list with **See all**.
 
 ## Search
 

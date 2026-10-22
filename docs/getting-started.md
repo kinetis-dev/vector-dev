@@ -1,9 +1,9 @@
 # Getting started
 
 Vector adds an admin to an existing Kinetis application that uses
-`kinetis/orm`. This page takes you from install to a working admin: the
-package, its tables, the three things your application provides, a
-first resource, and the UI.
+`kinetis/orm`. This page goes from install to a working admin: the package, its
+tables, the three things your application provides, a first resource
+and the UI.
 
 ## Install
 
