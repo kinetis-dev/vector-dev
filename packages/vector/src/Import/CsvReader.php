@@ -135,19 +135,7 @@ final class CsvReader
             $ends[$i] = (int) ftell($out);
 
             if ($maxBytes !== null && $ends[$i] > $maxBytes) {
-                // back to the last row that leaves room for the note, written again with it
-                $kept = $i - 1;
-
-                while ($kept >= 0 && $ends[$kept] > $maxBytes - self::NOTE_ROOM) {
-                    $kept--;
-                }
-
-                ftruncate($out, max(0, $kept > 0 ? $ends[$kept - 1] : $start));
-                fseek($out, 0, SEEK_END);
-                $note = sprintf('%d more failed rows are not in this file, which holds at most %d MiB.', count($rows) - $kept - 1, intdiv($maxBytes, 1048576));
-                $last = $kept >= 0 ? self::guardedRow($headers, $rows[$kept]) : array_fill(0, count($headers), '');
-                $last[count($last) - 1] = $last[count($last) - 1] === '' ? $note : $last[count($last) - 1] . ' — ' . $note;
-                fputcsv($out, $last, ',', '"', '\\', "\r\n");
+                self::cutWithNote($out, $headers, $rows, $ends, $i, $start, $maxBytes);
 
                 break;
             }
@@ -158,6 +146,33 @@ final class CsvReader
         fclose($out);
 
         return $csv === false ? '' : $csv;
+    }
+
+    /**
+     * Back to the last row that leaves room for the note on the rows left
+     * out, written again with it.
+     *
+     * @param resource $out
+     * @param list<string> $headers
+     * @param list<array<string, string>> $rows
+     * @param array<int, int> $ends row index => the offset its line ends at
+     * @param int $i the row that went past $maxBytes
+     * @param int $start the offset the first row starts at
+     */
+    private static function cutWithNote($out, array $headers, array $rows, array $ends, int $i, int $start, int $maxBytes): void
+    {
+        $kept = $i - 1;
+
+        while ($kept >= 0 && $ends[$kept] > $maxBytes - self::NOTE_ROOM) {
+            $kept--;
+        }
+
+        ftruncate($out, max(0, $kept > 0 ? $ends[$kept - 1] : $start));
+        fseek($out, 0, SEEK_END);
+        $note = sprintf('%d more failed rows are not in this file, which holds at most %d MiB.', count($rows) - $kept - 1, intdiv($maxBytes, 1048576));
+        $last = $kept >= 0 ? self::guardedRow($headers, $rows[$kept]) : array_fill(0, count($headers), '');
+        $last[count($last) - 1] = $last[count($last) - 1] === '' ? $note : $last[count($last) - 1] . ' — ' . $note;
+        fputcsv($out, $last, ',', '"', '\\', "\r\n");
     }
 
     /**

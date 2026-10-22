@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { SubmitEventPromise } from 'vuetify'
 import type { VectorField, VectorFieldState, VectorLayoutNode, VectorRecord, VectorResource } from '#vector/app/types/vector'
-import { violationsOf } from '#vector/app/utils/internal/violations'
+import { type Violation, violationsOf } from '#vector/app/utils/internal/violations'
 
 // A create or edit form generated from the descriptor: one input per
 // editable field, client rules mirroring the server's, and the server's
@@ -205,45 +205,55 @@ async function save({ valid, errors }: { valid: boolean, errors: { id: string | 
     }
 
     try {
-        let response
-
-        if (props.operation === 'create') {
-            response = await client.create(payload(false))
-        } else {
-            const version = props.record?._version as number | undefined
-            response = await client.update(props.record!.id, payload(true), version)
-        }
+        const response = await persist()
 
         notifications.success(t('record.saved', { label: props.resource.labelSingular }))
         // what is saved is no longer a change: leaving now asks nothing
         for (const field of fields.value) initial[field.name] = clone(values[field.name])
         emit('saved', response.data, variant)
     } catch (error) {
-        const failure = error as { status?: number, statusCode?: number, data?: { errors?: unknown } } | null
-        const violations = failure?.data?.errors
-
-        if ((failure?.status ?? failure?.statusCode) === 422 && Array.isArray(violations)) {
-            for (const violation of violationsOf(violations)) {
-                // a repeater row's own violation stays with its row: `lines.2.quantity`
-                const repeated = violation.path.length >= 3 && fields.value.some(f => f.name === violation.path[0] && f.repeater)
-                const key = repeated ? violation.path.slice(0, 3).join('.') : String(violation.path[0] ?? '')
-
-                if (key && (key in values || repeated)) {
-                    serverErrors[key] ??= []
-                    serverErrors[key].push(`${violation.message.charAt(0).toUpperCase()}${violation.message.slice(1)}`)
-                } else {
-                    formError.value = violation.message
-                }
-            }
-
-            if (!formError.value && Object.keys(serverErrors).length === 0) {
-                formError.value = t('common.serverRejected')
-            }
-        } else {
-            formError.value = vectorErrorMessage(error)
-        }
+        showFailure(error)
     } finally {
         submitting.value = false
+    }
+}
+
+/** Creates the record, or updates it with what changed. */
+function persist() {
+    if (props.operation === 'create') return client.create(payload(false))
+
+    const version = props.record?._version as number | undefined
+    return client.update(props.record!.id, payload(true), version)
+}
+
+/** A failed save: the server's 422 mapped onto the fields it names, anything else above the form. */
+function showFailure(error: unknown) {
+    const failure = error as { status?: number, statusCode?: number, data?: { errors?: unknown } } | null
+    const violations = failure?.data?.errors
+
+    if ((failure?.status ?? failure?.statusCode) !== 422 || !Array.isArray(violations)) {
+        formError.value = vectorErrorMessage(error)
+        return
+    }
+
+    for (const violation of violationsOf(violations)) showViolation(violation)
+
+    if (!formError.value && Object.keys(serverErrors).length === 0) {
+        formError.value = t('common.serverRejected')
+    }
+}
+
+/** One violation under the field it names, or above the form when it names none the form holds. */
+function showViolation(violation: Violation) {
+    // a repeater row's own violation stays with its row: `lines.2.quantity`
+    const repeated = violation.path.length >= 3 && fields.value.some(f => f.name === violation.path[0] && f.repeater)
+    const key = repeated ? violation.path.slice(0, 3).join('.') : String(violation.path[0] ?? '')
+
+    if (key && (key in values || repeated)) {
+        serverErrors[key] ??= []
+        serverErrors[key].push(`${violation.message.charAt(0).toUpperCase()}${violation.message.slice(1)}`)
+    } else {
+        formError.value = violation.message
     }
 }
 

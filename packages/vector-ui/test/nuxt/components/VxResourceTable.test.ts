@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
 import VxResourceTable from '#vector/app/components/Vx/Resource/Table.vue'
-import type { VectorResource } from '#vector/app/types/vector'
+import VxListViewMenu from '#vector/app/components/Vx/List/ViewMenu.vue'
+import type { VectorFilterQuery, VectorResource, VectorSavedView } from '#vector/app/types/vector'
 import { endpoint, standaloneApi, type Received } from '../endpoints'
 import { resource } from '../fixtures'
 
@@ -295,6 +296,69 @@ describe('VxResourceTable, uncounted and by cursor', () => {
     })
 })
 
+describe('VxResourceTable, applying a saved view', () => {
+    const cleanups: (() => void)[] = []
+
+    beforeEach(() => {
+        standaloneApi()
+        for (const [url, body] of [['/vector/preferences', { data: {} }], ['/vector/views/tags', { data: [] }]] as const) {
+            cleanups.push(endpoint(url, { body }).unregister)
+        }
+    })
+    afterEach(() => cleanups.splice(0).forEach(unregister => unregister()))
+
+    const filterOf = (request: Received) => Object.fromEntries(Object.entries(query(request)).filter(([key]) => key.startsWith('filter')))
+
+    async function apply(filter: VectorFilterQuery) {
+        const list = endpoint('/vector/r/tags', () => ({ body: { data: rows([1, 2]), total: 2, page: 1, perPage: 2 } }))
+        cleanups.push(list.unregister)
+        const wrapper = await mountSuspended(VxResourceTable, { props: { resource: { ...tags({}), softDelete: { field: 'deletedAt' } } } })
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Tag 1'))
+        await flushPromises()
+        const before = list.requests.length
+
+        const view: VectorSavedView = { id: 7, resource: 'tags', ownerId: '1', name: 'Mine', shared: false, isDefault: false, resourceDefault: false, mine: true, state: { filter } }
+        wrapper.findComponent(VxListViewMenu).vm.$emit('apply', view)
+        await vi.waitFor(() => expect(list.requests.length).toBeGreaterThan(before))
+        await flushPromises()
+
+        return filterOf(list.requests.at(-1)!)
+    }
+
+    it('keeps the conditions, groups and deeper parts it can, dropping fields this account cannot see', async () => {
+        const sent = await apply({
+            name: { like: 'a' },
+            secret: { eq: 'x' },
+            color: '#fff',
+            trashed: 'only',
+            or: [{ name: { eq: 'b' }, secret: { eq: 'y' } }, { secret: { eq: 'z' } }],
+            and: [
+                { id: { gt: '1' }, name: { ne: 'd' } },
+                { or: [{ secret: { eq: 'w' } }] },
+                { or: [{ and: [{ name: { eq: 'c' } }] }] },
+            ],
+        })
+
+        expect(sent).toEqual({
+            'filter[name][like]': 'a',
+            'filter[name][ne]': 'd',
+            'filter[color][eq]': '#fff',
+            'filter[id][gt]': '1',
+            'filter[and][0][or][0][name][eq]': 'b',
+            'filter[and][1][or][0][and][0][name][eq]': 'c',
+            'filter[trashed]': 'only',
+        })
+    })
+
+    it('reads a trash setting written as an operator', async () => {
+        expect(await apply({ trashed: { eq: 'with' } })).toEqual({ 'filter[trashed]': 'with' })
+    })
+
+    it('ignores a trash setting it does not know, and sends a lone group as "or"', async () => {
+        expect(await apply({ trashed: 'everything', or: [{ name: { eq: 'b' } }] })).toEqual({ 'filter[or][0][name][eq]': 'b' })
+    })
+})
+
 describe('VxResourceTable, inline editing', () => {
     const cleanups: (() => void)[] = []
 
@@ -321,5 +385,37 @@ describe('VxResourceTable, inline editing', () => {
         await wrapper.findAll('button').find(b => b.text() === 'Save changes')!.trigger('click')
 
         await vi.waitFor(() => expect(wrapper.get('.vx-inline-editor').text()).toContain('is already used.'))
+    })
+
+    async function saveRejected(status: number, body: unknown) {
+        const base = resource()
+        const inline = resource({ fields: base.fields.map(f => f.name === 'name' ? { ...f, inline: true } : f) })
+        cleanups.push(endpoint('/vector/r/tags', () => ({ body: { data: rows([1, 2]), total: 2, page: 1, perPage: 2 } })).unregister)
+        cleanups.push(endpoint('/vector/r/tags/changes', { status, body }, 'POST').unregister)
+        const wrapper = await mountSuspended(VxResourceTable, { props: { resource: { ...inline, table: { ...inline.table, perPage: 2, perPageOptions: [2, 10] } } } })
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Tag 1'))
+        await flushPromises()
+        useVectorNotifications().queue.value = []
+
+        await wrapper.get('button[aria-label="Edit Name"]').trigger('click')
+        await vi.waitFor(() => expect(wrapper.find('.vx-inline-editor input').exists()).toBe(true))
+        await wrapper.get('.vx-inline-editor input').setValue('Tag 2')
+        await wrapper.findAll('button').find(b => b.text() === 'Save changes')!.trigger('click')
+        await vi.waitFor(() => expect(useVectorNotifications().queue.value.length).toBeGreaterThan(0))
+
+        return useVectorNotifications().queue.value.map(toast => [toast.text, toast.color])
+    }
+
+    it('reports a 422 entry naming no changed cell, with its field when it has one', async () => {
+        expect(await saveRejected(422, { errors: [{ path: ['changes', 0, 'color'], message: 'is not a colour.' }, { path: ['changes'], message: 'too many.' }] }))
+            .toEqual([['color: is not a colour.', 'error'], ['too many.', 'error']])
+    })
+
+    it('reports a conflict', async () => {
+        expect(await saveRejected(409, { error: 'Changed meanwhile.' })).toEqual([[useVectorT().t('list.inline.conflict'), 'error']])
+    })
+
+    it('reports any other failure as the server words it', async () => {
+        expect(await saveRejected(500, { error: 'Store down.' })).toEqual([['Store down.', 'error']])
     })
 })

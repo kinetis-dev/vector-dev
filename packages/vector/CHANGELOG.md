@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-10-22
+
+### Changed
+
+- The write, import and file-prune paths, list parsing, search, the MCP
+  tools, the OpenAPI document, rich text, the registry compilers and the
+  install command are split into smaller methods. Their behavior,
+  responses and failure codes are unchanged.
+- Ships the `@kinetis/vector-ui` 0.10.4 hosted bundle.
+
 ## [0.12.0] - 2026-10-22
 
 ### Added

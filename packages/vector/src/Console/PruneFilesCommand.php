@@ -38,7 +38,7 @@ final readonly class PruneFilesCommand
     {
         $hours = $arguments->hasOption('grace-hours') ? ($arguments->option('grace-hours') ?? '') : (string) FilePruner::DEFAULT_GRACE_HOURS;
 
-        if (preg_match('/^[1-9][0-9]{0,5}$/D', $hours) !== 1) {
+        if (preg_match('/^[1-9]\d{0,5}$/D', $hours) !== 1) {
             fwrite($this->errors, "--grace-hours needs a whole number of hours, 1 or more: --grace-hours=24.\n");
 
             return 1;

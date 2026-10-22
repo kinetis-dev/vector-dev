@@ -136,7 +136,7 @@ final readonly class Document
         $type = $node['type'] ?? null;
 
         if (!is_string($type) || !array_key_exists($type, $nodes)) {
-            $violations[] = new Violation([...$path, 'type'], 'not_allowed', is_string($type) ? "is \"{$type}\", which this field does not allow." : 'is missing.');
+            $violations[] = new Violation([...$path, 'type'], 'not_allowed', self::notAllowed($type));
 
             return;
         }
@@ -150,12 +150,29 @@ final readonly class Document
         }
 
         $this->checkAttrs($node['attrs'] ?? null, $nodes[$type], $type, [...$path, 'attrs'], $violations, $imageAllowed);
+        $this->checkMarks($node, $path, $marks, $imageAllowed, $violations);
 
+        if (isset($node['content'])) {
+            $this->walkContent($node['content'], $path, $depth, $nodes, $marks, $imageAllowed, $violations, $count);
+        }
+    }
+
+    /**
+     * Checks a node's marks: each a type the field allows, with that type's attributes.
+     *
+     * @param array<array-key, mixed> $node
+     * @param list<int|string> $path the node's
+     * @param array<string, list<string>> $marks
+     * @param (\Closure(string): bool)|null $imageAllowed
+     * @param list<Violation> $violations
+     */
+    private function checkMarks(array $node, array $path, array $marks, ?\Closure $imageAllowed, array &$violations): void
+    {
         foreach (self::listOf($node['marks'] ?? []) ?? [] as $i => $mark) {
             $markType = is_array($mark) ? ($mark['type'] ?? null) : null;
 
             if (!is_string($markType) || !array_key_exists($markType, $marks)) {
-                $violations[] = new Violation([...$path, 'marks', $i, 'type'], 'not_allowed', is_string($markType) ? "is \"{$markType}\", which this field does not allow." : 'is missing.');
+                $violations[] = new Violation([...$path, 'marks', $i, 'type'], 'not_allowed', self::notAllowed($markType));
 
                 continue;
             }
@@ -166,22 +183,38 @@ final readonly class Document
         if (isset($node['marks']) && self::listOf($node['marks']) === null) {
             $violations[] = new Violation([...$path, 'marks'], 'invalid_node', 'must be a list.');
         }
+    }
 
-        if (isset($node['content'])) {
-            $children = self::listOf($node['content']);
+    /**
+     * Checks a node's content: a list of nodes, each walked one level deeper.
+     *
+     * @param list<int|string> $path the node's
+     * @param array<string, list<string>> $nodes
+     * @param array<string, list<string>> $marks
+     * @param (\Closure(string): bool)|null $imageAllowed
+     * @param list<Violation> $violations
+     */
+    private function walkContent(mixed $content, array $path, int $depth, array $nodes, array $marks, ?\Closure $imageAllowed, array &$violations, int &$count): void
+    {
+        $children = self::listOf($content);
 
-            if ($children === null) {
-                $violations[] = new Violation([...$path, 'content'], 'invalid_node', 'must be a list of nodes.');
+        if ($children === null) {
+            $violations[] = new Violation([...$path, 'content'], 'invalid_node', 'must be a list of nodes.');
 
-                return;
-            }
-
-            foreach ($children as $i => $child) {
-                is_array($child)
-                    ? $this->walk($child, [...$path, 'content', $i], $depth + 1, $nodes, $marks, $imageAllowed, $violations, $count)
-                    : $violations[] = new Violation([...$path, 'content', $i], 'invalid_node', 'must be a node.');
-            }
+            return;
         }
+
+        foreach ($children as $i => $child) {
+            is_array($child)
+                ? $this->walk($child, [...$path, 'content', $i], $depth + 1, $nodes, $marks, $imageAllowed, $violations, $count)
+                : $violations[] = new Violation([...$path, 'content', $i], 'invalid_node', 'must be a node.');
+        }
+    }
+
+    /** Why a node or mark type is refused: one this field does not allow, or none at all. */
+    private static function notAllowed(mixed $type): string
+    {
+        return is_string($type) ? "is \"{$type}\", which this field does not allow." : 'is missing.';
     }
 
     /** Whether $json is a document holding no text, image or other content. */
@@ -435,28 +468,77 @@ final readonly class Document
                 continue;
             }
 
-            $problem = match ("{$type}.{$name}") {
-                'link.href' => self::href($value),
-                'link.target' => $value === null || $value === '_blank' ? null : 'must be _blank or null.',
-                // the editor sends its own defaults for these two; a value of the author's own would reach the rendered anchor
-                'link.rel' => $value === null || (is_string($value) && preg_match('/^(?:(?:noopener|noreferrer|nofollow)(?: |$))*$/D', $value) === 1) ? null : 'must be noopener, noreferrer or nofollow.',
-                'link.class' => $value === null || $value === '' ? null : 'must be empty.',
-                'heading.level' => is_int($value) && $value >= 1 && $value <= 6 ? null : 'must be a heading level from 1 to 6.',
-                'orderedList.start' => $value === null || (is_int($value) && $value >= 0) ? null : 'must be a whole number.',
-                'codeBlock.language' => $value === null || (is_string($value) && preg_match('/^[A-Za-z0-9+#._-]{0,32}$/D', $value) === 1) ? null : 'is not a language name.',
-                'tableCell.colspan', 'tableCell.rowspan', 'tableHeader.colspan', 'tableHeader.rowspan' => is_int($value) && $value >= 1 && $value <= 1000 ? null : 'must be a whole number of cells.',
-                'tableCell.align', 'tableHeader.align' => $value === null || in_array($value, ['left', 'center', 'right'], true) ? null : 'must be left, center, right or null.',
-                'tableCell.colwidth', 'tableHeader.colwidth' => $value === null || (is_array($value) && array_is_list($value) && array_all($value, static fn (mixed $w): bool => is_int($w) && $w >= 0)) ? null : 'must be a list of widths.',
-                'image.src' => is_string($value) && $value !== '' && preg_match('~^[A-Za-z0-9/_.-]+$~D', $value) === 1 && !str_contains($value, '..') && ($imageAllowed === null || $imageAllowed($value))
-                    ? null : 'is not an image uploaded for this field.',
-                'image.width', 'image.height' => $value === null || (is_int($value) && $value >= 0) || (is_string($value) && preg_match('/^\d{1,5}$/D', $value) === 1) ? null : 'must be a size in pixels.',
-                default => $value === null || is_scalar($value) ? null : 'must be text.',
-            };
+            $problem = self::attributeProblem($type, $name, $value, $imageAllowed);
 
             if ($problem !== null) {
                 $violations[] = new Violation([...$path, $name], 'invalid_attribute', $problem);
             }
         }
+    }
+
+    /**
+     * What is wrong with one allowed attribute's value, or null.
+     *
+     * @param (\Closure(string): bool)|null $imageAllowed
+     */
+    private static function attributeProblem(string $type, string $name, mixed $value, ?\Closure $imageAllowed): ?string
+    {
+        return match ("{$type}.{$name}") {
+            'link.href' => self::href($value),
+            'link.target', 'link.rel', 'link.class' => self::linkProblem($name, $value),
+            'heading.level', 'orderedList.start', 'codeBlock.language' => self::blockProblem("{$type}.{$name}", $value),
+            'tableCell.colspan', 'tableCell.rowspan', 'tableHeader.colspan', 'tableHeader.rowspan',
+            'tableCell.align', 'tableHeader.align', 'tableCell.colwidth', 'tableHeader.colwidth' => self::cellProblem($name, $value),
+            'image.src', 'image.width', 'image.height' => self::imageProblem($name, $value, $imageAllowed),
+            default => $value === null || is_scalar($value) ? null : 'must be text.',
+        };
+    }
+
+    /** A link's `target`, `rel` or `class`. */
+    private static function linkProblem(string $name, mixed $value): ?string
+    {
+        return match ($name) {
+            'target' => $value === null || $value === '_blank' ? null : 'must be _blank or null.',
+            // the editor sends its own defaults for these two; a value of the author's own would reach the rendered anchor
+            'rel' => $value === null || (is_string($value) && preg_match('/^(?:(?:noopener|noreferrer|nofollow)(?: |$))*$/D', $value) === 1) ? null : 'must be noopener, noreferrer or nofollow.',
+            default => $value === null || $value === '' ? null : 'must be empty.', // class
+        };
+    }
+
+    /** A heading's `level`, an ordered list's `start` or a code block's `language`. */
+    private static function blockProblem(string $attribute, mixed $value): ?string
+    {
+        return match ($attribute) {
+            'heading.level' => is_int($value) && $value >= 1 && $value <= 6 ? null : 'must be a heading level from 1 to 6.',
+            'orderedList.start' => $value === null || (is_int($value) && $value >= 0) ? null : 'must be a whole number.',
+            default => $value === null || (is_string($value) && preg_match('/^[A-Za-z0-9+#._-]{0,32}$/D', $value) === 1) ? null : 'is not a language name.', // codeBlock.language
+        };
+    }
+
+    /** A table cell's or header's `colspan`, `rowspan`, `align` or `colwidth`. */
+    private static function cellProblem(string $name, mixed $value): ?string
+    {
+        return match ($name) {
+            'colspan', 'rowspan' => is_int($value) && $value >= 1 && $value <= 1000 ? null : 'must be a whole number of cells.',
+            'align' => $value === null || in_array($value, ['left', 'center', 'right'], true) ? null : 'must be left, center, right or null.',
+            default => $value === null || (is_array($value) && array_is_list($value) && array_all($value, static fn (mixed $w): bool => is_int($w) && $w >= 0)) ? null : 'must be a list of widths.', // colwidth
+        };
+    }
+
+    /**
+     * An image's `src`, `width` or `height`.
+     *
+     * @param (\Closure(string): bool)|null $imageAllowed
+     */
+    private static function imageProblem(string $name, mixed $value, ?\Closure $imageAllowed): ?string
+    {
+        if ($name === 'src') {
+            return is_string($value) && $value !== '' && preg_match('~^[A-Za-z0-9/_.-]+$~D', $value) === 1 && !str_contains($value, '..') && ($imageAllowed === null || $imageAllowed($value))
+                ? null : 'is not an image uploaded for this field.';
+        }
+
+        // width, height
+        return $value === null || (is_int($value) && $value >= 0) || (is_string($value) && preg_match('/^\d{1,5}$/D', $value) === 1) ? null : 'must be a size in pixels.';
     }
 
     /** A link's target: http(s), mailto, or relative to the page. */

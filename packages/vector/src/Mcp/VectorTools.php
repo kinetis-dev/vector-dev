@@ -168,29 +168,37 @@ final readonly class VectorTools
     #[McpTool(name: 'vector_widget', description: 'Compute a dashboard widget (dashboard + widget) or a resource widget (resource + widget) for a range such as 30d')]
     public function widget(string $widget, string $dashboard = '', string $resource = '', string $range = ''): array|ToolResult
     {
-        return $this->guarded(function () use ($widget, $dashboard, $resource, $range): array {
-            if ($resource !== '') {
-                $descriptor = $this->reader->resource($resource);
-                $this->reader->permissions($descriptor)['viewAny'] || throw new AuthorizationException('This account may not view this resource.');
-                $compiled = $descriptor->widget($widget) ?? throw WidgetRunner::notFound($widget);
+        return $this->guarded(fn (): array => $resource !== ''
+            ? $this->resourceWidget($widget, $resource, $range === '' ? null : $range)
+            : $this->dashboardWidget($widget, $dashboard === '' ? 'main' : $dashboard, $range === '' ? null : $range));
+    }
 
-                return ['data' => $this->widgets->run($compiled, $range === '' ? null : $range, "resources/{$resource}")];
+    /** @return array<string, mixed> */
+    private function resourceWidget(string $widget, string $resource, ?string $range): array
+    {
+        $descriptor = $this->reader->resource($resource);
+        $this->reader->permissions($descriptor)['viewAny'] || throw new AuthorizationException('This account may not view this resource.');
+        $compiled = $descriptor->widget($widget) ?? throw WidgetRunner::notFound($widget);
+
+        return ['data' => $this->widgets->run($compiled, $range, "resources/{$resource}")];
+    }
+
+    /** @return array<string, mixed> */
+    private function dashboardWidget(string $widget, string $dashboard, ?string $range): array
+    {
+        $page = $this->registry->dashboard($dashboard);
+
+        if (!$this->widgets->dashboardVisible($page)) {
+            throw new AuthorizationException('This dashboard is not available to this account.');
+        }
+
+        foreach ($page['widgets'] as $compiled) {
+            if ($compiled['name'] === $widget) {
+                return ['data' => $this->widgets->run($compiled, $range, "dashboards/{$page['name']}")];
             }
+        }
 
-            $page = $this->registry->dashboard($dashboard === '' ? 'main' : $dashboard);
-
-            if (!$this->widgets->dashboardVisible($page)) {
-                throw new AuthorizationException('This dashboard is not available to this account.');
-            }
-
-            foreach ($page['widgets'] as $compiled) {
-                if ($compiled['name'] === $widget) {
-                    return ['data' => $this->widgets->run($compiled, $range === '' ? null : $range, "dashboards/{$page['name']}")];
-                }
-            }
-
-            throw WidgetRunner::notFound($widget);
-        });
+        throw WidgetRunner::notFound($widget);
     }
 
     /** @return array<string, mixed> */
@@ -259,19 +267,30 @@ final readonly class VectorTools
             if (in_array($field, ['or', 'and'], true) && is_array($spec)) {
                 $out[$field] = array_map(static fn (mixed $child): array => self::stringify(is_array($child) ? $child : []), array_values($spec));
             } elseif (is_array($spec)) {
-                $ops = [];
-
-                foreach ($spec as $op => $value) {
-                    $ops[$op] = is_array($value) ? implode(',', array_map(self::text(...), $value)) : self::text($value);
-                }
-
-                $out[$field] = $ops;
+                $out[$field] = self::stringifyOperators($spec);
             } else {
                 $out[$field] = is_scalar($spec) ? (string) $spec : '';
             }
         }
 
         return $out;
+    }
+
+    /**
+     * One field's `{op: value}`, each value as text; a list joined with commas.
+     *
+     * @param array<array-key, mixed> $spec
+     * @return array<array-key, string>
+     */
+    private static function stringifyOperators(array $spec): array
+    {
+        $ops = [];
+
+        foreach ($spec as $op => $value) {
+            $ops[$op] = is_array($value) ? implode(',', array_map(self::text(...), $value)) : self::text($value);
+        }
+
+        return $ops;
     }
 
     private static function text(mixed $value): string

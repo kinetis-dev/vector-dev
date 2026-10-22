@@ -40,11 +40,7 @@ final class WidgetCompiler
                 throw ResourceCompileException::resource($owner, "widget {$class} has the type \"{$widget->type()}\"");
             }
 
-            foreach (array_keys($widget->ranges()) as $range) {
-                if (!WidgetRequest::isRange($range)) {
-                    throw ResourceCompileException::resource($owner, "widget {$class} declares the range \"{$range}\"; a range is a number of hours, days, months or years (24h, 30d, 6m, 1y) or all");
-                }
-            }
+            self::checkRanges($widget, $class, $owner);
 
             $widgets[$name] = [
                 'name' => $name,
@@ -60,6 +56,16 @@ final class WidgetCompiler
         }
 
         return array_values($widgets);
+    }
+
+    /** Every range a widget declares is one WidgetRequest can resolve. */
+    private static function checkRanges(VectorWidget $widget, string $class, string $owner): void
+    {
+        foreach (array_keys($widget->ranges()) as $range) {
+            if (!WidgetRequest::isRange($range)) {
+                throw ResourceCompileException::resource($owner, "widget {$class} declares the range \"{$range}\"; a range is a number of hours, days, months or years (24h, 30d, 6m, 1y) or all");
+            }
+        }
     }
 
     /**

@@ -50,6 +50,42 @@ final readonly class HostedBundle
         $refuse = static fn(string $cause): \UnexpectedValueException
             => new \UnexpectedValueException("Refusing to publish the admin bundle in {$dist}: {$cause}. {$remedy}");
 
+        $data = self::manifest($dist, $refuse);
+        $files = $data['files'];
+
+        if ($data['package'] !== self::PACKAGE) {
+            throw $refuse("it was built for {$data['package']}, not " . self::PACKAGE);
+        }
+
+        if ($data['descriptorVersion'] !== VectorRegistry::VERSION) {
+            throw $refuse("it speaks descriptor version {$data['descriptorVersion']}; this kinetis/vector serves version " . VectorRegistry::VERSION);
+        }
+
+        if ($release !== null && $data['version'] !== $release) {
+            throw $refuse("it was built for version {$data['version']}; kinetis/vector {$release} is installed");
+        }
+
+        if (!isset($files['index.html'])) {
+            throw $refuse(self::MANIFEST . ' lists no index.html, so there is no shell to publish');
+        }
+
+        self::checkFiles($dist, $files, $refuse);
+
+        return new self($data['version'], $data['source'], $files);
+    }
+
+    /**
+     * The manifest in $dist, read and checked for shape: every member
+     * present with its type and format, every listed path inside the
+     * bundle and every hash a sha256.
+     *
+     * @param \Closure(string): \UnexpectedValueException $refuse
+     * @return array{package: string, version: string, descriptorVersion: int, source: string, files: array<string, string>}
+     *
+     * @throws \UnexpectedValueException when it is missing or malformed
+     */
+    private static function manifest(string $dist, \Closure $refuse): array
+    {
         $manifest = $dist . '/' . self::MANIFEST;
 
         if (!is_file($manifest)) {
@@ -85,22 +121,26 @@ final readonly class HostedBundle
             $files[$path] = $hash;
         }
 
-        if ($data['package'] !== self::PACKAGE) {
-            throw $refuse("it was built for {$data['package']}, not " . self::PACKAGE);
-        }
+        return [
+            'package' => $data['package'],
+            'version' => $data['version'],
+            'descriptorVersion' => $data['descriptorVersion'],
+            'source' => $data['source'],
+            'files' => $files,
+        ];
+    }
 
-        if ($data['descriptorVersion'] !== VectorRegistry::VERSION) {
-            throw $refuse("it speaks descriptor version {$data['descriptorVersion']}; this kinetis/vector serves version " . VectorRegistry::VERSION);
-        }
-
-        if ($release !== null && $data['version'] !== $release) {
-            throw $refuse("it was built for version {$data['version']}; kinetis/vector {$release} is installed");
-        }
-
-        if (!isset($files['index.html'])) {
-            throw $refuse(self::MANIFEST . ' lists no index.html, so there is no shell to publish');
-        }
-
+    /**
+     * Checks that $dist holds exactly the listed files, besides the
+     * manifest, with the listed hashes.
+     *
+     * @param array<string, string> $files relative path => sha256
+     * @param \Closure(string): \UnexpectedValueException $refuse
+     *
+     * @throws \UnexpectedValueException naming the first file that differs
+     */
+    private static function checkFiles(string $dist, array $files, \Closure $refuse): void
+    {
         $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dist, \FilesystemIterator::SKIP_DOTS));
 
         foreach ($iterator as $item) {
@@ -120,8 +160,6 @@ final readonly class HostedBundle
                 throw $refuse("{$path} changed after " . self::MANIFEST . ' was written');
             }
         }
-
-        return new self($data['version'], $data['source'], $files);
     }
 
     /**

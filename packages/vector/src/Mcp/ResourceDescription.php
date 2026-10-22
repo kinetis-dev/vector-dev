@@ -79,10 +79,7 @@ final class ResourceDescription
     private static function field(array $field, array $compiled): array
     {
         $computed = $field['computed'] ?? null;
-        $writable = $field['readonly'] === true || $computed !== null || in_array($field['type'], ['id', 'hasOne', 'hasMany'], true)
-            ? []
-            : array_values(array_intersect(['create', 'update'], $field['views']));
-
+        $writable = self::writable($field);
         $written = $writable !== [];
         $description = [
             'name' => $field['name'],
@@ -93,7 +90,7 @@ final class ResourceDescription
             'help' => $field['help'] ?? null,
             'writable' => $writable,
             // what the writer itself demands of a create; only a field a call writes has any of these
-            'required' => $written ? in_array('create', $writable, true) && RecordInput::requiredOnCreate($compiled) && ($field['hasDefault'] ?? false) !== true : null,
+            'required' => $written ? self::required($field, $compiled, $writable) : null,
             'nullable' => $written ? $field['nullable'] ?? true : null,
             'unique' => ($field['unique'] ?? false) === true ? true : null,
             'default' => $written && ($field['hasDefault'] ?? false) === true ? $field['default'] : null,
@@ -109,6 +106,34 @@ final class ResourceDescription
 
         // `writable` stays when empty: an absent key would leave a read-only field ambiguous
         return [...self::compact($description), 'writable' => $writable, ...self::options($field), ...self::conditions($field)];
+    }
+
+    /**
+     * The views a call may write the field in: none for a read-only,
+     * computed, key or inverse relation field.
+     *
+     * @param array<string, mixed> $field the published field
+     * @return list<string>
+     */
+    private static function writable(array $field): array
+    {
+        $computed = $field['computed'] ?? null;
+
+        return $field['readonly'] === true || $computed !== null || in_array($field['type'], ['id', 'hasOne', 'hasMany'], true)
+            ? []
+            : array_values(array_intersect(['create', 'update'], $field['views']));
+    }
+
+    /**
+     * Whether a create must send the field, as the writer itself demands.
+     *
+     * @param array<string, mixed> $field the published field
+     * @param array<string, mixed> $compiled the field as the writer checks it
+     * @param list<string> $writable
+     */
+    private static function required(array $field, array $compiled, array $writable): bool
+    {
+        return in_array('create', $writable, true) && RecordInput::requiredOnCreate($compiled) && ($field['hasDefault'] ?? false) !== true;
     }
 
     /**

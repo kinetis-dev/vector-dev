@@ -46,11 +46,7 @@ final readonly class RecordInput
 
         // a new record starts from each field's default, as the form shows it; one the request sends wins
         if (!$partial) {
-            foreach ($resource->fields() as $name => $field) {
-                if (($field['hasDefault'] ?? false) === true && !array_key_exists($name, $payload) && $field['readonly'] !== true && in_array('create', $field['views'], true)) {
-                    $payload[$name] = $field['default'];
-                }
-            }
+            $payload = self::withDefaults($resource, $payload);
         }
         // The form the user saw: the stored record overlaid with what arrives,
         // which is what visibleWhen / requiredWhen / disabledWhen read.
@@ -63,58 +59,101 @@ final readonly class RecordInput
                 continue; // the optimistic-lock token, read by the writer
             }
 
-            $field = $resource->field($name);
+            array_push($violations, ...$this->field($resource, $name, $raw, $view, $states[$name] ?? null, $current, $values));
+        }
 
-            if ($field === null || !in_array($view, $field['views'], true) || in_array($field['type'], ['hasOne', 'hasMany'], true)) {
-                $violations[] = new Violation([$name], 'unexpected_field', 'is not a field this resource accepts.');
+        // the fields the payload's own values were refused for, as of now: the checks below skip them
+        $reported = static fn (string $name): bool => array_any($violations, static fn (Violation $v): bool => $v->path === [$name]);
 
-                continue;
-            }
+        array_push($violations, ...$this->dependentChoices($resource, $payload, $values, $current, $reported));
 
-            $state = $states[$name] ?? null;
+        if (!$partial) {
+            array_push($violations, ...self::missingOnCreate($resource, $states, $values, $reported));
+        }
 
-            if ($state !== null && (!$state['visible'] || $state['disabled'])) {
-                continue; // the form neither shows nor edits it now, so its value is not written
-            }
+        array_push($violations, ...self::missingRequired($resource, $states, $view, $values, $current, $reported));
 
-            if ($field['readonly'] === true) {
-                $violations[] = new Violation([$name], 'read_only', 'is read-only.');
+        if ($violations !== []) {
+            throw ValidationException::fromViolations($violations);
+        }
 
-                continue;
-            }
+        return $values;
+    }
 
-            if (ValueConverter::keepsStoredPassword($field, $raw)) {
-                continue; // nothing typed into a hashed password: the stored hash stays; a create still reports it required
-            }
-
-            // With storage configured, a new file value must be a key the upload endpoint issued for this field.
-            if (in_array($field['type'], ['file', 'image'], true) && is_string($raw) && $raw !== '' && $raw !== ($current[$name] ?? null)
-                && $this->storage->available() && !$this->files->issued($resource, $name, $raw)) {
-                $violations[] = new Violation([$name], 'invalid_file', 'is not a file uploaded for this field.');
-
-                continue;
-            }
-
-            if ($field['type'] === 'richtext') {
-                array_push($violations, ...$this->richText($resource, $field, $raw, $current, $values));
-
-                continue;
-            }
-
-            try {
-                $values[$name] = $this->converter->convert($field, $raw);
-            } catch (InputViolation $e) {
-                $violations[] = $e->violation->under($name);
-
-                continue;
-            }
-
-            foreach ($this->converter->violationsOfRules($field, $raw) as $violation) {
-                $violations[] = $violation->under($name);
+    /**
+     * @param array<array-key, mixed> $payload
+     * @return array<array-key, mixed> the payload with the default of every field it leaves out
+     */
+    private static function withDefaults(ResourceDescriptor $resource, array $payload): array
+    {
+        foreach ($resource->fields() as $name => $field) {
+            if (($field['hasDefault'] ?? false) === true && !array_key_exists($name, $payload) && $field['readonly'] !== true && in_array('create', $field['views'], true)) {
+                $payload[$name] = $field['default'];
             }
         }
 
-        $reported = static fn (string $name): bool => array_any($violations, static fn (Violation $v): bool => $v->path === [$name]);
+        return $payload;
+    }
+
+    /**
+     * One value the payload sends: converted into $values, skipped, or
+     * what is wrong with it.
+     *
+     * @param array{visible: bool, required: bool, disabled: bool}|null $state
+     * @param array<string, mixed> $current
+     * @param array<string, mixed> $values
+     * @param-out array<string, mixed> $values
+     * @return list<Violation>
+     */
+    private function field(ResourceDescriptor $resource, string $name, mixed $raw, string $view, ?array $state, array $current, array &$values): array
+    {
+        $field = $resource->field($name);
+
+        if ($field === null || !in_array($view, $field['views'], true) || in_array($field['type'], ['hasOne', 'hasMany'], true)) {
+            return [new Violation([$name], 'unexpected_field', 'is not a field this resource accepts.')];
+        }
+
+        if ($state !== null && (!$state['visible'] || $state['disabled'])) {
+            return []; // the form neither shows nor edits it now, so its value is not written
+        }
+
+        if ($field['readonly'] === true) {
+            return [new Violation([$name], 'read_only', 'is read-only.')];
+        }
+
+        if (ValueConverter::keepsStoredPassword($field, $raw)) {
+            return []; // nothing typed into a hashed password: the stored hash stays; a create still reports it required
+        }
+
+        // With storage configured, a new file value must be a key the upload endpoint issued for this field.
+        if (in_array($field['type'], ['file', 'image'], true) && is_string($raw) && $raw !== '' && $raw !== ($current[$name] ?? null)
+            && $this->storage->available() && !$this->files->issued($resource, $name, $raw)) {
+            return [new Violation([$name], 'invalid_file', 'is not a file uploaded for this field.')];
+        }
+
+        if ($field['type'] === 'richtext') {
+            return $this->richText($resource, $field, $raw, $current, $values);
+        }
+
+        try {
+            $values[$name] = $this->converter->convert($field, $raw);
+        } catch (InputViolation $e) {
+            return [$e->violation->under($name)];
+        }
+
+        return array_map(static fn (Violation $v): Violation => $v->under($name), $this->converter->violationsOfRules($field, $raw));
+    }
+
+    /**
+     * @param array<array-key, mixed> $payload
+     * @param array<string, mixed> $values
+     * @param array<string, mixed> $current
+     * @param \Closure(string): bool $reported
+     * @return list<Violation>
+     */
+    private function dependentChoices(ResourceDescriptor $resource, array $payload, array $values, array $current, \Closure $reported): array
+    {
+        $violations = [];
 
         foreach ($resource->fields() as $name => $field) {
             $depends = $field['relation']['dependsOn'] ?? null;
@@ -128,16 +167,46 @@ final readonly class RecordInput
             }
         }
 
-        if (!$partial) {
-            foreach ($resource->fields() as $name => $field) {
-                $state = $states[$name] ?? null;
-                $hidden = $state !== null && (!$state['visible'] || $state['disabled']);
+        return $violations;
+    }
 
-                if (!$hidden && self::requiredOnCreate($field) && !array_key_exists($name, $values) && !$reported($name)) {
-                    $violations[] = new Violation([$name], 'required', 'is required.');
-                }
+    /**
+     * Every field a create must set that the request leaves out.
+     *
+     * @param array<string, array{visible: bool, required: bool, disabled: bool}> $states
+     * @param array<string, mixed> $values
+     * @param \Closure(string): bool $reported
+     * @return list<Violation>
+     */
+    private static function missingOnCreate(ResourceDescriptor $resource, array $states, array $values, \Closure $reported): array
+    {
+        $violations = [];
+
+        foreach ($resource->fields() as $name => $field) {
+            $state = $states[$name] ?? null;
+            $hidden = $state !== null && (!$state['visible'] || $state['disabled']);
+
+            if (!$hidden && self::requiredOnCreate($field) && !array_key_exists($name, $values) && !$reported($name)) {
+                $violations[] = new Violation([$name], 'required', 'is required.');
             }
         }
+
+        return $violations;
+    }
+
+    /**
+     * Every field whose requiredWhen holds, shown and editable, that the
+     * write would leave empty.
+     *
+     * @param array<string, array{visible: bool, required: bool, disabled: bool}> $states
+     * @param array<string, mixed> $values
+     * @param array<string, mixed> $current
+     * @param \Closure(string): bool $reported
+     * @return list<Violation>
+     */
+    private static function missingRequired(ResourceDescriptor $resource, array $states, string $view, array $values, array $current, \Closure $reported): array
+    {
+        $violations = [];
 
         foreach ($states as $name => $state) {
             $field = $resource->fields()[$name];
@@ -153,11 +222,7 @@ final readonly class RecordInput
             }
         }
 
-        if ($violations !== []) {
-            throw ValidationException::fromViolations($violations);
-        }
-
-        return $values;
+        return $violations;
     }
 
     /**
@@ -232,19 +297,10 @@ final readonly class RecordInput
         }
 
         $raw = $raw === null || $raw === '' || $this->document->isEmpty($raw) ? null : $raw;
+        $problems = $raw === null ? [] : $this->documentProblems($resource, $field, $raw, $current);
 
-        if ($raw !== null) {
-            $stored = $this->document->imageKeys(is_string($current[$name] ?? null) ? $current[$name] : null);
-            $imageField = $rich['imageField'];
-            $allowed = fn (string $key): bool => in_array($key, $stored, true)
-                || ($imageField !== null && ($this->storage->available()
-                    ? $this->files->issued($resource, $imageField, $key)
-                    : str_starts_with($key, "vector/{$resource->slug()}/{$imageField}/")));
-            $problems = $this->document->validate($raw, $rich['features'], $rich['maxBytes'], $allowed);
-
-            if ($problems !== []) {
-                return array_map(static fn (Violation $v): Violation => $v->under($name), $problems);
-            }
+        if ($problems !== []) {
+            return $problems;
         }
 
         $violations = array_map(static fn (Violation $v): Violation => $v->under($name), $this->converter->violationsOfRules($field, $raw));
@@ -266,6 +322,29 @@ final readonly class RecordInput
         }
 
         return [];
+    }
+
+    /**
+     * A rich-text document checked against its field's schema, images
+     * only from keys issued for its image field or already in the stored
+     * document.
+     *
+     * @param array<string, mixed> $field
+     * @param array<string, mixed> $current
+     * @return list<Violation>
+     */
+    private function documentProblems(ResourceDescriptor $resource, array $field, string $raw, array $current): array
+    {
+        $name = (string) $field['name'];
+        $rich = $field['richtext'];
+        $stored = $this->document->imageKeys(is_string($current[$name] ?? null) ? $current[$name] : null);
+        $imageField = $rich['imageField'];
+        $allowed = fn (string $key): bool => in_array($key, $stored, true)
+            || ($imageField !== null && ($this->storage->available()
+                ? $this->files->issued($resource, $imageField, $key)
+                : str_starts_with($key, "vector/{$resource->slug()}/{$imageField}/")));
+
+        return array_map(static fn (Violation $v): Violation => $v->under($name), $this->document->validate($raw, $rich['features'], $rich['maxBytes'], $allowed));
     }
 
     /** @param array<string, mixed> $field */

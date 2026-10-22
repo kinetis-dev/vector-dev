@@ -1,6 +1,6 @@
 import type { AnyExtension, Extensions, JSONContent } from '@tiptap/core'
 import { generateHTML, generateJSON, generateText } from '@tiptap/core'
-import StarterKit from '@tiptap/starter-kit'
+import StarterKit, { type StarterKitOptions } from '@tiptap/starter-kit'
 import { TableKit } from '@tiptap/extension-table'
 import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -38,35 +38,45 @@ export interface RichTextOptions {
     custom?: ReadonlyMap<string, AnyExtension>
 }
 
+/** The StarterKit parts turned on with their default options, each by the feature that allows it. */
+const STARTER_KIT_FEATURES = {
+    bold: 'bold',
+    italic: 'italic',
+    underline: 'underline',
+    strike: 'strike',
+    code: 'code',
+    bulletList: 'list',
+    orderedList: 'list',
+    listItem: 'list',
+    listKeymap: 'list',
+    blockquote: 'blockquote',
+    codeBlock: 'codeBlock',
+    horizontalRule: 'horizontalRule',
+} as const
+
+/** StarterKit's options for a field: each part on exactly when its feature is, headings up to h4, links only where allowedHref lets them go. */
+function starterKitOptions(on: (feature: string) => boolean): Partial<StarterKitOptions> {
+    const parts = Object.fromEntries(Object.entries(STARTER_KIT_FEATURES).map(([part, feature]) => [part, on(feature) ? {} : false]))
+
+    return {
+        ...parts,
+        heading: on('heading') ? { levels: [1, 2, 3, 4] } : false,
+        link: on('link')
+            ? {
+                    openOnClick: false,
+                    autolink: true,
+                    protocols: [],
+                    HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer nofollow' },
+                    isAllowedUri: (url: string) => allowedHref(url),
+                }
+            : false,
+    }
+}
+
 /** The Tiptap extensions for a field: exactly its features, nothing else. */
 export function richTextExtensions(options: RichTextOptions): Extensions {
     const on = (feature: string) => options.features.includes(feature)
-    const extensions: Extensions = [
-        StarterKit.configure({
-            bold: on('bold') ? {} : false,
-            italic: on('italic') ? {} : false,
-            underline: on('underline') ? {} : false,
-            strike: on('strike') ? {} : false,
-            code: on('code') ? {} : false,
-            heading: on('heading') ? { levels: [1, 2, 3, 4] } : false,
-            bulletList: on('list') ? {} : false,
-            orderedList: on('list') ? {} : false,
-            listItem: on('list') ? {} : false,
-            listKeymap: on('list') ? {} : false,
-            blockquote: on('blockquote') ? {} : false,
-            codeBlock: on('codeBlock') ? {} : false,
-            horizontalRule: on('horizontalRule') ? {} : false,
-            link: on('link')
-                ? {
-                        openOnClick: false,
-                        autolink: true,
-                        protocols: [],
-                        HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer nofollow' },
-                        isAllowedUri: (url: string) => allowedHref(url),
-                    }
-                : false,
-        }),
-    ]
+    const extensions: Extensions = [StarterKit.configure(starterKitOptions(on))]
 
     if (on('table')) {
         // not resizable: resizing writes style attributes a strict CSP refuses

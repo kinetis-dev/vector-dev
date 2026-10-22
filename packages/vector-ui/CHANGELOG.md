@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.4] - 2026-10-22
+
+### Changed
+
+- The resource form, the resource table and the rich-text schema are
+  split into smaller functions. Their behavior is unchanged.
+
 ## [0.10.3] - 2026-10-22
 
 ### Changed

@@ -59,12 +59,7 @@ final readonly class InstallCommand
         $config = Config::fromEnvironment();
 
         try {
-            $connection = VectorDatabase::validated(
-                $arguments->hasOption('connection')
-                    ? ($arguments->option('connection') ?? throw new \InvalidArgumentException('--connection needs a value: --connection=<name>.'))
-                    : 'default',
-                '--connection',
-            );
+            $connection = self::connection($arguments);
         } catch (\InvalidArgumentException $e) {
             fwrite(STDERR, $e->getMessage() . "\n");
 
@@ -84,34 +79,84 @@ final readonly class InstallCommand
 
         // The bundle is verified before anything is written, so a refused
         // one leaves no partial install behind.
-        $bundle = null;
+        try {
+            $bundle = self::bundle($dist, $release);
+        } catch (\UnexpectedValueException $e) {
+            fwrite(STDERR, $e->getMessage() . "\n");
 
-        if (is_file($dist . '/index.html') || is_file($dist . '/' . HostedBundle::MANIFEST)) {
-            try {
-                $bundle = HostedBundle::verify($dist, $release);
-            } catch (\UnexpectedValueException $e) {
-                fwrite(STDERR, $e->getMessage() . "\n");
+            return 1;
+        }
+
+        $migrations = $root . '/migrations';
+        $target = $connection === 'default' ? $migrations : "{$migrations}/{$connection}";
+
+        foreach ([$migrations, $target] as $directory) {
+            if (!self::directory($directory)) {
+                fwrite(STDERR, "Could not create {$directory}.\n");
 
                 return 1;
             }
         }
 
-        $migrations = $root . '/migrations';
+        $published = $this->publishMigrations($root, $target, $dialect);
 
-        if (!is_dir($migrations) && !mkdir($migrations, 0755) && !is_dir($migrations)) {
-            fwrite(STDERR, "Could not create {$migrations}.\n");
-
+        if ($published === null) {
             return 1;
         }
 
-        $target = $connection === 'default' ? $migrations : "{$migrations}/{$connection}";
+        $this->printNextSteps($migrations, $connection, $published, $config);
 
-        if (!is_dir($target) && !mkdir($target, 0755) && !is_dir($target)) {
-            fwrite(STDERR, "Could not create {$target}.\n");
+        return $this->publishUi($dist, $root . '/public' . VectorUi::PATH, $bundle, $release);
+    }
 
-            return 1;
+    /**
+     * The connection --connection names, "default" without the option.
+     *
+     * @throws \InvalidArgumentException when the option has no value or names no valid connection
+     */
+    private static function connection(CommandArguments $arguments): string
+    {
+        return VectorDatabase::validated(
+            $arguments->hasOption('connection')
+                ? ($arguments->option('connection') ?? throw new \InvalidArgumentException('--connection needs a value: --connection=<name>.'))
+                : 'default',
+            '--connection',
+        );
+    }
+
+    /**
+     * The verified bundle in $dist, or null when it holds neither a shell
+     * nor a manifest.
+     *
+     * @param ?string $release the installed release, null for a dev install
+     *
+     * @throws \UnexpectedValueException when the bundle is refused
+     */
+    private static function bundle(string $dist, ?string $release): ?HostedBundle
+    {
+        if (!is_file($dist . '/index.html') && !is_file($dist . '/' . HostedBundle::MANIFEST)) {
+            return null;
         }
 
+        return HostedBundle::verify($dist, $release);
+    }
+
+    /**
+     * Whether $directory exists, creating it when it does not.
+     */
+    private static function directory(string $directory): bool
+    {
+        return is_dir($directory) || mkdir($directory, 0755) || is_dir($directory);
+    }
+
+    /**
+     * Copies each migration stub of $dialect that $target does not hold
+     * yet into it, naming every one published.
+     *
+     * @return ?int how many were published, null when one could not be written
+     */
+    private function publishMigrations(string $root, string $target, string $dialect): ?int
+    {
         $published = 0;
 
         foreach (glob(dirname(__DIR__, 2) . "/resources/migrations/*.{$dialect}.stub") ?: [] as $stub) {
@@ -127,13 +172,22 @@ final readonly class InstallCommand
             if ($contents === false || file_put_contents($file, $contents) === false) {
                 fwrite(STDERR, "Could not write {$file}.\n");
 
-                return 1;
+                return null;
             }
 
             echo 'Published ' . substr($file, strlen($root) + 1) . "\n";
             $published++;
         }
 
+        return $published;
+    }
+
+    /**
+     * What to run next, the other connections holding Vector's
+     * migrations, and the VECTOR_DB_CONNECTION change the install needs.
+     */
+    private function printNextSteps(string $migrations, string $connection, int $published, Config $config): void
+    {
         $option = $connection === 'default' ? '' : " --connection={$connection}";
 
         echo $published === 0
@@ -151,8 +205,6 @@ final readonly class InstallCommand
                 ? "Remove VECTOR_DB_CONNECTION (currently \"{$configured}\") so Vector uses the default connection.\n"
                 : "Set VECTOR_DB_CONNECTION={$connection} in the application's configuration so Vector uses these tables.\n";
         }
-
-        return $this->publishUi($dist, $root . '/public' . VectorUi::PATH, $bundle, $release);
     }
 
     /**
