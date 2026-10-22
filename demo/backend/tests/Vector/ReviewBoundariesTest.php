@@ -62,6 +62,31 @@ final class ReviewBoundariesTest extends VectorTestCase
         $this->client->request('PATCH', "/vector/r/products/{$id}", body: ['stock' => 1], headers: $this->adminHeaders())->assertStatus(403);
     }
 
+    public function testASavedViewIsNotCreatedWhenItsListIsNot(): void
+    {
+        $this->policy->listable = false;
+        $leaked = [];
+
+        try {
+            // the same refusal, and the same status, as the list of views
+            $this->client->get('/vector/views/products', headers: $this->adminHeaders())->assertStatus(403);
+            $this->client->post('/vector/views/products', body: ['name' => 'Unlisted', 'state' => []], headers: $this->adminHeaders())->assertStatus(403);
+        } finally {
+            $this->policy->listable = true;
+            $views = $this->client->get('/vector/views/products', headers: $this->adminHeaders())->assertOk()->json();
+            self::assertIsArray($views);
+
+            foreach ($views['data'] as $view) {
+                if ($view['name'] === 'Unlisted') {
+                    $leaked[] = $view['id'];
+                    $this->client->delete("/vector/views/products/{$view['id']}", headers: $this->adminHeaders())->assertStatus(204);
+                }
+            }
+        }
+
+        self::assertSame([], $leaked);
+    }
+
     public function testARelationValueMustPointInsideTheTargetsScope(): void
     {
         [$inside, $outside] = $this->ids('tags', 2);

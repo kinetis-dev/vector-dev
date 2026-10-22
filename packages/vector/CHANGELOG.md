@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   including those the policy's `runAction()` or the action's own
   `canRun()` refuses this user, which `GET /vector/schema` leaves out.
   It now publishes the same actions.
+- `POST /vector/views/{resource}` saved a view of a resource whose list
+  the policy's `viewAny()` refuses this user, which the views index
+  already refused. Creating a view now asks `viewAny()` first and
+  answers the same `403`.
 
 ### Fixed
 
