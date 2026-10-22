@@ -32,7 +32,7 @@ application).
 | `GET /vector/r/{resource}/{id}/{relation}/rows` | A repeater's current rows. |
 | `POST /vector/r/{resource}/{id}/{relation}/attach`, `…/detach` | `{"ids": [...]}` on a many-to-many. |
 | `GET /vector/r/{resource}/fields/{field}/options?q=` | Choices for a relation input, each `{id, label}` plus the target's `subtitle` and `image` field when it declares them; `ids=` resolves known ones, `depends[field]=` narrows a dependent choice. |
-| `POST /vector/r/{resource}/fields/{field}/upload` | Stores one file (multipart `file`); answers `{key, name, size, type}`. |
+| `POST /vector/r/{resource}/fields/{field}/upload` | Stores one file (multipart `file`, and `record`, the id of the record being edited); answers `{key, name, size, type}`. Needs create permission, or update permission on `record` ({doc}`files`). |
 | `GET /vector/r/{resource}/{id}/files/{field}` | The record's stored file. |
 | `GET /vector/r/{resource}/{id}/audit` | The record's history. |
 | `POST /vector/r/{resource}/{id}/audit/{entry}/revert` | Reverts one update; `409` when a field changed since. |

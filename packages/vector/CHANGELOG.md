@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `kinetis vector:files:prune` deletes uploads no record uses: a file
+  under a declared file or image field's `vector/{resource}/{field}/`,
+  older than `--grace-hours=<n>` (24), that no file or image column of
+  any row holds (trashed rows included), no rich-text document using
+  the field as its `imageField` shows, and no entry of the resource's
+  audit trail holds, since a revert writes an old value back.
+  `--dry-run` lists what would be deleted. Nothing outside `vector/` is
+  ever touched. Run it from a scheduler.
+
+### Changed
+
+- Uploading to a file or image field needs write permission, not just
+  list (`viewAny`): the field — or a rich-text field uploading its
+  images through it — on the create form while the policy allows
+  `create()`, or on the update form while it allows `update()` on the
+  record the upload names in its new multipart `record` part. Otherwise
+  the upload answers `403`. The UI's inputs send the id of the record
+  they edit; a client of its own that uploads while editing must send
+  `record` too, or the account needs create permission. A rich-text
+  field's image field no longer needs to be on a form itself.
+
 ### Security
 
 - A job whose push the queue backend refused stored the backend's own

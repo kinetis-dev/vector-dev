@@ -52,4 +52,5 @@ The per-resource bounds are methods on the resource; see
   flush has committed — on the same connection or another. When
   Vector's tables are on another connection than the entities, they
   commit separately.
-- Vector never deletes a stored upload when a value changes.
+- Vector never deletes a stored upload when a value changes;
+  `vector:files:prune` deletes the ones no record uses ({doc}`files`).

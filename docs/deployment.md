@@ -121,7 +121,9 @@ rebuild after changing a resource. Build the compiled cache inside the
 release or image itself: an existing valid `.kinetis-cache/compiled.php`
 is used as it is, without comparing it to the source that produced it
 (see [Caching](https://kinetis.dev/docs/caching.html)). Run a queue
-worker for Vector's jobs ({doc}`jobs`).
+worker for Vector's jobs ({doc}`jobs`), and schedule
+`kinetis vector:jobs:reap` and `kinetis vector:files:prune`
+({doc}`files`).
 
 ## Security checklist
 
@@ -148,7 +150,9 @@ worker for Vector's jobs ({doc}`jobs`).
 - **Uploads:** keep the storage root private, outside the web root
   (`public/`). Files are meant to be served only through
   `GET /vector/r/{resource}/{id}/files/{field}`, which checks access
-  ({doc}`files`).
+  ({doc}`files`). Uploading needs create permission, or update
+  permission on the record being edited. Schedule
+  `kinetis vector:files:prune` to delete uploads no record uses.
 
 ### Known limits
 
@@ -163,8 +167,9 @@ worker for Vector's jobs ({doc}`jobs`).
 - The standalone UI keeps its tokens in `sessionStorage`, which any
   script running on the admin's origin can read. A strict CSP is what
   keeps other script off that origin.
-- Uploading to a field needs only list (`viewAny`) permission on the
-  resource. A file that no record ends up using is not deleted.
+- An unused upload stays in storage until `vector:files:prune` runs and
+  its grace period (24 hours by default) has passed; one an audit entry
+  holds stays as long as that entry.
 - A download serves any stored key outside `vector/` — keys your
   application writes. A key under `vector/` is served only from that
   field's own `vector/{resource}/{field}/`.
