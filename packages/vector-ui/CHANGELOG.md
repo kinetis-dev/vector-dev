@@ -29,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the forms, the settings, bulk edit, action dialogs, inline list edits
   and uploads, instead of being read as one: a `null` entry made a form
   or the list's changeset fail without showing anything.
+- A record form shows a server error on a field it does not show — hidden
+  by `visibleWhen`, or preset by the relation the form was opened from —
+  above the form, under the field's label; it was shown nowhere, and the
+  save failed without a reason.
 
 ### Security
 

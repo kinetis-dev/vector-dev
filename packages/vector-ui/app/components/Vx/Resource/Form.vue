@@ -312,13 +312,22 @@ const errorNames = computed(() => [...new Set([
     ...Object.entries(serverErrors).filter(([, messages]) => messages.length > 0).map(([key]) => key.split('.')[0]!),
     ...clientErrors.value,
 ])])
+
+/** The server's errors on a field the form does not show (visibleWhen, or preset): above the form, under the field's label. */
+const hiddenErrors = computed(() => Object.entries(serverErrors)
+    .map(([key, messages]) => [key.split('.')[0]!, messages] as const)
+    .filter(([name]) => !shownNames.value.has(name))
+    .flatMap(([name, messages]) => messages.map(message => `${fieldsByName.value.get(name)?.label ?? name}: ${message}`)))
 </script>
 
 <template>
     <v-form ref="formRef" validate-on="blur lazy" @submit.prevent="submit">
         <v-card>
             <v-card-text>
-                <v-alert v-if="formError" type="error" variant="tonal" class="mb-4" :text="formError" />
+                <v-alert v-if="formError || hiddenErrors.length" type="error" variant="tonal" class="mb-4">
+                    <div v-if="formError">{{ formError }}</div>
+                    <div v-for="message in hiddenErrors" :key="message">{{ message }}</div>
+                </v-alert>
                 <VxLayout :nodes="layout" :shown="name => shownNames.has(name)" :errors="errorNames" :default-span="defaultSpan">
                     <template #field="{ field: name }">
                         <component

@@ -102,6 +102,21 @@ describe('VxResourceForm', () => {
         expect(input(form, 'Name').text()).not.toContain('This name is already used.')
     })
 
+    it('shows a 422 on a field it hides above the form, under the field\'s label', async () => {
+        const base = resource()
+        // the color is asked for only once the name is "Sale"
+        const conditional = resource({ fields: base.fields.map(f => f.name === 'color' ? { ...f, conditions: { visible: [{ field: 'name', op: 'eq', value: 'Sale' }], required: [], disabled: [] } } : f) })
+        mock('/vector/r/tags', { status: 422, body: { errors: [{ path: ['color'], message: 'this value should not be blank.' }] } }, 'POST')
+        const form = await mountForm({ resource: conditional, operation: 'create' })
+
+        await input(form, 'Name').find('input').setValue('Winter')
+        expect(labels(form)).toEqual(['Name'])
+        await submit(form)
+
+        await vi.waitFor(() => expect(form.find('.v-alert').exists()).toBe(true))
+        expect(form.find('.v-alert').text()).toContain('Color: This value should not be blank.')
+    })
+
     it('ignores a 422 entry that is not a violation', async () => {
         mock('/vector/r/tags', { status: 422, body: { errors: [null, 'oops', { path: 'name', message: 'not a path' }, { path: ['name'], message: 'this name is already used.' }] } }, 'POST')
         const form = await mountForm({ resource: tags, operation: 'create' })
