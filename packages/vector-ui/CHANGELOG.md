@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The jobs list and the settings page say why when they fail to load,
+  as the record page does, instead of showing no jobs or "no settings".
 - Several requests refused (401) together, whose shared renewal of the
   session fails, sign the user out once: one trip to the login page
   instead of one per request.
