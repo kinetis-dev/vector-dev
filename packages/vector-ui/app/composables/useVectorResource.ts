@@ -127,10 +127,14 @@ export function useVectorResource(slug: MaybeRefOrGetter<string>) {
         return api<{ data: VectorRecord[] }>(`${base()}/changes`, { method: 'POST', body: { changes: list } })
     }
 
-    /** Stores one file for a file or image field; the answer's key is the value to write. */
-    function upload(field: string, file: File): Promise<VectorUploaded> {
+    /**
+     * Stores one file for a file or image field; the answer's key is the value to write.
+     * `record` is the id of the record being edited: an account that may update it but not create needs it.
+     */
+    function upload(field: string, file: File, record?: string | number | null): Promise<VectorUploaded> {
         const body = new FormData()
         body.append('file', file)
+        if (record !== undefined && record !== null && record !== '') body.append('record', String(record))
         return api<VectorUploaded>(`${base()}/fields/${encodeURIComponent(field)}/upload`, { method: 'POST', body })
     }
 

@@ -40,7 +40,7 @@ async function choose(files: File | File[] | null) {
 
     uploading.value = true
     try {
-        picked.value = await client.upload(props.field.name, file)
+        picked.value = await client.upload(props.field.name, file, props.record?.id as string | number | undefined)
         model.value = picked.value.key
         preview.value = image.value ? await dataUrl(file) : null
     } catch (error) {

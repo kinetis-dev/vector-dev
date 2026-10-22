@@ -210,15 +210,16 @@ final readonly class ResourceController
     }
 
     /**
-     * Stores one file for a file or image field (multipart `file`) and
-     * answers the key to write into the field.
+     * Stores one file for a file or image field (multipart `file`, and
+     * `record`, the id of the record being edited) and answers the key
+     * to write into the field.
      *
      * @return array{key: string, name: string|null, size: int, type: string}
      */
     #[Post('/{resource}/fields/{field}/upload')]
     public function upload(string $resource, string $field, #[Body] \Kinetis\Vector\Files\UploadRequest $upload): array
     {
-        return $this->files->upload($this->service->resource($resource), $field, $upload->file);
+        return $this->files->upload($this->service->resource($resource), $field, $upload->file, $upload->record === '' ? null : $upload->record);
     }
 
     /** One record's stored file: an image inline, anything else as a download. */

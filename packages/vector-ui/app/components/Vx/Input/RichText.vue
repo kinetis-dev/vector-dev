@@ -91,7 +91,7 @@ async function insertImage(event: Event) {
     uploading.value = true
     uploadError.value = null
     try {
-        const { key } = await client.upload(rich.value.imageField, file)
+        const { key } = await client.upload(rich.value.imageField, file, props.record?.id as string | number | undefined)
         uploaded.set(key, await dataUrl(file))
         run(e => e.chain().focus().setImage({ src: key, alt: file.name }).run())
     } catch (error) {

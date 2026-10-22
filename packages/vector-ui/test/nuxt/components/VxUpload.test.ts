@@ -29,4 +29,19 @@ describe('VxInputUpload', () => {
 
         await vi.waitFor(() => expect(wrapper.text()).toContain('is not an image.'))
     })
+
+    // update permission decides an upload per record, so editing one names it; a new record names none
+    it('names the record being edited, and none on a new one', async () => {
+        const upload = endpoint('/vector/r/tags/fields/logo/upload', { body: { key: 'vector/tags/logo/k.png', name: 'logo.png', size: 1, type: 'image/png' } }, 'POST')
+        cleanups.push(upload.unregister)
+
+        for (const record of [{ id: 7 }, { id: undefined }]) {
+            const wrapper = await mountSuspended(VxInputUpload, { props: { field: field({ name: 'logo', type: 'image' }), rules: [], errorMessages: [], resource: 'tags', record } })
+            wrapper.findComponent({ name: 'VFileInput' }).vm.$emit('update:modelValue', new File(['x'], 'logo.png', { type: 'image/png' }))
+            await flushPromises()
+        }
+
+        await vi.waitFor(() => expect(upload.requests).toHaveLength(2))
+        expect(upload.requests.map(r => r.body)).toEqual([{ file: 'logo.png', record: '7' }, { file: 'logo.png' }])
+    })
 })
