@@ -210,9 +210,8 @@ reason.
 
 ## Statement bounds
 
-A list page is at most: one count, one page, one statement per relation
-field on the page, one aggregate for summaries. A show is one statement
-plus one per relation field. A write is one flush.
+A list, a show and a write run a fixed number of statements; see
+{doc}`limits`.
 
 ## Errors
 
