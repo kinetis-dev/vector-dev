@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the policy's `viewAny()` refuses this user, which the views index
   already refused. Creating a view now asks `viewAny()` first and
   answers the same `403`.
+- An import's failed-rows file echoed the uploaded cells as they came,
+  so a cell such as `=HYPERLINK(…)` ran as a formula when the admin
+  opened the file in a spreadsheet. Its headers and cells now get the
+  same formula guard as CSV and XLSX exports.
 
 ### Fixed
 

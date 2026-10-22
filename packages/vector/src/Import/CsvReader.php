@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kinetis\Vector\Import;
 
 use Kinetis\Vector\Exception\InvalidListRequestException;
+use Kinetis\Vector\Query\CsvWriter;
 
 /**
  * A CSV document in memory: a header row and data rows as maps keyed by
@@ -119,10 +120,11 @@ final class CsvReader
         }
 
         fwrite($out, "\xEF\xBB\xBF");
-        fputcsv($out, $headers, ',', '"', '\\', "\r\n");
+        // the cells came from an upload: the export's guard keeps a spreadsheet from evaluating them
+        fputcsv($out, array_map(CsvWriter::guarded(...), $headers), ',', '"', '\\', "\r\n");
 
         foreach ($rows as $row) {
-            fputcsv($out, array_map(static fn (string $h): string => $row[$h] ?? '', $headers), ',', '"', '\\', "\r\n");
+            fputcsv($out, array_map(static fn (string $h): string => CsvWriter::guarded($row[$h] ?? ''), $headers), ',', '"', '\\', "\r\n");
         }
 
         rewind($out);

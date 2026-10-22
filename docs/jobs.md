@@ -111,7 +111,10 @@ An import reads a CSV (up to 50 000 rows and 8 MB), maps columns to
 fields as the user chose, and writes each row through the normal write
 path: validation, policy, hooks and audit. Rows that fail are collected
 into a file on the finished job, with the reason for each in an `error`
-column.
+column. Its cells get the exports' formula guard: one starting with `=`,
+`+`, `-`, `@`, a tab or a carriage return, other than a signed number,
+gets an apostrophe in front, so remove it from a value you fix and
+import again.
 
 What a row does depends on the mode:
 
