@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { VectorField, VectorUploaded } from '#vector/app/types/vector'
+import { violationsOf } from '#vector/app/utils/internal/violations'
 
 // A file or image field: pick a file, it uploads at once, and the field
 // takes the key the server issued. The server detects the format from the
@@ -43,8 +44,9 @@ async function choose(files: File | File[] | null) {
         model.value = picked.value.key
         preview.value = image.value ? await dataUrl(file) : null
     } catch (error) {
-        const failure = error as { data?: { errors?: { message: string }[] } } | null
-        uploadError.value = failure?.data?.errors?.[0]?.message ? t('fields.upload.rejected', { message: failure.data.errors[0].message }) : vectorErrorMessage(error)
+        const failure = error as { data?: { errors?: unknown } } | null
+        const rejected = violationsOf(failure?.data?.errors)[0]
+        uploadError.value = rejected?.message ? t('fields.upload.rejected', { message: rejected.message }) : vectorErrorMessage(error)
     } finally {
         uploading.value = false
     }

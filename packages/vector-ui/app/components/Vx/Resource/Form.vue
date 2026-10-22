@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SubmitEventPromise } from 'vuetify'
 import type { VectorField, VectorFieldState, VectorLayoutNode, VectorRecord, VectorResource } from '#vector/app/types/vector'
+import { violationsOf } from '#vector/app/utils/internal/violations'
 
 // A create or edit form generated from the descriptor: one input per
 // editable field, client rules mirroring the server's, and the server's
@@ -222,7 +223,7 @@ async function save({ valid, errors }: { valid: boolean, errors: { id: string | 
         const violations = failure?.data?.errors
 
         if ((failure?.status ?? failure?.statusCode) === 422 && Array.isArray(violations)) {
-            for (const violation of violations as { path: (string | number)[], message: string }[]) {
+            for (const violation of violationsOf(violations)) {
                 // a repeater row's own violation stays with its row: `lines.2.quantity`
                 const repeated = violation.path.length >= 3 && fields.value.some(f => f.name === violation.path[0] && f.repeater)
                 const key = repeated ? violation.path.slice(0, 3).join('.') : String(violation.path[0] ?? '')

@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   failing silently with an unhandled promise rejection.
 - A problem+json error without a `detail` shows its `title` instead of
   the request's generic failure message.
+- An entry of a 422 document's `errors` that is not a violation (no
+  `path` list of names and indexes, or no `message` text) is ignored by
+  the forms, the settings, bulk edit, action dialogs, inline list edits
+  and uploads, instead of being read as one: a `null` entry made a form
+  or the list's changeset fail without showing anything.
 
 ### Security
 

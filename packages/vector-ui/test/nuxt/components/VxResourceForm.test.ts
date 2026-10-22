@@ -102,6 +102,18 @@ describe('VxResourceForm', () => {
         expect(input(form, 'Name').text()).not.toContain('This name is already used.')
     })
 
+    it('ignores a 422 entry that is not a violation', async () => {
+        mock('/vector/r/tags', { status: 422, body: { errors: [null, 'oops', { path: 'name', message: 'not a path' }, { path: ['name'], message: 'this name is already used.' }] } }, 'POST')
+        const form = await mountForm({ resource: tags, operation: 'create' })
+
+        await input(form, 'Name').find('input').setValue('Sale')
+        await input(form, 'Color').find('input').setValue('#ff0000')
+        await submit(form)
+
+        await vi.waitFor(() => expect(input(form, 'Name').text()).toContain('This name is already used.'))
+        expect(form.text()).not.toContain('not a path')
+    })
+
     it('shows a failure that names no field above the form', async () => {
         mock('/vector/r/tags', { status: 403, body: { error: 'You may not create tags.' } }, 'POST')
         const form = await mountForm({ resource: tags, operation: 'create' })

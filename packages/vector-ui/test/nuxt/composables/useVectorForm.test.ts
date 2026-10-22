@@ -52,6 +52,25 @@ describe('applyViolations', () => {
         expect(errors.name).toEqual(['Bad'])
     })
 
+    it('ignores an entry that is not a violation', () => {
+        const errors: Record<string, string[]> = {}
+
+        const general = applyViolations({ status: 422, data: { errors: [
+            null,
+            'name is bad',
+            { message: 'no path' },
+            { path: 'name', message: 'path not a list' },
+            { path: ['name', { deep: true }], message: 'segment not a name or an index' },
+            { path: ['name', 1.5], message: 'segment not an index' },
+            { path: ['name'], message: 42 },
+            { path: ['name'], message: 'this value is too long.' },
+        ] } }, { name: 'x' }, errors)
+
+        expect(general).toBeNull()
+        expect(errors).toEqual({ name: ['This value is too long.'] })
+        expect(applyViolations({ status: 422, data: { errors: [{ path: ['name'] }] } }, { name: 'x' }, {})).toBe('The server rejected the request.')
+    })
+
     it('shows any other failure as its message', () => {
         expect(applyViolations({ status: 403, data: { error: 'You may not edit this record.' } }, {}, {})).toBe('You may not edit this record.')
         expect(applyViolations(new Error('Network down'), {}, {})).toBe('Network down')
