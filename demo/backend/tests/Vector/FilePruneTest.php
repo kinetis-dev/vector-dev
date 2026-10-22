@@ -21,16 +21,28 @@ use Kinetis\Vector\Files\VectorStorage;
  */
 final class FilePruneTest extends VectorTestCase
 {
+    /** A cutoff far behind anything another test writes, so only a test's own backdated files are candidates. */
+    private const int CUTOFF = 978307200; // 2001-01-01T00:00:00Z
+
     /** @var list<string> */
     private array $written = [];
 
     /** @var array<int, array<string, mixed>> product id => the columns a test changed */
     private array $products = [];
 
+    /** @var list<string> */
+    private array $directories = [];
+
     private ?int $auditId = null;
 
     protected function tearDown(): void
     {
+        foreach ($this->directories as $path) {
+            if ($this->storage()->directoryExists($path)) {
+                $this->storage()->deleteDirectory($path);
+            }
+        }
+
         foreach ($this->products as $id => $row) {
             $this->shop()->table('products')->where('id', '=', $id)->update($row);
         }
@@ -112,6 +124,113 @@ final class FilePruneTest extends VectorTestCase
         self::assertTrue($this->storage()->fileExists($unused));
     }
 
+    /**
+     * More than one batch of candidates in one folder: each batch is
+     * checked against the file columns, and documents' images never enter
+     * one, so a key used on either side of the boundary is kept and every
+     * other one is deleted — or, on a dry run, only listed.
+     */
+    public function testAFolderOfMoreThanOneBatchIsPrunedWholeWithTheKeysInUseOnEitherSideKept(): void
+    {
+        $folder = 'vector/products/imageKey';
+        $keys = [];
+
+        for ($i = 0; $i < 510; $i++) {
+            $keys[] = $this->storedAt("{$folder}/" . self::hex() . '.png', self::CUTOFF - 3600);
+        }
+
+        // the order the pruner reads the folder in decides the batches: the first 500 keys not in a document are one
+        $listed = [];
+
+        foreach ($this->storage()->listContents($folder, false) as $item) {
+            $listed[] = $item->path();
+        }
+
+        $order = array_values(array_intersect($listed, $keys));
+        self::assertCount(510, $order);
+        [$onARowBefore, $inADocumentBefore, $onARowAfter, $inADocumentAfter] = [$order[10], $order[20], $order[505], $order[507]];
+
+        [$first, $second, $third] = $this->productIds();
+        $this->change($first, ['image_key' => $onARowBefore]);
+        $this->change($second, ['image_key' => $onARowAfter]);
+        $images = array_map(static fn (string $src): array => ['type' => 'image', 'attrs' => ['src' => $src, 'alt' => null]], [$inADocumentBefore, $inADocumentAfter]);
+        $this->change($third, ['description' => json_encode(['type' => 'doc', 'content' => $images], JSON_THROW_ON_ERROR)]);
+
+        $expected = array_values(array_diff($keys, [$onARowBefore, $inADocumentBefore, $onARowAfter, $inADocumentAfter]));
+        sort($expected);
+        self::assertCount(506, $expected);
+
+        [$count, $told] = $this->pruneBefore(self::CUTOFF, dryRun: true);
+
+        self::assertSame(506, $count);
+        self::assertSame($expected, $told);
+
+        foreach ($keys as $key) {
+            self::assertTrue($this->storage()->fileExists($key), "{$key} is kept by a dry run");
+        }
+
+        [$count, $told] = $this->pruneBefore(self::CUTOFF, dryRun: false);
+
+        self::assertSame(506, $count);
+        self::assertSame($expected, $told);
+
+        foreach ($keys as $key) {
+            self::assertSame(!in_array($key, $expected, true), $this->storage()->fileExists($key), $key);
+        }
+    }
+
+    /**
+     * Only a file of the issued shape counts, and the cutoff itself is
+     * old enough: a file modified exactly then goes, one modified a second
+     * later stays, and a directory named like an upload is never touched.
+     */
+    public function testAFileModifiedAtTheCutoffGoesWhileALaterOneAndADirectoryStay(): void
+    {
+        $folder = 'vector/products/imageKey';
+        $atTheCutoff = "{$folder}/" . self::hex() . '.png';
+        $aSecondLater = "{$folder}/" . self::hex() . '.png';
+        $directory = "{$folder}/" . self::hex() . '.png';
+        $root = sys_get_temp_dir() . '/vector-storage-tests'; // VectorTestCase's FILESYSTEM_ROOT
+
+        // the pruner's cutoff is its own clock less the grace period: a run that crossed a second is arranged and run again
+        do {
+            $this->storedAt($atTheCutoff, self::CUTOFF);
+            $this->storedAt($aSecondLater, self::CUTOFF + 1);
+            $this->storage()->createDirectory($directory);
+            $this->directories[] = $directory;
+            self::assertTrue(touch("{$root}/{$directory}", self::CUTOFF - 3600));
+
+            $started = time();
+            [$count, $told] = $this->pruneBefore(self::CUTOFF, dryRun: false, now: $started);
+        } while (time() !== $started);
+
+        self::assertSame(1, $count);
+        self::assertSame([$atTheCutoff], $told);
+        self::assertFalse($this->storage()->fileExists($atTheCutoff));
+        self::assertTrue($this->storage()->fileExists($aSecondLater));
+        self::assertTrue($this->storage()->directoryExists($directory));
+    }
+
+    /**
+     * Prunes with the grace period that puts the cutoff at $cutoff.
+     *
+     * @return array{int, list<string>} what prune() returned and the keys it told of, sorted
+     */
+    private function pruneBefore(int $cutoff, bool $dryRun, ?int $now = null): array
+    {
+        $pruner = $this->app->createRequestScope()->get(FilePruner::class);
+        self::assertInstanceOf(FilePruner::class, $pruner);
+        /** @var list<string> $told */
+        $told = [];
+
+        $count = $pruner->prune(($now ?? time()) - $cutoff, $dryRun, static function (string $key) use (&$told): void {
+            $told[] = $key;
+        });
+        sort($told);
+
+        return [$count, $told];
+    }
+
     /** @return array{int, string} the exit code and what the command wrote, refusals last */
     private function prune(string ...$argv): array
     {
@@ -135,10 +254,15 @@ final class FilePruneTest extends VectorTestCase
 
     private function stored(string $key, int $ageHours): string
     {
+        return $this->storedAt($key, time() - $ageHours * 3600);
+    }
+
+    private function storedAt(string $key, int $modified): string
+    {
         $this->storage()->write($key, 'x');
         $this->written[] = $key;
         $root = sys_get_temp_dir() . '/vector-storage-tests'; // VectorTestCase's FILESYSTEM_ROOT
-        self::assertTrue(touch("{$root}/{$key}", time() - $ageHours * 3600));
+        self::assertTrue(touch("{$root}/{$key}", $modified));
 
         return $key;
     }
