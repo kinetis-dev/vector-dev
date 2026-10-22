@@ -1,21 +1,44 @@
 {
-    "mcpServers": {
-        "orbitron": {
-            "type": "stdio",
-            "command": "./bin/orbitron-mcp",
-            "args": []
-        },
-        "nuxt": {
-            "command": "npx",
-            "args": ["-y", "mcp-remote", "https://nuxt.com/mcp"]
-        },
-        "vuetify": {
-            "type": "http",
-            "url": "https://mcp.vuetifyjs.com/mcp"
-        },
-        "vue-docs": {
-            "type": "http",
-            "url": "https://mcp.vue-mcp.org/mcp"
-        }
+  "mcpServers": {
+    "orbitron": {
+      "type": "stdio",
+      "command": "./bin/orbitron-mcp",
+      "args": []
+    },
+    "nuxt": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://nuxt.com/mcp"
+      ]
+    },
+    "vuetify": {
+      "type": "http",
+      "url": "https://mcp.vuetifyjs.com/mcp"
+    },
+    "vue-docs": {
+      "type": "http",
+      "url": "https://mcp.vue-mcp.org/mcp"
+    },
+    "sonarqube": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--init",
+        "--pull=missing",
+        "-i",
+        "--rm",
+        "-e",
+        "SONARQUBE_TOKEN",
+        "-e",
+        "SONARQUBE_ORG",
+        "sonarsource/sonarqube-mcp"
+      ],
+      "env": {
+        "SONARQUBE_TOKEN": "${SONAR_TOKEN}",
+        "SONARQUBE_ORG": "${SONAR_ORG}"
+      }
     }
+  }
 }
