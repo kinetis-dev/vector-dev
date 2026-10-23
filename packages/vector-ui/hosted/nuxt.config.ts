@@ -3,7 +3,7 @@
 // branding and any runtime extensions reach it from the PHP application
 // through window.__VECTOR__. Built by the repository's
 // `pnpm generate:hosted`, with NUXT_APP_BASE_URL=/vector/ui/, into
-// packages/vector/resources/dist.
+// packages/vector-ui/dist/static, which the npm package ships.
 export default defineNuxtConfig({
     extends: ['..'],
 
