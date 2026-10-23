@@ -168,9 +168,12 @@ final readonly class VectorTools
     #[McpTool(name: 'vector_widget', description: 'Compute a dashboard widget (dashboard + widget) or a resource widget (resource + widget) for a range such as 30d')]
     public function widget(string $widget, string $dashboard = '', string $resource = '', string $range = ''): array|ToolResult
     {
+        $range = $range === '' ? null : $range;
+        $dashboard = $dashboard === '' ? 'main' : $dashboard;
+
         return $this->guarded(fn (): array => $resource !== ''
-            ? $this->resourceWidget($widget, $resource, $range === '' ? null : $range)
-            : $this->dashboardWidget($widget, $dashboard === '' ? 'main' : $dashboard, $range === '' ? null : $range));
+            ? $this->resourceWidget($widget, $resource, $range)
+            : $this->dashboardWidget($widget, $dashboard, $range));
     }
 
     /** @return array<string, mixed> */

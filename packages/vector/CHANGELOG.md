@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-10-22
+
+### Changed
+
+- The `vector_widget` MCP tool resolves its default dashboard and range
+  before choosing which widget to compute. Its behavior is unchanged.
+
 ## [0.12.1] - 2026-10-22
 
 ### Changed
