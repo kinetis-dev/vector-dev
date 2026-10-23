@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { checkConsistency, checkHistory, checkIncludes, onlyTestToolingChanged, parseArguments, parseManifest, validate } from './validate-versions.mjs'
+import { checkConsistency, checkHistory, checkIncludes, checkPin, onlyTestToolingChanged, parseArguments, parseManifest, validate } from './validate-versions.mjs'
 
 const manifest = (vector, ui) => ({
     packages: {
@@ -17,12 +17,15 @@ const manifest = (vector, ui) => ({
 
 const changelog = version => `# Changelog\n\n## [Unreleased]\n\n## [${version}] - 2026-10-18\n\n### Added\n\n- Things.\n`
 
+const pin = version => `${JSON.stringify({ package: '@kinetis/vector-ui', version })}\n`
+
 /** The files a consistent tree at these versions holds. */
 const tree = (vector, ui) => ({
     'packages.manifest.json': `${JSON.stringify(manifest(vector, ui), null, 4)}\n`,
     'packages/vector/composer.json': JSON.stringify({ name: 'kinetis/vector' }),
     'packages/vector/CHANGELOG.md': changelog(vector),
     'packages/vector/src/A.php': '<?php\n',
+    'packages/vector/resources/ui.json': pin(ui),
     'packages/vector-ui/package.json': JSON.stringify({ name: '@kinetis/vector-ui', version: ui }),
     'packages/vector-ui/CHANGELOG.md': changelog(ui),
 })
@@ -116,6 +119,8 @@ test("consistency: vector-ui's package.json must carry the manifest's version an
     files['packages/vector-ui/package.json'] = JSON.stringify({ name: '@kinetis/vector-ui', version: '0.1.0' })
     assert.deepEqual(checkConsistency(manifest('0.9.0', '0.9.0'), reader(files)), [
         'vector-ui: packages/vector-ui/package.json is at 0.1.0, the manifest at 0.9.0; run scripts/bump.mjs rather than editing either by hand',
+        // the pin follows package.json, so it disagrees as well
+        'vector: packages/vector/resources/ui.json pins @kinetis/vector-ui 0.9.0, but packages/vector-ui/package.json is at 0.1.0; run scripts/bump.mjs vector-ui, which moves the pin with it',
     ])
     files['packages/vector-ui/package.json'] = JSON.stringify({ name: 'vector-ui', version: '0.9.0' })
     assert.match(checkConsistency(manifest('0.9.0', '0.9.0'), reader(files)).join('\n'), /is named "vector-ui", the manifest says "@kinetis\/vector-ui"/)
@@ -138,6 +143,33 @@ test('consistency: each CHANGELOG needs a section for its version', () => {
     // 0.9.0 is not 0x9x0: the heading is matched literally
     files['packages/vector/CHANGELOG.md'] = '## [0x9x0]\n'
     assert.equal(checkConsistency(manifest('0.9.0', '0.9.0'), reader(files)).length, 1)
+})
+
+test("consistency: kinetis/vector's pin names exactly vector-ui's package.json version", () => {
+    const files = tree('0.9.0', '0.9.1')
+    const check = () => checkConsistency(manifest('0.9.0', '0.9.1'), reader(files))
+
+    files['packages/vector/resources/ui.json'] = pin('0.9.0')
+    assert.deepEqual(check(), ['vector: packages/vector/resources/ui.json pins @kinetis/vector-ui 0.9.0, but packages/vector-ui/package.json is at 0.9.1; run scripts/bump.mjs vector-ui, which moves the pin with it'])
+
+    files['packages/vector/resources/ui.json'] = JSON.stringify({ package: '@kinetis/vector-uix', version: '0.9.1' })
+    assert.deepEqual(check(), ['vector: packages/vector/resources/ui.json pins "@kinetis/vector-uix", not @kinetis/vector-ui'])
+
+    for (const malformed of [JSON.stringify({ package: '@kinetis/vector-ui', version: '0.9.1', integrity: 'sha512-x' }), JSON.stringify({ version: '0.9.1' }), '["0.9.1"]', 'null']) {
+        files['packages/vector/resources/ui.json'] = malformed
+        assert.deepEqual(check(), ['vector: packages/vector/resources/ui.json must be exactly {"package": "@kinetis/vector-ui", "version": "<x.y.z>"}'], malformed)
+    }
+
+    files['packages/vector/resources/ui.json'] = '{'
+    assert.deepEqual(check(), ['vector: packages/vector/resources/ui.json is not valid JSON'])
+
+    delete files['packages/vector/resources/ui.json']
+    assert.deepEqual(check(), ['vector: packages/vector/resources/ui.json is missing; it pins the @kinetis/vector-ui release kinetis/vector expects'])
+})
+
+test('the pin is checked only when the manifest lists both products', () => {
+    const only = { packages: { vector: manifest('0.9.0', '0.9.0').packages.vector } }
+    assert.deepEqual(checkPin(only, reader({})), [])
 })
 
 test('history: a changed product needs a bump, an unchanged one keeps its version', () => {
@@ -339,10 +371,10 @@ test('history on a real history: a vector-ui change needs kinetis/vector bumped 
     try {
         const base = commit({ ...tree('0.9.0', '0.9.0'), 'packages.manifest.json': including('0.9.0', '0.9.0'), 'packages/vector-ui/app/x.ts': 'export {}\n' }, 'First')
 
-        // vector-ui changed, only vector-ui bumped.
+        // vector-ui changed, only vector-ui bumped: its pin in packages/vector moved too.
         write({ ...tree('0.9.0', '0.9.1'), 'packages.manifest.json': including('0.9.0', '0.9.1'), 'packages/vector-ui/app/x.ts': 'export const x = 1\n' })
         assert.deepEqual(validate(repo, { base }).problems, [
-            '[history] vector: files under packages/vector-ui (which kinetis/vector includes) changed but its version is still 0.9.0 (packages/vector-ui/CHANGELOG.md, packages/vector-ui/app/x.ts, packages/vector-ui/package.json); run node scripts/bump.mjs vector <patch|minor>',
+            '[history] vector: files under packages/vector and packages/vector-ui (which kinetis/vector includes) changed but its version is still 0.9.0 (packages/vector-ui/CHANGELOG.md, packages/vector-ui/app/x.ts, packages/vector-ui/package.json, …); run node scripts/bump.mjs vector <patch|minor>',
         ])
 
         // Both bumped.

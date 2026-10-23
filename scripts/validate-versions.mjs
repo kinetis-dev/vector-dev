@@ -12,13 +12,16 @@
 //     and version; a composer.json carries the name and no version
 //     (Packagist reads kinetis/vector's from the mirror's tag);
 //   - each product's CHANGELOG.md has a `## [<version>]` section;
-//   - each directory a product's optional `includes` names exists.
+//   - each directory a product's optional `includes` names exists;
+//   - kinetis/vector's resources/ui.json pins exactly the vector-ui
+//     release in packages/vector-ui/package.json (see checkPin()).
 //
 // history, against a comparison base:
 //   - a product whose files under its path changed has its version bumped,
 //     and so does a product whose `includes` names a directory that changed
-//     (kinetis/vector includes packages/vector-ui: the hosted bundle built
-//     from it ships inside the PHP package);
+//     (kinetis/vector includes packages/vector-ui: it pins the vector-ui
+//     release it expects, so every vector-ui release is a kinetis/vector
+//     release too);
 //   - a version that changed moved exactly one legal step;
 //   - a product with no changed files keeps its version.
 // A package.json whose only difference is in devDependencies entries
@@ -42,6 +45,9 @@ import { TEST_ONLY_DEV_DEPENDENCIES, transitionProblem, versionProblem } from '.
 
 export const MANIFEST_FILE = 'packages.manifest.json'
 
+/** kinetis/vector's pin of the @kinetis/vector-ui release it expects, under its own path. */
+export const PIN_FILE = 'resources/ui.json'
+
 const ENTRY_KEYS = ['name', 'path', 'version']
 const OPTIONAL_KEYS = ['includes']
 
@@ -55,8 +61,8 @@ const root = fileURLToPath(new URL('..', import.meta.url))
  *
  * `includes` names other directories whose changes count toward the
  * entry's version as well as its own path's: kinetis/vector includes
- * packages/vector-ui, because the hosted bundle built from it ships inside
- * the PHP package. Each is a repo-relative directory, listed once, outside
+ * packages/vector-ui, because it pins the vector-ui release it expects
+ * (resources/ui.json) and `vector:install-ui` installs that release. Each is a repo-relative directory, listed once, outside
  * the entry's own path; checkIncludes() checks that it exists.
  */
 export function parseManifest(json, where = MANIFEST_FILE) {
@@ -205,6 +211,60 @@ export function checkConsistency(manifest, read) {
         } else if (!changelog.split(/\r?\n/).some(line => heading.test(line))) {
             problems.push(`${key}: ${entry.path}/CHANGELOG.md has no "## [${entry.version}]" section`)
         }
+    }
+
+    return [...problems, ...checkPin(manifest, read)]
+}
+
+/**
+ * The problems of kinetis/vector's UI pin, `<vector path>/resources/ui.json`:
+ * it must be exactly `{"package": "@kinetis/vector-ui", "version": "<x.y.z>"}`,
+ * the version the one in packages/vector-ui/package.json. The two products
+ * version independently, but every vector-ui release moves the pin, and the
+ * pin lives in kinetis/vector, whose `includes` then asks for its bump too:
+ * each kinetis/vector release names the vector-ui release cut beside it.
+ * scripts/bump.mjs moves the pin with vector-ui's version. Checked only when
+ * the manifest lists both products.
+ */
+export function checkPin(manifest, read) {
+    const vector = manifest.packages.vector
+    const ui = manifest.packages['vector-ui']
+
+    if (vector === undefined || ui === undefined) {
+        return []
+    }
+
+    const file = `${vector.path}/${PIN_FILE}`
+    const json = read(file)
+
+    if (json === null) {
+        return [`vector: ${file} is missing; it pins the ${ui.name} release kinetis/vector expects`]
+    }
+
+    let pin
+
+    try {
+        pin = JSON.parse(json)
+    } catch {
+        return [`vector: ${file} is not valid JSON`]
+    }
+
+    if (pin === null || typeof pin !== 'object' || Array.isArray(pin) || Object.keys(pin).sort().join() !== 'package,version') {
+        return [`vector: ${file} must be exactly {"package": "${ui.name}", "version": "<x.y.z>"}`]
+    }
+
+    const problems = []
+
+    if (pin.package !== ui.name) {
+        problems.push(`vector: ${file} pins "${pin.package}", not ${ui.name}`)
+    }
+
+    const npm = read(`${ui.path}/package.json`)
+    const uiVersion = npm === null ? ui.version : JSON.parse(npm).version
+    const where = npm === null ? `the manifest's ${ui.name}` : `${ui.path}/package.json`
+
+    if (pin.version !== uiVersion) {
+        problems.push(`vector: ${file} pins ${ui.name} ${pin.version}, but ${where} is at ${uiVersion}; run scripts/bump.mjs vector-ui, which moves the pin with it`)
     }
 
     return problems
