@@ -8,7 +8,14 @@ export default {
     toggleTheme: 'Toggle theme',
     language: 'Language: {name}',
     languageFailed: 'The language could not be saved: {error}',
-    unsupportedDescriptor: 'The API publishes descriptor version {version}; this admin reads version {supported}. Install matching releases of kinetis/vector and vector-ui.',
+    unsupportedDescriptor: 'The API publishes descriptor version {version}; this admin reads version {supported}. {remedy}',
+    version: {
+        mismatch: 'This admin UI is version {current}; kinetis/vector expects {expected}.',
+        dismiss: 'Dismiss',
+        hostedRemedy: 'Run vendor/bin/kinetis vector:install-ui on the server, then restart the workers.',
+        layeredRemedy: 'Upgrade {package} to {version} and rebuild.',
+        layeredRemedyAny: 'Install the {package} release this kinetis/vector expects and rebuild.',
+    },
     nav: {
         main: 'Main',
         dashboard: 'Dashboard',

@@ -8,7 +8,14 @@ export default {
     toggleTheme: 'Przełącz motyw',
     language: 'Język: {name}',
     languageFailed: 'Nie udało się zapisać języka: {error}',
-    unsupportedDescriptor: 'API publikuje deskryptor w wersji {version}; ten panel odczytuje wersję {supported}. Zainstaluj zgodne wydania kinetis/vector i vector-ui.',
+    unsupportedDescriptor: 'API publikuje deskryptor w wersji {version}; ten panel odczytuje wersję {supported}. {remedy}',
+    version: {
+        mismatch: 'Ten panel ma wersję {current}; kinetis/vector oczekuje {expected}.',
+        dismiss: 'Zamknij',
+        hostedRemedy: 'Uruchom vendor/bin/kinetis vector:install-ui na serwerze, a następnie zrestartuj workery.',
+        layeredRemedy: 'Zaktualizuj {package} do wersji {version} i zbuduj ponownie.',
+        layeredRemedyAny: 'Zainstaluj wydanie {package}, którego oczekuje ten kinetis/vector, i zbuduj ponownie.',
+    },
     nav: {
         main: 'Główne',
         dashboard: 'Pulpit',

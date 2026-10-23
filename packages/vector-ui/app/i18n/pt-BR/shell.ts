@@ -8,7 +8,14 @@ export default {
     toggleTheme: 'Alternar tema',
     language: 'Idioma: {name}',
     languageFailed: 'Não foi possível salvar o idioma: {error}',
-    unsupportedDescriptor: 'A API publica a versão {version} do descritor; este painel lê a versão {supported}. Instale versões correspondentes de kinetis/vector e vector-ui.',
+    unsupportedDescriptor: 'A API publica a versão {version} do descritor; este painel lê a versão {supported}. {remedy}',
+    version: {
+        mismatch: 'Este painel está na versão {current}; o kinetis/vector espera {expected}.',
+        dismiss: 'Dispensar',
+        hostedRemedy: 'Execute vendor/bin/kinetis vector:install-ui no servidor e reinicie os workers.',
+        layeredRemedy: 'Atualize {package} para {version} e recompile.',
+        layeredRemedyAny: 'Instale a versão de {package} que este kinetis/vector espera e recompile.',
+    },
     nav: {
         main: 'Principal',
         dashboard: 'Painel',

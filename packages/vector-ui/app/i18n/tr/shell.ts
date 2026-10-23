@@ -8,7 +8,14 @@ export default {
     toggleTheme: 'Temayı değiştir',
     language: 'Dil: {name}',
     languageFailed: 'Dil kaydedilemedi: {error}',
-    unsupportedDescriptor: 'API, tanımlayıcı sürümü {version} yayımlıyor; bu yönetim paneli sürüm {supported} okuyor. kinetis/vector ve vector-ui için uyumlu sürümleri yükleyin.',
+    unsupportedDescriptor: 'API, tanımlayıcı sürümü {version} yayımlıyor; bu yönetim paneli sürüm {supported} okuyor. {remedy}',
+    version: {
+        mismatch: 'Bu yönetim paneli {current} sürümünde; kinetis/vector {expected} bekliyor.',
+        dismiss: 'Kapat',
+        hostedRemedy: 'Sunucuda vendor/bin/kinetis vector:install-ui komutunu çalıştırın ve worker’ları yeniden başlatın.',
+        layeredRemedy: '{package} paketini {version} sürümüne yükseltin ve yeniden derleyin.',
+        layeredRemedyAny: 'Bu kinetis/vector’un beklediği {package} sürümünü yükleyin ve yeniden derleyin.',
+    },
     nav: {
         main: 'Ana',
         dashboard: 'Pano',

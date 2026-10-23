@@ -8,7 +8,14 @@ export default {
     toggleTheme: '테마 전환',
     language: '언어: {name}',
     languageFailed: '언어를 저장할 수 없습니다: {error}',
-    unsupportedDescriptor: 'API가 디스크립터 버전 {version}을(를) 게시하지만 이 관리자는 버전 {supported}을(를) 읽습니다. 서로 맞는 kinetis/vector와 vector-ui 릴리스를 설치하세요.',
+    unsupportedDescriptor: 'API가 디스크립터 버전 {version}을(를) 게시하지만 이 관리자는 버전 {supported}을(를) 읽습니다. {remedy}',
+    version: {
+        mismatch: '이 관리자 UI는 버전 {current}이지만 kinetis/vector는 {expected}을(를) 기대합니다.',
+        dismiss: '닫기',
+        hostedRemedy: '서버에서 vendor/bin/kinetis vector:install-ui를 실행한 뒤 워커를 다시 시작하세요.',
+        layeredRemedy: '{package}을(를) {version}(으)로 업그레이드하고 다시 빌드하세요.',
+        layeredRemedyAny: '이 kinetis/vector가 기대하는 {package} 릴리스를 설치하고 다시 빌드하세요.',
+    },
     nav: {
         main: '메인',
         dashboard: '대시보드',

@@ -2,6 +2,9 @@
 // the pair of versions it was dismissed for.
 const DISMISSED = 'vector.uiVersion.dismissed'
 
+/** The npm package this UI is, as kinetis/vector's resources/ui.json pins it. */
+export const UI_PACKAGE = '@kinetis/vector-ui'
+
 /**
  * What to do about a UI that is not the one kinetis/vector expects, in
  * the words of how it is deployed: a hosted bundle (`window.__VECTOR__`
@@ -12,7 +15,9 @@ export function vectorUiRemedy(expected: string | null): string {
         return vt('shell.version.hostedRemedy')
     }
 
-    return expected === null ? vt('shell.version.layeredRemedyAny') : vt('shell.version.layeredRemedy', { version: expected })
+    return expected === null
+        ? vt('shell.version.layeredRemedyAny', { package: UI_PACKAGE })
+        : vt('shell.version.layeredRemedy', { package: UI_PACKAGE, version: expected })
 }
 
 /**

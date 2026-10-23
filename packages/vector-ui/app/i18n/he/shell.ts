@@ -8,7 +8,14 @@ export default {
     toggleTheme: 'החלפת ערכת נושא',
     language: 'שפה: {name}',
     languageFailed: 'לא ניתן לשמור את השפה: {error}',
-    unsupportedDescriptor: 'ה-API מפרסם את גרסה {version} של המתאר; ממשק הניהול הזה קורא את גרסה {supported}. התקינו גרסאות תואמות של kinetis/vector ו-vector-ui.',
+    unsupportedDescriptor: 'ה-API מפרסם את גרסה {version} של המתאר; ממשק הניהול הזה קורא את גרסה {supported}. {remedy}',
+    version: {
+        mismatch: 'ממשק הניהול הזה הוא בגרסה {current}; kinetis/vector מצפה לגרסה {expected}.',
+        dismiss: 'סגירה',
+        hostedRemedy: 'הריצו vendor/bin/kinetis vector:install-ui בשרת והפעילו מחדש את ה-workers.',
+        layeredRemedy: 'שדרגו את {package} לגרסה {version} ובנו מחדש.',
+        layeredRemedyAny: 'התקינו את גרסת {package} ש-kinetis/vector הזה מצפה לה ובנו מחדש.',
+    },
     nav: {
         main: 'ראשי',
         dashboard: 'לוח בקרה',

@@ -8,7 +8,14 @@ export default {
     toggleTheme: 'Сменить тему',
     language: 'Язык: {name}',
     languageFailed: 'Не удалось сохранить язык: {error}',
-    unsupportedDescriptor: 'API публикует дескриптор версии {version}, а эта панель читает версию {supported}. Установите совместимые выпуски kinetis/vector и vector-ui.',
+    unsupportedDescriptor: 'API публикует дескриптор версии {version}, а эта панель читает версию {supported}. {remedy}',
+    version: {
+        mismatch: 'Эта панель имеет версию {current}, а kinetis/vector ожидает {expected}.',
+        dismiss: 'Скрыть',
+        hostedRemedy: 'Выполните vendor/bin/kinetis vector:install-ui на сервере и перезапустите воркеры.',
+        layeredRemedy: 'Обновите {package} до {version} и пересоберите.',
+        layeredRemedyAny: 'Установите выпуск {package}, который ожидает этот kinetis/vector, и пересоберите.',
+    },
     nav: {
         main: 'Главное',
         dashboard: 'Панель управления',
