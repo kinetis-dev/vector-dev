@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- The `nuxt` peer dependency is now `^4.6.2`, which fixes a server
+  island and `useHeadSafe` injection (GHSA-xfq5-w38q-pc2x) and route
+  rules that case-variant paths bypass (GHSA-vjh5-4x84-xrqp). The admin
+  itself renders client-side and uses neither, but the application that
+  extends the layer brings its own Nuxt server.
+
 ## [0.11.0] - 2026-10-23
 
 ### Added
