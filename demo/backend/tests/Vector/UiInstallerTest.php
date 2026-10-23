@@ -64,7 +64,9 @@ final class UiInstallerTest extends TestCase
         $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS));
 
         foreach ($iterator as $item) {
-            $files[substr((string) $item->getPathname(), strlen($dir) + 1)] = (string) file_get_contents((string) $item->getPathname());
+            $path = (string) $item->getPathname();
+            // a link is recorded as where it points, never followed
+            $files[substr($path, strlen($dir) + 1)] = is_link($path) ? 'link to ' . readlink($path) : (string) file_get_contents($path);
         }
 
         ksort($files);
@@ -126,6 +128,64 @@ final class UiInstallerTest extends TestCase
         } finally {
             UiFixtures::remove($stage);
         }
+    }
+
+    public function testATargetDirectoryLinkedOutsideIsRefusedAndNothingIsWritten(): void
+    {
+        $outside = $this->work . '/outside';
+        mkdir($outside);
+        file_put_contents($outside . '/keep.js', 'outside');
+        mkdir($this->target, 0755, true);
+        file_put_contents($this->target . '/robots.txt', 'the deployment\'s own');
+        symlink($outside, $this->target . '/_nuxt');
+        $before = self::snapshot($this->target);
+        $stage = $this->stage('0.11.0');
+
+        try {
+            new UiInstaller(static fn (string $path) => self::fail("{$path} was written"))->install($stage, $this->target, '0.11.0');
+            self::fail('The install went through a link.');
+        } catch (\UnexpectedValueException $e) {
+            self::assertStringContainsString('is a link or leads outside it', $e->getMessage());
+        } finally {
+            UiFixtures::remove($stage);
+        }
+
+        self::assertSame($before, self::snapshot($this->target));
+        self::assertSame(['.', '..', 'keep.js'], scandir($outside));
+        self::assertSame('outside', file_get_contents($outside . '/keep.js'));
+    }
+
+    public function testAPruneThroughADirectoryLinkedOutsideIsRefused(): void
+    {
+        $this->install('0.10.0');
+        // the previous manifest lists _nuxt/old.js; _nuxt now leads outside
+        $manifest = json_decode((string) file_get_contents($this->target . '/' . HostedBundle::MANIFEST), true, 8, JSON_THROW_ON_ERROR);
+        file_put_contents($this->target . '/_nuxt/old.js', 'old');
+        $manifest['files']['_nuxt/old.js'] = hash('sha256', 'old');
+        file_put_contents($this->target . '/' . HostedBundle::MANIFEST, json_encode($manifest, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+
+        $outside = $this->work . '/outside';
+        mkdir($outside);
+        file_put_contents($outside . '/old.js', 'outside');
+        UiFixtures::remove($this->target . '/_nuxt');
+        symlink($outside, $this->target . '/_nuxt');
+        $before = self::snapshot($this->target);
+
+        // the new build writes nothing under _nuxt: only the prune would go through the link
+        $stage = $this->stage('0.11.0', ['index.html' => '<!doctype html>', 'assets/app.js' => 'app']);
+
+        try {
+            new UiInstaller(static fn (string $path) => self::fail("{$path} was written"))->install($stage, $this->target, '0.11.0');
+            self::fail('The prune went through a link.');
+        } catch (\UnexpectedValueException $e) {
+            self::assertStringContainsString('is a link or leads outside it', $e->getMessage());
+        } finally {
+            UiFixtures::remove($stage);
+        }
+
+        self::assertSame($before, self::snapshot($this->target));
+        self::assertSame('outside', file_get_contents($outside . '/old.js'));
+        self::assertTrue(is_link($this->target . '/_nuxt'));
     }
 
     public function testTheShellAndThenTheManifestAreWrittenLast(): void

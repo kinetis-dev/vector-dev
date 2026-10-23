@@ -16,7 +16,9 @@ namespace Kinetis\Vector\Ui;
  * there yet and the manifest never describes files that are not.
  *
  * Last, what the outgoing manifest listed and the incoming one does not
- * is pruned. A file no manifest recorded is never touched. A worker reads
+ * is pruned. No write or deletion goes through a directory that is a link
+ * or resolves outside the target: checked for every path before the first
+ * write, and again before each rename, unlink and rmdir. A file no manifest recorded is never touched. A worker reads
  * index.html once, at boot, so workers are restarted after an install.
  */
 final readonly class UiInstaller
@@ -32,7 +34,8 @@ final readonly class UiInstaller
      *
      * @param ?string $expectedVersion as HostedBundle::verify() takes it
      *
-     * @throws \UnexpectedValueException when the stage is refused; nothing was written
+     * @throws \UnexpectedValueException when the stage is refused, or a directory of the
+     *     target is a link or leads outside it; nothing was written
      * @throws \RuntimeException when the target cannot be written
      */
     public function install(string $stage, string $target, ?string $expectedVersion): HostedBundle
@@ -44,22 +47,32 @@ final readonly class UiInstaller
             throw new \UnexpectedValueException("The admin UI bundle holds {$extra}, which " . HostedBundle::MANIFEST . ' does not list.');
         }
 
-        // Verified: from here on the target changes.
         self::directory($target);
-        $previous = HostedBundle::read("{$target}/" . HostedBundle::MANIFEST);
+        $root = realpath($target);
 
+        if ($root === false) {
+            throw new \RuntimeException("Could not resolve {$target}.");
+        }
+
+        $previous = HostedBundle::read("{$root}/" . HostedBundle::MANIFEST);
+        $stale = $previous === null ? [] : array_diff_key($previous->files, $bundle->files);
+
+        // Every directory a write or a deletion goes through stays inside the
+        // target: checked whole before anything is written, then again at each step.
+        foreach ([...array_keys($bundle->files), HostedBundle::MANIFEST, ...array_keys($stale)] as $path) {
+            self::confine($root, $path);
+        }
+
+        // Verified: from here on the target changes.
         foreach (array_keys($bundle->files) as $path) {
             if ($path !== 'index.html') {
-                $this->place("{$stage}/{$path}", $target, $path);
+                $this->place("{$stage}/{$path}", $root, $path);
             }
         }
 
-        $this->place("{$stage}/index.html", $target, 'index.html');
-        $this->place("{$stage}/" . HostedBundle::MANIFEST, $target, HostedBundle::MANIFEST);
-
-        if ($previous !== null) {
-            self::prune($target, array_diff_key($previous->files, $bundle->files));
-        }
+        $this->place("{$stage}/index.html", $root, 'index.html');
+        $this->place("{$stage}/" . HostedBundle::MANIFEST, $root, HostedBundle::MANIFEST);
+        self::prune($root, $stale);
 
         return $bundle;
     }
@@ -148,14 +161,57 @@ final readonly class UiInstaller
         return $files;
     }
 
-    /** Copies $source beside $target/$path, then renames it over. */
-    private function place(string $source, string $target, string $path): void
+    /**
+     * Refuses $path when a directory on its way under $root, one that
+     * exists already, is a link or resolves outside $root: a write or a
+     * deletion through it would land elsewhere. What does not exist yet is
+     * created under the checked part, so it stays inside.
+     *
+     * @param string $root the target, resolved
+     *
+     * @throws \UnexpectedValueException naming the directory that escapes
+     */
+    private static function confine(string $root, string $path): void
     {
-        $destination = "{$target}/{$path}";
+        $dir = $root;
+
+        foreach (array_slice(explode('/', $path), 0, -1) as $segment) {
+            $dir .= "/{$segment}";
+
+            if (!is_link($dir) && !file_exists($dir)) {
+                return;
+            }
+
+            $real = realpath($dir);
+
+            if (is_link($dir) || !is_dir($dir) || $real === false || $real !== $root && !str_starts_with($real, "{$root}/")) {
+                throw new \UnexpectedValueException("Refusing to install the admin UI into {$root}: {$dir} is a link or leads outside it.");
+            }
+        }
+    }
+
+    /**
+     * Copies $source beside $root/$path, then renames it over.
+     *
+     * @param string $root the target, resolved
+     */
+    private function place(string $source, string $root, string $path): void
+    {
+        $destination = "{$root}/{$path}";
+        self::confine($root, $path);
         self::directory(dirname($destination));
+        self::confine($root, $path);
         $temporary = dirname($destination) . '/.' . basename($path) . '.' . bin2hex(random_bytes(6)) . '.tmp';
 
-        if (!copy($source, $temporary) || !chmod($temporary, 0644) || !rename($temporary, $destination)) {
+        if (!copy($source, $temporary) || !chmod($temporary, 0644)) {
+            @unlink($temporary);
+
+            throw new \RuntimeException("Could not write {$destination}.");
+        }
+
+        self::confine($root, $path);
+
+        if (!rename($temporary, $destination)) {
             @unlink($temporary);
 
             throw new \RuntimeException("Could not write {$destination}.");
@@ -167,22 +223,27 @@ final readonly class UiInstaller
     }
 
     /**
-     * Deletes the listed files under $target, and each directory that
+     * Deletes the listed files under $root, and each directory that
      * leaves empty.
      *
+     * @param string $root the target, resolved
      * @param array<string, string> $files relative path => sha256
      */
-    private static function prune(string $target, array $files): void
+    private static function prune(string $root, array $files): void
     {
         foreach (array_keys($files) as $path) {
-            $file = "{$target}/{$path}";
+            $file = "{$root}/{$path}";
+            self::confine($root, $path);
 
             if (is_file($file) && !is_link($file)) {
                 @unlink($file);
             }
 
             for ($dir = dirname($path); $dir !== '.' && $dir !== ''; $dir = dirname($dir)) {
-                if (!@rmdir("{$target}/{$dir}")) {
+                // the directory itself, and every one above it, stays inside
+                self::confine($root, "{$dir}/.");
+
+                if (is_link("{$root}/{$dir}") || !@rmdir("{$root}/{$dir}")) {
                     break;
                 }
             }
