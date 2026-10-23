@@ -41,7 +41,8 @@ final readonly class HttpsTarballSource implements UiTarballSource
      *     answers its status, its response headers (lower-case names) and
      *     its body as a stream; PHP's https wrapper unless a test gives one
      *
-     * @throws \InvalidArgumentException when the registry is not a plain https URL
+     * @throws \InvalidArgumentException when the registry is not a plain https URL, or the token
+     *     is not one header value
      */
     public function __construct(
         string $registry,
@@ -52,6 +53,11 @@ final readonly class HttpsTarballSource implements UiTarballSource
         $this->registry = rtrim($registry, '/');
         $this->registryHost = self::origin($this->registry) ?? throw new \InvalidArgumentException('VECTOR_UI_REGISTRY must be an https URL without credentials, such as ' . self::DEFAULT_REGISTRY . '.');
         $this->open = $open ?? self::streamOpen(...);
+
+        if ($token !== null && preg_match('/^[\x21-\x7E]+$/D', $token) !== 1) {
+            // a line break would let it add headers of its own; the message never shows it
+            throw new \InvalidArgumentException('VECTOR_UI_REGISTRY_TOKEN must be printable ASCII without spaces.');
+        }
     }
 
     /**
@@ -193,10 +199,10 @@ final readonly class HttpsTarballSource implements UiTarballSource
      * (fetch() follows them itself, https only), timeouts on connect and
      * on every read.
      *
-     * @param list<string> $headers
+     * @param list<string> $headers the Authorization header among them, so never in a stack trace
      * @return array{int, array<string, string>, resource}
      */
-    private static function streamOpen(string $url, array $headers): array
+    private static function streamOpen(string $url, #[\SensitiveParameter] array $headers): array
     {
         $context = stream_context_create([
             'http' => [

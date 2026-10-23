@@ -54,7 +54,7 @@ final class HostedBundleTest extends TestCase
 
     public function testFilesTheManifestDoesNotListAreNotItsConcern(): void
     {
-        // the served directory holds the previous generation and the deployment's own files too
+        // the served directory may hold the deployment's own files too
         UiFixtures::bundle($this->dir, '0.11.0');
         file_put_contents($this->dir . '/robots.txt', 'User-agent: *');
 

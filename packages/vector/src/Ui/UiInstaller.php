@@ -11,17 +11,13 @@ namespace Kinetis\Vector\Ui;
  * The stage is verified whole first — HostedBundle::verify(), and exactly
  * the files its manifest lists — so a refusal writes nothing into the
  * target. Then every file is copied beside its destination and renamed
- * over it, one atomic rename each: the assets first, then the previous
- * generation's manifest (vector-bundle.previous.json), then index.html,
+ * over it, one atomic rename each: the assets first, then index.html,
  * then vector-bundle.json, so a shell never names an asset that is not
  * there yet and the manifest never describes files that are not.
  *
- * A worker reads index.html once, at boot, so one that has not restarted
- * still serves the shell it booted with, and the assets that shell names
- * must outlive this install: they get one generation of grace. What is
- * pruned is only what the previous manifest recorded and neither the
- * outgoing nor the incoming one lists — files two generations old. A file
- * no manifest recorded is never touched.
+ * Last, what the outgoing manifest listed and the incoming one does not
+ * is pruned. A file no manifest recorded is never touched. A worker reads
+ * index.html once, at boot, so workers are restarted after an install.
  */
 final readonly class UiInstaller
 {
@@ -50,10 +46,7 @@ final readonly class UiInstaller
 
         // Verified: from here on the target changes.
         self::directory($target);
-        $current = HostedBundle::read("{$target}/" . HostedBundle::MANIFEST);
-        $currentBytes = $current === null ? null : file_get_contents("{$target}/" . HostedBundle::MANIFEST);
-        $previous = HostedBundle::read("{$target}/" . HostedBundle::PREVIOUS_MANIFEST);
-        $newBytes = (string) file_get_contents("{$stage}/" . HostedBundle::MANIFEST);
+        $previous = HostedBundle::read("{$target}/" . HostedBundle::MANIFEST);
 
         foreach (array_keys($bundle->files) as $path) {
             if ($path !== 'index.html') {
@@ -61,16 +54,11 @@ final readonly class UiInstaller
             }
         }
 
-        // a reinstall of the same build keeps the generation before it as the one to prune next
-        if (is_string($currentBytes) && $currentBytes !== $newBytes) {
-            $this->write($currentBytes, $target, HostedBundle::PREVIOUS_MANIFEST);
-        }
-
         $this->place("{$stage}/index.html", $target, 'index.html');
         $this->place("{$stage}/" . HostedBundle::MANIFEST, $target, HostedBundle::MANIFEST);
 
-        if ($previous !== null && $current !== null && $currentBytes !== $newBytes) {
-            self::prune($target, array_diff_key($previous->files, $current->files, $bundle->files));
+        if ($previous !== null) {
+            self::prune($target, array_diff_key($previous->files, $bundle->files));
         }
 
         return $bundle;
@@ -163,25 +151,11 @@ final readonly class UiInstaller
     /** Copies $source beside $target/$path, then renames it over. */
     private function place(string $source, string $target, string $path): void
     {
-        $this->land($target, $path, static fn (string $temporary): bool => copy($source, $temporary));
-    }
-
-    /** Writes $contents beside $target/$path, then renames it over. */
-    private function write(string $contents, string $target, string $path): void
-    {
-        $this->land($target, $path, static fn (string $temporary): bool => file_put_contents($temporary, $contents) === strlen($contents));
-    }
-
-    /**
-     * @param \Closure(string): bool $fill writes the new contents into the temporary file it is given
-     */
-    private function land(string $target, string $path, \Closure $fill): void
-    {
         $destination = "{$target}/{$path}";
         self::directory(dirname($destination));
         $temporary = dirname($destination) . '/.' . basename($path) . '.' . bin2hex(random_bytes(6)) . '.tmp';
 
-        if (!$fill($temporary) || !chmod($temporary, 0644) || !rename($temporary, $destination)) {
+        if (!copy($source, $temporary) || !chmod($temporary, 0644) || !rename($temporary, $destination)) {
             @unlink($temporary);
 
             throw new \RuntimeException("Could not write {$destination}.");

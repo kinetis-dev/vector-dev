@@ -487,6 +487,18 @@ final class InstallUiCommandTest extends TestCase
         self::assertCount(1, $requests, 'nothing downloaded');
     }
 
+    public function testATokenThatCouldAddAHeaderIsRefusedWithoutPrintingIt(): void
+    {
+        $token = self::TOKEN . "\r\nX-Injected: yes";
+
+        try {
+            new HttpsTarballSource('https://registry.example', $token);
+            self::fail('The token was accepted.');
+        } catch (\InvalidArgumentException $e) {
+            self::assertStringNotContainsString(self::TOKEN, $e->getMessage());
+        }
+    }
+
     public function testAnHttpRegistryCannotBuildASource(): void
     {
         $this->expectException(\InvalidArgumentException::class);

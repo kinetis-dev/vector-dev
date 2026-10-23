@@ -14,9 +14,8 @@ use PHPUnit\Framework\TestCase;
 /**
  * UiInstaller swapping a staged bundle into a served directory: verified
  * whole before the target is touched, `index.html` then
- * `vector-bundle.json` landing last, and only files two generations old —
- * recorded by a manifest, listed by neither the outgoing nor the incoming
- * one — pruned. Through the command: VECTOR_UI_DIR names the target, and
+ * `vector-bundle.json` landing last, and only what the outgoing manifest
+ * listed and the incoming one does not pruned. Through the command: VECTOR_UI_DIR names the target, and
  * an installed, verifying pin is not fetched again.
  */
 final class UiInstallerTest extends TestCase
@@ -139,13 +138,12 @@ final class UiInstallerTest extends TestCase
         });
 
         self::assertSame(['index.html', HostedBundle::MANIFEST], array_slice($order, -2));
-        self::assertSame(HostedBundle::PREVIOUS_MANIFEST, $order[count($order) - 3], 'the outgoing manifest is kept before the shell moves');
-        self::assertEqualsCanonicalizing(['_nuxt/entry.' . substr(hash('sha256', '0.11.0'), 0, 8) . '.js', '_nuxt/shared.css'], array_slice($order, 0, -3));
+        self::assertEqualsCanonicalizing(['_nuxt/entry.' . substr(hash('sha256', '0.11.0'), 0, 8) . '.js', '_nuxt/shared.css'], array_slice($order, 0, -2));
         self::assertSame('0.11.0', HostedBundle::verify($this->target, '0.11.0')->version);
         self::assertSame(0644, fileperms($this->target . '/index.html') & 0777);
     }
 
-    public function testOnlyFilesTwoGenerationsOldArePrunedAndUntrackedFilesSurvive(): void
+    public function testOnlyWhatTheOutgoingManifestListedIsPrunedAndUntrackedFilesSurvive(): void
     {
         $chunk = static fn (string $version): string => '_nuxt/entry.' . substr(hash('sha256', $version), 0, 8) . '.js';
 
@@ -154,27 +152,21 @@ final class UiInstallerTest extends TestCase
         file_put_contents($this->target . '/_nuxt/custom.js', 'not in any manifest');
 
         $this->install('0.11.0');
-        // a worker that booted on 0.10.0 still serves its shell: its chunk stays for one generation
-        self::assertFileExists($this->target . '/' . $chunk('0.10.0'));
+        self::assertFileDoesNotExist($this->target . '/' . $chunk('0.10.0'), 'listed by the outgoing manifest only: pruned');
         self::assertFileExists($this->target . '/' . $chunk('0.11.0'));
-
-        $this->install('0.12.0');
-        self::assertFileDoesNotExist($this->target . '/' . $chunk('0.10.0'), 'two generations old: pruned');
-        self::assertFileExists($this->target . '/' . $chunk('0.11.0'), 'the outgoing generation keeps its grace');
-        self::assertFileExists($this->target . '/' . $chunk('0.12.0'));
         self::assertFileExists($this->target . '/_nuxt/shared.css', 'listed by the new manifest too');
         self::assertSame('the deployment\'s own', file_get_contents($this->target . '/robots.txt'));
         self::assertSame('not in any manifest', file_get_contents($this->target . '/_nuxt/custom.js'));
-        self::assertSame('0.12.0', HostedBundle::verify($this->target, '0.12.0')->version);
+        self::assertSame('0.11.0', HostedBundle::verify($this->target, '0.11.0')->version);
     }
 
-    public function testReinstallingTheSameBuildKeepsTheGenerationBeforeIt(): void
+    public function testReinstallingTheSameBuildPrunesNothing(): void
     {
-        $this->install('0.10.0');
         $this->install('0.11.0');
+        $before = self::snapshot($this->target);
         $this->install('0.11.0');
 
-        self::assertSame('0.10.0', HostedBundle::read($this->target . '/' . HostedBundle::PREVIOUS_MANIFEST)?->version);
+        self::assertSame($before, self::snapshot($this->target));
     }
 
     public function testVectorUiDirIsTheTarget(): void

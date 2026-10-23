@@ -19,12 +19,6 @@ final readonly class HostedBundle
 {
     public const string MANIFEST = 'vector-bundle.json';
 
-    /**
-     * The previous generation's manifest, kept in the served directory by
-     * UiInstaller so the next install knows which files it may prune.
-     */
-    public const string PREVIOUS_MANIFEST = 'vector-bundle.previous.json';
-
     /** The npm package a bundle comes from; not kinetis/vector, the Composer package. */
     public const string PACKAGE = UiPin::PACKAGE;
 
@@ -46,8 +40,8 @@ final readonly class HostedBundle
      * @kinetis/vector-ui package, this descriptor contract, $expectedVersion
      * when one is given, and every listed file present with its listed
      * hash. Files the manifest does not list are not this check's
-     * concern: the served directory may hold the previous generation and
-     * the deployment's own files beside it.
+     * concern: the served directory may hold the deployment's own files
+     * beside it.
      *
      * @param ?string $expectedVersion the version the bundle must be,
      *                                 compared as a plain string; null
@@ -141,12 +135,12 @@ final readonly class HostedBundle
 
     /**
      * A `/`-separated path that stays inside the bundle: no empty, `.` or
-     * `..` segment, no leading slash, no backslash, no NUL, and neither
+     * `..` segment, no leading slash, no backslash, no NUL, and not the
      * manifest's own name.
      */
     public static function isRelativePath(string $path): bool
     {
-        if ($path === '' || $path === self::MANIFEST || $path === self::PREVIOUS_MANIFEST || str_contains($path, '\\') || str_contains($path, "\0")) {
+        if ($path === '' || $path === self::MANIFEST || str_contains($path, '\\') || str_contains($path, "\0")) {
             return false;
         }
 
