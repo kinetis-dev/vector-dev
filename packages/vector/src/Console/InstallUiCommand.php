@@ -140,6 +140,10 @@ final readonly class InstallUiCommand
             return '--integrity checks a --from tarball; give --from=<tgz> with it.';
         }
 
+        if ($arguments->hasOption('integrity') && is_dir((string) $arguments->option('from'))) {
+            return '--integrity checks a --from tarball; --from names a directory.';
+        }
+
         $version = $arguments->option('version');
 
         if ($version !== null && preg_match(self::EXACT_VERSION, $version) !== 1) {
@@ -226,10 +230,6 @@ final readonly class InstallUiCommand
     private function installFrom(string $from, ?string $integrity, string $target, string $expected, bool $devInstall): int
     {
         if (is_dir($from)) {
-            if ($integrity !== null) {
-                throw new \UnexpectedValueException('--integrity checks a tarball; --from names a directory.');
-            }
-
             $stage = UiInstaller::tempDir('stage');
 
             try {

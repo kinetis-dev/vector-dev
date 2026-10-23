@@ -256,6 +256,19 @@ final class InstallUiCommandTest extends TestCase
         self::assertFileExists($built . '/index.html', 'the source is copied, not moved');
     }
 
+    public function testIntegrityWithABuiltDirectoryIsAUsageError(): void
+    {
+        $built = $this->built('0.11.0');
+        $source = $this->registry();
+
+        self::assertSame(2, $this->command(["--from={$built}", '--integrity=sha512-' . base64_encode(str_repeat('a', 64))], $source));
+
+        self::assertStringContainsString('--from names a directory', $this->stderr());
+        self::assertStringContainsString('Usage: vector:install-ui', $this->stderr());
+        self::assertSame([], $source->calls);
+        $this->assertNothingInstalled();
+    }
+
     public function testFromRefusesADirectoryHoldingASymlink(): void
     {
         $built = $this->built('0.11.0');
