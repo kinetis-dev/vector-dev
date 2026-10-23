@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-10-23
+
 ### Security
 
 - The `nuxt` peer dependency is now `^4.6.2`, which fixes a server
