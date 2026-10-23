@@ -9,7 +9,8 @@ name: Release
 # repository itself gets no tags. npm goes first: kinetis/vector pins the
 # @kinetis/vector-ui release it expects (packages/vector/resources/ui.json),
 # whose package carries the hosted admin bundle, and the mirror is written
-# only once that release is on npm. docs/releasing.md is the maintainer's
+# only after the npm job published that release or found it already out.
+# docs/releasing.md is the maintainer's
 # side of it; scripts/release.mjs holds every rule this workflow applies,
 # tested by pnpm test:scripts.
 on:
@@ -197,7 +198,8 @@ jobs:
   mirror:
     name: Split and push the mirror
     # After npm, so the @kinetis/vector-ui release kinetis/vector pins is
-    # installable before a tag names it; publish-mirror checks that it is.
+    # published before a tag names it. publish-mirror does not ask npm
+    # again: the registry can take minutes to serve a version it accepted.
     # A round with no UI release skips both npm jobs, and a skipped job
     # does not hold the mirror back; a failed one does.
     needs: [plan, npm-dry-run, npm-publish]
@@ -233,10 +235,9 @@ jobs:
         run: node scripts/release.mjs split --source="$SOURCE"
 
       - name: Push the mirror's main and tag
-        # The only step that writes with the deploy credential, and only
-        # once npm has the UI release the source pins. On a dry run it
-        # reads the mirror and npm and says what it would push, without
-        # the credential.
+        # The only step that writes with the deploy credential. On a dry
+        # run it reads the mirror and says what it would push, without the
+        # credential.
         env:
           VERSION: ${{ needs.plan.outputs.vector_version }}
           SOURCE: ${{ needs.plan.outputs.source }}

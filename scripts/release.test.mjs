@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
 import {
-    changelogSection, npmPublished, npmPublishedVersions, pinIntegrity, plan, productPlan, publicationPlan, publishMirror, split,
+    changelogSection, npmPublished, npmPublishedVersions, plan, productPlan, publicationPlan, publishMirror, split,
 } from './release.mjs'
 
 const changelog = `# Changelog
@@ -74,14 +74,6 @@ test("npm: every published version, none before the first publish", () => {
     assert.throws(() => npmPublishedVersions(() => ({ status: 1, stdout: '', stderr: 'npm error code EAI_AGAIN\n' })), /Could not ask npm which versions/)
 })
 
-test("npm: the pinned UI's dist.integrity, null when it is not published", () => {
-    assert.equal(pinIntegrity('0.9.0', () => ({ status: 0, stdout: 'sha512-abc==\n' })), 'sha512-abc==')
-    // npm prints nothing for a field a published version lacks, and E404 before the first publish
-    assert.equal(pinIntegrity('0.9.0', () => ({ status: 0, stdout: '\n' })), null)
-    assert.equal(pinIntegrity('0.9.0', () => ({ status: 1, stdout: '', stderr: 'npm error code E404\n' })), null)
-    assert.throws(() => pinIntegrity('0.9.0', () => ({ status: 1, stdout: '', stderr: 'npm error code ETIMEDOUT\n' })), /Could not ask npm for @kinetis\/vector-ui@0\.9\.0's dist\.integrity/)
-})
-
 const S = 'a'.repeat(40)
 const OLD = 'c'.repeat(40)
 const base = { split: S, splitDescends: false, mainDescends: false }
@@ -108,10 +100,6 @@ const hasGit = spawnSync('git', ['--version']).status === 0
 const run = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim()
 
 const pin = version => `${JSON.stringify({ package: '@kinetis/vector-ui', version })}\n`
-
-/** npm's answer for the pinned UI: published with an integrity, or not at all. */
-const onNpm = { integrityView: () => ({ status: 0, stdout: 'sha512-published==\n' }) }
-const notOnNpm = { integrityView: () => ({ status: 1, stdout: '', stderr: 'npm error code E404\n' }) }
 
 const manifest = (vector, ui = '0.9.0') => `${JSON.stringify({
     packages: {
@@ -148,22 +136,17 @@ test('the mirror push, end to end on scratch repositories', { skip: !hasGit && '
 
         const log = () => {}
 
-        // The UI the release pins is not on npm yet: nothing is written.
-        assert.throws(() => publishMirror(repo, { version: '0.9.0', source, split: s, mirror, log, ...notOnNpm }), /@kinetis\/vector-ui@0\.9\.0, which packages\/vector\/resources\/ui\.json pins, is not on npm; publish it first/)
-        assert.throws(() => publishMirror(repo, { version: '0.9.0', source, split: s, mirror, log, integrityView: () => ({ status: 0, stdout: '' }) }), /is not on npm/)
-        assert.throws(() => publishMirror(repo, { version: '0.9.0', source, split: s, mirror, log, integrityView: () => ({ status: 1, stdout: '', stderr: 'npm error code EAI_AGAIN\n' }) }), /Could not ask npm/)
-        assert.equal(run(mirror, 'for-each-ref'), '', 'the mirror is untouched')
-        // A rehearsal runs before npm has it, and says so.
+        // A rehearsal says what it would push, and writes nothing.
         const rehearsed = []
-        publishMirror(repo, { version: '0.9.0', source, split: s, mirror, dryRun: true, log: line => rehearsed.push(line), ...notOnNpm })
-        assert.match(rehearsed.join('\n'), /is not on npm; a real run would refuse to write the mirror[\s\S]*Dry run: would run git push --atomic/)
+        publishMirror(repo, { version: '0.9.0', source, split: s, mirror, dryRun: true, log: line => rehearsed.push(line) })
+        assert.match(rehearsed.join('\n'), /Dry run: would run git push --atomic/)
         assert.equal(run(mirror, 'for-each-ref'), '', 'a rehearsal writes nothing')
 
-        // Once it is: main and the tag both at S.
-        assert.deepEqual(publishMirror(repo, { version: '0.9.0', source, split: s, mirror, log, ...onNpm }), { main: true, tag: true, notices: [] })
+        // A real run: main and the tag both at S, without asking npm for the pinned UI.
+        assert.deepEqual(publishMirror(repo, { version: '0.9.0', source, split: s, mirror, log }), { main: true, tag: true, notices: [] })
         assert.equal(run(mirror, 'rev-parse', 'refs/heads/main'), s)
         assert.equal(run(mirror, 'rev-parse', 'refs/tags/v0.9.0'), s)
-        assert.deepEqual(publishMirror(repo, { version: '0.9.0', source, split: s, mirror, log, ...onNpm }), { main: false, tag: false, notices: [
+        assert.deepEqual(publishMirror(repo, { version: '0.9.0', source, split: s, mirror, log }), { main: false, tag: false, notices: [
             `The mirror's main is already ${s}.`,
             `The mirror's tag is already this release's split ${s}.`,
         ] }, 'a rerun is a no-op')
@@ -174,12 +157,12 @@ test('the mirror push, end to end on scratch repositories', { skip: !hasGit && '
         run(repo, 'add', '.')
         run(repo, 'commit', '--quiet', '-m', 'Changed source')
         run(repo, 'push', '--quiet', '--force', mirror, `${split(repo, run(repo, 'rev-parse', 'HEAD'))}:refs/tags/v0.9.0`)
-        assert.throws(() => publishMirror(repo, { version: '0.9.0', source, split: s, mirror, log, ...onNpm }), /not this release's split/)
+        assert.throws(() => publishMirror(repo, { version: '0.9.0', source, split: s, mirror, log }), /not this release's split/)
         run(repo, 'push', '--quiet', '--force', mirror, `${s}:refs/tags/v0.9.0`)
         run(repo, 'reset', '--quiet', '--hard', 'HEAD^')
 
         // The version must be the one the manifest at the source states.
-        assert.throws(() => publishMirror(repo, { version: '0.9.1', source, split: s, mirror, log, ...onNpm }), /the manifest at [0-9a-f]{40} states kinetis\/vector 0\.9\.0, not 0\.9\.1; refusing to write the mirror/)
+        assert.throws(() => publishMirror(repo, { version: '0.9.1', source, split: s, mirror, log }), /the manifest at [0-9a-f]{40} states kinetis\/vector 0\.9\.0, not 0\.9\.1; refusing to write the mirror/)
 
         // A source origin's main no longer contains (main force-pushed past it) stops a write.
         writeFileSync(path.join(repo, 'packages/vector/src/B.php'), '<?php\n')
@@ -190,25 +173,23 @@ test('the mirror push, end to end on scratch repositories', { skip: !hasGit && '
         const later = run(repo, 'rev-parse', 'HEAD')
         const s2 = split(repo, later)
         run(repo, 'reset', '--quiet', '--hard', source)
-        assert.throws(() => publishMirror(repo, { version: '0.9.1', source: later, split: s2, mirror, log, ...onNpm }), /origin's main \([0-9a-f]{40}\) no longer contains [0-9a-f]{40}; refusing to write the mirror/)
+        assert.throws(() => publishMirror(repo, { version: '0.9.1', source: later, split: s2, mirror, log }), /origin's main \([0-9a-f]{40}\) no longer contains [0-9a-f]{40}; refusing to write the mirror/)
         // A rehearsal says so instead, and writes nothing.
         const said = []
-        publishMirror(repo, { version: '0.9.1', source: later, split: s2, mirror, dryRun: true, log: line => said.push(line), ...onNpm })
+        publishMirror(repo, { version: '0.9.1', source: later, split: s2, mirror, dryRun: true, log: line => said.push(line) })
         assert.match(said.join('\n'), /no longer contains[\s\S]*a real run would refuse[\s\S]*Dry run: would run git push --atomic --force-with-lease=refs\/heads\/main:/)
         assert.equal(run(mirror, 'rev-parse', 'refs/heads/main'), s)
         run(repo, 'reset', '--quiet', '--hard', later)
 
-        // A later release fast-forwards main; the npm check asks for the pin at its own source.
-        const asked = []
-        publishMirror(repo, { version: '0.9.1', source: later, split: s2, mirror, log, integrityView: () => { asked.push('0.9.1'); return onNpm.integrityView() } })
-        assert.deepEqual(asked, ['0.9.1'])
+        // A later release fast-forwards main.
+        publishMirror(repo, { version: '0.9.1', source: later, split: s2, mirror, log })
         assert.equal(run(mirror, 'rev-parse', 'refs/heads/main'), s2)
         assert.equal(run(mirror, 'rev-parse', 'refs/heads/main^'), s)
         assert.equal(run(mirror, 'rev-parse', 'refs/tags/v0.9.1'), s2)
 
         // Rerunning the older release, with main moved on to a newer version, still
         // passes the source guard and leaves main where it is.
-        assert.equal(publishMirror(repo, { version: '0.9.0', source, split: s, mirror, log, ...onNpm }).main, false)
+        assert.equal(publishMirror(repo, { version: '0.9.0', source, split: s, mirror, log }).main, false)
         assert.equal(run(mirror, 'rev-parse', 'refs/heads/main'), s2)
     } finally {
         rmSync(scratch, { recursive: true, force: true })
