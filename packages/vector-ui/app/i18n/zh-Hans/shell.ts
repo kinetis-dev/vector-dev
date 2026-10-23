@@ -8,7 +8,14 @@ export default {
     toggleTheme: '切换主题',
     language: '语言：{name}',
     languageFailed: '无法保存语言：{error}',
-    unsupportedDescriptor: 'API 发布的描述符版本为 {version}，而此管理界面读取版本 {supported}。请安装相互匹配的 kinetis/vector 和 vector-ui 版本。',
+    unsupportedDescriptor: 'API 发布的描述符版本为 {version}，而此管理界面读取版本 {supported}。{remedy}',
+    version: {
+        mismatch: '此管理界面的版本为 {current}，而 kinetis/vector 需要 {expected}。',
+        dismiss: '关闭',
+        hostedRemedy: '请在服务器上运行 vendor/bin/kinetis vector:install-ui，然后重启 worker。',
+        layeredRemedy: '请将 {package} 升级到 {version} 并重新构建。',
+        layeredRemedyAny: '请安装此 kinetis/vector 所需的 {package} 版本并重新构建。',
+    },
     nav: {
         main: '主菜单',
         dashboard: '仪表盘',

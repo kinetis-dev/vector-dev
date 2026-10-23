@@ -8,7 +8,14 @@ export default {
     toggleTheme: 'Thema wisselen',
     language: 'Taal: {name}',
     languageFailed: 'De taal kon niet worden opgeslagen: {error}',
-    unsupportedDescriptor: 'De API publiceert descriptorversie {version}; deze beheeromgeving leest versie {supported}. Installeer bij elkaar passende versies van kinetis/vector en vector-ui.',
+    unsupportedDescriptor: 'De API publiceert descriptorversie {version}; deze beheeromgeving leest versie {supported}. {remedy}',
+    version: {
+        mismatch: 'Deze beheeromgeving is versie {current}; kinetis/vector verwacht {expected}.',
+        dismiss: 'Sluiten',
+        hostedRemedy: 'Voer vendor/bin/kinetis vector:install-ui uit op de server en herstart de workers.',
+        layeredRemedy: 'Werk {package} bij naar {version} en bouw opnieuw.',
+        layeredRemedyAny: 'Installeer de versie van {package} die deze kinetis/vector verwacht en bouw opnieuw.',
+    },
     nav: {
         main: 'Hoofdmenu',
         dashboard: 'Dashboard',

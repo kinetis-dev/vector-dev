@@ -1,6 +1,6 @@
 {
     "name": "@kinetis/vector-ui",
-    "version": "0.10.4",
+    "version": "0.11.0",
     "description": "The Kinetis Vector admin UI, as a Nuxt layer on Vuetify.",
     "keywords": [
         "kinetis",
@@ -26,16 +26,21 @@
     "files": [
         "nuxt.config.ts",
         "app",
+        "dist/static",
         "README.md",
         "LICENSE",
         "CHANGELOG.md"
     ],
+    "engines": {
+        "node": "^22.22.3 || ^24.15.0 || >=26.0.0"
+    },
     "publishConfig": {
         "access": "public",
         "provenance": true
     },
     "scripts": {
         "prepare": "nuxt prepare",
+        "prepack": "node ../../scripts/check-vector-ui-pack.mjs",
         "typecheck": "nuxt prepare && vue-tsc --noEmit",
         "lint": "eslint .",
         "test": "vitest run --passWithNoTests"

@@ -8,7 +8,14 @@ export default {
     toggleTheme: 'تبديل السمة',
     language: 'اللغة: {name}',
     languageFailed: 'تعذّر حفظ اللغة: {error}',
-    unsupportedDescriptor: 'تنشر الواجهة البرمجية الإصدار {version} من الواصف، وهذه الإدارة تقرأ الإصدار {supported}. ثبّت إصدارين متوافقين من kinetis/vector وvector-ui.',
+    unsupportedDescriptor: 'تنشر الواجهة البرمجية الإصدار {version} من الواصف، وهذه الإدارة تقرأ الإصدار {supported}. {remedy}',
+    version: {
+        mismatch: 'إصدار واجهة الإدارة هذه {current}، بينما يتوقع kinetis/vector الإصدار {expected}.',
+        dismiss: 'إخفاء',
+        hostedRemedy: 'شغّل vendor/bin/kinetis vector:install-ui على الخادم، ثم أعد تشغيل العمّال.',
+        layeredRemedy: 'رقِّ {package} إلى الإصدار {version} وأعد البناء.',
+        layeredRemedyAny: 'ثبّت إصدار {package} الذي يتوقعه kinetis/vector هذا وأعد البناء.',
+    },
     nav: {
         main: 'الرئيسية',
         dashboard: 'لوحة المعلومات',

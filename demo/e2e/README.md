@@ -14,11 +14,11 @@ project only; every other spec runs in both.
 ## Running it
 
 From `demo/`, with the stack up, migrated and seeded (see the root
-README), and the hosted bundle published once:
+README), and the hosted bundle built and installed once:
 
 ```sh
 docker compose exec node pnpm generate:hosted
-docker compose exec app vendor/bin/kinetis vector:install
+docker compose exec app vendor/bin/kinetis vector:install-ui --from=/workspace/packages/vector-ui/dist/static
 docker compose restart app
 ```
 

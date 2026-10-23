@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-23
+
+### Added
+
+- The package ships the hosted admin bundle in `dist/static`, with its
+  `vector-bundle.json` manifest; `kinetis vector:install-ui` installs it
+  from the npm registry. Packing refuses a missing bundle or one built
+  for another version.
+- A banner at the top of the admin says when this UI is not the
+  `@kinetis/vector-ui` release the server's kinetis/vector pins (the
+  descriptor's `ui.expected`), with the remedy for how it is deployed:
+  run `vector:install-ui` and restart the workers when hosted, upgrade
+  the package and rebuild when used as a layer. Dismissed, it stays away
+  for the browser session. The layer's own version is in
+  `runtimeConfig.public.vector.uiVersion`.
+
+### Changed
+
+- The unsupported-descriptor error names the same deployment-specific
+  remedy.
+- Requires Node `^22.22.3 || ^24.15.0 || >=26.0.0`, as Nuxt 4.6 does.
+
 ## [0.10.4] - 2026-10-22
 
 ### Changed

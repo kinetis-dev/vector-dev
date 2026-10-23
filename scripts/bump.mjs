@@ -12,15 +12,18 @@
 // Link references at the end of a CHANGELOG are left as they are; neither
 // product's CHANGELOG uses them.
 //
-// A product whose `includes` names the bumped product's path needs its own
-// bump too — kinetis/vector includes packages/vector-ui, since the hosted
-// bundle ships inside the PHP package. That is printed, not done: each
-// bump is its own decision, patch or minor, with its own CHANGELOG entry.
+// Bumping vector-ui also moves kinetis/vector's pin of it,
+// packages/vector/resources/ui.json, to the new version, so the pin always
+// names the vector-ui release beside it. A product whose `includes` names
+// the bumped product's path needs its own bump too — kinetis/vector
+// includes packages/vector-ui, whose release it pins. That is printed, not
+// done: each bump is its own decision, patch or minor, with its own
+// CHANGELOG entry.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { nextVersion, transitionProblem } from './version-policy.mjs'
-import { MANIFEST_FILE, parseManifest } from './validate-versions.mjs'
+import { MANIFEST_FILE, PIN_FILE, parseManifest } from './validate-versions.mjs'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 
@@ -61,6 +64,23 @@ export function setPackageVersion(json, version, file = 'package.json') {
 
     if (JSON.parse(updated).version !== version) {
         throw new Error(`${file}'s first "version" key is not its top-level version; bump it by hand.`)
+    }
+
+    return updated
+}
+
+/** The pin text with its version replaced, formatting kept. */
+export function setPinVersion(json, version, file = PIN_FILE) {
+    const pattern = /("version"\s*:\s*)"[^"]*"/
+
+    if (!pattern.test(json)) {
+        throw new Error(`${file} has no "version" to move.`)
+    }
+
+    const updated = json.replace(pattern, `$1"${version}"`)
+
+    if (JSON.parse(updated).version !== version) {
+        throw new Error(`${file}'s "version" could not be moved; fix it by hand.`)
     }
 
     return updated
@@ -111,6 +131,13 @@ export function bump(repo, key, component, { date = today() } = {}) {
 
     const changelog = path.join(repo, entry.path, 'CHANGELOG.md')
     writes.push([changelog, releaseChangelog(readFileSync(changelog, 'utf8'), to, date, `${entry.path}/CHANGELOG.md`)])
+
+    const vector = manifest.packages.vector
+
+    if (key === 'vector-ui' && vector !== undefined) {
+        const pin = path.join(repo, vector.path, PIN_FILE)
+        writes.push([pin, setPinVersion(readFileSync(pin, 'utf8'), to, `${vector.path}/${PIN_FILE}`)])
+    }
 
     for (const [file, contents] of writes) {
         writeFileSync(file, contents)

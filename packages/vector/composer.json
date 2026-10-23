@@ -25,6 +25,8 @@
     "require": {
         "php": "^8.4",
         "composer-runtime-api": "^2.0",
+        "ext-openssl": "*",
+        "ext-zlib": "*",
         "kinetis/authorization": "^1.0.4",
         "kinetis/database-bridge": "^1.4.0",
         "kinetis/framework": "^1.22.0",

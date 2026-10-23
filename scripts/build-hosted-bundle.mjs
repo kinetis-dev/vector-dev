@@ -1,17 +1,20 @@
 #!/usr/bin/env node
-// Builds the hosted admin bundle into packages/vector/resources/dist and
+// Builds the hosted admin bundle into packages/vector-ui/dist/static and
 // writes its manifest, vector-bundle.json: the package and version that
 // built it, the vector-dev commit, the descriptor contract it speaks and
-// the sha256 of every file. `vector:install` refuses a bundle that does
-// not match its manifest, so a stale build is never published.
+// the sha256 of every file. The @kinetis/vector-ui npm package ships that
+// directory, and `vector:install-ui` refuses a bundle that does not match
+// its manifest, so a stale build is never installed.
 //
-//     node scripts/build-hosted-bundle.mjs                  a dev build: version dev-<short sha>
-//     node scripts/build-hosted-bundle.mjs --version=0.9.0  a release build
+//     node scripts/build-hosted-bundle.mjs                  @kinetis/vector-ui's package.json version
+//     node scripts/build-hosted-bundle.mjs --version=0.9.0  the same, named: it must be that version
+//     node scripts/build-hosted-bundle.mjs --dev            a dev build: version dev-<short sha>
 //
-// A release version must be canonical X.Y.Z and equal kinetis/vector's
-// version in packages.manifest.json: the bundle ships inside that package,
-// and on a released install `vector:install` refuses a bundle built for any
-// version but the installed kinetis/vector's.
+// The bundle is labelled with @kinetis/vector-ui's version in its
+// package.json: it ships inside that package, and `vector:install-ui`
+// installs it as that version. `pnpm generate:hosted` runs this script.
+// A dev build, which `vector:install-ui` accepts only on a dev install of
+// kinetis/vector, is never packed (scripts/check-vector-ui-pack.mjs).
 import { execFileSync, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
@@ -22,33 +25,44 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseVersion } from './version-policy.mjs'
 
 export const MANIFEST = 'vector-bundle.json'
-export const PACKAGE = 'kinetis/vector'
+export const PACKAGE = '@kinetis/vector-ui'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
-const dist = path.join(root, 'packages/vector/resources/dist')
+const dist = path.join(root, 'packages/vector-ui/dist/static')
 const output = path.join(root, 'packages/vector-ui/hosted/.output/public')
 const registry = path.join(root, 'packages/vector/src/Registry/VectorRegistry.php')
-const versions = path.join(root, 'packages.manifest.json')
+const uiPackage = path.join(root, 'packages/vector-ui/package.json')
 
-/** The requested release version, or null for a dev build. */
+/** The version named, or null for package.json's; and whether this is a dev build. */
 export function parseArgs(argv) {
     let version = null
+    let dev = false
 
     for (const arg of argv) {
         if (arg.startsWith('--version=')) {
             version = arg.slice('--version='.length)
+        } else if (arg === '--dev') {
+            dev = true
         } else {
-            throw new Error(`Unknown argument ${arg}. Usage: build-hosted-bundle.mjs [--version=<x.y.z>]`)
+            throw new Error(`Unknown argument ${arg}. Usage: build-hosted-bundle.mjs [--version=<x.y.z> | --dev]`)
         }
     }
 
-    return { version }
+    if (dev && version !== null) {
+        throw new Error('--dev builds dev-<short sha>; it takes no --version.')
+    }
+
+    return { version, dev }
 }
 
-/** The manifest version: the release, checked, or dev-<12-hex short sha>. */
-export function resolveVersion(requested, packageVersion, source) {
-    if (requested === null) {
+/** The manifest version: package.json's, the one named and checked against it, or dev-<12-hex short sha>. */
+export function resolveVersion(requested, packageVersion, source, dev = false) {
+    if (dev) {
         return `dev-${source.slice(0, 12)}`
+    }
+
+    if (requested === null) {
+        return packageVersion
     }
 
     if (parseVersion(requested) === null) {
@@ -56,7 +70,7 @@ export function resolveVersion(requested, packageVersion, source) {
     }
 
     if (requested !== packageVersion) {
-        throw new Error(`--version=${requested} differs from kinetis/vector's version ${packageVersion} in packages.manifest.json; the bundle ships in that release.`)
+        throw new Error(`--version=${requested} differs from @kinetis/vector-ui's version ${packageVersion} in its package.json; the bundle ships in that release.`)
     }
 
     return requested
@@ -82,6 +96,12 @@ export async function listFiles(dir) {
         .map(entry => path.relative(dir, path.join(entry.parentPath, entry.name)).split(path.sep).join('/'))
         .filter(file => file !== MANIFEST)
         .sort()
+}
+
+/** Replaces dist with the generated site's contents, as real files: npm packs no symlink. */
+export async function copyBundle(from, dist) {
+    await rm(dist, { recursive: true, force: true })
+    await cp(from, dist, { recursive: true, dereference: true })
 }
 
 async function sha256(file) {
@@ -151,11 +171,11 @@ export async function headCommit(repo) {
 }
 
 async function main() {
-    const { version: requested } = parseArgs(process.argv.slice(2))
+    const { version: requested, dev } = parseArgs(process.argv.slice(2))
     const source = await headCommit(root)
 
-    const packageVersion = JSON.parse(await readFile(versions, 'utf8')).packages.vector.version
-    const version = resolveVersion(requested, packageVersion, source)
+    const packageVersion = JSON.parse(await readFile(uiPackage, 'utf8')).version
+    const version = resolveVersion(requested, packageVersion, source, dev)
     const descriptor = descriptorVersion(await readFile(registry, 'utf8'))
 
     const build = spawnSync('pnpm', ['--filter', '@kinetis/vector-ui', 'exec', 'nuxt', 'generate', 'hosted'], {
@@ -168,11 +188,10 @@ async function main() {
         throw new Error(build.error?.message ?? `nuxt generate hosted exited with ${build.status ?? build.signal}.`)
     }
 
-    await rm(dist, { recursive: true, force: true })
-    await cp(output, dist, { recursive: true })
+    await copyBundle(output, dist)
     const manifest = await writeManifest(dist, { version, descriptorVersion: descriptor, source })
 
-    console.log(`Built the hosted admin bundle ${version} (${Object.keys(manifest.files).length} files, descriptor version ${descriptor}) into packages/vector/resources/dist.`)
+    console.log(`Built the hosted admin bundle ${version} (${Object.keys(manifest.files).length} files, descriptor version ${descriptor}) into packages/vector-ui/dist/static.`)
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {

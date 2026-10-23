@@ -13,11 +13,11 @@ node_modules/
 .data/
 /demo/frontend/dist
 /packages/vector-ui/hosted/dist
+/packages/vector-ui/dist/
 /demo/e2e/test-results/
 /demo/e2e/playwright-report/
 /docs/_build/
 .pnpm-store/
-/packages/vector/resources/dist/
 /demo/backend/public/vector/
 /demo/backend/infection.log
 /demo/backend/infection.summary.log

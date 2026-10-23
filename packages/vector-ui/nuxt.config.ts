@@ -1,8 +1,14 @@
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 // Paths inside a layer's config resolve against the consuming app, so
 // anything that names a file in this package goes through this alias.
 const layerDir = fileURLToPath(new URL('./', import.meta.url))
+
+// This layer's own release, baked into the build: the dashboard compares it
+// with the @kinetis/vector-ui version kinetis/vector pins (the descriptor's
+// ui.expected) and warns when they differ, hosted or layered.
+const { version: uiVersion } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
 
 export default defineNuxtConfig({
     $meta: {
@@ -22,6 +28,8 @@ export default defineNuxtConfig({
                 apiBase: 'http://localhost:8080',
                 // Runtime UI extensions (ES-module URLs) in standalone mode; hosted mode reads VECTOR_UI_EXTENSIONS.
                 extensions: [] as string[],
+                // This layer's package.json version; not meant to be overridden.
+                uiVersion,
             },
         },
     },

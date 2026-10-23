@@ -26,12 +26,15 @@ export function useVectorSchema() {
 
         loading.value = true
         const request = ++latestLoad
+        // read before the await: the refusal below must not need the app context
+        const { hosted } = useVectorRuntime()
 
         try {
             const answer = await api<VectorSchema>('/vector/schema')
 
             if (answer?.version !== DESCRIPTOR_VERSION) {
-                throw new Error(vt('shell.unsupportedDescriptor', { version: String(answer?.version), supported: DESCRIPTOR_VERSION }))
+                // a hard stop: the remedy is the drift banner's, for how this UI is deployed
+                throw new Error(vt('shell.unsupportedDescriptor', { version: String(answer?.version), supported: DESCRIPTOR_VERSION, remedy: vectorUiRemedy(answer?.ui?.expected ?? null, hosted) }))
             }
 
             if (request === latestLoad) {

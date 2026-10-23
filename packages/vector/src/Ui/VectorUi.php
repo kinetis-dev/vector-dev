@@ -14,6 +14,13 @@ use Kinetis\Config\Config;
  * are deployment configuration, never data an admin edits (§4.15).
  * Immutable and request-neutral, so one instance serves every request;
  * the per-request pieces are injected by ShellController.
+ *
+ * It also holds the two UI versions, read once at boot without hashing:
+ * the @kinetis/vector-ui version this kinetis/vector pins
+ * (`resources/ui.json`), which the descriptor publishes so the dashboard
+ * can warn about drift, and the version the served directory's
+ * `vector-bundle.json` names. Either is null when its file is missing or
+ * malformed; neither stops the worker from booting.
  */
 final readonly class VectorUi
 {
@@ -28,13 +35,26 @@ final readonly class VectorUi
         public ?string $csp,
         /** @var list<string> */
         public array $extensions,
+        public ?string $expectedUiVersion = null,
+        public ?string $installedUiVersion = null,
     ) {}
+
+    /**
+     * The served directory: `VECTOR_UI_DIR` when set, else
+     * `public/vector/ui` under the project root. `vector:install-ui`
+     * installs into it.
+     */
+    public static function directory(Config $config, string $projectRoot): string
+    {
+        return $config->get('VECTOR_UI_DIR') ?? $projectRoot . '/public' . self::PATH;
+    }
 
     /**
      * Reads the published `public/vector/ui/index.html` under the
      * project root the framework bound, or `VECTOR_UI_DIR` when set. A
      * missing document is not an error at boot: the shell answers 503
-     * until `vector:install` publishes one.
+     * until `vector:install-ui` installs one. $pinFile is the UI pin,
+     * this package's own unless a test names another.
      *
      * `VECTOR_SHELL_HEAD` is appended verbatim before `</head>` — the
      * deployer's script or link tags, which carry their own nonce
@@ -46,9 +66,9 @@ final readonly class VectorUi
      * after boot: runtime extensions of §4.15, the deployer's second way
      * to add script.
      */
-    public static function fromConfig(Config $config, string $projectRoot): self
+    public static function fromConfig(Config $config, string $projectRoot, ?string $pinFile = null): self
     {
-        $dir = $config->get('VECTOR_UI_DIR') ?? $projectRoot . '/public' . self::PATH;
+        $dir = self::directory($config, $projectRoot);
         $index = $dir . '/index.html';
         $html = is_file($index) ? file_get_contents($index) : false;
         $csp = trim($config->string('VECTOR_SHELL_CSP', ''));
@@ -61,6 +81,8 @@ final readonly class VectorUi
             $config->string('VECTOR_SHELL_HEAD', ''),
             $csp === '' ? null : $csp,
             array_values(array_filter(array_map('trim', explode(',', $config->string('VECTOR_UI_EXTENSIONS', ''))))),
+            UiPin::tryFromFile($pinFile ?? UiPin::path())?->version,
+            HostedBundle::read($dir . '/' . HostedBundle::MANIFEST)?->version,
         );
     }
 }

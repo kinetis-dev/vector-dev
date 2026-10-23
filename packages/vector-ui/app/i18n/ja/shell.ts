@@ -8,7 +8,14 @@ export default {
     toggleTheme: 'テーマの切り替え',
     language: '言語：{name}',
     languageFailed: '言語を保存できませんでした：{error}',
-    unsupportedDescriptor: 'API はディスクリプタのバージョン {version} を公開していますが、この管理画面が読めるのはバージョン {supported} です。対応する kinetis/vector と vector-ui をインストールしてください。',
+    unsupportedDescriptor: 'API はディスクリプタのバージョン {version} を公開していますが、この管理画面が読めるのはバージョン {supported} です。{remedy}',
+    version: {
+        mismatch: 'この管理画面のバージョンは {current} ですが、kinetis/vector は {expected} を想定しています。',
+        dismiss: '閉じる',
+        hostedRemedy: 'サーバーで vendor/bin/kinetis vector:install-ui を実行し、ワーカーを再起動してください。',
+        layeredRemedy: '{package} を {version} にアップグレードして再ビルドしてください。',
+        layeredRemedyAny: 'この kinetis/vector が想定する {package} のリリースをインストールして再ビルドしてください。',
+    },
     nav: {
         main: 'メイン',
         dashboard: 'ダッシュボード',

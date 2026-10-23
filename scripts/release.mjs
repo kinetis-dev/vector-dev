@@ -9,26 +9,23 @@
 //     node scripts/release.mjs plan --source=<sha> [--ref=refs/heads/main] [--mirror=<url>] [--dry-run]
 //     node scripts/release.mjs notes --product=<vector|vector-ui> --version=0.9.0
 //     node scripts/release.mjs split --source=<sha>
-//     node scripts/release.mjs release-commit --version=0.9.0 --source=<sha> --split=<sha>
 //     node scripts/release.mjs npm-published --version=0.9.0
-//     node scripts/release.mjs publish-mirror --version=0.9.0 --source=<sha> --split=<sha> --release=<sha> [--mirror=<url>] [--dry-run]
+//     node scripts/release.mjs publish-mirror --version=0.9.0 --source=<sha> --split=<sha> [--mirror=<url>] [--dry-run]
 //
 // The mirror's history rule. The mirror's main is the pure subtree split
 // S of packages/vector: `git subtree split` derives every commit from the
 // monorepo commit it comes from, metadata included, so S is a function of
 // the source history and each release's S descends from the last one's —
-// main only ever fast-forwards, and dev-main carries no hosted bundle.
-// The version tag v<version> points at R, one release commit whose only
-// parent is S and whose tree is S's plus resources/dist (the hosted
-// bundle, which the monorepo gitignores). So every tagged release ships
-// the bundle, and no bundle ever enters main's history. That tag, on the
-// mirror, is the only tag a release makes.
+// main only ever fast-forwards. The version tag v<version> points at that
+// same S, and is the only tag a release makes. The hosted admin bundle is
+// not in the mirror at all: it ships inside @kinetis/vector-ui, and
+// kinetis/vector pins the release it expects in resources/ui.json, which
+// `vector:install-ui` installs. So the mirror is written only once that
+// pinned release is on npm (see pinIntegrity()): the workflow publishes
+// npm first, and a tag never names a UI no one can install.
 //
 // What makes a rerun safe, after tools/release-publish.php in kinetis:
 //
-// - R is deterministic too: it is authored and committed by a fixed,
-//   disposable release identity at the source commit's own committer
-//   date, so the same source and the same bundle bytes give the same R.
 // - The mirror is only written while origin's main still contains the
 //   source commit, and the manifest at that commit states this version;
 //   see sourceProblem().
@@ -36,14 +33,10 @@
 //   read (empty: it must not exist yet), and only forward: a main that
 //   moved between the read and the push fails the push, and a split that
 //   does not descend from the remote main is refused.
-// - A tag already on the mirror is done when it carries R's exact tree,
-//   or when it is this same release built earlier: its only parent is S
-//   and it differs from S only under resources/dist. That second case is
-//   what a fresh rerun meets, because the Nuxt build is not byte-for-byte
-//   reproducible (each build draws a random buildId), so a rebuilt R
-//   differs from the published one in the bundle alone; the published
-//   bundle stands. Anything else under the tag is a failure: two contents
-//   cannot both be one version, and choosing is a person's decision.
+// - A tag already on the mirror is done when it is S itself, which a
+//   rerun meets, since S is deterministic. Anything else under the tag is
+//   a failure: two contents cannot both be one version, and choosing is a
+//   person's decision.
 //
 // The mirror credential arrives in RELEASE_DEPLOY_TOKEN, leaves this
 // process's environment before any child starts, and reaches git only
@@ -55,20 +48,15 @@ import { appendFileSync, chmodSync, mkdtempSync, readFileSync, rmSync, writeFile
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { MANIFEST_FILE, changelogHeading, checkConsistency, manifestAt } from './validate-versions.mjs'
+import { MANIFEST_FILE, PIN_FILE, changelogHeading, checkConsistency, manifestAt } from './validate-versions.mjs'
 import { highestVersion, parseVersion, transitionProblem } from './version-policy.mjs'
 
 export const MIRROR = 'https://github.com/kinetis-dev/vector.git'
 export const PREFIX = 'packages/vector'
-export const DIST = 'resources/dist'
-export const MANIFEST = 'vector-bundle.json'
 export const NPM_PACKAGE = '@kinetis/vector-ui'
 
 /** The manifest key of each published product. */
 export const PRODUCTS = { vector: 'vector', ui: 'vector-ui' }
-
-/** Who the disposable release commit is authored by, as in kinetis's release-publish.php. */
-export const RELEASE_IDENTITY = { name: 'kinetis-release', email: 'noreply@kinetis.dev' }
 
 const DEPLOY_CREDENTIAL_VARIABLE = 'RELEASE_DEPLOY_TOKEN'
 const DEPLOY_CREDENTIAL_USERNAME = 'x-access-token'
@@ -149,13 +137,13 @@ export function productPlan({ product, version, published, publishedVersions }) 
  *   remote.tag      the commit the mirror's version tag peels to, or null
  *   splitDescends   S descends from (or is) remote.main
  *   mainDescends    remote.main descends from S: a later release is out
- *   tagTreeMatches  remote.tag's tree is R's
- *   tagSameRelease  remote.tag's only parent is S and it differs from S
- *                   only under resources/dist: this release, built earlier
+ *
+ * The tag is S itself: a tag already at S is done, a tag anywhere else
+ * is refused.
  *
  * Returns { main: bool, tag: bool, notices[] }, or throws.
  */
-export function publicationPlan({ split, release, remote, splitDescends, mainDescends, tagTreeMatches, tagSameRelease = false }) {
+export function publicationPlan({ split, remote, splitDescends, mainDescends }) {
     const notices = []
     let main = false
     let tag = false
@@ -177,12 +165,10 @@ export function publicationPlan({ split, release, remote, splitDescends, mainDes
 
     if (remote.tag === null) {
         tag = true
-    } else if (remote.tag === release || tagTreeMatches) {
-        notices.push(`The mirror's tag already carries this release's tree (${remote.tag}).`)
-    } else if (tagSameRelease) {
-        notices.push(`The mirror's tag (${remote.tag}) is this release from an earlier build of the hosted bundle; that build stands.`)
+    } else if (remote.tag === split) {
+        notices.push(`The mirror's tag is already this release's split ${split}.`)
     } else {
-        throw new Error(`The mirror's tag points at ${remote.tag}, whose tree differs from this release's ${release}; one version cannot carry two contents. A person decides which stands.`)
+        throw new Error(`The mirror's tag points at ${remote.tag}, not this release's split ${split}; one version cannot carry two contents. A person decides which stands.`)
     }
 
     return { main, tag, notices }
@@ -226,14 +212,6 @@ function remoteMain(repo, remote) {
 
 function isAncestor(repo, ancestor, descendant) {
     return spawnSync('git', ['merge-base', '--is-ancestor', ancestor, descendant], { cwd: repo }).status === 0
-}
-
-/** Whether commit is a release commit over split: S as its only parent, and only resources/dist added to S. */
-function sameRelease(repo, commit, splitCommit) {
-    const changed = git(repo, ['diff', '--name-only', splitCommit, commit]).split('\n').filter(Boolean)
-
-    return git(repo, ['rev-parse', `${commit}^@`]) === splitCommit
-        && changed.every(file => file.startsWith(`${DIST}/`))
 }
 
 /** A file at a commit, or null when that commit does not have it. */
@@ -343,51 +321,6 @@ export function split(repo, source) {
     return sha(git(repo, ['subtree', 'split', '--quiet', `--prefix=${PREFIX}`, sha(source, 'the source commit')]), 'the split')
 }
 
-/**
- * R: one commit whose only parent is S and whose tree is S's tree plus
- * packages/vector/resources/dist, built from git's plumbing rather than
- * a worktree — a scratch index seeded from S, the gitignored bundle
- * force-added into it, `write-tree` and `commit-tree` — so nothing in the
- * monorepo checkout moves and no ref is created. The bundle must be the
- * release build of this very source: its manifest's version and source
- * are checked first.
- */
-export function releaseCommit(repo, { version, source, split: splitCommit }) {
-    const packageDir = path.join(repo, PREFIX)
-    const manifest = JSON.parse(readFileSync(path.join(packageDir, DIST, MANIFEST), 'utf8'))
-
-    if (manifest.version !== version || manifest.source !== source) {
-        throw new Error(`${PREFIX}/${DIST}/${MANIFEST} is the bundle ${manifest.version} from ${manifest.source}, not ${version} from ${source}; build it with scripts/build-hosted-bundle.mjs --version=${version} at the source commit.`)
-    }
-
-    const date = git(repo, ['show', '--no-patch', '--format=%cI', source])
-    const scratch = mkdtempSync(path.join(tmpdir(), 'vector-release-index-'))
-    const index = { GIT_INDEX_FILE: path.join(scratch, 'index') }
-    const gitDir = git(repo, ['rev-parse', '--absolute-git-dir'])
-
-    try {
-        git(repo, ['read-tree', splitCommit], { env: index })
-        // The package directory as the work tree, so the paths land where
-        // they live in the split: resources/dist/..., not packages/vector/...
-        git(packageDir, [`--git-dir=${gitDir}`, '--work-tree=.', 'add', '--force', '--', DIST], { env: index })
-        const tree = git(repo, ['write-tree'], { env: index })
-
-        return sha(git(repo, ['commit-tree', tree, '-p', splitCommit, '-F', '-'], {
-            env: {
-                GIT_AUTHOR_NAME: RELEASE_IDENTITY.name,
-                GIT_AUTHOR_EMAIL: RELEASE_IDENTITY.email,
-                GIT_AUTHOR_DATE: date,
-                GIT_COMMITTER_NAME: RELEASE_IDENTITY.name,
-                GIT_COMMITTER_EMAIL: RELEASE_IDENTITY.email,
-                GIT_COMMITTER_DATE: date,
-            },
-            input: `Release v${version}\n\nkinetis/vector ${version} from kinetis-dev/vector-dev@${source},\nwith the hosted admin bundle in ${DIST}.\n`,
-        }), 'the release commit')
-    } finally {
-        rmSync(scratch, { recursive: true, force: true })
-    }
-}
-
 /** The askpass helper the push alone reads the credential through, or null without one. */
 function credential(mirror, token) {
     if (!mirror.startsWith('https://')) {
@@ -456,12 +389,58 @@ export function sourceProblem(repo, { source, version }) {
 }
 
 /**
- * Reads the mirror (unauthenticated: it is public), decides with
- * publicationPlan(), re-checks the source with sourceProblem(), and
- * pushes what is left in one atomic push — or, on a dry run, says what
- * it would push.
+ * The version of @kinetis/vector-ui kinetis/vector pins at the source
+ * commit (packages/vector/resources/ui.json).
  */
-export function publishMirror(repo, { version, source, split: splitCommit, release, mirror = MIRROR, dryRun = false, token, log = console.log }) {
+export function pinnedUiVersion(repo, source) {
+    const file = `${PREFIX}/${PIN_FILE}`
+    const json = showAt(repo, source, file)
+    let version
+
+    try {
+        version = json === null ? undefined : JSON.parse(json)?.version
+    } catch {
+        version = undefined
+    }
+
+    if (typeof version !== 'string' || parseVersion(version) === null) {
+        throw new Error(`${file} at ${source} names no exact ${NPM_PACKAGE} version.`)
+    }
+
+    return version
+}
+
+/**
+ * The `dist.integrity` npm publishes for @kinetis/vector-ui@version — what
+ * `vector:install-ui` checks the tarball against — or null when that
+ * version is not on npm (E404, or an empty answer). Any other failure is
+ * not an answer, and fails.
+ */
+export function pinIntegrity(version, view = npmView([`${NPM_PACKAGE}@${version}`, 'dist.integrity'])) {
+    const result = view()
+
+    if (result.status === 0) {
+        const integrity = result.stdout.trim()
+
+        return integrity === '' ? null : integrity
+    }
+
+    if (/\bE404\b/.test(result.stderr ?? '')) {
+        return null
+    }
+
+    throw new Error(`Could not ask npm for ${NPM_PACKAGE}@${version}'s dist.integrity: ${(result.stderr ?? '').trim() || `npm exited ${result.status}`}`)
+}
+
+/**
+ * Reads the mirror (unauthenticated: it is public), decides with
+ * publicationPlan(), re-checks the source with sourceProblem() and that
+ * the UI it pins is on npm with pinIntegrity(), and writes what is left
+ * in one atomic push — or, on a dry run, says what it would push.
+ * `integrityView` answers as `npm view <pin> dist.integrity` would;
+ * injectable for the tests.
+ */
+export function publishMirror(repo, { version, source, split: splitCommit, mirror = MIRROR, dryRun = false, token, log = console.log, integrityView }) {
     const tag = `v${version}`
     const remote = { main: remoteMain(repo, mirror), tag: remoteTagCommit(repo, mirror, tag) }
     const fetched = [remote.main, remote.tag].filter(commit => commit !== null)
@@ -473,18 +452,15 @@ export function publishMirror(repo, { version, source, split: splitCommit, relea
 
     const plan = publicationPlan({
         split: splitCommit,
-        release,
         remote,
         splitDescends: remote.main !== null && isAncestor(repo, remote.main, splitCommit),
         mainDescends: remote.main !== null && isAncestor(repo, splitCommit, remote.main),
-        tagTreeMatches: remote.tag !== null && git(repo, ['rev-parse', `${remote.tag}^{tree}`]) === git(repo, ['rev-parse', `${release}^{tree}`]),
-        tagSameRelease: remote.tag !== null && sameRelease(repo, remote.tag, splitCommit),
     })
     plan.notices.forEach(notice => log(notice))
 
     const refspecs = [
         ...(plan.main ? [`${splitCommit}:refs/heads/main`] : []),
-        ...(plan.tag ? [`${release}:refs/tags/${tag}`] : []),
+        ...(plan.tag ? [`${splitCommit}:refs/tags/${tag}`] : []),
     ]
 
     if (refspecs.length === 0) {
@@ -501,6 +477,19 @@ export function publishMirror(repo, { version, source, split: splitCommit, relea
         log(`${problem}; a real run would refuse to write the mirror.`)
     } else if (problem !== null) {
         throw new Error(`${problem}; refusing to write the mirror.`)
+    }
+
+    // Only once the UI this release pins can be installed. A rehearsal runs
+    // before anything is published, so it says so instead.
+    const pin = pinnedUiVersion(repo, source)
+    const integrity = pinIntegrity(pin, ...(integrityView === undefined ? [] : [integrityView]))
+
+    if (integrity === null && dryRun) {
+        log(`${NPM_PACKAGE}@${pin}, which ${PREFIX}/${PIN_FILE} pins, is not on npm; a real run would refuse to write the mirror.`)
+    } else if (integrity === null) {
+        throw new Error(`${NPM_PACKAGE}@${pin}, which ${PREFIX}/${PIN_FILE} pins, is not on npm; publish it first. Refusing to write the mirror.`)
+    } else {
+        log(`${NPM_PACKAGE}@${pin} is on npm (${integrity}).`)
     }
 
     const push = [
@@ -676,13 +665,6 @@ export function main(argv) {
         case 'split':
             output({ split: split(root, required(opts, 'source')) })
             break
-        case 'release-commit': {
-            const release = releaseCommit(root, { version: required(opts, 'version'), source: sha(required(opts, 'source'), '--source'), split: sha(required(opts, 'split'), '--split') })
-            const bundled = git(root, ['ls-tree', '-r', '--name-only', release, '--', DIST]).split('\n').filter(Boolean).length
-            console.log(`R carries ${bundled} files under ${DIST}.`)
-            output({ release })
-            break
-        }
         case 'npm-published': {
             const version = required(opts, 'version')
             const published = npmPublished(version)
@@ -695,14 +677,13 @@ export function main(argv) {
                 version: required(opts, 'version'),
                 source: sha(required(opts, 'source'), '--source'),
                 split: sha(required(opts, 'split'), '--split'),
-                release: sha(required(opts, 'release'), '--release'),
                 mirror: opts.mirror ?? MIRROR,
                 dryRun,
                 token,
             })
             break
         default:
-            throw new Error('Usage: release.mjs plan|notes|split|release-commit|npm-published|publish-mirror [--option=value ...]')
+            throw new Error('Usage: release.mjs plan|notes|split|npm-published|publish-mirror [--option=value ...]')
     }
 }
 

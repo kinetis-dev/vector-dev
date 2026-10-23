@@ -72,7 +72,7 @@ final readonly class ShellController
     {
         if ($this->ui->indexHtml === null) {
             return PlainTextResponse::create(
-                "The admin UI is not published: no index.html under {$this->ui->publishedDir}. Run `vendor/bin/kinetis vector:install` to publish it under public/vector/ui, or point VECTOR_UI_DIR at a published bundle.",
+                "The admin UI is not published: no index.html under {$this->ui->publishedDir}. Run `vendor/bin/kinetis vector:install-ui` to install it there, then restart workers.",
                 503,
                 ['Cache-Control' => 'no-store'],
             );

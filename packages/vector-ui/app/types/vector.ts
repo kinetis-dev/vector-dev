@@ -396,6 +396,8 @@ export interface VectorSchema {
     i18n?: VectorSchemaI18n
     /** ISO 4217 exponents of the currencies whose minor unit is not a hundredth */
     minorUnits?: Record<string, number>
+    /** The @kinetis/vector-ui release kinetis/vector pins; null when it pins none. */
+    ui: { expected: string | null }
 }
 
 export interface VectorMe {

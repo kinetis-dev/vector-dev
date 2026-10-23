@@ -11,11 +11,15 @@ use Kinetis\Console\CommandArguments;
 use Kinetis\Runtime\ProjectRoot;
 use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\Vector\Ui\HostedBundle;
+use Kinetis\Vector\Ui\UiInstaller;
+use Kinetis\Vector\Ui\UiPin;
 use Kinetis\Vector\Ui\VectorUi;
 
 /**
- * Publishes what Vector needs inside the application: its migrations and,
- * when built, the hosted UI bundle. No bootstrap: this touches files only.
+ * Publishes Vector's migrations into the application. No bootstrap: this
+ * touches files only. The hosted admin UI is `vector:install-ui`'s; this
+ * command only says when the served one is missing or is not the
+ * @kinetis/vector-ui release this kinetis/vector pins.
  *
  *     kinetis vector:install                     Vector's tables on the default connection
  *     kinetis vector:install --connection=admin  on the named connection "admin"
@@ -28,32 +32,14 @@ use Kinetis\Vector\Ui\VectorUi;
  * `mysql` or `pgsql`. Nothing is overwritten; run `kinetis migrate`
  * afterwards. A named connection also needs `VECTOR_DB_CONNECTION=<name>`
  * in the application's configuration, which this command prints.
- *
- * The hosted UI is published only when `resources/dist` matches its
- * manifest, `vector-bundle.json` (see HostedBundle): a bundle another
- * version or descriptor contract built, or one whose files changed after
- * the build, is refused with exit 1 before any migration is published,
- * and nothing is copied.
  */
 final readonly class InstallCommand
 {
+    /** The Composer package; the UI is the npm package UiPin::PACKAGE names. */
+    public const string COMPOSER_PACKAGE = 'kinetis/vector';
 
-    #[Command('vector:install', description: "Publishes Vector's migrations and hosted UI. --connection=<name> puts Vector's tables on a named connection.", bootstrap: false)]
+    #[Command('vector:install', description: "Publishes Vector's migrations. --connection=<name> puts Vector's tables on a named connection.", bootstrap: false)]
     public function install(CommandArguments $arguments): int
-    {
-        return $this->installFrom($arguments, dirname(__DIR__, 2) . '/resources/dist', self::release(self::installedVersion()));
-    }
-
-    /**
-     * The command, with the bundle directory and the installed release
-     * given rather than read from the package and from Composer.
-     *
-     * @internal public so tests can install a fixture bundle as a release
-     *           install would; install() is the command
-     *
-     * @param ?string $release the installed release, null for a dev install
-     */
-    public function installFrom(CommandArguments $arguments, string $dist, ?string $release): int
     {
         $root = ProjectRoot::detect(dirname(__DIR__));
         $config = Config::fromEnvironment();
@@ -77,16 +63,6 @@ final readonly class InstallCommand
             return 1;
         }
 
-        // The bundle is verified before anything is written, so a refused
-        // one leaves no partial install behind.
-        try {
-            $bundle = self::bundle($dist, $release);
-        } catch (\UnexpectedValueException $e) {
-            fwrite(STDERR, $e->getMessage() . "\n");
-
-            return 1;
-        }
-
         $migrations = $root . '/migrations';
         $target = $connection === 'default' ? $migrations : "{$migrations}/{$connection}";
 
@@ -105,8 +81,13 @@ final readonly class InstallCommand
         }
 
         $this->printNextSteps($migrations, $connection, $published, $config);
+        $drift = self::uiDrift(VectorUi::directory($config, $root), UiPin::tryFromFile(UiPin::path()), self::devInstall());
 
-        return $this->publishUi($dist, $root . '/public' . VectorUi::PATH, $bundle, $release);
+        if ($drift !== null) {
+            echo $drift . "\n";
+        }
+
+        return 0;
     }
 
     /**
@@ -122,23 +103,6 @@ final readonly class InstallCommand
                 : 'default',
             '--connection',
         );
-    }
-
-    /**
-     * The verified bundle in $dist, or null when it holds neither a shell
-     * nor a manifest.
-     *
-     * @param ?string $release the installed release, null for a dev install
-     *
-     * @throws \UnexpectedValueException when the bundle is refused
-     */
-    private static function bundle(string $dist, ?string $release): ?HostedBundle
-    {
-        if (!is_file($dist . '/index.html') && !is_file($dist . '/' . HostedBundle::MANIFEST)) {
-            return null;
-        }
-
-        return HostedBundle::verify($dist, $release);
     }
 
     /**
@@ -239,7 +203,7 @@ final readonly class InstallCommand
     private static function installedVersion(): ?string
     {
         try {
-            return InstalledVersions::getPrettyVersion(HostedBundle::PACKAGE);
+            return InstalledVersions::getPrettyVersion(self::COMPOSER_PACKAGE);
         } catch (\OutOfBoundsException) {
             return null;
         }
@@ -247,8 +211,7 @@ final readonly class InstallCommand
 
     /**
      * The release an installed version names, without its leading "v",
-     * or null for a dev install — a path repository or a branch — whose
-     * bundle is whatever the last local build left.
+     * or null for a dev install — a path repository or a branch.
      *
      * @internal public so tests can cover the mapping; install() is the command
      */
@@ -262,62 +225,43 @@ final readonly class InstallCommand
     }
 
     /**
-     * Copies the built admin bundle into the web root, replacing what an
-     * earlier install left there, so the shell always references files
-     * that exist. $bundle is the verified bundle in $dist, null when
-     * there is none; the manifest itself stays out of the web root.
-     *
-     * @param ?string $release the installed release, null for a dev install
+     * Whether kinetis/vector is a dev install — a path repository, a
+     * branch, or not installed through Composer — on which a dev build
+     * of the UI (`dev-<sha>`) is accepted in place of the pinned release.
      */
-    private function publishUi(string $dist, string $target, ?HostedBundle $bundle, ?string $release): int
+    public static function devInstall(): bool
     {
-        if ($bundle === null) {
-            echo "No hosted admin bundle in {$dist}: a source install of kinetis/vector has none; released packages ship it. The hosted admin stays unpublished unless VECTOR_UI_DIR points at a separately built bundle. Migrations and the API work without it.\n";
+        return self::release(self::installedVersion()) === null;
+    }
 
-            return 0;
+    /**
+     * The note to print when the UI served from $dir is not the pinned
+     * release, or null when it is (or nothing is pinned): none installed,
+     * one without a vector-bundle.json, or another version.
+     */
+    private static function uiDrift(string $dir, ?UiPin $pin, bool $devInstall): ?string
+    {
+        if ($pin === null) {
+            return null;
         }
 
-        if ($release === null) {
-            echo "Publishing a development build of the admin UI: version {$bundle->version}, built from {$bundle->source}.\n";
+        $remedy = "Run `vendor/bin/kinetis vector:install-ui` to install " . UiPin::PACKAGE . " {$pin->version}, then restart workers.";
+        $manifest = $dir . '/' . HostedBundle::MANIFEST;
+
+        if (!is_file($manifest)) {
+            return is_file($dir . '/index.html')
+                ? "Note: the admin UI in {$dir} has no " . HostedBundle::MANIFEST . ", so its version is unknown. {$remedy}"
+                : "Note: no admin UI is installed in {$dir}. {$remedy}";
         }
 
-        $files = 0;
-        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dist, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST);
+        $version = HostedBundle::read($manifest)?->version;
 
-        foreach ($iterator as $item) {
-            $relative = substr((string) $item->getPathname(), strlen($dist) + 1);
-
-            if ($relative === HostedBundle::MANIFEST) {
-                continue;
-            }
-
-            $destination = $target . '/' . $relative;
-
-            if ($item->isDir()) {
-                if (!is_dir($destination) && !mkdir($destination, 0755, true) && !is_dir($destination)) {
-                    fwrite(STDERR, "Could not create {$destination}.\n");
-
-                    return 1;
-                }
-
-                continue;
-            }
-
-            if (!is_dir(dirname($destination))) {
-                mkdir(dirname($destination), 0755, true);
-            }
-
-            if (!copy((string) $item->getPathname(), $destination)) {
-                fwrite(STDERR, "Could not copy {$relative}.\n");
-
-                return 1;
-            }
-
-            $files++;
+        if ($version === null) {
+            return "Note: the admin UI in {$dir} has a malformed " . HostedBundle::MANIFEST . ". {$remedy}";
         }
 
-        echo "Published the admin UI ({$files} files) to {$target}. Restart workers so they read the new shell.\n";
-
-        return 0;
+        return UiInstaller::accepts($version, $pin->version, $devInstall)
+            ? null
+            : "Note: the admin UI in {$dir} is " . UiPin::PACKAGE . " {$version}; this kinetis/vector expects {$pin->version}. {$remedy}";
     }
 }

@@ -13,6 +13,18 @@ does the job.
    `app.config`, and generating its own bundle; in hosted mode, point
    `VECTOR_UI_DIR` at it ({doc}`deployment`).
 
+## Keeping the layer at the pinned release
+
+Each `kinetis/vector` release pins the `@kinetis/vector-ui` release it
+expects, and publishes it in the descriptor as `ui.expected`. The layer
+bakes its own `package.json` version into the build
+(`runtimeConfig.public.vector.uiVersion`). When the two differ, the
+admin shows a banner naming both and the remedy: upgrade
+`@kinetis/vector-ui` to the pinned release and rebuild. It does not
+block the admin, and once dismissed it stays away for the browser
+session. A descriptor of another contract version is a hard stop, with
+the same remedy.
+
 ## Application config
 
 A Nuxt application extending `@kinetis/vector-ui` sets:

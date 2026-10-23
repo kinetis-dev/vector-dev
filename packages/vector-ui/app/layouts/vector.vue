@@ -209,6 +209,7 @@ const pageGroups = computed(() => {
         </v-app-bar>
 
         <v-main>
+            <VxVersionBanner />
             <v-alert v-if="impersonation.impersonator.value" type="warning" variant="tonal" density="compact" rounded="0" icon="mdi-account-switch-outline" class="px-6">
                 <i18n-t keypath="shell.impersonation.actingAs" tag="span" scope="global">
                     <template #name><strong>{{ auth.user?.name ?? t('shell.impersonation.anotherUser') }}</strong></template>

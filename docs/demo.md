@@ -48,7 +48,7 @@ may be up to 12 MB (`MAX_BODY_SIZE` and nginx's `client_max_body_size`).
 
 A PHP change applies on the next request on `:8080`, and the admin UI
 hot-reloads. `:8081` keeps the code each worker thread booted with, so
-restart it after editing PHP, and after `vector:install`:
+restart it after editing PHP, and after `vector:install-ui`:
 
 ```console
 docker compose restart frankenphp
@@ -185,20 +185,25 @@ extension in a worker image. Both images carry two:
 ## The hosted admin
 
 The hosted admin is the same UI served by the PHP application at
-`/vector/ui`, behind the session sign-in at `/login`. A released
-`kinetis/vector` ships its bundle. A checkout builds and publishes it
-once:
+`/vector/ui`, behind the session sign-in at `/login`. An application
+installs the published `@kinetis/vector-ui` release with
+`vector:install-ui`; the demo builds the bundle from this checkout and
+installs that build instead:
 
 ```console
 docker compose exec node pnpm generate:hosted
-docker compose exec app vendor/bin/kinetis vector:install
+docker compose exec app vendor/bin/kinetis vector:install-ui --from=/workspace/packages/vector-ui/dist/static
 docker compose restart app frankenphp
 ```
+
+`pnpm generate:hosted` builds into `packages/vector-ui/dist/static`,
+labelled with `packages/vector-ui/package.json`'s version, which is the
+one `kinetis/vector` pins. `vector:install-ui --check` then exits 0.
 
 Then open `http://localhost:8080/vector/ui`, or
 `http://localhost:8081/vector/ui` for the same admin under FrankenPHP.
 There the restart matters: a worker that booted before the bundle was
-published keeps answering a signed-in visitor `503` until it restarts.
+installed keeps answering a signed-in visitor `503` until it restarts.
 An anonymous visitor is redirected to the sign-in page either way. A
 sign-in form left open until its session expired comes back with a notice and the e-mail typed, not an
 error, and signs in from there.

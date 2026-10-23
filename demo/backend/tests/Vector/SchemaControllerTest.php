@@ -36,6 +36,19 @@ final class SchemaControllerTest extends VectorTestCase
         }
     }
 
+    /**
+     * The UI release this kinetis/vector pins, for the dashboard's drift
+     * banner: on the admin-only descriptor, so an editor still gets 403.
+     */
+    public function testTheDescriptorNamesTheUiReleaseThePackagePinsForAnAdminOnly(): void
+    {
+        $this->client->get('/vector/schema', headers: $this->adminHeaders())
+            ->assertOk()
+            ->assertJsonPath('ui.expected', \Kinetis\Vector\Ui\UiPin::fromFile(\Kinetis\Vector\Ui\UiPin::path())->version);
+
+        $this->client->get('/vector/schema', headers: $this->editorHeaders())->assertStatus(403);
+    }
+
     public function testThePublishedDescriptorValidatesAgainstItsJsonSchema(): void
     {
         $document = $this->client->get('/vector/schema', headers: $this->adminHeaders())->assertOk()->body();

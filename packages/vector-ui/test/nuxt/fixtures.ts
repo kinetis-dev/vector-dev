@@ -81,6 +81,7 @@ export function schema(resources: VectorResource[], overrides: Partial<VectorSch
         dashboards: [],
         capabilities: { impersonation: false, queue: false },
         branding: null,
+        ui: { expected: null },
         ...overrides,
     }
 }

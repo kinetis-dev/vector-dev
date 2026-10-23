@@ -10,7 +10,7 @@ seeded.
 ```text
 packages/vector/            kinetis/vector: registry, REST API, jobs, MCP tools, migration stubs
 packages/vector-ui/         @kinetis/vector-ui, the Nuxt layer; its Vitest suite in test/nuxt/
-  hosted/                   the hosted bundle's build entry: the layer alone
+  hosted/                   the hosted bundle's build entry: the layer alone, built into dist/static
 demo/docker-compose.yml     the stack: app, worker, nginx, frankenphp, mysql, postgres, redis, node; e2e and oha on demand
 demo/docker/                the PHP images (PHP-FPM and FrankenPHP) and their shared extension recipe, nginx, the Caddyfile, php.ini
 demo/bin/                   check-frankenphp and benchmark, for the FrankenPHP worker service
@@ -84,7 +84,7 @@ before PHPUnit:
 docker compose exec --user www-data app vendor/bin/kinetis demo:seed --fresh
 ```
 
-The end-to-end suite needs the hosted bundle published
+The end-to-end suite needs the hosted bundle installed
 ({doc}`demo`) and writes to the demo databases, so run it on its own,
 never beside PHPUnit. It signs in as its own admin, `e2e@vector.local`,
 and clears that account's saved preferences before each test, so it and
@@ -178,16 +178,20 @@ pull requests, each for the paths it covers:
   MySQL, PostgreSQL and Redis as services: `composer validate --strict`
   for both `composer.json` files, `composer audit`, the PHPUnit suite
   (both placements of Vector's tables, as above), PHPStan and both Psalm
-  runs; `pnpm lint`, `pnpm typecheck`, `pnpm test` and
-  `pnpm test:scripts`; and the strict build of this manual.
+  runs; `pnpm lint`, `pnpm typecheck`, `pnpm test`,
+  `pnpm test:scripts`, and `pnpm generate:hosted` followed by
+  `node scripts/check-vector-ui-pack.mjs --packed`, which fails unless
+  npm would pack `vector-bundle.json` and every file it lists; and the
+  strict build of this manual.
 - `monorepo-validate.yml` — `node scripts/validate-monorepo.mjs`: no
   `App\` reference under `packages/`.
 - `versions.yml` — `node scripts/validate-versions.mjs`: a pull request
   that changes files under `packages/vector` bumps `vector` in
   `packages.manifest.json` by one step, with `node scripts/bump.mjs`. One
   that changes files under `packages/vector-ui` bumps both `vector-ui`
-  and `vector`, since the hosted bundle built from the UI ships inside
-  `kinetis/vector`; see {doc}`releasing`.
+  and `vector`, since `kinetis/vector` pins the UI release
+  (`packages/vector/resources/ui.json`, which `bump.mjs vector-ui`
+  moves); see {doc}`releasing`.
 - `infection.yml` — `composer infection:workers`, then
   `composer infection:vector`, when Vector's Registry or Query or the
   mutation setup changes; the mutated files are split over three
