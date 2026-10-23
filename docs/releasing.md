@@ -133,13 +133,14 @@ Each push to `main` runs the release:
 |---|---|
 | Decide what this round publishes | Reads the manifest, `package.json`, both CHANGELOGs and the UI pin at the pushed commit and checks them again. Asks the mirror whether tag `v<version>` exists for `kinetis/vector`, and npm whether `@kinetis/vector-ui@<version>` exists. Puts each release's notes, its CHANGELOG section, on the run's summary page. |
 | Publish @kinetis/vector-ui | Only when `@kinetis/vector-ui`'s version is not on npm yet. Builds the hosted bundle into `packages/vector-ui/dist/static` with `scripts/build-hosted-bundle.mjs --version=X.Y.Z`, the package's version, then runs `npm publish --provenance --tag latest` from `packages/vector-ui`, in the `npm-release` environment. The package's `prepack` refuses a missing bundle or one built for another version. |
-| Split and push the mirror | Only when `kinetis/vector`'s version is not on the mirror yet, and only after the npm job succeeded or had nothing to do. Splits `packages/vector`, checks that npm publishes the `@kinetis/vector-ui` release the commit pins (its `dist.integrity`), and pushes the mirror's `main` and its `vX.Y.Z` tag. |
+| Split and push the mirror | Only when `kinetis/vector`'s version is not on the mirror yet, and only after the npm job succeeded or had nothing to do. Splits `packages/vector` and pushes the mirror's `main` and its `vX.Y.Z` tag. |
 
 A push that changes no version publishes nothing and succeeds. npm goes
 first, so a `kinetis/vector` tag never names a UI that cannot be
-installed: a failed npm publish holds the mirror back, and the mirror
-refuses to push while the pinned release is not on npm. A round with no
-UI release goes straight to the mirror.
+installed: a failed npm publish holds the mirror back. The mirror job
+does not ask npm for the pinned release again, because the registry can
+take minutes to serve a version it has accepted; a successful publish is
+enough. A round with no UI release goes straight to the mirror.
 
 The plan itself is all or nothing. Any refusal fails the whole round
 before anything is published, even when the other product would have
@@ -171,17 +172,15 @@ request can be rehearsed before it merges. The rehearsal:
 - makes the same plan, reading the mirror anonymously;
 - builds the bundle and runs `npm pack --dry-run` and `npm publish
   --dry-run`;
-- then splits the package, reads the mirror and npm, and says what it
-  would push.
+- then splits the package, reads the mirror, and says what it would
+  push.
 
 It writes nothing. Two refusals of a real run are reported instead of
 failing the rehearsal, so a branch can be rehearsed before it merges:
 
 - the commit is not on `origin/main`;
 - the mirror push's source check fails (`origin`'s `main` does not
-  contain the commit, or the manifest there states another version);
-- the UI release the commit pins is not on npm, as it is not when the
-  same round would publish it.
+  contain the commit, or the manifest there states another version).
 
 Every other refusal fails a rehearsal as it fails a real run: a missing
 predecessor, a `package.json` that disagrees with the manifest, a

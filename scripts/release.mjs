@@ -20,9 +20,11 @@
 // same S, and is the only tag a release makes. The hosted admin bundle is
 // not in the mirror at all: it ships inside @kinetis/vector-ui, and
 // kinetis/vector pins the release it expects in resources/ui.json, which
-// `vector:install-ui` installs. So the mirror is written only once that
-// pinned release is on npm (see pinIntegrity()): the workflow publishes
-// npm first, and a tag never names a UI no one can install.
+// `vector:install-ui` installs. So the workflow writes the mirror only
+// after the npm job published that pinned release or found it already
+// out. It does not ask npm again before the push: the registry can take
+// minutes to serve a version it accepted, and a successful publish is
+// enough to know it will.
 //
 // What makes a rerun safe, after tools/release-publish.php in kinetis:
 //
@@ -48,7 +50,7 @@ import { appendFileSync, chmodSync, mkdtempSync, readFileSync, rmSync, writeFile
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { MANIFEST_FILE, PIN_FILE, changelogHeading, checkConsistency, manifestAt } from './validate-versions.mjs'
+import { MANIFEST_FILE, changelogHeading, checkConsistency, manifestAt } from './validate-versions.mjs'
 import { highestVersion, parseVersion, transitionProblem } from './version-policy.mjs'
 
 export const MIRROR = 'https://github.com/kinetis-dev/vector.git'
@@ -389,58 +391,15 @@ export function sourceProblem(repo, { source, version }) {
 }
 
 /**
- * The version of @kinetis/vector-ui kinetis/vector pins at the source
- * commit (packages/vector/resources/ui.json).
- */
-export function pinnedUiVersion(repo, source) {
-    const file = `${PREFIX}/${PIN_FILE}`
-    const json = showAt(repo, source, file)
-    let version
-
-    try {
-        version = json === null ? undefined : JSON.parse(json)?.version
-    } catch {
-        version = undefined
-    }
-
-    if (typeof version !== 'string' || parseVersion(version) === null) {
-        throw new Error(`${file} at ${source} names no exact ${NPM_PACKAGE} version.`)
-    }
-
-    return version
-}
-
-/**
- * The `dist.integrity` npm publishes for @kinetis/vector-ui@version — what
- * `vector:install-ui` checks the tarball against — or null when that
- * version is not on npm (E404, or an empty answer). Any other failure is
- * not an answer, and fails.
- */
-export function pinIntegrity(version, view = npmView([`${NPM_PACKAGE}@${version}`, 'dist.integrity'])) {
-    const result = view()
-
-    if (result.status === 0) {
-        const integrity = result.stdout.trim()
-
-        return integrity === '' ? null : integrity
-    }
-
-    if (/\bE404\b/.test(result.stderr ?? '')) {
-        return null
-    }
-
-    throw new Error(`Could not ask npm for ${NPM_PACKAGE}@${version}'s dist.integrity: ${(result.stderr ?? '').trim() || `npm exited ${result.status}`}`)
-}
-
-/**
  * Reads the mirror (unauthenticated: it is public), decides with
- * publicationPlan(), re-checks the source with sourceProblem() and that
- * the UI it pins is on npm with pinIntegrity(), and writes what is left
- * in one atomic push — or, on a dry run, says what it would push.
- * `integrityView` answers as `npm view <pin> dist.integrity` would;
- * injectable for the tests.
+ * publicationPlan(), re-checks the source with sourceProblem(), and
+ * writes what is left in one atomic push — or, on a dry run, says what it
+ * would push. It does not ask npm for the UI the source pins: npm's
+ * registry can take minutes to serve a version it has accepted, and the
+ * workflow already runs this only after the npm publish succeeded or had
+ * nothing to publish.
  */
-export function publishMirror(repo, { version, source, split: splitCommit, mirror = MIRROR, dryRun = false, token, log = console.log, integrityView }) {
+export function publishMirror(repo, { version, source, split: splitCommit, mirror = MIRROR, dryRun = false, token, log = console.log }) {
     const tag = `v${version}`
     const remote = { main: remoteMain(repo, mirror), tag: remoteTagCommit(repo, mirror, tag) }
     const fetched = [remote.main, remote.tag].filter(commit => commit !== null)
@@ -477,19 +436,6 @@ export function publishMirror(repo, { version, source, split: splitCommit, mirro
         log(`${problem}; a real run would refuse to write the mirror.`)
     } else if (problem !== null) {
         throw new Error(`${problem}; refusing to write the mirror.`)
-    }
-
-    // Only once the UI this release pins can be installed. A rehearsal runs
-    // before anything is published, so it says so instead.
-    const pin = pinnedUiVersion(repo, source)
-    const integrity = pinIntegrity(pin, ...(integrityView === undefined ? [] : [integrityView]))
-
-    if (integrity === null && dryRun) {
-        log(`${NPM_PACKAGE}@${pin}, which ${PREFIX}/${PIN_FILE} pins, is not on npm; a real run would refuse to write the mirror.`)
-    } else if (integrity === null) {
-        throw new Error(`${NPM_PACKAGE}@${pin}, which ${PREFIX}/${PIN_FILE} pins, is not on npm; publish it first. Refusing to write the mirror.`)
-    } else {
-        log(`${NPM_PACKAGE}@${pin} is on npm (${integrity}).`)
     }
 
     const push = [
