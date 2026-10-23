@@ -66,11 +66,12 @@ test('the bundle is copied as real files, replacing what an earlier build left',
     }
 })
 
-test('a dev build is versioned by the short commit', () => {
-    assert.equal(resolveVersion(null, '0.9.0', source), 'dev-0123456789ab')
+test('a dev build (--dev) is versioned by the short commit', () => {
+    assert.equal(resolveVersion(null, '0.9.0', source, true), 'dev-0123456789ab')
 })
 
 test("a release version must be canonical X.Y.Z and @kinetis/vector-ui's package.json version", () => {
+    assert.equal(resolveVersion(null, '0.9.0', source), '0.9.0', "unnamed, it is package.json's")
     assert.equal(resolveVersion('0.9.0', '0.9.0', source), '0.9.0')
     assert.throws(() => resolveVersion('1.0.0-rc.1', '1.0.0-rc.1', source), /not a canonical X\.Y\.Z version/)
     assert.throws(() => resolveVersion('v0.9.0', 'v0.9.0', source), /not a canonical X\.Y\.Z version/)
@@ -78,9 +79,11 @@ test("a release version must be canonical X.Y.Z and @kinetis/vector-ui's package
     assert.throws(() => resolveVersion('0.9.1', '0.9.0', source), /differs from @kinetis\/vector-ui's version 0\.9\.0 in its package\.json/)
 })
 
-test('arguments: --version only', () => {
-    assert.deepEqual(parseArgs([]), { version: null })
-    assert.deepEqual(parseArgs(['--version=0.9.0']), { version: '0.9.0' })
+test('arguments: --version or --dev, not both', () => {
+    assert.deepEqual(parseArgs([]), { version: null, dev: false })
+    assert.deepEqual(parseArgs(['--version=0.9.0']), { version: '0.9.0', dev: false })
+    assert.deepEqual(parseArgs(['--dev']), { version: null, dev: true })
+    assert.throws(() => parseArgs(['--dev', '--version=0.9.0']), /takes no --version/)
     assert.throws(() => parseArgs(['--release']), /Unknown argument --release/)
 })
 

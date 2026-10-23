@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, test } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import { packProblem } from './check-vector-ui-pack.mjs'
+import { missingFromPack, packProblem, packedFiles } from './check-vector-ui-pack.mjs'
 
 let dir
 
@@ -55,4 +55,39 @@ test('the script exits non-zero when the check fails', () => {
 
     assert.equal(result.status, 1)
     assert.match(result.stderr, /build the hosted bundle/)
+})
+
+// What `npm pack --dry-run --json` prints, trimmed to what the check reads.
+const npmPack = paths => JSON.stringify([{ name: '@kinetis/vector-ui', files: paths.map(file => ({ path: file, size: 1, mode: 420 })) }])
+
+const bundle = { version: '0.11.0', files: { 'index.html': 'a', '_nuxt/entry.js': 'b', '_nuxt/.vite/manifest.json': 'c', '.well-known/x.txt': 'd' } }
+const whole = ['package.json', 'nuxt.config.ts', 'dist/static/vector-bundle.json', 'dist/static/index.html', 'dist/static/_nuxt/entry.js', 'dist/static/_nuxt/.vite/manifest.json', 'dist/static/.well-known/x.txt']
+
+test('the packed list holds the manifest and every file it lists', () => {
+    assert.deepEqual(packedFiles(npmPack(whole)), whole)
+    assert.deepEqual(missingFromPack(packedFiles(npmPack(whole)), bundle), [])
+})
+
+test('a dotfile npm would drop is caught', () => {
+    const packed = whole.filter(file => file !== 'dist/static/_nuxt/.vite/manifest.json' && file !== 'dist/static/.well-known/x.txt')
+    assert.deepEqual(missingFromPack(packed, bundle), ['dist/static/_nuxt/.vite/manifest.json', 'dist/static/.well-known/x.txt'])
+})
+
+test('a pack without the manifest itself, or any bundle file, is caught', () => {
+    assert.deepEqual(missingFromPack(whole.filter(file => file !== 'dist/static/vector-bundle.json'), bundle), ['dist/static/vector-bundle.json'])
+    assert.equal(missingFromPack(['package.json'], bundle).length, 5)
+    // a file elsewhere in the package does not stand in for the bundle's
+    assert.deepEqual(missingFromPack(['vector-bundle.json', ...whole.filter(file => file !== 'dist/static/vector-bundle.json')], bundle), ['dist/static/vector-bundle.json'])
+})
+
+test("npm pack's answer without a file list is refused", () => {
+    assert.throws(() => packedFiles('[{}]'), /without a file list/)
+})
+
+test('the script refuses an unknown argument', () => {
+    const script = fileURLToPath(new URL('./check-vector-ui-pack.mjs', import.meta.url))
+    const result = spawnSync(process.execPath, [script, '--pack'], { encoding: 'utf8' })
+
+    assert.equal(result.status, 2)
+    assert.match(result.stderr, /Usage/)
 })

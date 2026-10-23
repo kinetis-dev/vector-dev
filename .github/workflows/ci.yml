@@ -246,6 +246,14 @@ jobs:
       - name: Script tests
         run: pnpm test:scripts
 
+      - name: The hosted bundle is in the npm package
+        # Builds the bundle @kinetis/vector-ui ships, as a release does,
+        # and asks npm what it would pack: vector-bundle.json and every
+        # file it lists must be there, dotfiles included.
+        run: |
+          pnpm generate:hosted
+          node scripts/check-vector-ui-pack.mjs --packed
+
   docs:
     needs: changes
     if: needs.changes.outputs.docs == 'true'

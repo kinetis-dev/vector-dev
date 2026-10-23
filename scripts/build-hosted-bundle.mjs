@@ -6,12 +6,15 @@
 // directory, and `vector:install-ui` refuses a bundle that does not match
 // its manifest, so a stale build is never installed.
 //
-//     node scripts/build-hosted-bundle.mjs                  a dev build: version dev-<short sha>
-//     node scripts/build-hosted-bundle.mjs --version=0.9.0  a release build
+//     node scripts/build-hosted-bundle.mjs                  @kinetis/vector-ui's package.json version
+//     node scripts/build-hosted-bundle.mjs --version=0.9.0  the same, named: it must be that version
+//     node scripts/build-hosted-bundle.mjs --dev            a dev build: version dev-<short sha>
 //
-// A release version must be canonical X.Y.Z and equal @kinetis/vector-ui's
-// version in its package.json: the bundle ships inside that package, and
-// `vector:install-ui` installs it as that version.
+// The bundle is labelled with @kinetis/vector-ui's version in its
+// package.json: it ships inside that package, and `vector:install-ui`
+// installs it as that version. `pnpm generate:hosted` runs this script.
+// A dev build, which `vector:install-ui` accepts only on a dev install of
+// kinetis/vector, is never packed (scripts/check-vector-ui-pack.mjs).
 import { execFileSync, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
@@ -30,25 +33,36 @@ const output = path.join(root, 'packages/vector-ui/hosted/.output/public')
 const registry = path.join(root, 'packages/vector/src/Registry/VectorRegistry.php')
 const uiPackage = path.join(root, 'packages/vector-ui/package.json')
 
-/** The requested release version, or null for a dev build. */
+/** The version named, or null for package.json's; and whether this is a dev build. */
 export function parseArgs(argv) {
     let version = null
+    let dev = false
 
     for (const arg of argv) {
         if (arg.startsWith('--version=')) {
             version = arg.slice('--version='.length)
+        } else if (arg === '--dev') {
+            dev = true
         } else {
-            throw new Error(`Unknown argument ${arg}. Usage: build-hosted-bundle.mjs [--version=<x.y.z>]`)
+            throw new Error(`Unknown argument ${arg}. Usage: build-hosted-bundle.mjs [--version=<x.y.z> | --dev]`)
         }
     }
 
-    return { version }
+    if (dev && version !== null) {
+        throw new Error('--dev builds dev-<short sha>; it takes no --version.')
+    }
+
+    return { version, dev }
 }
 
-/** The manifest version: the release, checked, or dev-<12-hex short sha>. */
-export function resolveVersion(requested, packageVersion, source) {
-    if (requested === null) {
+/** The manifest version: package.json's, the one named and checked against it, or dev-<12-hex short sha>. */
+export function resolveVersion(requested, packageVersion, source, dev = false) {
+    if (dev) {
         return `dev-${source.slice(0, 12)}`
+    }
+
+    if (requested === null) {
+        return packageVersion
     }
 
     if (parseVersion(requested) === null) {
@@ -157,11 +171,11 @@ export async function headCommit(repo) {
 }
 
 async function main() {
-    const { version: requested } = parseArgs(process.argv.slice(2))
+    const { version: requested, dev } = parseArgs(process.argv.slice(2))
     const source = await headCommit(root)
 
     const packageVersion = JSON.parse(await readFile(uiPackage, 'utf8')).version
-    const version = resolveVersion(requested, packageVersion, source)
+    const version = resolveVersion(requested, packageVersion, source, dev)
     const descriptor = descriptorVersion(await readFile(registry, 'utf8'))
 
     const build = spawnSync('pnpm', ['--filter', '@kinetis/vector-ui', 'exec', 'nuxt', 'generate', 'hosted'], {
