@@ -1,0 +1,224 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Kinetis\Vector\Ui;
+
+/**
+ * Swaps a staged hosted bundle into the served directory while workers
+ * keep serving from it.
+ *
+ * The stage is verified whole first — HostedBundle::verify(), and exactly
+ * the files its manifest lists — so a refusal writes nothing into the
+ * target. Then every file is copied beside its destination and renamed
+ * over it, one atomic rename each: the assets first, then the previous
+ * generation's manifest (vector-bundle.previous.json), then index.html,
+ * then vector-bundle.json, so a shell never names an asset that is not
+ * there yet and the manifest never describes files that are not.
+ *
+ * A worker reads index.html once, at boot, so one that has not restarted
+ * still serves the shell it booted with, and the assets that shell names
+ * must outlive this install: they get one generation of grace. What is
+ * pruned is only what the previous manifest recorded and neither the
+ * outgoing nor the incoming one lists — files two generations old. A file
+ * no manifest recorded is never touched.
+ */
+final readonly class UiInstaller
+{
+    /**
+     * @param ?\Closure(string): void $placed told each relative path as its
+     *     rename lands, in order; for tests
+     */
+    public function __construct(private ?\Closure $placed = null) {}
+
+    /**
+     * Installs the bundle staged in $stage into $target.
+     *
+     * @param ?string $expectedVersion as HostedBundle::verify() takes it
+     *
+     * @throws \UnexpectedValueException when the stage is refused; nothing was written
+     * @throws \RuntimeException when the target cannot be written
+     */
+    public function install(string $stage, string $target, ?string $expectedVersion): HostedBundle
+    {
+        $bundle = HostedBundle::verify($stage, $expectedVersion);
+        $extra = array_values(array_diff(self::files($stage), [...array_keys($bundle->files), HostedBundle::MANIFEST]))[0] ?? null;
+
+        if ($extra !== null) {
+            throw new \UnexpectedValueException("The admin UI bundle holds {$extra}, which " . HostedBundle::MANIFEST . ' does not list.');
+        }
+
+        // Verified: from here on the target changes.
+        self::directory($target);
+        $current = HostedBundle::read("{$target}/" . HostedBundle::MANIFEST);
+        $currentBytes = $current === null ? null : file_get_contents("{$target}/" . HostedBundle::MANIFEST);
+        $previous = HostedBundle::read("{$target}/" . HostedBundle::PREVIOUS_MANIFEST);
+        $newBytes = (string) file_get_contents("{$stage}/" . HostedBundle::MANIFEST);
+
+        foreach (array_keys($bundle->files) as $path) {
+            if ($path !== 'index.html') {
+                $this->place("{$stage}/{$path}", $target, $path);
+            }
+        }
+
+        // a reinstall of the same build keeps the generation before it as the one to prune next
+        if (is_string($currentBytes) && $currentBytes !== $newBytes) {
+            $this->write($currentBytes, $target, HostedBundle::PREVIOUS_MANIFEST);
+        }
+
+        $this->place("{$stage}/index.html", $target, 'index.html');
+        $this->place("{$stage}/" . HostedBundle::MANIFEST, $target, HostedBundle::MANIFEST);
+
+        if ($previous !== null && $current !== null && $currentBytes !== $newBytes) {
+            self::prune($target, array_diff_key($previous->files, $current->files, $bundle->files));
+        }
+
+        return $bundle;
+    }
+
+    /**
+     * Whether a bundle of $version satisfies $expected: the same string,
+     * or a dev build (`dev-<sha>`) when kinetis/vector is itself a dev
+     * install. No semver: versions compare as plain strings.
+     */
+    public static function accepts(string $version, string $expected, bool $devInstall): bool
+    {
+        return $version === $expected || $devInstall && str_starts_with($version, 'dev-');
+    }
+
+    /**
+     * The version HostedBundle::verify() is to hold the bundle in $dir to:
+     * $expected, or none for a dev build accepted on a dev install.
+     */
+    public static function expectedFor(string $dir, string $expected, bool $devInstall): ?string
+    {
+        $version = HostedBundle::read($dir . '/' . HostedBundle::MANIFEST)?->version;
+
+        return $version !== null && $version !== $expected && self::accepts($version, $expected, $devInstall) ? null : $expected;
+    }
+
+    /**
+     * A new directory under the system's temporary one, 0700.
+     *
+     * @throws \RuntimeException when it cannot be made
+     */
+    public static function tempDir(string $purpose): string
+    {
+        $dir = sys_get_temp_dir() . "/vector-ui-{$purpose}-" . bin2hex(random_bytes(8));
+
+        if (!@mkdir($dir, 0700) || !chmod($dir, 0700)) {
+            throw new \RuntimeException("Could not create a private temporary directory under " . sys_get_temp_dir() . '.');
+        }
+
+        return $dir;
+    }
+
+    /** Removes $path and everything under it, following no link. */
+    public static function remove(string $path): void
+    {
+        if (is_dir($path) && !is_link($path)) {
+            foreach (scandir($path) ?: [] as $entry) {
+                if ($entry !== '.' && $entry !== '..') {
+                    self::remove("{$path}/{$entry}");
+                }
+            }
+
+            @rmdir($path);
+
+            return;
+        }
+
+        if (is_link($path) || file_exists($path)) {
+            @unlink($path);
+        }
+    }
+
+    /**
+     * Every file under $dir, relative and `/`-separated.
+     *
+     * @return list<string>
+     *
+     * @throws \UnexpectedValueException at a link or anything else that is neither file nor directory
+     */
+    public static function files(string $dir): array
+    {
+        $files = [];
+        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST);
+
+        foreach ($iterator as $item) {
+            $relative = str_replace(DIRECTORY_SEPARATOR, '/', substr((string) $item->getPathname(), strlen($dir) + 1));
+
+            if ($item->isLink() || !$item->isFile() && !$item->isDir()) {
+                throw new \UnexpectedValueException("The admin UI bundle holds {$relative}, which is neither a file nor a directory.");
+            }
+
+            if ($item->isFile()) {
+                $files[] = $relative;
+            }
+        }
+
+        return $files;
+    }
+
+    /** Copies $source beside $target/$path, then renames it over. */
+    private function place(string $source, string $target, string $path): void
+    {
+        $this->land($target, $path, static fn (string $temporary): bool => copy($source, $temporary));
+    }
+
+    /** Writes $contents beside $target/$path, then renames it over. */
+    private function write(string $contents, string $target, string $path): void
+    {
+        $this->land($target, $path, static fn (string $temporary): bool => file_put_contents($temporary, $contents) === strlen($contents));
+    }
+
+    /**
+     * @param \Closure(string): bool $fill writes the new contents into the temporary file it is given
+     */
+    private function land(string $target, string $path, \Closure $fill): void
+    {
+        $destination = "{$target}/{$path}";
+        self::directory(dirname($destination));
+        $temporary = dirname($destination) . '/.' . basename($path) . '.' . bin2hex(random_bytes(6)) . '.tmp';
+
+        if (!$fill($temporary) || !chmod($temporary, 0644) || !rename($temporary, $destination)) {
+            @unlink($temporary);
+
+            throw new \RuntimeException("Could not write {$destination}.");
+        }
+
+        if ($this->placed !== null) {
+            ($this->placed)($path);
+        }
+    }
+
+    /**
+     * Deletes the listed files under $target, and each directory that
+     * leaves empty.
+     *
+     * @param array<string, string> $files relative path => sha256
+     */
+    private static function prune(string $target, array $files): void
+    {
+        foreach (array_keys($files) as $path) {
+            $file = "{$target}/{$path}";
+
+            if (is_file($file) && !is_link($file)) {
+                @unlink($file);
+            }
+
+            for ($dir = dirname($path); $dir !== '.' && $dir !== ''; $dir = dirname($dir)) {
+                if (!@rmdir("{$target}/{$dir}")) {
+                    break;
+                }
+            }
+        }
+    }
+
+    private static function directory(string $dir): void
+    {
+        if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+            throw new \RuntimeException("Could not create {$dir}.");
+        }
+    }
+}

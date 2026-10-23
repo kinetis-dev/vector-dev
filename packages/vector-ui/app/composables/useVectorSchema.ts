@@ -31,7 +31,8 @@ export function useVectorSchema() {
             const answer = await api<VectorSchema>('/vector/schema')
 
             if (answer?.version !== DESCRIPTOR_VERSION) {
-                throw new Error(vt('shell.unsupportedDescriptor', { version: String(answer?.version), supported: DESCRIPTOR_VERSION }))
+                // a hard stop: the remedy is the drift banner's, for how this UI is deployed
+                throw new Error(vt('shell.unsupportedDescriptor', { version: String(answer?.version), supported: DESCRIPTOR_VERSION, remedy: vectorUiRemedy(answer?.ui?.expected ?? null) }))
             }
 
             if (request === latestLoad) {

@@ -137,6 +137,21 @@
                 "type": "integer",
                 "minimum": 0
             }
+        },
+        "ui": {
+            "description": "The @kinetis/vector-ui version this kinetis/vector pins in resources/ui.json, null when the pin is missing or malformed. The dashboard warns when it runs another.",
+            "type": "object",
+            "required": [
+                "expected"
+            ],
+            "properties": {
+                "expected": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            }
         }
     },
     "$defs": {

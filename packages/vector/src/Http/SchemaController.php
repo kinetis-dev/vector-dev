@@ -20,6 +20,7 @@ use Kinetis\Vector\Translation\Labels;
 use Kinetis\Vector\Translation\LocaleResolver;
 use Kinetis\Vector\Auth\ImpersonatedUserInterface;
 use Kinetis\Vector\Auth\ImpersonationInterface;
+use Kinetis\Vector\Ui\VectorUi;
 use Kinetis\Vector\Widgets\VectorDashboard;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -45,6 +46,7 @@ final readonly class SchemaController
         private LocaleResolver $locales,
         private Labels $labels,
         private VisibleResources $visible,
+        private VectorUi $ui,
     ) {}
 
     #[Get('/schema')]
@@ -104,6 +106,8 @@ final readonly class SchemaController
             'i18n' => $i18n = $this->locales->resolve((string) $this->user->id()),
             // a money value is in its currency's minor units: these codes are not hundredths
             'minorUnits' => \Kinetis\Vector\Fields\Currency::MINOR_UNITS,
+            // the @kinetis/vector-ui release this kinetis/vector pins: the dashboard warns when it runs another
+            'ui' => ['expected' => $this->ui->expectedUiVersion],
         ];
 
         return $this->cached($request, $this->labels->document($document, $i18n['locale']), $i18n['locale']);

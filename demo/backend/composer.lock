@@ -2183,10 +2183,12 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector",
-                "reference": "88ec79fe985639b78b27e7a7e3f8b517413d15a9"
+                "reference": "037915cbe7ce2e150611b87a93e8e83d2b4ddd04"
             },
             "require": {
                 "composer-runtime-api": "^2.0",
+                "ext-openssl": "*",
+                "ext-zlib": "*",
                 "kinetis/authorization": "^1.0.4",
                 "kinetis/database-bridge": "^1.4.0",
                 "kinetis/framework": "^1.22.0",
