@@ -11,6 +11,7 @@ and the UI.
 composer require kinetis/vector
 vendor/bin/kinetis vector:install
 vendor/bin/kinetis migrate
+vendor/bin/kinetis vector:install-ui    # the hosted UI, if you serve it
 ```
 
 `vector:install` publishes Vector's migrations — settings, preferences,
@@ -19,12 +20,17 @@ for MySQL or PostgreSQL, as your connection's `DB_CONNECTION` says
 (`mysql` or `pgsql`). There is one migration per table, each under its
 own timestamp: `vector_settings`, `vector_preferences`, `vector_views`,
 `vector_action_events`, `vector_audit`, `vector_jobs` and
-`vector_notifications`. It also copies the hosted UI bundle a released
-package ships into `public/vector/ui`; an install from source has none,
-and the command says so and still succeeds ({doc}`deployment`). It is
-idempotent. A later change to Vector's tables ships as a new migration
-with a later timestamp, so run it again after every upgrade, then
-`migrate`.
+`vector_notifications`. It is idempotent. A later change to Vector's
+tables ships as a new migration with a later timestamp, so run it again
+after every upgrade, then `migrate`.
+
+`vector:install-ui` installs the hosted admin UI into `public/vector/ui`:
+the `@kinetis/vector-ui` release this `kinetis/vector` pins, downloaded
+from the npm registry and checked against its published integrity.
+Restart the workers afterwards. After `composer update`, run it again;
+`vector:install` says when the served UI is not the pinned release.
+{doc}`deployment` covers its options, `--check` for CI, private
+registries and installs without network access.
 
 To keep Vector's tables on a database of their own, see
 {doc}`databases`.
@@ -107,7 +113,7 @@ class and field named.
 Pick one of the two deployment modes; {doc}`deployment` compares them.
 
 **Hosted.** Your application serves the UI at `/vector/ui` behind its
-own session login. With the bundle published by `vector:install`, set
+own session login. With the UI installed by `vector:install-ui`, set
 where your login page is and open `/vector/ui`:
 
 ```text
@@ -131,7 +137,9 @@ export default defineNuxtConfig({
 ```
 
 Your API must then allow the UI's origin through `CorsMiddleware`, and
-offer the `POST /auth/login` endpoint the sign-in page calls.
+offer the `POST /auth/login` endpoint the sign-in page calls. Keep
+`@kinetis/vector-ui` at the release your `kinetis/vector` pins: the
+admin shows a banner when they differ.
 
 ## Try the demo
 

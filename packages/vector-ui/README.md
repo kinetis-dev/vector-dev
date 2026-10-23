@@ -27,9 +27,14 @@ a Nuxt 4 layer on Vuetify 4 that renders the descriptor the API
 publishes — navigation, lists, forms, relation panels, actions,
 dashboards, jobs, settings — and contains no application knowledge. An
 application is a Nuxt app that extends the layer, served as a static
-site on its own origin with a bearer token (standalone), or published
+site on its own origin with a bearer token (standalone), or installed
 into the PHP application and served at `/vector/ui` behind its session
 (hosted).
+
+The package also ships that hosted build, in `dist/static` with its
+`vector-bundle.json` manifest: `kinetis vector:install-ui` downloads it
+from the registry and installs it, so a PHP deployment needs no Node.
+See [Deployment](https://kinetis.dev/vector/docs/deployment.html).
 
 ## Installation
 
@@ -49,7 +54,9 @@ export default defineNuxtConfig({
 any web server hosts. The API allows the UI's origin through
 `CorsMiddleware` and offers the `POST /auth/login` endpoint the sign-in
 page calls; see
-[Deployment](https://kinetis.dev/vector/docs/deployment.html).
+[Deployment](https://kinetis.dev/vector/docs/deployment.html). Keep this
+package at the release your `kinetis/vector` pins: the admin shows a
+banner naming both versions when they differ.
 
 ## Configuration
 

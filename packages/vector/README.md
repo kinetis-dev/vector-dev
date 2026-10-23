@@ -73,8 +73,9 @@ Installing this package auto-registers, via `extra.kinetis`:
   which asks the application's `VectorAccessInterface`, and
   `VectorShellAccessMiddleware`, which redirects a request without a
   user to `VECTOR_LOGIN_URL`.
-- **Commands** on `vendor/bin/kinetis`: `vector:install`, `vector:list`,
-  `vector:jobs:reap` and `vector:files:prune`.
+- **Commands** on `vendor/bin/kinetis`: `vector:install`,
+  `vector:install-ui`, `vector:list`, `vector:jobs:reap` and
+  `vector:files:prune`.
 - **MCP tools** `vector_resources`, `vector_describe`, `vector_query`,
   `vector_get`, `vector_create`, `vector_update`, `vector_delete`,
   `vector_run_action` and `vector_widget`, and the resource
@@ -113,12 +114,21 @@ Every key, and the UI's own settings:
 
 ```sh
 composer require kinetis/vector
-vendor/bin/kinetis vector:install    # Vector's migrations, and the hosted UI a released package ships
+vendor/bin/kinetis vector:install       # Vector's migrations
 vendor/bin/kinetis migrate
+vendor/bin/kinetis vector:install-ui    # the hosted admin UI, then restart the workers
 ```
 
-Requires PHP 8.4+ and [`kinetis/framework`](https://github.com/kinetis-dev/framework).
-Run `vector:install` again after every upgrade, then `migrate`. Full
+Requires PHP 8.4+ with `ext-zlib` and `ext-openssl`, and
+[`kinetis/framework`](https://github.com/kinetis-dev/framework).
+`vector:install-ui` downloads the `@kinetis/vector-ui` release this
+package pins (`resources/ui.json`) from the npm registry and checks it
+against the registry's sha512 integrity; `--from=<tgz>
+--integrity=sha512-…` installs without network access, and
+`VECTOR_UI_REGISTRY` / `VECTOR_UI_REGISTRY_TOKEN` name a private
+registry. After `composer update`, run `vector:install`, `migrate` and
+`vector:install-ui` again; `vector:install-ui --check` verifies the
+installed UI offline, for CI. Full
 documentation:
 [kinetis.dev/vector/docs](https://kinetis.dev/vector/docs/), starting with
 [Getting started](https://kinetis.dev/vector/docs/getting-started.html).

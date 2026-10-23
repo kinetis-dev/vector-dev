@@ -6,7 +6,7 @@ first-class; pick per deployment.
 | | Standalone | Hosted |
 |---|---|---|
 | Served by | Any static host, on its own origin | Your PHP application, at `/vector/ui` |
-| Built with | `nuxt generate` | `vector:install` publishes the bundle |
+| Built with | `nuxt generate` | `vector:install-ui` installs the bundle `@kinetis/vector-ui` ships |
 | Signs in with | A bearer token from `/auth/login` | Your application's session and login page |
 | Writes carry | `Authorization: Bearer …` | The session cookie and `X-CSRF-Token` |
 | Needs | CORS for the UI's origin | A login page, `VECTOR_LOGIN_URL` |
@@ -27,39 +27,94 @@ The API registers `CorsMiddleware` for the UI's origin; see
 
 ## Hosted
 
-The application serves the UI itself, behind its own session:
+The application serves the UI itself, behind its own session. The
+bundle ships inside the `@kinetis/vector-ui` npm package, and
+`kinetis/vector` pins the release it expects in `resources/ui.json`.
+Install it into the served directory, `VECTOR_UI_DIR` or
+`public/vector/ui`:
 
 ```console
-vendor/bin/kinetis vector:install
+vendor/bin/kinetis vector:install       # Vector's migrations
+vendor/bin/kinetis migrate
+vendor/bin/kinetis vector:install-ui    # the pinned @kinetis/vector-ui release
 ```
 
-publishes the bundle a released `kinetis/vector` package ships to
-`public/vector/ui`. Run it again after every upgrade. A worker reads
-`index.html` once, when it boots, so restart the workers after
-publishing. An install from source (a path
-repository or a branch) has no bundle; the command says so and exits
-successfully, since the migrations and the API need none, and the hosted
-admin is then served only when `VECTOR_UI_DIR` points at a separately
-built bundle.
+then restart the workers: a worker reads `index.html` once, when it
+boots. Neither command needs Node.
+
+### Upgrading
+
+```console
+composer update kinetis/vector
+vendor/bin/kinetis vector:install
+vendor/bin/kinetis migrate
+vendor/bin/kinetis vector:install-ui
+```
+
+and restart the workers. `vector:install` names a served UI that is
+missing, has no `vector-bundle.json`, or is not the pinned release.
+`vendor/bin/kinetis vector:install-ui --check` verifies the served
+directory against its manifest and the pin without the network: exit 0
+in sync, 1 otherwise. Run it in CI or a deploy's health step.
+
+### What `vector:install-ui` checks
+
+| Option | Installs |
+|---|---|
+| none | The pinned release, from the registry |
+| `--version=X.Y.Z` | Another published release |
+| `--from=<file.tgz> [--integrity=sha512-…]` | A packed tarball, checked against the integrity when given |
+| `--from=<dir>` | A built `dist/static` directory |
+| `--force` | The pinned release again, though it is installed and verifies |
+| `--check [--version=X.Y.Z]` | Nothing: verifies what is installed, offline |
+
+Exit codes are 0 (done, or in sync), 1 (refused or failed) and 2 (a
+usage error). When the pinned release is installed and verifies, the
+command says so and fetches nothing.
+
+From the registry the command reads the package's metadata and its
+tarball over HTTPS only, redirects included, and refuses a release the
+registry gives no sha512 `dist.integrity` for. The tarball is checked
+against that integrity before anything is extracted, and extraction
+takes regular files and directories under `package/dist/static/` only,
+within fixed size and entry limits.
 
 The bundle carries a manifest, `vector-bundle.json`: the package and
 version that built it, the source commit, the descriptor version it
-speaks and the SHA-256 of every file. `vector:install` checks the bundle
-against it before writing anything, and refuses it with exit 1, one line
-naming the cause and the remedy, and no migration or file written, when:
+speaks and the SHA-256 of every file. The bundle is staged in a private
+temporary directory and checked against it first; it is refused, with
+exit 1 and nothing written to the served directory, when:
 
 - the manifest is missing or malformed, or lists no `index.html`;
 - it was built for another package or descriptor version;
-- on a released package, it was built for another version;
-- a listed file is missing or changed, or a file is not listed;
-- `resources/dist` holds a manifest but no `index.html`: a damaged
-  bundle, refused rather than treated as absent.
+- it is not the expected release (a development build, `dev-<short
+  commit>`, is accepted only when `kinetis/vector` is itself a
+  development install);
+- a listed file is missing or changed, or a file is not listed.
 
-On a released package, reinstall `kinetis/vector` to restore the bundle
-it shipped. In a checkout of the Vector repository, `pnpm
-generate:hosted` builds the bundle into `packages/vector/resources/dist`
-with a development version, `dev-<short commit>`, which `vector:install`
-publishes and names; delete the directory to install without one.
+Then every file is renamed into place, `index.html` and
+`vector-bundle.json` last, and the files only the previous manifest
+listed are removed. Nothing is written through a directory that is a
+link or leads outside the served directory.
+
+### Private registries and air-gapped installs
+
+`VECTOR_UI_REGISTRY` names another npm registry (`https://` only;
+`https://registry.npmjs.org` by default), and
+`VECTOR_UI_REGISTRY_TOKEN` a bearer token for it. The token is sent only
+to the registry's own host, never to a tarball served from another, and
+never printed. `.npmrc` is not read.
+
+Without network access, fetch the tarball and its integrity where there
+is (`npm pack @kinetis/vector-ui@<version>` and `npm view
+@kinetis/vector-ui@<version> dist.integrity`), copy both across, and
+install from the file:
+
+```console
+vendor/bin/kinetis vector:install-ui --from=kinetis-vector-ui-0.11.0.tgz --integrity=sha512-…
+```
+
+The bundle must still be the pinned release (or `--version`'s).
 
 Vector's `ShellController` then answers `GET /vector/ui` and every deep
 link under it with the bundle's `index.html` plus one inline script,
@@ -67,7 +122,7 @@ link under it with the bundle's `index.html` plus one inline script,
 path, cookie mode, the login and logout URLs, the session's CSRF token,
 the response's script nonce, branding and extension URLs. An anonymous
 visitor is redirected to `VECTOR_LOGIN_URL`; until a bundle is
-published, the page answers `503`.
+installed, the page answers `503`.
 
 To host your own build of the UI ({doc}`customizing-the-ui`), generate
 it with `NUXT_APP_BASE_URL=/vector/ui/` and point `VECTOR_UI_DIR` at the
