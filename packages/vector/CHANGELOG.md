@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-23
+
+### Added
+
+- `kinetis vector:install-ui` installs the hosted admin UI into the
+  served directory, `VECTOR_UI_DIR` or `public/vector/ui`. By default it
+  downloads the `@kinetis/vector-ui` release this package pins in
+  `resources/ui.json` from the npm registry, over HTTPS, and checks the
+  tarball against the registry's sha512 `dist.integrity` before
+  extracting it. `--version=X.Y.Z` installs another published release;
+  `--from=<tgz|dir>` installs a packed tarball (checked against
+  `--integrity=sha512-…` when given) or a built `dist/static` directory;
+  `--force` reinstalls a release that is installed and verifies already;
+  `--check` verifies the served directory against its
+  `vector-bundle.json` and the expected release without the network.
+  Exit codes are 0 (done or in sync), 1 (refused or failed) and 2 (a
+  usage error). `VECTOR_UI_REGISTRY` names another registry, and
+  `VECTOR_UI_REGISTRY_TOKEN` a bearer token sent to that registry's host
+  only. A bundle is staged and verified whole before anything in the
+  served directory changes; `index.html` and `vector-bundle.json` are
+  written last, and only files the previous manifest listed are pruned.
+- `resources/ui.json` pins `@kinetis/vector-ui` 0.11.0, and
+  `/vector/schema` publishes it as `ui.expected`, so the dashboard can
+  say when it runs another release.
+
+### Changed
+
+- `kinetis vector:install` publishes the migrations only, then notes
+  when the served admin UI is missing, has no `vector-bundle.json`, or is
+  not the pinned release.
+- The hosted bundle is no longer part of this package: it ships inside
+  `@kinetis/vector-ui`, and `vector:install-ui` installs it.
+- Requires `ext-zlib` and `ext-openssl`.
+
 ## [0.12.2] - 2026-10-22
 
 ### Changed
