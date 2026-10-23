@@ -140,6 +140,17 @@ describe('an unsupported descriptor', () => {
         await expect(useVectorSchema().load()).rejects.toThrow('Install the @kinetis/vector-ui release this kinetis/vector expects and rebuild.')
     })
 
+    it('reads the mode before the request, not after it answers', async () => {
+        host()
+        cleanup = endpoint('/vector/schema', () => {
+            // the mode changing while the request is in flight changes nothing
+            delete window.__VECTOR__
+            return { body: other() }
+        }).unregister
+
+        await expect(useVectorSchema().load()).rejects.toThrow('Run vendor/bin/kinetis vector:install-ui on the server, then restart the workers.')
+    })
+
     it('stops a hosted app with the install-ui remedy', async () => {
         host()
         cleanup = endpoint('/vector/schema', { body: other() }).unregister

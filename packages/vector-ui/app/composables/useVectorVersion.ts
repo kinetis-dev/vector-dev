@@ -8,10 +8,12 @@ export const UI_PACKAGE = '@kinetis/vector-ui'
 /**
  * What to do about a UI that is not the one kinetis/vector expects, in
  * the words of how it is deployed: a hosted bundle (`window.__VECTOR__`
- * present) is reinstalled on the server, a layer is upgraded and rebuilt.
+ * present, `useVectorRuntime().hosted`) is reinstalled on the server, a
+ * layer is upgraded and rebuilt. The mode is passed in, read by the caller
+ * before any await, and nothing here needs the Nuxt app context.
  */
-export function vectorUiRemedy(expected: string | null): string {
-    if (useVectorRuntime().hosted) {
+export function vectorUiRemedy(expected: string | null, hosted: boolean): string {
+    if (hosted) {
         return vt('shell.version.hostedRemedy')
     }
 
@@ -36,7 +38,8 @@ export function useVectorVersion() {
 
     const mismatch = computed(() => expected.value !== null && expected.value !== current)
     const visible = computed(() => mismatch.value && dismissed.value !== pair.value)
-    const remedy = computed(() => vectorUiRemedy(expected.value))
+    const { hosted } = useVectorRuntime()
+    const remedy = computed(() => vectorUiRemedy(expected.value, hosted))
 
     function dismiss() {
         dismissed.value = pair.value
