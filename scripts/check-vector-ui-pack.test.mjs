@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, test } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import { missingFromPack, packProblem, packedFiles } from './check-vector-ui-pack.mjs'
+import { missingFromPack, packProblem, tarballFiles } from './check-vector-ui-pack.mjs'
 
 let dir
 
@@ -57,15 +57,18 @@ test('the script exits non-zero when the check fails', () => {
     assert.match(result.stderr, /build the hosted bundle/)
 })
 
-// What `npm pack --dry-run --json` prints, trimmed to what the check reads.
-const npmPack = paths => JSON.stringify([{ name: '@kinetis/vector-ui', files: paths.map(file => ({ path: file, size: 1, mode: 420 })) }])
+// What `tar -tzf` prints for an npm tarball: everything under package/.
+const tarList = paths => `${paths.map(file => `package/${file}`).join('\n')}\n`
 
 const bundle = { version: '0.11.0', files: { 'index.html': 'a', '_nuxt/entry.js': 'b', '_nuxt/.vite/manifest.json': 'c', '.well-known/x.txt': 'd' } }
 const whole = ['package.json', 'nuxt.config.ts', 'dist/static/vector-bundle.json', 'dist/static/index.html', 'dist/static/_nuxt/entry.js', 'dist/static/_nuxt/.vite/manifest.json', 'dist/static/.well-known/x.txt']
 
 test('the packed list holds the manifest and every file it lists', () => {
-    assert.deepEqual(packedFiles(npmPack(whole)), whole)
-    assert.deepEqual(missingFromPack(packedFiles(npmPack(whole)), bundle), [])
+    assert.deepEqual(tarballFiles(tarList(whole)), whole)
+    assert.deepEqual(missingFromPack(tarballFiles(tarList(whole)), bundle), [])
+    // a UUID-named build file, which npm's own output would redact, is listed as it is
+    const uuid = 'dist/static/_nuxt/builds/meta/54a820c8-b086-410d-ba62-bed88bdac31d.json'
+    assert.deepEqual(missingFromPack(tarballFiles(tarList([...whole, uuid])), { files: { ...bundle.files, '_nuxt/builds/meta/54a820c8-b086-410d-ba62-bed88bdac31d.json': 'e' } }), [])
 })
 
 test('a dotfile npm would drop is caught', () => {
@@ -80,8 +83,9 @@ test('a pack without the manifest itself, or any bundle file, is caught', () => 
     assert.deepEqual(missingFromPack(['vector-bundle.json', ...whole.filter(file => file !== 'dist/static/vector-bundle.json')], bundle), ['dist/static/vector-bundle.json'])
 })
 
-test("npm pack's answer without a file list is refused", () => {
-    assert.throws(() => packedFiles('[{}]'), /without a file list/)
+test('a tarball listing: directories left out, anything outside package/ refused', () => {
+    assert.deepEqual(tarballFiles('package/dist/\npackage/dist/static/index.html\n'), ['dist/static/index.html'])
+    assert.throws(() => tarballFiles('package/a\nother/b\n'), /holds other\/b, outside package\//)
 })
 
 test('the script refuses an unknown argument', () => {

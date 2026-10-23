@@ -6,12 +6,17 @@
 //     node scripts/check-vector-ui-pack.mjs --packed   CI: npm would pack every file of it
 //
 // The prepack check refuses to pack without a bundle, or with one built for
-// another version. --packed asks `npm pack --dry-run --json` what it would
-// pack and refuses unless that holds vector-bundle.json and every file it
-// lists — dotfiles included, which npm's own rules could drop. Build the
-// bundle first with `pnpm generate:hosted`.
+// another version. --packed packs the package with npm, as the release
+// publishes it, lists the tarball, and refuses unless it holds
+// vector-bundle.json and every file it lists — dotfiles included, which
+// npm's own rules could drop. The tarball is listed rather than npm's
+// `--json` report, because npm redacts anything shaped like a UUID in its
+// output, and Nuxt names a build file by one. Build the bundle first with
+// `pnpm generate:hosted`.
 import { spawnSync } from 'node:child_process'
-import { readFile, stat } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 /** Where the bundle sits in the package. */
@@ -40,15 +45,19 @@ export async function packProblem(dir, version) {
     return null
 }
 
-/** The paths `npm pack --dry-run --json` says it would pack. */
-export function packedFiles(json) {
-    const [pack] = JSON.parse(json)
+/**
+ * The files `tar -tzf` lists in an npm tarball, relative to the package:
+ * npm packs everything under `package/`. Directory entries are left out.
+ */
+export function tarballFiles(listing) {
+    const lines = listing.split('\n').filter(line => line !== '' && !line.endsWith('/'))
+    const outside = lines.find(line => !line.startsWith('package/'))
 
-    if (!Array.isArray(pack?.files)) {
-        throw new Error('npm pack --json answered without a file list.')
+    if (outside !== undefined) {
+        throw new Error(`The tarball holds ${outside}, outside package/.`)
     }
 
-    return pack.files.map(file => file.path)
+    return lines.map(line => line.slice('package/'.length))
 }
 
 /**
@@ -70,15 +79,31 @@ async function checkPacked() {
         return [problem]
     }
 
-    // The scripts are this check's own prepack and nuxt's prepare; neither changes what is packed.
-    const result = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], { cwd: packageDir, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+    const scratch = await mkdtemp(path.join(tmpdir(), 'vector-ui-pack-'))
+    let packed
 
-    if (result.status !== 0) {
-        return [`npm pack --dry-run failed: ${result.stderr.trim()}`]
+    try {
+        // The scripts are this check's own prepack, run above, and nuxt's prepare; neither changes what is packed.
+        const pack = spawnSync('npm', ['pack', '--ignore-scripts', '--pack-destination', scratch], { cwd: packageDir, encoding: 'utf8' })
+
+        if (pack.status !== 0) {
+            return [`npm pack failed: ${pack.stderr.trim()}`]
+        }
+
+        const [tarball] = (await readdir(scratch)).filter(file => file.endsWith('.tgz'))
+        const list = spawnSync('tar', ['-tzf', path.join(scratch, tarball)], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+
+        if (list.status !== 0) {
+            return [`Could not list ${tarball}: ${list.stderr.trim()}`]
+        }
+
+        packed = tarballFiles(list.stdout)
+    } finally {
+        await rm(scratch, { recursive: true, force: true })
     }
 
     const manifest = JSON.parse(await readFile(`${packageDir}/${BUNDLE_DIR}/vector-bundle.json`, 'utf8'))
-    const missing = missingFromPack(packedFiles(result.stdout), manifest)
+    const missing = missingFromPack(packed, manifest)
 
     if (missing.length > 0) {
         return missing.map(file => `${file} is in the bundle but npm would not pack it.`)

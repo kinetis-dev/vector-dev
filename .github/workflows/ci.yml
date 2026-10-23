@@ -248,8 +248,9 @@ jobs:
 
       - name: The hosted bundle is in the npm package
         # Builds the bundle @kinetis/vector-ui ships, as a release does,
-        # and asks npm what it would pack: vector-bundle.json and every
-        # file it lists must be there, dotfiles included.
+        # packs the package with npm and lists the tarball:
+        # vector-bundle.json and every file it lists must be in it,
+        # dotfiles included.
         run: |
           pnpm generate:hosted
           node scripts/check-vector-ui-pack.mjs --packed
