@@ -6,15 +6,18 @@ name: Release
 # (@kinetis/vector-ui). The two version independently, each bumped in its
 # own pull request with scripts/bump.mjs and held to the policy by
 # versions.yml; a push that publishes nothing is a successful no-op. This
-# repository itself gets no tags. docs/releasing.md is the maintainer's
+# repository itself gets no tags. npm goes first: kinetis/vector pins the
+# @kinetis/vector-ui release it expects (packages/vector/resources/ui.json),
+# whose package carries the hosted admin bundle, and the mirror is written
+# only once that release is on npm. docs/releasing.md is the maintainer's
 # side of it; scripts/release.mjs holds every rule this workflow applies,
 # tested by pnpm test:scripts.
 on:
   push:
     branches: [main]
   # A rehearsal: dispatch it with dry_run on (the default) to run every
-  # check, the split, the bundle and the release commit, and see what the
-  # mirror and npm would receive, writing nothing. It can run from any
+  # check, the bundle build and the split, and see what npm and the mirror
+  # would receive, writing nothing. It can run from any
   # branch — a pull request's, before it merges — and reports, rather than
   # fails on, a commit not on main yet; every other refusal fails it as it
   # would a real run. A dispatch that publishes must run from main.
@@ -90,77 +93,6 @@ jobs:
           node scripts/release.mjs plan --source="$GITHUB_SHA" --ref="$GITHUB_REF" --dry-run="$DRY_RUN"
           echo "dry_run=${DRY_RUN}" >> "$GITHUB_OUTPUT"
 
-  mirror:
-    name: Split, bundle and push the mirror
-    needs: plan
-    if: needs.plan.outputs.vector_publish == 'true'
-    runs-on: ubuntu-latest
-    outputs:
-      split: ${{ steps.split.outputs.split }}
-      release: ${{ steps.commit.outputs.release }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.plan.outputs.source }}
-          # git subtree split walks the whole history of packages/vector.
-          fetch-depth: 0
-          # The default persists GITHUB_TOKEN as a credential for every
-          # https://github.com/ URL, which would authenticate the mirror
-          # push as github-actions[bot], ahead of the askpass helper
-          # scripts/release.mjs gives the push alone.
-          persist-credentials: false
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-
-      - name: Install the workspace
-        # pnpm at the version package.json's packageManager names, through
-        # Node's own corepack rather than another action.
-        run: |
-          corepack enable
-          pnpm install --frozen-lockfile
-
-      - name: Split packages/vector (S, the mirror's main)
-        id: split
-        env:
-          SOURCE: ${{ needs.plan.outputs.source }}
-        run: node scripts/release.mjs split --source="$SOURCE"
-
-      - name: Build the hosted admin bundle
-        # Labelled with kinetis/vector's version, which vector:install
-        # checks it against on a released install.
-        env:
-          VERSION: ${{ needs.plan.outputs.vector_version }}
-        run: node scripts/build-hosted-bundle.mjs --version="$VERSION"
-
-      - name: Make the release commit (R, S plus resources/dist, the tag's target)
-        id: commit
-        env:
-          VERSION: ${{ needs.plan.outputs.vector_version }}
-          SOURCE: ${{ needs.plan.outputs.source }}
-          SPLIT: ${{ steps.split.outputs.split }}
-        # From git's plumbing (a scratch index, write-tree, commit-tree),
-        # not a worktree: nothing in this checkout moves and no ref is
-        # made. R is deterministic for given bundle bytes; the Nuxt build
-        # is not, which publishMirror() accounts for on a rerun.
-        run: node scripts/release.mjs release-commit --version="$VERSION" --source="$SOURCE" --split="$SPLIT"
-
-      - name: Push the mirror's main and tag
-        # The only step that writes with the deploy credential. On a dry
-        # run it reads the mirror and says what it would push, without
-        # the credential.
-        env:
-          VERSION: ${{ needs.plan.outputs.vector_version }}
-          SOURCE: ${{ needs.plan.outputs.source }}
-          SPLIT: ${{ steps.split.outputs.split }}
-          RELEASE: ${{ steps.commit.outputs.release }}
-          DRY_RUN: ${{ needs.plan.outputs.dry_run }}
-          RELEASE_DEPLOY_TOKEN: ${{ needs.plan.outputs.dry_run != 'true' && secrets.RELEASE_DEPLOY_TOKEN || '' }}
-        run: >-
-          node scripts/release.mjs publish-mirror --version="$VERSION" --source="$SOURCE"
-          --split="$SPLIT" --release="$RELEASE" --dry-run="$DRY_RUN"
-
   npm-dry-run:
     name: Rehearse the npm publish
     needs: plan
@@ -181,6 +113,13 @@ jobs:
           npm install --global npm@^11.5.1
           corepack enable
           pnpm install --frozen-lockfile
+
+      - name: Build the hosted admin bundle
+        # Into packages/vector-ui/dist/static, labelled with the version
+        # being published: the package's prepack refuses any other.
+        env:
+          VERSION: ${{ needs.plan.outputs.ui_version }}
+        run: node scripts/build-hosted-bundle.mjs --version="$VERSION"
 
       - name: What would be published
         working-directory: packages/vector-ui
@@ -237,6 +176,14 @@ jobs:
           VERSION: ${{ needs.plan.outputs.ui_version }}
         run: echo "::notice::@kinetis/vector-ui@${VERSION} is already on npm; nothing to publish."
 
+      - name: Build the hosted admin bundle
+        if: steps.npm.outputs.published != 'true'
+        # Into packages/vector-ui/dist/static, labelled with the version
+        # being published: the package's prepack refuses any other.
+        env:
+          VERSION: ${{ needs.plan.outputs.ui_version }}
+        run: node scripts/build-hosted-bundle.mjs --version="$VERSION"
+
       - name: Publish
         if: steps.npm.outputs.published != 'true'
         working-directory: packages/vector-ui
@@ -246,3 +193,56 @@ jobs:
         # exists. Every release is `latest`: versions are plain X.Y.Z,
         # with no prereleases to keep off it.
         run: npm publish --tag latest --provenance --access public
+
+  mirror:
+    name: Split and push the mirror
+    # After npm, so the @kinetis/vector-ui release kinetis/vector pins is
+    # installable before a tag names it; publish-mirror checks that it is.
+    # A round with no UI release skips both npm jobs, and a skipped job
+    # does not hold the mirror back; a failed one does.
+    needs: [plan, npm-dry-run, npm-publish]
+    if: >-
+      always()
+      && needs.plan.result == 'success'
+      && needs.plan.outputs.vector_publish == 'true'
+      && (needs.npm-dry-run.result == 'success' || needs.npm-dry-run.result == 'skipped')
+      && (needs.npm-publish.result == 'success' || needs.npm-publish.result == 'skipped')
+    runs-on: ubuntu-latest
+    outputs:
+      split: ${{ steps.split.outputs.split }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.plan.outputs.source }}
+          # git subtree split walks the whole history of packages/vector.
+          fetch-depth: 0
+          # The default persists GITHUB_TOKEN as a credential for every
+          # https://github.com/ URL, which would authenticate the mirror
+          # push as github-actions[bot], ahead of the askpass helper
+          # scripts/release.mjs gives the push alone.
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Split packages/vector (S, the mirror's main and the tag's target)
+        id: split
+        env:
+          SOURCE: ${{ needs.plan.outputs.source }}
+        run: node scripts/release.mjs split --source="$SOURCE"
+
+      - name: Push the mirror's main and tag
+        # The only step that writes with the deploy credential, and only
+        # once npm has the UI release the source pins. On a dry run it
+        # reads the mirror and npm and says what it would push, without
+        # the credential.
+        env:
+          VERSION: ${{ needs.plan.outputs.vector_version }}
+          SOURCE: ${{ needs.plan.outputs.source }}
+          SPLIT: ${{ steps.split.outputs.split }}
+          DRY_RUN: ${{ needs.plan.outputs.dry_run }}
+          RELEASE_DEPLOY_TOKEN: ${{ needs.plan.outputs.dry_run != 'true' && secrets.RELEASE_DEPLOY_TOKEN || '' }}
+        run: >-
+          node scripts/release.mjs publish-mirror --version="$VERSION" --source="$SOURCE"
+          --split="$SPLIT" --dry-run="$DRY_RUN"
