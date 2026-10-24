@@ -2,7 +2,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 #
 # The same build as the Kinetis documentation (kinetis/docs): MyST
-# Markdown, the Furo theme, and the Kinetis palette.
+# Markdown and the shared kinetis-website-theme.
 
 import os
 
@@ -18,6 +18,7 @@ extensions = [
     "sphinx_design",
     "sphinxext.opengraph",
     "sphinx_sitemap",
+    "sphinx.ext.intersphinx",
 ]
 
 myst_enable_extensions = [
@@ -37,8 +38,7 @@ source_suffix = {
     ".md": "markdown",
 }
 
-templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "baseline", "tools", "Thumbs.db", ".DS_Store"]
 
 
 def setup(app):
@@ -52,17 +52,14 @@ def setup(app):
 
 # -- HTML output -------------------------------------------------------------
 
-html_theme = "furo"
+html_theme = "kinetis_website_theme"
 html_static_path = ["_static"]
-# Copied verbatim to the site root: 404.html, robots.txt and llms.txt,
-# the plain-text index AI coding tools look for (https://llmstxt.org).
+# Copied verbatim to the build root, so served under /vector/docs/:
+# llms.txt, the plain-text index AI coding tools look for
+# (https://llmstxt.org), at /vector/docs/llms.txt.
 html_extra_path = ["_extra"]
-html_css_files = ["custom.css"]
-# Vector is part of Kinetis and carries its logo, as the repository does.
-html_logo = "_static/logo.svg"
-# Unset on purpose, as in the Kinetis build: the favicon is
-# kinetis-website's own /assets/favicon.svg, emitted by
-# _templates/page.html's `extrahead` block.
+# No html_logo or html_favicon: the theme supplies the navbar logo and
+# the links to kinetis-website's own /assets/favicon.* files.
 html_title = "Kinetis Vector"
 
 # The deployed URL, used for sitemap.xml, canonical links and Open Graph
@@ -77,22 +74,16 @@ ogp_site_name = "Kinetis Vector"
 ogp_image = "_static/og-image.png"
 
 # -- Sitemap ------------------------------------------------------------------
-# Written to sitemap.xml at the build root; robots.txt points at it.
+# Written to sitemap.xml at the build root.
 sitemap_url_scheme = "{link}"
 
-html_theme_options = {
-    # The logo's secondary-title amber, in both modes, as in Kinetis.
-    "light_css_variables": {
-        "color-brand-primary": "#D97706",
-        "color-brand-content": "#D97706",
-        "color-brand-visited": "#D97706",
-    },
-    "dark_css_variables": {
-        "color-brand-primary": "#D97706",
-        "color-brand-content": "#D97706",
-        "color-brand-visited": "#D97706",
-    },
-}
+# -- Intersphinx --------------------------------------------------------------
+# Links into the Kinetis documentation resolve against its live inventory,
+# so a page or label Kinetis removes fails this build under -W. With every
+# reftype disabled, only explicit inv:kinetis:... links resolve there; a
+# plain {doc} or {ref} stays local.
+intersphinx_mapping = {"kinetis": ("https://kinetis.dev/docs/", None)}
+intersphinx_disabled_reftypes = ["*"]
 
 # -- LaTeX / PDF output ------------------------------------------------------
 # `make latexpdf`. The HTML build is the one built and checked; PDF output

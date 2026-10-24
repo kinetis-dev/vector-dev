@@ -1,0 +1,306 @@
+{
+ "actions.html": [
+  "actions",
+  "how-it-runs",
+  "responses",
+  "see-also",
+  "shaping-the-action"
+ ],
+ "audit.html": [
+  "audit-trail-and-impersonation",
+  "impersonation",
+  "revert",
+  "see-also",
+  "the-audit-trail"
+ ],
+ "authentication.html": [
+  "authentication",
+  "background-jobs",
+  "hosted-the-session-cookie",
+  "how-long-a-session-lasts",
+  "one-api-both-modes",
+  "protecting-the-sign-in",
+  "see-also",
+  "standalone-bearer-tokens",
+  "the-mcp-middleware-group",
+  "the-vector-middleware-group",
+  "the-vector-shell-middleware-group"
+ ],
+ "authorization.html": [
+  "authorization",
+  "everyone-s-default-view",
+  "field-visibility",
+  "listing-and-reaching",
+  "membership",
+  "per-record-permissions",
+  "policies",
+  "row-scope",
+  "see-also"
+ ],
+ "coding-agents.html": [
+  "ai-coding-agents",
+  "client-differences",
+  "diagnostics",
+  "getting-a-session-ready",
+  "see-also",
+  "trust-and-approval",
+  "what-is-checked-in",
+  "without-mcp"
+ ],
+ "configuration.html": [
+  "configuration",
+  "environment-keys",
+  "see-also",
+  "ui-settings"
+ ],
+ "contributing.html": [
+  "continuous-integration",
+  "layout",
+  "mutation-testing",
+  "see-also",
+  "static-analysis-and-builds",
+  "tests",
+  "working-on-vector"
+ ],
+ "core-concepts.html": [
+  "core-concepts",
+  "one-ui-no-application-knowledge",
+  "request-scope",
+  "see-also",
+  "the-api-is-the-authority",
+  "the-descriptor",
+  "the-same-services-for-agents",
+  "where-things-run"
+ ],
+ "customizing-the-ui.html": [
+  "application-config",
+  "cells-inputs-and-widget-renderers",
+  "custom-pages",
+  "customizing-the-ui",
+  "forms-in-your-own-pages",
+  "keeping-the-layer-at-the-pinned-release",
+  "rich-text-extensions",
+  "runtime-extensions",
+  "safety",
+  "see-also",
+  "theming"
+ ],
+ "dashboards.html": [
+  "dashboards",
+  "dashboards-and-widgets",
+  "resource-widgets",
+  "see-also",
+  "shaping-a-widget",
+  "widget-types"
+ ],
+ "databases.html": [
+  "databases",
+  "dialect-notes",
+  "entities-on-several-connections",
+  "full-text-indexes",
+  "see-also",
+  "vector-s-own-tables"
+ ],
+ "demo.html": [
+  "frankenphp-worker-mode",
+  "run-it",
+  "see-also",
+  "seed-data",
+  "the-demo-application",
+  "the-event-loop-ext-uv-and-ext-event",
+  "the-hosted-admin",
+  "threads-and-database-connections",
+  "what-runs",
+  "where-to-look"
+ ],
+ "deployment.html": [
+  "content-security-policy",
+  "deployment",
+  "hosted",
+  "known-limits",
+  "private-registries-and-air-gapped-installs",
+  "production",
+  "security-checklist",
+  "see-also",
+  "standalone",
+  "upgrading",
+  "what-vector-install-ui-checks"
+ ],
+ "fields.html": [
+  "catalog",
+  "common-modifiers",
+  "computed-fields",
+  "duplicating",
+  "fields",
+  "filter-operators",
+  "html-storage",
+  "in-the-browser",
+  "markdown",
+  "money-and-currencies",
+  "on-your-own-pages",
+  "passwords",
+  "relations",
+  "rich-text",
+  "see-also"
+ ],
+ "files.html": [
+  "cleaning-up-unused-files",
+  "files-and-images",
+  "good-to-know",
+  "see-also",
+  "serving",
+  "uploading"
+ ],
+ "forms.html": [
+  "conditions",
+  "dependent-choices",
+  "forms",
+  "inline-editing",
+  "layout",
+  "optimistic-locking",
+  "relation-choices",
+  "repeaters",
+  "see-also"
+ ],
+ "genindex.html": [
+  "index"
+ ],
+ "getting-started.html": [
+  "declare-a-resource",
+  "getting-started",
+  "install",
+  "open-the-admin",
+  "see-also",
+  "try-the-demo",
+  "wire-authentication"
+ ],
+ "index.html": [
+  "kinetis-vector",
+  "start-here",
+  "two-ways-to-serve-the-admin",
+  "what-you-get"
+ ],
+ "jobs.html": [
+  "background-jobs",
+  "delivery",
+  "excel-exports",
+  "imports",
+  "requirements",
+  "see-also",
+  "stalled-jobs",
+  "where-the-jobs-go"
+ ],
+ "languages.html": [
+  "changing-the-ui-s-messages",
+  "in-the-ui",
+  "languages",
+  "see-also",
+  "switching-language",
+  "translating-your-labels",
+  "which-languages-are-offered"
+ ],
+ "limits.html": [
+  "bounds",
+  "guarantees",
+  "known-limits",
+  "limits-and-guarantees"
+ ],
+ "lists.html": [
+  "columns",
+  "edit-in-place",
+  "export-and-import",
+  "filters",
+  "group-and-summarize",
+  "lists",
+  "paging",
+  "saved-views",
+  "search-sort-and-page",
+  "see-also",
+  "select-and-act"
+ ],
+ "mcp.html": [
+  "mcp-tools",
+  "see-also",
+  "serving-them",
+  "when-post-mcp-answers-401"
+ ],
+ "records.html": [
+  "actions",
+  "creating-and-editing",
+  "deleting-and-the-trash",
+  "duplicating",
+  "history",
+  "records",
+  "related-records",
+  "saving",
+  "see-also",
+  "the-record-page"
+ ],
+ "releasing.html": [
+  "bumping-in-the-pull-request",
+  "one-time-setup",
+  "recovery",
+  "rehearsing",
+  "releasing",
+  "releasing-on-merge",
+  "see-also",
+  "the-mirror-s-history",
+  "the-versions-check",
+  "versions"
+ ],
+ "resources.html": [
+  "badges",
+  "checked-at-build",
+  "definition-methods",
+  "derived-or-declared-fields",
+  "global-search",
+  "listing-what-compiled",
+  "request-time-hooks",
+  "resources",
+  "search",
+  "see-also",
+  "several-resources-over-one-entity"
+ ],
+ "rest-api.html": [
+  "duplicate",
+  "envelopes",
+  "errors",
+  "export",
+  "import",
+  "language",
+  "layout",
+  "openapi-document",
+  "relation-options",
+  "rest-api",
+  "routes",
+  "see-also",
+  "statement-bounds",
+  "the-list-grammar",
+  "values-on-the-wire"
+ ],
+ "search.html": [
+  "search-results"
+ ],
+ "settings.html": [
+  "built-in-groups",
+  "see-also",
+  "settings"
+ ],
+ "testing.html": [
+  "see-also",
+  "testing-your-admin",
+  "waiting-on-the-database-without-blocking"
+ ],
+ "using-the-admin.html": [
+  "acting-as-another-user",
+  "jobs",
+  "notifications",
+  "search",
+  "see-also",
+  "settings",
+  "signing-in",
+  "the-dashboard",
+  "the-shell",
+  "using-the-admin"
+ ]
+}

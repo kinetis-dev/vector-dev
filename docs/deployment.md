@@ -175,7 +175,7 @@ In production the descriptor is not re-read from source on each boot;
 rebuild after changing a resource. Build the compiled cache inside the
 release or image itself: an existing valid `.kinetis-cache/compiled.php`
 is used as it is, without comparing it to the source that produced it
-(see [Caching](https://kinetis.dev/docs/caching.html)). Run a queue
+(see [Caching](inv:kinetis:std:doc#caching)). Run a queue
 worker for Vector's jobs ({doc}`jobs`), and schedule
 `kinetis vector:jobs:reap` and `kinetis vector:files:prune`
 ({doc}`files`).

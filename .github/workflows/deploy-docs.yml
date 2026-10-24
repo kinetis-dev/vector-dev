@@ -41,6 +41,9 @@ jobs:
           docker run --rm -v "$PWD/docs":/docs -w /docs python:3.12-slim \
             sh -c "pip install -q -r requirements.txt && sphinx-build -W --keep-going -b html . _build/html"
 
+      - name: Check URL baseline
+        run: python3 docs/tools/check_url_baseline.py check docs/_build/html
+
       # The role allows only what this job does: ListBucket under the
       # vector/docs/ prefix, Put/Get/Delete on kinetis.dev/vector/docs/*,
       # and invalidation on the kinetis.dev distribution.

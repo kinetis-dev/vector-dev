@@ -70,7 +70,7 @@ describe Kinetis `main`, so `orbitron_inspect` and the installed-source
 tools stay the authority for anything version-sensitive. The tools read
 any installed package, `kinetis/vector` included; `vendor/` is a Docker
 volume, so they are also the way to reach it from the host. See
-[Orbitron](https://kinetis.dev/docs/orbitron.html) for every tool.
+[Orbitron](inv:kinetis:std:doc#orbitron) for every tool.
 
 ## Trust and approval
 
@@ -107,7 +107,7 @@ docker compose exec app vendor/bin/kinetis orbitron:scaffold
 two fixed files. Inside the container, `orbitron:inspect` reports
 `/workspace/demo/backend` as both roots: the container's view, not the
 host checkout. See
-[Appendix: Orbitron](https://kinetis.dev/docs/appendix-orbitron.html).
+[Appendix: Orbitron](inv:kinetis:std:doc#appendix-orbitron).
 
 ## Diagnostics
 
@@ -161,13 +161,13 @@ names the outcome. This project keeps the layout Orbitron admits, one
 `autoload.psr-4` prefix mapped to `src/` and one `autoload-dev.psr-4`
 prefix mapped to `tests/`, so an error means `demo/backend/composer.json`
 moved away from it. See
-[Appendix: Orbitron](https://kinetis.dev/docs/appendix-orbitron.html#orbitron-verify)
+[Appendix: Orbitron](inv:kinetis:std:label#orbitron-verify)
 for every code.
 
 ## See also
 
 - {doc}`contributing` — the tests and checks a change must pass.
 - {doc}`demo` — the stack the agent works in.
-- [Vector for coding agents](https://kinetis.dev/docs/vector.html) —
+- [Vector for coding agents](inv:kinetis:std:doc#vector) —
   what an agent working on an application that installs Vector reads,
   as `kinetis://docs/vector` from the Kinetis documentation.

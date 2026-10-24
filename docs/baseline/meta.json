@@ -1,0 +1,265 @@
+{
+ "pages": {
+  "actions.html": {
+   "canonical": "https://kinetis.dev/vector/docs/actions.html",
+   "description": "An action is an operation beyond create, update and delete: publish, reprice, escalate. It is a class extending VectorAction, listed in its resource’s actions(). fields() become the action’s dialog...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/actions.html",
+   "title": "Actions - Kinetis Vector"
+  },
+  "audit.html": {
+   "canonical": "https://kinetis.dev/vector/docs/audit.html",
+   "description": "The audit trail: Every write through Vector — create, update, delete, restore, attach, detach, actions, bulk and inline edits, imports, repeater rows — is recorded in vector_audit with the actor, a...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/audit.html",
+   "title": "Audit trail and impersonation - Kinetis Vector"
+  },
+  "authentication.html": {
+   "canonical": "https://kinetis.dev/vector/docs/authentication.html",
+   "description": "Vector has no users, passwords or sessions of its own. Your application authenticates; Vector asks whether the result may enter the admin. The vector middleware group: Every Vector route is in the ...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/authentication.html",
+   "title": "Authentication - Kinetis Vector"
+  },
+  "authorization.html": {
+   "canonical": "https://kinetis.dev/vector/docs/authorization.html",
+   "description": "Once a user is admitted ( Authentication), a resource’s policy decides what they may do with it, and its scope() decides which records they see. Both are enforced by the API; the UI only reflects t...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/authorization.html",
+   "title": "Authorization - Kinetis Vector"
+  },
+  "coding-agents.html": {
+   "canonical": "https://kinetis.dev/vector/docs/coding-agents.html",
+   "description": "Start the demo stack ( The demo application), open your agent in the repository, and describe what you want built. AGENTS.md is the contract it works to: it initializes Orbitron before anything els...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/coding-agents.html",
+   "title": "AI coding agents - Kinetis Vector"
+  },
+  "configuration.html": {
+   "canonical": "https://kinetis.dev/vector/docs/configuration.html",
+   "description": "Environment keys:,, Key, Meaning,,, VECTOR_DB_CONNECTION, The connection Vector’s own tables live on; default when unset. See Databases.,, VECTOR_QUEUE, The queue name Vector’s jobs are pushed to; ...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/configuration.html",
+   "title": "Configuration - Kinetis Vector"
+  },
+  "contributing.html": {
+   "canonical": "https://kinetis.dev/vector/docs/contributing.html",
+   "description": "Vector is developed in one repository: the two packages, and the demo application ( The demo application) that consumes them the way an adopter would. Every command on this page runs from demo/, wi...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/contributing.html",
+   "title": "Working on Vector - Kinetis Vector"
+  },
+  "core-concepts.html": {
+   "canonical": "https://kinetis.dev/vector/docs/core-concepts.html",
+   "description": "Vector is three clients around one authority. Knowing which part decides what makes the rest of the manual predictable. The descriptor: Every resource, field, action, widget, dashboard and settings...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/core-concepts.html",
+   "title": "Core concepts - Kinetis Vector"
+  },
+  "customizing-the-ui.html": {
+   "canonical": "https://kinetis.dev/vector/docs/customizing-the-ui.html",
+   "description": "Three tiers, from no code to your own build. Use the lowest one that does the job. Descriptor and settings. Fields, filters, actions, widgets, navigation and the Branding settings. No JavaScript., ...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/customizing-the-ui.html",
+   "title": "Customizing the UI - Kinetis Vector"
+  },
+  "dashboards.html": {
+   "canonical": "https://kinetis.dev/vector/docs/dashboards.html",
+   "description": "A widget is a card computed on the server for a date range. Widgets sit on dashboards, or above a resource’s list. Widget types:,, Type, Shows,,, stat, One figure, compared with the previous period...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/dashboards.html",
+   "title": "Dashboards and widgets - Kinetis Vector"
+  },
+  "databases.html": {
+   "canonical": "https://kinetis.dev/vector/docs/databases.html",
+   "description": "Vector reads and writes your entities where the ORM maps them, and keeps its own tables where you tell it. MySQL and PostgreSQL are supported everywhere. Entities on several connections: An entity ...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/databases.html",
+   "title": "Databases - Kinetis Vector"
+  },
+  "demo.html": {
+   "canonical": "https://kinetis.dev/vector/docs/demo.html",
+   "description": "The Vector repository ships a complete Kinetis application administered by Vector, the one both packages are developed and tested against. It has two business domains on two databases, so every fie...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/demo.html",
+   "title": "The demo application - Kinetis Vector"
+  },
+  "deployment.html": {
+   "canonical": "https://kinetis.dev/vector/docs/deployment.html",
+   "description": "The same admin UI reaches the API in one of two ways. Both are first-class; pick per deployment.,,,, Standalone, Hosted,,, Served by, Any static host, on its own origin, Your PHP application, at/ve...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/deployment.html",
+   "title": "Deployment - Kinetis Vector"
+  },
+  "fields.html": {
+   "canonical": "https://kinetis.dev/vector/docs/fields.html",
+   "description": "A field maps one entity property to a column in lists, a value on the record page and an input in forms. Text::make('sku', 'SKU') names the property and, optionally, the label; ...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/fields.html",
+   "title": "Fields - Kinetis Vector"
+  },
+  "files.html": {
+   "canonical": "https://kinetis.dev/vector/docs/files.html",
+   "description": "File and Image fields hold the storage key of an uploaded file. They need kinetis/storage with a filesystem configured; without one the form edits the key as plain text. Uploading: The form uploads...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/files.html",
+   "title": "Files and images - Kinetis Vector"
+  },
+  "forms.html": {
+   "canonical": "https://kinetis.dev/vector/docs/forms.html",
+   "description": "Create and edit forms are generated from the fields. The server validates every write; the form mirrors its rules so most mistakes are caught before a request, and places every server violation on ...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/forms.html",
+   "title": "Forms - Kinetis Vector"
+  },
+  "genindex.html": {
+   "canonical": "https://kinetis.dev/vector/docs/genindex.html",
+   "description": null,
+   "og:image": null,
+   "og:url": null,
+   "title": "Index - Kinetis Vector"
+  },
+  "getting-started.html": {
+   "canonical": "https://kinetis.dev/vector/docs/getting-started.html",
+   "description": "Vector adds an admin to an existing Kinetis application that uses kinetis/orm. This page goes from install to a working admin: the package, its tables, the three things your application provides, a...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/getting-started.html",
+   "title": "Getting started - Kinetis Vector"
+  },
+  "index.html": {
+   "canonical": "https://kinetis.dev/vector/docs/index.html",
+   "description": "A schema-driven admin platform for Kinetis applications. Declare resources over your entities. Get an admin API, a complete admin UI and MCP tools from the same definition. Resource classes over yo...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/index.html",
+   "title": "Kinetis Vector"
+  },
+  "jobs.html": {
+   "canonical": "https://kinetis.dev/vector/docs/jobs.html",
+   "description": "Some work is too large for a request. Vector runs it as a job on your application’s queue: queued actions — an action that declares queued(), run in chunks of chunkSize();, large exports — above th...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/jobs.html",
+   "title": "Background jobs - Kinetis Vector"
+  },
+  "languages.html": {
+   "canonical": "https://kinetis.dev/vector/docs/languages.html",
+   "description": "Each user sees the admin in their own language. Vector’s UI ships in English and sixteen more: German, French, Dutch, Italian, Spanish, Portuguese (Portugal and Brazil), Polish, Turkish, Russian, U...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/languages.html",
+   "title": "Languages - Kinetis Vector"
+  },
+  "limits.html": {
+   "canonical": "https://kinetis.dev/vector/docs/limits.html",
+   "description": "Bounds:,, Bound, Default,,, Records per page ( maxPerPage()), 200,, Records in one bulk operation or action ( bulkLimit()), 1 000,, Rows in an inline export ( exportLimit()), 10 000,, Rows in a que...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/limits.html",
+   "title": "Limits and guarantees - Kinetis Vector"
+  },
+  "lists.html": {
+   "canonical": "https://kinetis.dev/vector/docs/lists.html",
+   "description": "A resource’s list is where most work starts. Search, sort, filters, grouping and the page are one request to the server, so it works the same on ten records or ten million. Search, sort and page: S...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/lists.html",
+   "title": "Lists - Kinetis Vector"
+  },
+  "mcp.html": {
+   "canonical": "https://kinetis.dev/vector/docs/mcp.html",
+   "description": "Vector exposes the admin to AI agents over the Model Context Protocol, through kinetis/mcp. The tools call the same services and policies as the REST API: an agent sees what its identity may see, a...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/mcp.html",
+   "title": "MCP tools - Kinetis Vector"
+  },
+  "records.html": {
+   "canonical": "https://kinetis.dev/vector/docs/records.html",
+   "description": "The record page: Opening a record shows its fields, then a panel per related collection, then its History. The buttons at the top depend on what you may do with this record: Edit, Delete, Actions, ...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/records.html",
+   "title": "Records - Kinetis Vector"
+  },
+  "releasing.html": {
+   "canonical": "https://kinetis.dev/vector/docs/releasing.html",
+   "description": "Vector ships two products, each at its own version: packages/vector, published to the mirror kinetis-dev/vector, which Packagist serves as kinetis/vector;, packages/vector-ui, published to npm as@k...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/releasing.html",
+   "title": "Releasing - Kinetis Vector"
+  },
+  "resources.html": {
+   "canonical": "https://kinetis.dev/vector/docs/resources.html",
+   "description": "A resource makes a kinetis/orm entity administrable. It is a class extending Kinetis\\Vector\\VectorResource with a#[Resource] attribute, discovered anywhere under your application namespace.#[Resour...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/resources.html",
+   "title": "Resources - Kinetis Vector"
+  },
+  "rest-api.html": {
+   "canonical": "https://kinetis.dev/vector/docs/rest-api.html",
+   "description": "Every route is under/vector, in the vector middleware group, except hosted mode’s page under/vector/ui, which is in the vector-shell group ( Authentication). The API is the authority: the UI and th...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/rest-api.html",
+   "title": "REST API - Kinetis Vector"
+  },
+  "search.html": {
+   "canonical": "https://kinetis.dev/vector/docs/search.html",
+   "description": null,
+   "og:image": null,
+   "og:url": null,
+   "title": "Search - Kinetis Vector"
+  },
+  "settings.html": {
+   "canonical": "https://kinetis.dev/vector/docs/settings.html",
+   "description": "A settings group is a set of values an admin edits on the Settings page, stored by Vector in its own table. It is a class extending SettingsGroup with a#[Settings] attribute: The fields are the sam...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/settings.html",
+   "title": "Settings - Kinetis Vector"
+  },
+  "testing.html": {
+   "canonical": "https://kinetis.dev/vector/docs/testing.html",
+   "description": "Kinetis\\Vector\\Testing drives the REST API from your own test suite, through the framework’s TestClient, so your middleware, authentication, policies and hooks all run as in production.$this->ve...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/testing.html",
+   "title": "Testing your admin - Kinetis Vector"
+  },
+  "using-the-admin.html": {
+   "canonical": "https://kinetis.dev/vector/docs/using-the-admin.html",
+   "description": "This part of the manual is for the people who work in the admin: what each screen does and how to find your way. What you see depends on your account. A resource, a field or a button you may not us...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/using-the-admin.html",
+   "title": "Using the admin - Kinetis Vector"
+  }
+ },
+ "sitemap": {
+  "excluded": [],
+  "locs": [
+   "https://kinetis.dev/vector/docs/actions.html",
+   "https://kinetis.dev/vector/docs/audit.html",
+   "https://kinetis.dev/vector/docs/authentication.html",
+   "https://kinetis.dev/vector/docs/authorization.html",
+   "https://kinetis.dev/vector/docs/coding-agents.html",
+   "https://kinetis.dev/vector/docs/configuration.html",
+   "https://kinetis.dev/vector/docs/contributing.html",
+   "https://kinetis.dev/vector/docs/core-concepts.html",
+   "https://kinetis.dev/vector/docs/customizing-the-ui.html",
+   "https://kinetis.dev/vector/docs/dashboards.html",
+   "https://kinetis.dev/vector/docs/databases.html",
+   "https://kinetis.dev/vector/docs/demo.html",
+   "https://kinetis.dev/vector/docs/deployment.html",
+   "https://kinetis.dev/vector/docs/fields.html",
+   "https://kinetis.dev/vector/docs/files.html",
+   "https://kinetis.dev/vector/docs/forms.html",
+   "https://kinetis.dev/vector/docs/genindex.html",
+   "https://kinetis.dev/vector/docs/getting-started.html",
+   "https://kinetis.dev/vector/docs/index.html",
+   "https://kinetis.dev/vector/docs/jobs.html",
+   "https://kinetis.dev/vector/docs/languages.html",
+   "https://kinetis.dev/vector/docs/limits.html",
+   "https://kinetis.dev/vector/docs/lists.html",
+   "https://kinetis.dev/vector/docs/mcp.html",
+   "https://kinetis.dev/vector/docs/records.html",
+   "https://kinetis.dev/vector/docs/releasing.html",
+   "https://kinetis.dev/vector/docs/resources.html",
+   "https://kinetis.dev/vector/docs/rest-api.html",
+   "https://kinetis.dev/vector/docs/search.html",
+   "https://kinetis.dev/vector/docs/settings.html",
+   "https://kinetis.dev/vector/docs/testing.html",
+   "https://kinetis.dev/vector/docs/using-the-admin.html"
+  ]
+ }
+}

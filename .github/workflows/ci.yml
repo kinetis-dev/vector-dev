@@ -267,3 +267,9 @@ jobs:
         run: |
           docker run --rm -v "$PWD/docs":/docs -w /docs python:3.12-slim \
             sh -c "pip install -q -r requirements.txt && sphinx-build -W --keep-going -b html . _build/html"
+
+      - name: Check URL baseline
+        run: python3 docs/tools/check_url_baseline.py check docs/_build/html
+
+      - name: Test URL baseline checker
+        run: python3 -m unittest docs/tools/test_check_url_baseline.py
