@@ -73,10 +73,10 @@
         "vuetify-nuxt-module": "^1.0.0-rc.6"
     },
     "devDependencies": {
-        "@nuxt/test-utils": "^4.3.3",
+        "@nuxt/test-utils": "^4.3.4",
         "@types/node": "^22.20.5",
         "@vue/test-utils": "^2.5.1",
-        "happy-dom": "^21.0.1",
+        "happy-dom": "^21.0.4",
         "nuxt": "^4.6.2",
         "sass-embedded": "^1.105.1",
         "typescript": "~6.0.3",
