@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.3] - 2026-10-30
+
+### Security
+
+- The `nuxt` peer dependency is now `^4.6.3`, which fixes dot segments
+  in the request path bypassing `server/middleware` path checks and
+  server route rules (GHSA-9v7c-q64q-vv33), the server island endpoint
+  not applying `redirect` route rules (GHSA-2fxj-c3j7-rr69), and dev
+  server file reads and exposure of private runtime config and the
+  generated `appSecret` (GHSA-x287-wcfc-q46c, GHSA-648h-gw55-m2g7,
+  GHSA-3xf4-9g3c-4h4w). The admin itself renders client-side, but the
+  application that extends the layer brings its own Nuxt server.
+
 ## [0.11.2] - 2026-10-30
 
 ### Security
