@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-10-30
+
+### Security
+
+- `vue-i18n` is now required at `^11.4.16`. 11.4.15 reads only own
+  properties in locale, key, plural rule and message lookups, and no
+  longer reads `Object.prototype` properties as named values.
+
 ## [0.11.1] - 2026-10-23
 
 ### Security
