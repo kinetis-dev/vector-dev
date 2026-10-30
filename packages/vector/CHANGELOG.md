@@ -11,11 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Requires `kinetis/framework` `^1.24.0`, `kinetis/orm` `^1.13.0`,
-  `kinetis/authorization` `^1.0.5`, `kinetis/database-bridge` `^1.4.1`,
-  `kinetis/mcp` `^1.8.1`, `kinetis/migrations` `^1.4.1`,
-  `kinetis/persistence` `^1.4.4`, `kinetis/query-builder` `^1.8.1`,
-  `kinetis/queue` `^1.7.1` and `ueberdosis/tiptap-php` `^2.2.1`.
+- Requires `kinetis/framework` `^1.24.1`, `kinetis/orm` `^1.13.1`,
+  `kinetis/authorization` `^1.0.6`, `kinetis/database-bridge` `^1.4.2`,
+  `kinetis/mcp` `^1.8.2`, `kinetis/mcp-protocol` `^1.1.1`,
+  `kinetis/migrations` `^1.4.2`, `kinetis/persistence` `^1.4.5`,
+  `kinetis/query-builder` `^1.8.2`, `kinetis/queue` `^1.7.2` and
+  `ueberdosis/tiptap-php` `^2.2.1`.
 - `vector:install-ui` installs `@kinetis/vector-ui` 0.11.4 by default,
   the release that requires Tiptap `^3.32.2`.
 
