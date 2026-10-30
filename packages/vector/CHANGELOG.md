@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.3] - 2026-10-30
+
+### Changed
+
+- `vector:install-ui` installs `@kinetis/vector-ui` 0.11.3 by default,
+  the release that requires Nuxt `^4.6.3` for its path-check, route-rule
+  and dev server security fixes.
+
 ## [0.13.2] - 2026-10-30
 
 ### Changed
