@@ -64,7 +64,7 @@
         "dompurify": "^3.4.17",
         "markdown-it": "^15.0.3",
         "pinia": "^4.1.0",
-        "vue-i18n": "^11.4.14"
+        "vue-i18n": "^11.4.16"
     },
     "peerDependencies": {
         "nuxt": "^4.6.2",
@@ -78,12 +78,12 @@
         "@vue/test-utils": "^2.5.1",
         "happy-dom": "^21.0.4",
         "nuxt": "^4.6.2",
-        "sass-embedded": "^1.105.1",
+        "sass-embedded": "^1.106.1",
         "typescript": "~6.0.3",
         "vitest": "^5.0.5",
         "vue": "^3.5.44",
         "vue-tsc": "^3.3.13",
-        "vuetify": "^4.2.6",
+        "vuetify": "^4.3.0",
         "vuetify-nuxt-module": "^1.0.0-rc.6"
     }
 }
