@@ -289,6 +289,15 @@ before writing.
   if the manifest at that commit does not state the version being
   pushed. A `main` that has moved on to a newer version does not stop
   the push: the newer version needs this one published first.
+- **A failed `kinetis/vector` mirror** does not stop the
+  `kinetis/vector-queues` mirror after it: the mirror jobs run one at a
+  time but do not fail fast. A round that releases both can then tag
+  `kinetis/vector-queues` while the `kinetis/vector` release it requires
+  (for 0.1.0, `^0.14`) is not on Packagist yet, so for that while
+  Composer cannot install the new `kinetis/vector-queues`. Re-run the
+  failed mirror job. It publishes `kinetis/vector`, and the
+  `kinetis/vector-queues` release then installs. The `vector-queues`
+  mirror needs nothing redone.
 - **npm** is skipped when the version is already published. If the
   npm job failed, the mirror jobs did not run; re-run the failed jobs.
 - **A release shown as cancelled while pending** was replaced by a newer
