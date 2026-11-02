@@ -198,6 +198,23 @@ final class QueueDashboardTest extends QueuesTestCase
         self::assertNotNull($this->store()->find($broken));
     }
 
+    public function testAFailedRetryNeverEchoesASensitiveArgument(): void
+    {
+        $id = $this->recordFailure('qa-mail', 1_800_000_000, \App\Tests\Vector\Queues\Fixtures\RejectingTokenJob::class, ['apiToken' => 'sk_live_TOP_SECRET']);
+
+        $response = $this->client->post('/vector/queues/failed/retry', ['ids' => [$id]], $this->adminHeaders())
+            ->assertOk()
+            ->assertJsonPath('data.0.status', 'failed');
+
+        self::assertStringNotContainsString('TOP_SECRET', $response->body());
+        // kinetis/queue withholds the constructor's message and cause when an argument is #[Sensitive]
+        $response->assertJsonPath('data.0.reason', 'Cannot reconstruct "' . \App\Tests\Vector\Queues\Fixtures\RejectingTokenJob::class . '": its constructor threw. The cause is withheld because an argument is marked #[Sensitive].');
+        self::assertNotNull($this->store()->find($id));
+        $entry = $this->auditFor($id)[0] ?? null;
+        self::assertIsArray($entry);
+        self::assertStringNotContainsString('TOP_SECRET', (string) $entry['changes']);
+    }
+
     public function testRetryValidatesItsBatch(): void
     {
         $headers = $this->adminHeaders();

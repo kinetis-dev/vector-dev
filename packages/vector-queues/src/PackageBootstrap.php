@@ -28,8 +28,9 @@ final readonly class PackageBootstrap implements PackageBootstrapInterface
         $app->instance(QueueNames::class, QueueNames::fromConfig($config));
         $app->bind(QueueDashboardPolicyInterface::class, ViewOnlyQueueDashboardPolicy::class);
 
-        // The same connection SqlFailedJobStore uses, read the way its own bootstrap reads it; a link of its
-        // own, opened on first use and closed with the application scope.
+        // The same connection SqlFailedJobStore uses, read the way its own bootstrap reads it: a link of its
+        // own, built on first resolve, shared for the worker's lifetime (bind() is shared by default) and
+        // closed with the application scope.
         $app->bind(FailedJobBrowser::class, static function (AppScope $app) use ($config): FailedJobBrowser {
             $connection = $config->string('FAILED_JOBS_DB_CONNECTION_NAME', '');
 

@@ -39,4 +39,11 @@ final class QueueDashboardDefaultPolicyTest extends QueuesTestCase
         self::assertSame([], $this->queue->waiting['qa-reports'] ?? []);
         self::assertSame([], $this->auditFor($id));
     }
+
+    /** A refused caller learns nothing about which queues exist: the policy answers before the queue name is looked up. */
+    public function testARefusedClearOfAnUnconfiguredQueueIsA403NotA404(): void
+    {
+        $this->client->post('/vector/queues/qa-elsewhere/clear', ['confirm' => 'qa-elsewhere'], $this->adminHeaders())->assertStatus(403);
+        $this->client->post('/vector/queues/qa-mail/clear', ['confirm' => 'qa-mail'], $this->adminHeaders())->assertStatus(403);
+    }
 }

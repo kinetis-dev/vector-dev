@@ -220,11 +220,12 @@ final readonly class QueuesController
     #[Post('/{queue}/clear')]
     public function clear(string $queue, ServerRequestInterface $request, QueueInterface $backend): array
     {
+        // the policy first, as for every other mutation: a refused caller cannot tell watched queues from others
+        $this->authorize($this->policy->clear($this->actor, $queue));
+
         if (!$this->queues->has($queue)) {
             throw new RecordNotFoundException("No queue named \"{$queue}\" is on this dashboard.");
         }
-
-        $this->authorize($this->policy->clear($this->actor, $queue));
 
         if ((self::body($request)['confirm'] ?? null) !== $queue) {
             throw ValidationException::fromViolations([new Violation(['confirm'], 'confirmation_mismatch', 'must be the name of the queue to clear, exactly.')]);

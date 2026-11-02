@@ -28,6 +28,20 @@ final class QueueDashboardPolicyTest extends QueuesTestCase
         self::assertNotNull($this->store()->find($id));
         self::assertSame(1, $this->queue->size('qa-mail'));
         self::assertSame([], $this->auditFor($id));
+        self::assertSame([], $this->auditFor('failed'), 'no queue:prune entry');
+        self::assertSame([], $this->auditFor('qa-mail'), 'no queue:clear entry');
+    }
+
+    /** One application, two callers in turn: the second is judged as itself, not as whoever came before. */
+    public function testAnAdminsAllowedCallLeavesNothingBehindForTheNextCaller(): void
+    {
+        $this->queue->push(new SendInvoiceJob(1, 'x'), queue: 'qa-mail');
+        $this->queue->push(new SendInvoiceJob(2, 'x'), queue: 'qa-reports');
+
+        $this->client->post('/vector/queues/qa-mail/clear', ['confirm' => 'qa-mail'], $this->adminHeaders())->assertStatus(200);
+        $this->client->post('/vector/queues/qa-reports/clear', ['confirm' => 'qa-reports'], $this->editorHeaders())->assertStatus(403);
+
+        self::assertSame(1, $this->queue->size('qa-reports'));
     }
 
     public function testEveryMutationIsAllowedForAnAdmin(): void
