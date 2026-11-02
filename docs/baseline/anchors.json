@@ -77,6 +77,7 @@
   "cells-inputs-and-widget-renderers",
   "custom-pages",
   "customizing-the-ui",
+  "extensions-in-a-composer-package",
   "forms-in-your-own-pages",
   "keeping-the-layer-at-the-pinned-release",
   "rich-text-extensions",
@@ -109,6 +110,7 @@
   "the-demo-application",
   "the-event-loop-ext-uv-and-ext-event",
   "the-hosted-admin",
+  "the-queue-dashboard",
   "threads-and-database-connections",
   "what-runs",
   "where-to-look"
@@ -223,6 +225,18 @@
   "see-also",
   "serving-them",
   "when-post-mcp-answers-401"
+ ],
+ "queues.html": [
+  "configuration",
+  "endpoints",
+  "in-the-demo",
+  "install",
+  "metrics",
+  "migrations",
+  "queue-dashboard",
+  "see-also",
+  "the-admin-page",
+  "who-may-do-what"
  ],
  "records.html": [
   "actions",
