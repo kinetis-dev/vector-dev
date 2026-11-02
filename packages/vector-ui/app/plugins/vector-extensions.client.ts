@@ -5,6 +5,7 @@ import {
     VExpansionPanelTitle, VIcon, VList, VListItem, VMenu, VPagination, VProgressLinear, VRating, VSelect, VSkeletonLoader, VSwitch,
     VTab, VTable, VTabs, VTabsWindow, VTabsWindowItem, VTextField, VTextarea, VTooltip,
 } from 'vuetify/components'
+import type { VectorPageLabel } from '../composables/useVectorExtensions'
 
 /**
  * Runtime UI extensions (§4.15 tier 2). `window.Vector` is the
@@ -47,8 +48,11 @@ export default defineNuxtPlugin(() => {
         defineRichTextExtension: (name: string, extension: import('@tiptap/core').AnyExtension) => registries.richText.set(name, vue.markRaw(extension)),
         /** Adds or overrides UI messages for a locale: defineMessages('de', { common: { save: 'Speichern' } }). */
         defineMessages: (locale: string, messages: Record<string, unknown>) => i18n.global.mergeLocaleMessage(locale, messages),
-        /** A custom page at `/p/{name}`, listed in the menu: definePage('stock', { title: 'Stock', icon: 'mdi-warehouse', component }). */
-        definePage: (name: string, page: { title: string, icon?: string, group?: string, component: vue.Component }) => {
+        /**
+         * A custom page at `/p/{name}`, listed in the menu: definePage('stock', { title: 'Stock', icon: 'mdi-warehouse', component }).
+         * `title` and `group` may be functions, `() => t('stock.title')`, called each time they are shown, so they follow the language.
+         */
+        definePage: (name: string, page: { title: VectorPageLabel, icon?: string, group?: VectorPageLabel, component: vue.Component }) => {
             if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) throw new Error(`Vector page name "${name}" must be lowercase letters, digits and dashes.`)
             registries.pages.set(name, { ...page, component: vue.markRaw(page.component) })
         },
@@ -92,7 +96,7 @@ declare global {
             defineWidget: (type: string, component: vue.Component) => void
             defineRichTextExtension: (name: string, extension: import('@tiptap/core').AnyExtension) => void
             defineMessages: (locale: string, messages: Record<string, unknown>) => void
-            definePage: (name: string, page: { title: string, icon?: string, group?: string, component: vue.Component }) => void
+            definePage: (name: string, page: { title: string | (() => string), icon?: string, group?: string | (() => string), component: vue.Component }) => void
             api: import('nitropack').$Fetch
             notify: { success: (message: string) => void, error: (message: string) => void }
             navigate: (path: string) => unknown

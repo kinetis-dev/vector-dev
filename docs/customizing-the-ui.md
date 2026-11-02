@@ -230,7 +230,24 @@ export default function ({ vue, definePage }) {
 ```
 
 `group` places the page under a menu section (a resource group's name,
-or its own); without one it goes under *Pages*. The component receives
+or its own); without one it goes under *Pages*. `title` and `group` may
+also be functions returning the text, which the admin calls each time it
+shows them — so a translated label follows a change of language without
+a reload:
+
+```js
+export default function ({ definePage, defineMessages, t }) {
+    defineMessages('en', { stock: { title: 'Stock overview', group: 'Catalog' } })
+    defineMessages('de', { stock: { title: 'Lagerübersicht', group: 'Katalog' } })
+    definePage('stock-overview', {
+        title: () => t('stock.title'), group: () => t('stock.group'), icon: 'mdi-warehouse',
+        component: { /* … */ },
+    })
+}
+```
+
+A string computed once with `t()` keeps the language of the moment the
+module loaded. The component receives
 one prop, `vector`, with `api` (the admin's API client, carrying the
 bearer token or the session cookie and CSRF token),
 `notify.success/error` and `navigate(path)`. An application extending

@@ -110,13 +110,14 @@ async function signOut(reason?: 'idle') {
     })
 }
 
-// Custom pages, grouped by their menu section ("Pages" when they name none).
+// Custom pages, grouped by their menu section ("Pages" when they name none). Labels given as functions
+// are called here, so the computed follows the language and pages group by the section's text in it.
 const pages = useVectorPages()
 const pageGroups = computed(() => {
     const groups = new Map<string, { name: string, title: string, icon?: string }[]>()
     for (const [name, page] of Object.entries(pages.value)) {
-        const label = page.group ?? t('shell.nav.pages')
-        groups.set(label, [...(groups.get(label) ?? []), { name, title: page.title, icon: page.icon }])
+        const label = pageLabel(page.group) ?? t('shell.nav.pages')
+        groups.set(label, [...(groups.get(label) ?? []), { name, title: pageLabel(page.title), icon: page.icon }])
     }
     return [...groups.entries()].map(([label, items]) => ({ label, items }))
 })

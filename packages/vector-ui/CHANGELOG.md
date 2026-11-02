@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   registries become `ready` only after these modules have settled, so a
   link straight to a package's custom page shows its loading bar until
   then, not "unknown page".
+- `window.Vector.definePage()` accepts a function for `title` and
+  `group`, `() => t('stock.title')`, which the menu, the command palette
+  and the page's heading and tab title call each time they show it, so a
+  translated label follows a change of language without a reload.
+  Strings work as before; `window.Vector.version` stays 1.
 
 ## [0.12.0] - 2026-11-02
 
