@@ -1,0 +1,306 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Kinetis\Vector\Queues\Http;
+
+use Kinetis\Http\Attributes\Delete;
+use Kinetis\Http\Attributes\Get;
+use Kinetis\Http\Attributes\Middleware;
+use Kinetis\Http\Attributes\Post;
+use Kinetis\Http\Attributes\RoutePrefix;
+use Kinetis\Http\Responses\PlainTextResponse;
+use Kinetis\Queue\ClearableQueueInterface;
+use Kinetis\Queue\JobSerializer;
+use Kinetis\Queue\QueueInterface;
+use Kinetis\QueueFailedJobs\FailedJobRetrier;
+use Kinetis\QueueFailedJobs\RetryResult;
+use Kinetis\QueueFailedJobs\SqlFailedJobStore;
+use Kinetis\QueueFailedJobs\StoredFailedJob;
+use Kinetis\Validation\Exception\ValidationException;
+use Kinetis\Validation\Violation;
+use Kinetis\Vector\Auth\ActorContext;
+use Kinetis\Vector\Exception\ConflictException;
+use Kinetis\Vector\Exception\ForbiddenOperationException;
+use Kinetis\Vector\Exception\RecordNotFoundException;
+use Kinetis\Vector\Queues\Auth\QueueDashboardPolicyInterface;
+use Kinetis\Vector\Queues\FailedJobBrowser;
+use Kinetis\Vector\Queues\FailedJobFilter;
+use Kinetis\Vector\Queues\QueueNames;
+use Kinetis\Vector\Store\AuditStore;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+
+/**
+ * The queue dashboard's API, in Vector's own `vector` middleware group:
+ * the application's authentication and VectorAccessInterface run first,
+ * then QueueDashboardPolicyInterface decides each call. Sizes and clears
+ * go to the application's bound QueueInterface; failed jobs are
+ * kinetis/queue-failed-jobs' records, on the queues VECTOR_QUEUES names
+ * only. A job's arguments leave the server only through
+ * JobSerializer::redact(), and never reach the audit trail.
+ */
+#[RoutePrefix('/vector/queues')]
+#[Middleware('@vector')]
+final readonly class QueuesController
+{
+    /** The most ids one retry request takes. */
+    public const int MAX_RETRY_BATCH = 50;
+
+    /** The oldest prune age accepted: a hundred years. */
+    private const int MAX_PRUNE_DAYS = 36_500;
+
+    /** The audit trail's resource name for every dashboard entry. */
+    public const string AUDIT_RESOURCE = 'vector-queues';
+
+    private const string ID = '/^[0-9a-f]{32}$/D';
+
+    public function __construct(
+        private QueueNames $queues,
+        private QueueDashboardPolicyInterface $policy,
+        private ActorContext $actor,
+        private AuditStore $audit,
+    ) {}
+
+    /** @return array{data: list<array{name: string, size: int|null, clearable: bool, failed: int}>} */
+    #[Get('/')]
+    public function overview(QueueInterface $queue, FailedJobBrowser $browser): array
+    {
+        $this->authorize($this->policy->view($this->actor));
+        $failed = $browser->failedCounts($this->queues->names);
+        $data = [];
+
+        foreach ($this->queues->names as $name) {
+            $data[] = [
+                'name' => $name,
+                'size' => self::size($queue, $name),
+                'clearable' => $queue instanceof ClearableQueueInterface,
+                'failed' => $failed[$name] ?? 0,
+            ];
+        }
+
+        return ['data' => $data];
+    }
+
+    /** @return array{data: list<array<string, mixed>>, nextCursor: string|null, hasMore: bool, limit: int} */
+    #[Get('/failed')]
+    public function failed(ServerRequestInterface $request, FailedJobBrowser $browser): array
+    {
+        $this->authorize($this->policy->view($this->actor));
+        $filter = FailedJobFilter::fromQueryParams($request->getQueryParams(), $this->queues);
+        $page = $browser->page($filter, $this->queues->names);
+        $last = $page['rows'] === [] ? null : $page['rows'][array_key_last($page['rows'])];
+
+        return [
+            'data' => array_map(static fn (array $row): array => [
+                'id' => $row['id'],
+                'connection' => $row['connection'],
+                'queue' => $row['queue'],
+                'class' => $row['class'],
+                'attempts' => $row['attempts'],
+                'maxAttempts' => $row['maxAttempts'],
+                'exception' => ['class' => $row['exceptionClass'], 'message' => $row['exceptionMessage']],
+                'failedAt' => self::time($row['failedAt']),
+            ], $page['rows']),
+            'nextCursor' => $page['hasMore'] && $last !== null ? FailedJobFilter::encodeCursor($last['failedAt'], $last['id']) : null,
+            'hasMore' => $page['hasMore'],
+            'limit' => $filter->limit,
+        ];
+    }
+
+    /**
+     * One record, every argument through JobSerializer::redact(). The
+     * store keeps no stack trace, so `exception.trace` is always null.
+     *
+     * @return array{data: array<string, mixed>}
+     */
+    #[Get('/failed/{id}')]
+    public function show(string $id, SqlFailedJobStore $store): array
+    {
+        $this->authorize($this->policy->view($this->actor));
+        $job = $this->watched($store, $id)->job;
+
+        return ['data' => [
+            'id' => $id,
+            'connection' => $job->connection,
+            'queue' => $job->queue,
+            'class' => $job->class,
+            'args' => JobSerializer::redact($job->class, $job->args),
+            'attempts' => $job->attempts,
+            'maxAttempts' => $job->maxAttempts,
+            'exception' => ['class' => $job->exceptionClass, 'message' => $job->exceptionMessage, 'trace' => null],
+            'failedAt' => self::time($job->failedAt),
+        ]];
+    }
+
+    /**
+     * Retries `{"ids": [...]}`, 1 to MAX_RETRY_BATCH of them, in order,
+     * one result each. A record on a queue the dashboard does not watch is
+     * `not_found`, exactly as a missing one is.
+     *
+     * @return array{data: list<array{id: string, status: string, class: string|null, queue: string|null, reason: string|null}>}
+     */
+    #[Post('/failed/retry')]
+    public function retry(ServerRequestInterface $request, SqlFailedJobStore $store, FailedJobRetrier $retrier): array
+    {
+        $this->authorize($this->policy->retry($this->actor));
+        $ids = self::body($request)['ids'] ?? null;
+
+        if (!is_array($ids) || !array_is_list($ids) || $ids === [] || count($ids) > self::MAX_RETRY_BATCH || array_filter($ids, is_string(...)) !== $ids) {
+            throw ValidationException::fromViolations([new Violation(['ids'], 'type_mismatch', 'must be a list of 1 to ' . self::MAX_RETRY_BATCH . ' failed-job ids.')]);
+        }
+
+        /** @var list<string> $ids */
+        $results = [];
+
+        foreach (array_values(array_unique($ids)) as $id) {
+            $result = $this->find($store, $id) === null ? RetryResult::notFound($id) : $retrier->retry($id);
+            $results[] = ['id' => $result->id, 'status' => $result->status->value, 'class' => $result->class, 'queue' => $result->queue, 'reason' => $result->reason];
+
+            // a malformed id names no record, and is no audit row's record_id either
+            if (preg_match(self::ID, $id) === 1) {
+                $this->record([$id], 'queue:retry', ['status' => $result->status->value, 'class' => $result->class, 'queue' => $result->queue]);
+            }
+        }
+
+        return ['data' => $results];
+    }
+
+    #[Delete('/failed/{id}', status: 204)]
+    public function forget(string $id, SqlFailedJobStore $store): ResponseInterface
+    {
+        $this->authorize($this->policy->forget($this->actor));
+        $job = $this->watched($store, $id)->job;
+        $store->forget($id);
+        $this->record([$id], 'queue:forget', ['class' => $job->class, 'queue' => $job->queue]);
+
+        return PlainTextResponse::create('', 204);
+    }
+
+    /**
+     * Deletes every record older than `{"hours": n}` or `{"days": n}` —
+     * exactly one of them, a whole number from 1 — through the store's
+     * own prune(), which spans every queue, watched or not.
+     *
+     * @return array{data: array{deleted: int, olderThanSeconds: int}}
+     */
+    #[Post('/failed/prune')]
+    public function prune(ServerRequestInterface $request, SqlFailedJobStore $store): array
+    {
+        $this->authorize($this->policy->prune($this->actor));
+        $body = self::body($request);
+        $given = array_values(array_intersect(['hours', 'days'], array_keys($body)));
+
+        if (count($given) !== 1) {
+            throw ValidationException::fromViolations([new Violation(['hours'], 'required', 'give exactly one of hours or days.')]);
+        }
+
+        $unit = $given[0];
+        $max = $unit === 'days' ? self::MAX_PRUNE_DAYS : self::MAX_PRUNE_DAYS * 24;
+        $value = $body[$unit];
+
+        if (!is_int($value) || $value < 1 || $value > $max) {
+            throw ValidationException::fromViolations([new Violation([$unit], 'out_of_range', "must be a whole number from 1 to {$max}.")]);
+        }
+
+        $seconds = $value * ($unit === 'days' ? 86_400 : 3_600);
+        $deleted = $store->prune($seconds);
+        $this->record(['failed'], 'queue:prune', ['olderThanSeconds' => $seconds, 'deleted' => $deleted]);
+
+        return ['data' => ['deleted' => $deleted, 'olderThanSeconds' => $seconds]];
+    }
+
+    /**
+     * Discards every job waiting on a watched queue. The body's `confirm`
+     * must be the queue's name exactly (422 otherwise); a backend without
+     * ClearableQueueInterface — SQS — is refused with 409.
+     *
+     * @return array{data: array{queue: string, cleared: int}}
+     */
+    #[Post('/{queue}/clear')]
+    public function clear(string $queue, ServerRequestInterface $request, QueueInterface $backend): array
+    {
+        if (!$this->queues->has($queue)) {
+            throw new RecordNotFoundException("No queue named \"{$queue}\" is on this dashboard.");
+        }
+
+        $this->authorize($this->policy->clear($this->actor, $queue));
+
+        if ((self::body($request)['confirm'] ?? null) !== $queue) {
+            throw ValidationException::fromViolations([new Violation(['confirm'], 'confirmation_mismatch', 'must be the name of the queue to clear, exactly.')]);
+        }
+
+        if (!$backend instanceof ClearableQueueInterface) {
+            throw new ConflictException('This queue backend cannot discard waiting jobs.');
+        }
+
+        $cleared = $backend->clear($queue);
+        $this->record([$queue], 'queue:clear', ['cleared' => $cleared]);
+
+        return ['data' => ['queue' => $queue, 'cleared' => $cleared]];
+    }
+
+    private function authorize(bool $allowed): void
+    {
+        if (!$allowed) {
+            throw new ForbiddenOperationException('This account may not do that on the queue dashboard.');
+        }
+    }
+
+    /** A record on a watched queue, or a 404 — the same for a malformed id, a missing record and one on another queue. */
+    private function watched(SqlFailedJobStore $store, string $id): StoredFailedJob
+    {
+        return $this->find($store, $id) ?? throw RecordNotFoundException::of('failed jobs', $id);
+    }
+
+    private function find(SqlFailedJobStore $store, string $id): ?StoredFailedJob
+    {
+        $stored = preg_match(self::ID, $id) === 1 ? $store->find($id) : null;
+
+        return $stored !== null && $this->queues->has($stored->job->queue) ? $stored : null;
+    }
+
+    /**
+     * Who did what to which record: never a job argument.
+     *
+     * @param list<string> $recordIds
+     * @param array<string, mixed> $changes
+     */
+    private function record(array $recordIds, string $event, array $changes): void
+    {
+        $this->audit->record(self::AUDIT_RESOURCE, $recordIds, $event, $changes, $this->actor->actorId(), $this->actor->impersonatorId);
+    }
+
+    /** A backend that cannot answer — unreachable, or with no count to give — has no size, rather than failing the overview. */
+    private static function size(QueueInterface $queue, string $name): ?int
+    {
+        try {
+            return $queue->size($name);
+        } catch (\Exception) {
+            return null;
+        }
+    }
+
+    /** @return array<array-key, mixed> */
+    private static function body(ServerRequestInterface $request): array
+    {
+        $raw = (string) $request->getBody();
+
+        try {
+            $body = trim($raw) === '' ? [] : json_decode($raw, true, 16, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            throw ValidationException::fromViolations([new Violation([], 'invalid_json', 'The request body is not valid JSON.')]);
+        }
+
+        if (!is_array($body) || (array_is_list($body) && $body !== [])) {
+            throw ValidationException::fromViolations([new Violation([], 'type_mismatch', 'The request body must be a JSON object.')]);
+        }
+
+        return $body;
+    }
+
+    private static function time(int $seconds): string
+    {
+        return gmdate('Y-m-d\TH:i:s\Z', $seconds);
+    }
+}

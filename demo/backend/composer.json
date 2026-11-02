@@ -30,6 +30,7 @@
         "kinetis/session": "^1.3.3",
         "kinetis/storage": "^1.2.6",
         "kinetis/vector": "dev-main",
+        "kinetis/vector-queues": "dev-main",
         "openspout/openspout": "^5.13",
         "psr/http-message": "^2.0"
     },
@@ -92,6 +93,16 @@
             "options": {
                 "versions": {
                     "kinetis/vector": "dev-main"
+                }
+            }
+        },
+        {
+            "name": "vector-queues",
+            "type": "path",
+            "url": "../../packages/vector-queues",
+            "options": {
+                "versions": {
+                    "kinetis/vector-queues": "dev-main"
                 }
             }
         }

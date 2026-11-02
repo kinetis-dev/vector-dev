@@ -19,6 +19,7 @@
         <include>
             <directory>src</directory>
             <directory>../../packages/vector/src</directory>
+            <directory>../../packages/vector-queues/src</directory>
         </include>
     </source>
 </phpunit>

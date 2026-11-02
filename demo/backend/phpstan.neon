@@ -6,6 +6,7 @@ parameters:
     paths:
         - src
         - ../../packages/vector/src
+        - ../../packages/vector-queues/src
         - migrations
         - bootstrap.php
         - public/index.php
