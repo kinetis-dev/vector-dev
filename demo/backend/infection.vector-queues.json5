@@ -1,0 +1,37 @@
+{
+    // Mutation testing over kinetis/vector-queues, the queue dashboard:
+    // every file under its src/. Runs the demo's queue-dashboard tests
+    // (tests/Vector/Queues), which write to the seeded databases' failed-
+    // jobs and metrics tables:
+    //   docker compose exec app composer infection:workers
+    //   docker compose exec app composer infection:vector-queues
+    // As infection.vector.json5: four threads, each worker on stores of
+    // its own (tests/worker-stores.php), so run infection:workers before
+    // each run; --only-covering-test-cases stays off.
+    //
+    // CI runs it as one shard of .github/workflows/infection.yml, with
+    // that shard's floors, which are this config's.
+    //
+    // Measured 2026-11-02 (four threads, local, this config's 60 s
+    // timeout): 686 mutants, 546 killed, 140 escaped, 0 errored, 0 timed
+    // out, 0 not covered — MSI and covered MSI 79.6% (mutation coverage
+    // 100%). The floors sit about two points under it.
+    "$schema": "vendor/infection/infection/resources/schema.json",
+    "source": {
+        "directories": ["../../packages/vector-queues/src"]
+    },
+    "testFramework": "phpunit",
+    // dots for the namespace separators, which Infection would unescape
+    "testFrameworkOptions": "--filter 'Tests.Vector.Queues.'",
+    // Infection stops its initial run at the first line on STDERR
+    // (InitialTestsRunner), and the worker tests' jobs fail on purpose:
+    // the framework's development logger, ErrorLogLogger, writes each
+    // failure through error_log(), which the CLI sends to STDERR. Only
+    // the initial run's log is dropped; the tests assert nothing on it.
+    "initialTestsPhpOptions": "-d error_log=/dev/null",
+    "timeout": 60,
+    "logs": { "text": "infection.vector-queues.log", "summary": "infection.vector-queues.summary.log" },
+    "minMsi": 77,
+    "minCoveredMsi": 77,
+    "mutators": { "@default": true }
+}

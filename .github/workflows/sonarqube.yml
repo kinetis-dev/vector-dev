@@ -116,20 +116,21 @@ jobs:
       - name: Package coverage
         # pcov instruments only files under pcov.directory, which
         # defaults to the working directory's src/ — the demo's, not the
-        # package's — so it is pointed at packages/vector.
+        # packages' — so it is pointed at packages/, covering both PHP
+        # packages, kinetis/vector and kinetis/vector-queues.
         #
-        # kinetis/vector is installed from the path repository as a
-        # symlink (vendor/kinetis/vector -> ../../../../packages/vector),
+        # Each is installed from its path repository as a symlink
+        # (vendor/kinetis/vector -> ../../../../packages/vector),
         # and PHP reports a loaded file by its resolved path, so the
-        # clover file names /workspace/packages/vector/src/..., the
+        # clover file names /workspace/packages/<package>/src/..., the
         # container's view of the checkout (.github/scripts/php mounts it
         # at /workspace). The scanner runs on the runner, where the same
         # files are under $GITHUB_WORKSPACE: the prefix is rewritten to
         # that, leaving every path an existing file under
-        # packages/vector/src, which sonar-project.properties lists as a
-        # source.
+        # packages/vector/src or packages/vector-queues/src, which
+        # sonar-project.properties lists as sources.
         run: |
-          .github/scripts/php php -d pcov.directory=/workspace/packages/vector vendor/bin/phpunit --coverage-clover=coverage.xml
+          .github/scripts/php php -d pcov.directory=/workspace/packages vendor/bin/phpunit --coverage-clover=coverage.xml
           .github/scripts/php sed -i "s#name=\"/workspace/#name=\"$GITHUB_WORKSPACE/#" coverage.xml
 
       - name: SonarQube Cloud scan

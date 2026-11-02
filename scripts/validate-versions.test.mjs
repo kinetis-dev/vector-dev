@@ -424,3 +424,35 @@ test('history on a real history: a test-tooling devDependency bump needs no rele
         done()
     }
 })
+
+test('a third, Composer-only product is held to its own CHANGELOG, composer.json and history', () => {
+    const three = (vector, ui, queues) => ({
+        packages: {
+            ...manifest(vector, ui).packages,
+            'vector-queues': { name: 'kinetis/vector-queues', path: 'packages/vector-queues', version: queues },
+        },
+    })
+    const files = {
+        ...tree('0.9.0', '0.9.0'),
+        'packages/vector-queues/composer.json': JSON.stringify({ name: 'kinetis/vector-queues' }),
+        'packages/vector-queues/CHANGELOG.md': changelog('0.1.0'),
+    }
+    assert.deepEqual(checkConsistency(three('0.9.0', '0.9.0', '0.1.0'), reader(files)), [])
+
+    // the manifest moved without the CHANGELOG
+    assert.deepEqual(checkConsistency(three('0.9.0', '0.9.0', '0.1.1'), reader(files)), ['vector-queues: packages/vector-queues/CHANGELOG.md has no "## [0.1.1]" section'])
+
+    files['packages/vector-queues/composer.json'] = JSON.stringify({ name: 'kinetis/vector-queue', version: '0.1.0' })
+    assert.deepEqual(checkConsistency(three('0.9.0', '0.9.0', '0.1.0'), reader(files)), [
+        'vector-queues: packages/vector-queues/composer.json is named "kinetis/vector-queue", the manifest says "kinetis/vector-queues"',
+        "vector-queues: packages/vector-queues/composer.json has a \"version\"; Packagist reads it from the mirror's tag, so it must not",
+    ])
+
+    // its changes ask for its own bump, not kinetis/vector's
+    const old = three('0.9.0', '0.9.0', '0.1.0')
+    assert.deepEqual(checkHistory(old, three('0.9.0', '0.9.0', '0.1.0'), { 'vector-queues': ['packages/vector-queues/src/Q.php'] }), [
+        'vector-queues: files under packages/vector-queues changed but its version is still 0.1.0 (packages/vector-queues/src/Q.php); run node scripts/bump.mjs vector-queues <patch|minor>',
+    ])
+    assert.deepEqual(checkHistory(old, three('0.9.0', '0.9.0', '0.2.0'), { 'vector-queues': ['packages/vector-queues/src/Q.php'] }), [])
+    assert.match(checkHistory(old, three('0.9.0', '0.9.0', '0.3.0'), { 'vector-queues': ['packages/vector-queues/src/Q.php'] }).join('\n'), /vector-queues: version jumped from 0\.1\.0 to 0\.3\.0/)
+})

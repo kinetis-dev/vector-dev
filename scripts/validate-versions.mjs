@@ -10,7 +10,7 @@
 //     scripts/version-policy.mjs accepts;
 //   - a package.json under a product's path carries the manifest's name
 //     and version; a composer.json carries the name and no version
-//     (Packagist reads kinetis/vector's from the mirror's tag);
+//     (Packagist reads each Composer product's from its mirror's tag);
 //   - each product's CHANGELOG.md has a `## [<version>]` section;
 //   - each directory a product's optional `includes` names exists;
 //   - kinetis/vector's resources/ui.json pins exactly the vector-ui

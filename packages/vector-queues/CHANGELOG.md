@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-02
+
 ### Added
 
 - The queue dashboard's JSON API under `/vector/queues`, in Vector's
@@ -35,3 +37,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `class`, behind the policy's `view`.
 - `vector:queues:prune-metrics --days=<n>` (7 by default) deletes older
   metric rows.
+- `GET /vector/queues/permissions`: what the policy lets the caller do
+  (`view`, `retry`, `forget`, `prune`, and `clear` per watched queue),
+  behind the policy's `view`. It only shapes the UI; every route still
+  asks the policy.
+- The admin UI module `resources/ui/queues.js`, declared under
+  `extra.kinetis.vector.extensions` so the hosted admin loads it: the
+  **Queues** page (`/p/queues`, in the menu's Operations section) with
+  Overview, Failed jobs and Metrics tabs, offering only the actions
+  `/permissions` allows. It also registers a renderer for a dashboard
+  widget of type `vector-queues`, which cannot be placed yet: Vector
+  accepts only its five built-in widget types.
+- Requires PHP 8.4, `kinetis/vector` `^0.14`, `kinetis/queue` `^1.9` and
+  `kinetis/queue-failed-jobs` `^1.1`.

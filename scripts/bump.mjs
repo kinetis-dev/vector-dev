@@ -1,15 +1,18 @@
 #!/usr/bin/env node
 // Bumps one product's version, in the pull request that changes it:
 //
-//     node scripts/bump.mjs <vector|vector-ui> <patch|minor> [--date=YYYY-MM-DD]
+//     node scripts/bump.mjs <product> <patch|minor> [--date=YYYY-MM-DD]
+//
+// <product> is a key of packages.manifest.json: vector, vector-queues or
+// vector-ui.
 //
 // It moves the product's version in packages.manifest.json one step under
 // scripts/version-policy.mjs; writes it to the product's package.json when
-// it has one (packages/vector-ui; packages/vector's composer.json has no
-// version, since Packagist reads it from the mirror's tag); and in the
+// it has one (packages/vector-ui; a Composer product's composer.json has
+// no version, since Packagist reads it from its mirror's tag); and in the
 // product's CHANGELOG.md turns `## [Unreleased]` into `## [X.Y.Z] - <date>`
 // under a fresh, empty `## [Unreleased]`. The date is today's, in UTC.
-// Link references at the end of a CHANGELOG are left as they are; neither
+// Link references at the end of a CHANGELOG are left as they are; no
 // product's CHANGELOG uses them.
 //
 // Bumping vector-ui also moves kinetis/vector's pin of it,
@@ -157,7 +160,7 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
         const unknown = flags.find(flag => !flag.startsWith('--date='))
 
         if (positional.length !== 2 || unknown !== undefined) {
-            throw new Error('Usage: node scripts/bump.mjs <vector|vector-ui> <patch|minor> [--date=YYYY-MM-DD]')
+            throw new Error('Usage: node scripts/bump.mjs <product> <patch|minor> [--date=YYYY-MM-DD], <product> being a key of packages.manifest.json')
         }
 
         const date = flags.find(flag => flag.startsWith('--date='))?.slice('--date='.length)

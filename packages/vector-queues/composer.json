@@ -28,7 +28,7 @@
         "kinetis/persistence": "^1.4.5",
         "kinetis/queue": "^1.9",
         "kinetis/queue-failed-jobs": "^1.1",
-        "kinetis/vector": "dev-main",
+        "kinetis/vector": "^0.14 || dev-main",
         "psr/http-message": "^2.0"
     },
     "autoload": {

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-02
+
 ### Added
 
 - A Composer package can ship its own runtime UI extensions: it lists
@@ -24,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and skipped.
 - The hosted shell's `extensions` lists those modules first, in
   package-name order, then the `VECTOR_UI_EXTENSIONS` entries.
+
+### Changed
+
+- Requires `kinetis/framework` `^1.24.2` and `kinetis/queue` `^1.9.0`.
+- `vector:install-ui` installs `@kinetis/vector-ui` 0.12.0 by default,
+  the release that hands extensions a wider set of Vuetify components
+  and requires Node 26.
 
 ## [0.13.4] - 2026-10-30
 

@@ -65,6 +65,10 @@
             "Composer\\Config::disableProcessTimeout",
             "@php -d memory_limit=1G vendor/bin/infection --configuration=infection.vector.json5 --threads=4 --no-progress"
         ],
+        "infection:vector-queues": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php -d memory_limit=1G vendor/bin/infection --configuration=infection.vector-queues.json5 --threads=4 --no-progress"
+        ],
         "infection:workers": [
             "Composer\\Config::disableProcessTimeout",
             "@php bin/provision-test-workers 4"
@@ -75,6 +79,7 @@
         "psalm:taint": "Psalm taint analysis over the same trees; writes psalm.sarif",
         "infection": "Mutation testing over the demo's src/, gated on its measured MSI; on worker 1's stores",
         "infection:vector": "Mutation testing over Vector's Registry and Query on four workers; run infection:workers first",
+        "infection:vector-queues": "Mutation testing over kinetis/vector-queues on four workers; run infection:workers first",
         "infection:workers": "Recreates, migrates and seeds the databases of mutation-testing workers 1 to 4 (tests/worker-stores.php)"
     },
     "config": {

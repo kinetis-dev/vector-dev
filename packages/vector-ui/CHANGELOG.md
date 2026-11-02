@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-02
+
 ### Added
 
 - `window.Vector.vuetify` also hands extensions `VDialog`, `VTabs`,
@@ -19,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Breaking:** Node 22 and 24 are no longer supported. `engines.node`
   is now `>=26.0.0`.
+- `vue-i18n` is now required at `^11.4.17`.
 
 ## [0.11.4] - 2026-10-30
 

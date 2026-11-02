@@ -51,12 +51,15 @@ jobs:
           filters: |
             php:
               - 'packages/vector/**'
+              - 'packages/vector-queues/**'
               - 'demo/backend/**'
               - 'demo/docker/**'
               - '.github/scripts/php'
               - '.github/workflows/ci.yml'
             node:
               - 'packages/vector-ui/**'
+              # the queue dashboard's UI module: pnpm lint, and its smoke test in scripts/
+              - 'packages/vector-queues/resources/**'
               - 'demo/frontend/**'
               - 'demo/e2e/**'
               - 'scripts/**'
@@ -156,6 +159,7 @@ jobs:
       - name: Validate composer.json
         run: |
           .github/scripts/php composer validate --strict ../../packages/vector/composer.json
+          .github/scripts/php composer validate --strict ../../packages/vector-queues/composer.json
           .github/scripts/php composer validate --strict
 
       - name: Install dependencies
