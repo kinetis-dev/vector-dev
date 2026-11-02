@@ -19,7 +19,7 @@ use Kinetis\Vector\Auth\ActorContext;
  */
 interface QueueDashboardPolicyInterface
 {
-    /** The overview, the failed list and a failed job's detail. */
+    /** The overview, the failed list, a failed job's detail and the job metrics. */
     public function view(ActorContext $actor): bool;
 
     /** Pushing failed jobs back onto their queue. */

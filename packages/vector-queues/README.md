@@ -2,12 +2,13 @@
 
 A queue dashboard for [`kinetis/vector`](../vector): the size of each
 queue, the jobs the worker gave up on — to browse, retry, forget and
-prune — and queues to clear. Built on
+prune — queues to clear, and per-minute throughput, failure and
+duration metrics. Built on
 [`kinetis/queue`](https://github.com/kinetis-dev/queue) and
 [`kinetis/queue-failed-jobs`](https://github.com/kinetis-dev/queue-failed-jobs).
 
 In development: this release ships the JSON API. The admin UI module
-and metrics come later.
+comes later.
 
 ## Requirements
 
@@ -16,6 +17,14 @@ and metrics come later.
 - The `kinetis_failed_jobs` table: copy the migration stub
   `kinetis/queue-failed-jobs` ships for your database into your
   `migrations/` directory, as its README describes, and run
+  `vendor/bin/kinetis migrate`.
+- The `vector_queue_metrics` table, on the same connection: copy
+  `migrations/create_vector_queue_metrics_table.mysql.php.stub` (MySQL
+  8.0.19 or later) or `create_vector_queue_metrics_table.pgsql.php.stub`
+  from this package into the same `migrations/` directory —
+  `migrations/<name>/` when `FAILED_JOBS_DB_CONNECTION_NAME` names a
+  connection — renamed with a timestamp prefix, e.g.
+  `20261103000001_create_vector_queue_metrics_table.php`, and run
   `vendor/bin/kinetis migrate`.
 
 ## Configuration
@@ -34,8 +43,9 @@ and failed jobs on other queues are not listed, shown, retried or
 forgotten.
 
 Sizes and clears go to the application's bound `QueueInterface`. The
-failed-job reads use the connection `FAILED_JOBS_DB_CONNECTION_NAME`
-names, as `kinetis/queue-failed-jobs` does, on a link of their own.
+failed-job reads and the job metrics use the connection
+`FAILED_JOBS_DB_CONNECTION_NAME` names (`default` when unset), as
+`kinetis/queue-failed-jobs` does, sharing one link of their own.
 
 ## Endpoints
 
@@ -53,11 +63,68 @@ answer is JSON.
 | `DELETE /vector/queues/failed/{id}` | Forgets one record: `204`. |
 | `POST /vector/queues/failed/prune` | `{"hours": n}` or `{"days": n}` — exactly one, from 1 — through the store's own `prune()`, which spans every queue: `{data: {deleted, olderThanSeconds}}`. |
 | `POST /vector/queues/{queue}/clear` | `{"confirm": "<queue>"}`: the queue's name exactly, or `422`. A backend without `ClearableQueueInterface` (SQS) is refused with `409`. `{data: {queue, cleared}}`. |
+| `GET /vector/queues/metrics` | Job metrics over a window, described below. |
+
+## Metrics
+
+A listener records every attempt the worker settles — kinetis/queue's
+`JobSucceeded`, `JobReleased` and `JobFailedPermanently` events — into
+`vector_queue_metrics`: one row per minute, queue and job class (the
+events carry no connection name), with the `succeeded`, `released` and
+`failed` counts, the summed and longest handler durations
+(`total_duration_ms`, `max_duration_ms`) and `last_processed_at`. Each
+attempt is one atomic upsert, so concurrent workers never lose an
+increment. Installing the package is what turns recording on, in every
+process that runs `queue:work`.
+
+Recording never affects a job: the events fire after the job is
+settled, and a failed write — the table missing, the database down — is
+logged as a warning, at most once a minute per worker, and dropped.
+
+`GET /vector/queues/metrics` reads a window of it, on the watched queues
+only. Query:
+
+- `from`, `to` — unix seconds, each taken to the start of its minute,
+  both minutes included. `to` defaults to now and `from` to 59 minutes
+  before `to`: the last 60 minutes. The window spans at most 7 days
+  (10 080 minutes).
+- `queue` — one watched queue; any other is a `422`, as in the failed
+  list's filter.
+- `class` — one job class, fully qualified.
+
+A bad value, an inverted or too-long window, and an unknown parameter
+are a `422`. The answer:
+
+```text
+{data: {
+  from, to, bucketSeconds: 60,
+  buckets: [{bucket, succeeded, released, failed, averageDurationMs, maxDurationMs}],
+  queues:  [{queue, succeeded, released, failed, failureRate, averageDurationMs, maxDurationMs, lastProcessedAt}],
+  classes: [{class, succeeded, released, failed, failureRate, averageDurationMs, maxDurationMs, lastProcessedAt}]
+}}
+```
+
+`buckets` has one entry per minute of the window, every number `0` in a
+minute nothing ran; `queues` and `classes` list only what ran in it.
+Times are unix seconds and durations milliseconds. The average is over
+every attempt; `failureRate` is `failed / (succeeded + failed)` — the
+share of finished jobs that failed permanently, a release being a retry
+rather than an outcome — and `null` when nothing finished.
+
+Nothing prunes the table on its own. Run, from a scheduler:
+
+```sh
+vendor/bin/kinetis vector:queues:prune-metrics --days=7
+```
+
+It deletes the rows whose minute began more than `--days` days ago (a
+whole number from 1; 7 when absent) and prints how many it deleted.
 
 ## Access
 
 `Kinetis\Vector\Queues\Auth\QueueDashboardPolicyInterface` decides each
-call — `view`, `retry`, `forget`, `prune` and `clear`, each given
+call — `view` (the overview, the failed list and detail, and the
+metrics), `retry`, `forget`, `prune` and `clear`, each given
 Vector's `ActorContext` — and a refusal is a `403`. The package binds
 `ViewOnlyQueueDashboardPolicy`: anyone Vector admits may look, and
 nobody may change anything. Bind your own in `bootstrap.php`, which runs

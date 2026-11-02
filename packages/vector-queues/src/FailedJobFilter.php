@@ -24,7 +24,8 @@ final readonly class FailedJobFilter
 
     private const array PARAMETERS = ['queue', 'class', 'failedFrom', 'failedTo', 'limit', 'cursor'];
 
-    private const string CLASS_NAME = '/^[A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*(\\\\[A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*)*$/D';
+    /** A fully-qualified class name, without its leading backslash; the metrics query accepts the same. */
+    public const string CLASS_NAME ='/^[A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*(\\\\[A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*)*$/D';
 
     private const string TIMESTAMP = '/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(Z|[+-]\d{2}:\d{2})$/D';
 
