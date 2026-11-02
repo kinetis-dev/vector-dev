@@ -17,6 +17,7 @@ use Kinetis\Vector\Write\EntityWriter;
 use Kinetis\Vector\Jobs\VectorQueue;
 use Kinetis\Vector\OpenApi\OpenApiCache;
 use Kinetis\Vector\Translation\MessagesTranslator;
+use Kinetis\Vector\Translation\PackageTranslations;
 use Kinetis\Vector\Translation\TranslatorInterface;
 use Kinetis\Vector\Ui\ExtensionModules;
 use Kinetis\Vector\Ui\VectorUi;
@@ -24,8 +25,8 @@ use Kinetis\Vector\Widgets\WidgetCache;
 
 /**
  * Wiring only: binds the hosted UI document, the application's login
- * and logout URLs, the deployment's shell additions and the packages'
- * UI extension modules once per worker. Everything else Vector registers is discovered from
+ * and logout URLs, the deployment's shell additions, the packages'
+ * UI extension modules and the labels' translations once per worker. Everything else Vector registers is discovered from
  * attributes.
  */
 final readonly class PackageBootstrap implements PackageBootstrapInterface
@@ -67,10 +68,14 @@ final readonly class PackageBootstrap implements PackageBootstrapInterface
             });
         }
 
-        // The labels' translations: read once, request-neutral.
+        // The labels' translations: read once, request-neutral. Vector's own, then each package's in package-name
+        // order — a directory gone since the build is reported and skipped — then the application's, which wins.
         if (!$app->has(TranslatorInterface::class)) {
             $directory = trim($config->string('VECTOR_TRANSLATIONS_DIR', ''));
-            $directories = [dirname(__DIR__) . '/translations'];
+            $directories = [
+                dirname(__DIR__) . '/translations',
+                ...PackageTranslations::directories($registry instanceof VectorRegistry ? $registry->packageTranslations() : [], $root->path),
+            ];
 
             if ($directory !== '') {
                 $directories[] = str_starts_with($directory, '/') ? $directory : $root->path . '/' . $directory;

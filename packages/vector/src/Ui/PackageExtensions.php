@@ -88,10 +88,22 @@ final readonly class PackageExtensions
      */
     public static function contained(string $root, string $entry): bool
     {
-        $base = realpath($root);
-        $file = realpath($root . '/' . $entry);
+        $file = self::inside($root, $entry);
 
-        return $base !== false && $file !== false && is_file($file) && str_starts_with($file, rtrim($base, '/') . '/');
+        return $file !== null && is_file($file);
+    }
+
+    /**
+     * The real path $path resolves to, through any symlink, when that is
+     * strictly inside $root's own real path; null when it is missing or
+     * escapes. The caller checks what kind of entry it must be.
+     */
+    public static function inside(string $root, string $path): ?string
+    {
+        $base = realpath($root);
+        $resolved = realpath($root . '/' . $path);
+
+        return $base !== false && $resolved !== false && str_starts_with($resolved, rtrim($base, '/') . '/') ? $resolved : null;
     }
 
     /**

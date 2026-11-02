@@ -14,6 +14,7 @@ use Kinetis\Vector\Attributes\Dashboard;
 use Kinetis\Vector\Attributes\Settings;
 use Kinetis\Vector\Exception\ResourceCompileException;
 use Kinetis\Vector\Settings\SettingsGroup;
+use Kinetis\Vector\Translation\PackageTranslations;
 use Kinetis\Vector\Ui\PackageExtensions;
 use Kinetis\Vector\Widgets\VectorDashboard;
 use Kinetis\Vector\Exception\ResourceNotFoundException;
@@ -28,8 +29,10 @@ use ReflectionClass;
  * It also carries the runtime UI extensions installed packages declare
  * in `extra.kinetis.vector.extensions` ({@see PackageExtensions}): read
  * from Composer's record at compile time, so which package boots first
- * makes no difference. They are not part of the descriptor the UI
- * reads, so {@see VERSION} does not change with them.
+ * makes no difference. So does the translations directory each package
+ * declares in `extra.kinetis.vector.translations` ({@see PackageTranslations}).
+ * Neither is part of the descriptor the UI reads, so {@see VERSION} does
+ * not change with them.
  */
 final readonly class VectorRegistry implements CacheableDiscoveryInterface
 {
@@ -42,7 +45,7 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
     private array $settings;
 
     /**
-     * @param array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>, uiExtensions?: list<array{package: string, root: string, entry: string}>} $data
+     * @param array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>, uiExtensions?: list<array{package: string, root: string, entry: string}>, packageTranslations?: list<array{package: string, root: string, directory: string}>} $data
      */
     private function __construct(private array $data)
     {
@@ -66,7 +69,8 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
      * Resource, settings and dashboard classes come from the operation's
      * shared class scan, entity metadata from the ORM's own discovery
      * section, which the context compiles once for every consumer, and
-     * the packages' UI extensions from Composer's installed.json.
+     * the packages' UI extensions and translations directories from
+     * Composer's installed.json.
      */
     #[\Override]
     public static function compile(DiscoveryContext $context): array
@@ -113,6 +117,7 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
             'settings' => SettingsCompiler::compile($groupClasses, $resources),
             'dashboards' => WidgetCompiler::dashboards($dashboardClasses),
             'uiExtensions' => PackageExtensions::discover($context->projectRoot),
+            'packageTranslations' => PackageTranslations::discover($context->projectRoot),
         ];
     }
 
@@ -145,7 +150,20 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
             }
         }
 
-        /** @var array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>, uiExtensions?: list<array{package: string, root: string, entry: string}>} $data */
+        // A cache compiled before packages could declare translations has no such key: it loads as none.
+        $translations = $data['packageTranslations'] ?? [];
+
+        if (!is_array($translations) || !array_is_list($translations)) {
+            throw InvalidCacheArtifactException::malformedEntry('VectorRegistry', 'a package translations entry that is not a list');
+        }
+
+        foreach ($translations as $declared) {
+            if (!is_array($declared) || !is_string($declared['package'] ?? null) || !is_string($declared['root'] ?? null) || !is_string($declared['directory'] ?? null)) {
+                throw InvalidCacheArtifactException::malformedEntry('VectorRegistry', 'a malformed package translations entry');
+            }
+        }
+
+        /** @var array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>, uiExtensions?: list<array{package: string, root: string, entry: string}>, packageTranslations?: list<array{package: string, root: string, directory: string}>} $data */
         return new self($data);
     }
 
@@ -176,7 +194,7 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
         return $this->settings[$name] ?? throw ResourceNotFoundException::slug("settings/{$name}");
     }
 
-    /** @return array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>, uiExtensions?: list<array{package: string, root: string, entry: string}>} */
+    /** @return array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>, uiExtensions?: list<array{package: string, root: string, entry: string}>, packageTranslations?: list<array{package: string, root: string, directory: string}>} */
     public function toArray(): array
     {
         return $this->data;
@@ -191,6 +209,17 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
     public function uiExtensions(): array
     {
         return $this->data['uiExtensions'] ?? [];
+    }
+
+    /**
+     * The translations directory each installed package declares, by
+     * package name; empty for a registry compiled without them.
+     *
+     * @return list<array{package: string, root: string, directory: string}>
+     */
+    public function packageTranslations(): array
+    {
+        return $this->data['packageTranslations'] ?? [];
     }
 
     /** @return array<string, ResourceDescriptor> slug => descriptor, ordered by slug */
