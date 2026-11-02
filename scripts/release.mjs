@@ -583,7 +583,6 @@ function required(opts, name) {
     return opts[name]
 }
 
-/** Writes key=value lines to $GITHUB_OUTPUT when it is set, and prints them either way. */
 /**
  * The plan's step outputs: `mirrors`, the JSON list of { product, version }
  * the mirror job's matrix runs, one per mirror product this round
@@ -609,6 +608,7 @@ export function planOutputs(result) {
     }
 }
 
+/** Writes key=value lines to $GITHUB_OUTPUT when it is set, and prints them either way. */
 function output(values) {
     const lines = Object.entries(values).map(([key, value]) => `${key}=${value}`)
     lines.forEach(line => console.log(line))
