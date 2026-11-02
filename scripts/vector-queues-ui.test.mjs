@@ -53,13 +53,18 @@ async function load(routes) {
 
     // as a browser takes it: an ES module, whatever the nearest package.json says
     const { default: register } = await import(`data:text/javascript;base64,${readFileSync(MODULE).toString('base64')}`)
+    // every member the real loader hands over (packages/vector-ui/app/plugins/vector-extensions.client.ts, `const api`), no more
     register({
         version: 1,
         vue,
         vuetify,
-        definePage: (name, page) => pages.set(name, page),
+        tiptap: { Node: {}, Mark: {}, Extension: {}, mergeAttributes: () => ({}) },
+        defineCell: () => {},
+        defineInput: () => {},
         defineWidget: (type, component) => widgets.set(type, component),
+        defineRichTextExtension: () => {},
         defineMessages: (locale, added) => Object.assign(messages[locale] ??= {}, added),
+        definePage: (name, page) => pages.set(name, page),
         api,
         notify: vector.notify,
         navigate: vector.navigate,
@@ -226,6 +231,38 @@ test('every mutation is offered when the permissions allow it, and the failed li
     assert.equal(last.path, '/vector/queues/failed')
     assert.deepEqual(last.options.query, { cursor: 'opaque' })
     unmountAll(failed.page)
+})
+
+/** The failed tab with a row's detail opened through its Details button: the nodes once the detail has loaded. */
+async function renderDetail(loaded) {
+    const failed = await renderTab(loaded, 'failed')
+    const details = failed.nodes.find(node => node.type === 'VBtn' && typeof node.children === 'function' && node.children() === 'vectorQueues.failed.open')
+    assert.ok(details, 'a Details button on the row')
+    details.props.onClick()
+    walk(failed.page) // mounts the detail, whose request starts now
+    await tick()
+    await tick()
+    const nodes = walk(failed.page)
+    assert.ok(nodes.some(node => node.text === `vectorQueues.failed.detail.title{"id":"${FAILED_ID}"}`), 'the detail is shown')
+    assert.ok(loaded.calls.some(call => call.path === `/vector/queues/failed/${FAILED_ID}`))
+
+    return { page: failed.page, nodes }
+}
+
+test('the failed-job detail offers no mutation when the permissions allow none', async () => {
+    stubDocument()
+    const detail = await renderDetail(await load(routes(NONE)))
+
+    assert.deepEqual(actions(detail.nodes), [])
+    unmountAll(detail.page)
+})
+
+test('the failed-job detail offers retry and forget when the permissions allow them', async () => {
+    stubDocument()
+    const detail = await renderDetail(await load(routes(ALL)))
+
+    assert.deepEqual(actions(detail.nodes).sort(), ['forget', 'retry'])
+    unmountAll(detail.page)
 })
 
 test('a 403 from the permissions is a no-access state', async () => {
