@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   they kept the language the module loaded in until a reload. This needs
   a `@kinetis/vector-ui` that accepts function labels in `definePage()`.
 
+### Changed
+
+- Requires the Kinetis patch releases built with Psalm 7:
+  `kinetis/framework` `^1.24.3`, `kinetis/database-bridge` `^1.4.3`,
+  `kinetis/persistence` `^1.4.6`, `kinetis/queue` `^1.9.1` and
+  `kinetis/queue-failed-jobs` `^1.1.1`.
+
 ## [0.1.0] - 2026-11-02
 
 ### Added

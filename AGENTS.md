@@ -194,7 +194,6 @@ Once Orbitron is ready, every task runs the same way:
    docker compose exec app vendor/bin/phpunit --filter SomeTest
    docker compose exec app vendor/bin/phpstan analyse
    docker compose exec app composer psalm
-   docker compose exec app composer psalm:taint
    ```
 
    `phpstan.neon` registers two Kinetis rules on top of level 8.

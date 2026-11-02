@@ -14,21 +14,21 @@
         "ext-pdo_mysql": "*",
         "ext-pdo_pgsql": "*",
         "ext-pgsql": "*",
-        "kinetis/auth-jwt": "^1.5.2",
-        "kinetis/authorization": "^1.0.6",
-        "kinetis/cache-redis": "^1.3.2",
-        "kinetis/database-bridge": "^1.4.2",
-        "kinetis/framework": "^1.24.2",
-        "kinetis/mcp": "^1.8.2",
-        "kinetis/migrations": "^1.4.2",
-        "kinetis/orm": "^1.13.1",
-        "kinetis/query-builder": "^1.8.2",
-        "kinetis/queue": "^1.9",
-        "kinetis/queue-failed-jobs": "^1.1",
-        "kinetis/queue-redis": "^1.8.3",
-        "kinetis/queue-sql": "^1.6.7",
-        "kinetis/session": "^1.3.3",
-        "kinetis/storage": "^1.2.6",
+        "kinetis/auth-jwt": "^1.5.3",
+        "kinetis/authorization": "^1.0.7",
+        "kinetis/cache-redis": "^1.3.3",
+        "kinetis/database-bridge": "^1.4.3",
+        "kinetis/framework": "^1.24.3",
+        "kinetis/mcp": "^1.8.3",
+        "kinetis/migrations": "^1.4.3",
+        "kinetis/orm": "^1.13.2",
+        "kinetis/query-builder": "^1.8.3",
+        "kinetis/queue": "^1.9.1",
+        "kinetis/queue-failed-jobs": "^1.1.1",
+        "kinetis/queue-redis": "^1.8.4",
+        "kinetis/queue-sql": "^1.6.8",
+        "kinetis/session": "^1.3.4",
+        "kinetis/storage": "^1.2.7",
         "kinetis/vector": "dev-main",
         "kinetis/vector-queues": "dev-main",
         "openspout/openspout": "^5.13",
@@ -36,13 +36,13 @@
     },
     "require-dev": {
         "infection/infection": "^0.35.8",
-        "kinetis/mcp-docs": "^1.9.2",
-        "kinetis/mcp-protocol": "^1.1.1",
-        "kinetis/orbitron": "^1.11.4",
+        "kinetis/mcp-docs": "^1.9.3",
+        "kinetis/mcp-protocol": "^1.1.2",
+        "kinetis/orbitron": "^1.11.5",
         "opis/json-schema": "^2.6.0",
         "phpstan/phpstan": "^2.3.4",
         "phpunit/phpunit": "^13.4.6",
-        "vimeo/psalm": "^6.20.5"
+        "vimeo/psalm": "^7.0"
     },
     "autoload": {
         "psr-4": {
@@ -55,8 +55,7 @@
         }
     },
     "scripts": {
-        "psalm": "psalm --no-progress",
-        "psalm:taint": "@php -d zend.assertions=-1 vendor/bin/psalm --taint-analysis --no-progress --report=psalm.sarif --report-show-info=false",
+        "psalm": "psalm --taint-analysis --no-progress --report=psalm.sarif --report-show-info=false",
         "infection": [
             "Composer\\Config::disableProcessTimeout",
             "@php -d memory_limit=1G vendor/bin/infection --threads=1 --only-covering-test-cases --no-progress"
@@ -75,8 +74,7 @@
         ]
     },
     "scripts-descriptions": {
-        "psalm": "Psalm over the demo, packages/vector/src and the migrations",
-        "psalm:taint": "Psalm taint analysis over the same trees; writes psalm.sarif",
+        "psalm": "Psalm, types and taints in one run, over the demo, packages/vector/src, packages/vector-queues/src and the migrations; writes psalm.sarif",
         "infection": "Mutation testing over the demo's src/, gated on its measured MSI; on worker 1's stores",
         "infection:vector": "Mutation testing over Vector's Registry and Query on four workers; run infection:workers first",
         "infection:vector-queues": "Mutation testing over kinetis/vector-queues on four workers; run infection:workers first",

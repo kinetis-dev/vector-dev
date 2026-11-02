@@ -198,15 +198,10 @@ jobs:
       - name: PHPStan
         run: .github/scripts/php vendor/bin/phpstan analyse --no-progress --memory-limit=1G
 
-      # Two Psalm passes, deliberately: --taint-analysis reports taint
-      # issues only, suppressing every ordinary issue type — a plain run
-      # is what catches those.
+      # One run reports both ordinary and taint issues (Psalm 7).
       - name: Psalm
-        run: .github/scripts/php composer psalm
-
-      - name: Psalm (taint analysis)
         # writes demo/backend/psalm.sarif
-        run: .github/scripts/php composer psalm:taint
+        run: .github/scripts/php composer psalm
 
       - name: Upload Psalm SARIF to code scanning
         # Soft-fails rather than reddening the run over a dashboard step

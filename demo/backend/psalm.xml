@@ -6,9 +6,7 @@
     6 stops on a false positive (RelationField::to() sets a property on
     what static::make() returns, which Psalm types as the parent Field).
 
-    Psalm runs twice, on purpose: plainly (`composer psalm`), and with
-    taint analysis (`composer psalm:taint`), which reports taint issues
-    only and so cannot replace the plain run.
+    Psalm 7 checks types and taints in one run (`composer psalm`).
 -->
 <psalm
     errorLevel="7"

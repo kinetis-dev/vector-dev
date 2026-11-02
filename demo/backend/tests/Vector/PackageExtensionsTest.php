@@ -194,6 +194,14 @@ final class PackageExtensionsTest extends TestCase
             self::assertIsArray($package);
             self::assertIsString($package['name'] ?? null);
             $name = $package['name'];
+
+            // A metapackage (psalm/psalm-plugin-api) has no files: Composer records it with a null install-path.
+            if (($package['install-path'] ?? null) === null) {
+                $records[] = $package;
+
+                continue;
+            }
+
             @mkdir(dirname($this->root . '/vendor/' . $name), 0755, true);
             symlink((string) realpath($vendor . '/' . $name), $this->root . '/vendor/' . $name);
             $records[] = [...$package, 'install-path' => '../' . $name];

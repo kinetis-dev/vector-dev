@@ -18,6 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deployment's CORS must cover `/vector/extensions/*` for the UI's
   origin, as a globally registered `CorsMiddleware` does.
 
+### Changed
+
+- Requires the Kinetis patch releases built with Psalm 7:
+  `kinetis/framework` `^1.24.3`, `kinetis/authorization` `^1.0.7`,
+  `kinetis/database-bridge` `^1.4.3`, `kinetis/mcp` `^1.8.3`,
+  `kinetis/mcp-protocol` `^1.1.2`, `kinetis/migrations` `^1.4.3`,
+  `kinetis/orm` `^1.13.2`, `kinetis/persistence` `^1.4.6`,
+  `kinetis/query-builder` `^1.8.3` and `kinetis/queue` `^1.9.1`.
+
 ## [0.14.0] - 2026-11-02
 
 ### Added

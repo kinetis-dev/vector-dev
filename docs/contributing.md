@@ -112,20 +112,17 @@ specific mistakes; they do not prove a change is correct on a persistent
 worker.
 
 ```console
-docker compose exec app composer psalm          # Psalm, plain
-docker compose exec app composer psalm:taint    # Psalm, taint analysis; writes backend/psalm.sarif
+docker compose exec app composer psalm          # Psalm, types and taints; writes backend/psalm.sarif
 ```
 
 Psalm covers the demo's `src/` and `migrations/`,
 `packages/vector/src` and `packages/vector-queues/src`, at its level 7 (Psalm's 1 is its strictest).
-It runs twice on purpose: `--taint-analysis` reports only taint issues,
-so it cannot replace the plain run. The taint run needs
-`zend.assertions=-1`, which the script sets. Request input reaches this
+Psalm 7 checks types and taints in one run. Request input reaches this
 code through PSR-7 and the framework's hydration, and SQL runs through
 Kinetis's own links. Psalm knows neither as a taint source or sink, so a
 clean taint run only covers flows from PHP's own sources to PHP's own
 sinks. Overriding and implementing methods carry `#[\Override]`, and
-the plain run enforces it.
+Psalm enforces it.
 
 ## Mutation testing
 
