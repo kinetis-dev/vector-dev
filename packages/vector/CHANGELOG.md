@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   package-name order, then the `VECTOR_UI_EXTENSIONS` entries.
 - Extension widget types: `VectorWidget::type()` may return a
   lower-case kebab-case name that is none of the five built-in types,
-  such as `vector-queues`. The UI renders it with the renderer a runtime
+  such as `sparkline`. The UI renders it with the renderer a runtime
   extension registers (`defineWidget`) or `app.config` `vector.widgets`
   maps. `WidgetResult::extension($type, $data)` answers such a widget,
   and its data is served as it is, without a built-in card's shape. Any
