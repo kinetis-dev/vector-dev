@@ -66,7 +66,9 @@ final class DemoFlakyJobTest extends QueuesTestCase
     public function testTheDemoDashboardWatchesExactlyTheQueuesItsWorkerServes(): void
     {
         $compose = (string) file_get_contents(dirname(__DIR__, 4) . '/docker-compose.yml');
-        self::assertSame(1, preg_match('/"queue:work", "--queue=([^"]+)"/', $compose, $m));
+        if (preg_match('/"queue:work", "--queue=([^"]+)"/', $compose, $m) !== 1) {
+            self::fail('docker-compose.yml runs no `queue:work --queue=…` worker.');
+        }
 
         self::assertSame(array_map(trim(...), explode(',', $m[1])), self::demoQueues());
     }
@@ -102,7 +104,9 @@ final class DemoFlakyJobTest extends QueuesTestCase
     private static function demoQueues(): array
     {
         $env = (string) file_get_contents(dirname(__DIR__, 3) . '/.env.example');
-        self::assertSame(1, preg_match('/^VECTOR_QUEUES=(.*)$/m', $env, $m));
+        if (preg_match('/^VECTOR_QUEUES=(.*)$/m', $env, $m) !== 1) {
+            self::fail('.env.example sets no VECTOR_QUEUES.');
+        }
 
         return array_map(trim(...), explode(',', $m[1]));
     }
