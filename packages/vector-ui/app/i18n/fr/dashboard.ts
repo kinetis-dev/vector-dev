@@ -3,6 +3,7 @@ export default {
     title: 'Tableau de bord',
     range: 'Période',
     loading: 'Chargement',
+    noRenderer: 'Aucun rendu n’est enregistré pour le type de widget {type}.',
     percent: '{value} %',
     duration: {
         minutes: '{value} min',

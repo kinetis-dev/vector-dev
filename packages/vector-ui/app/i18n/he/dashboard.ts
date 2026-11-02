@@ -3,6 +3,7 @@ export default {
     title: 'לוח בקרה',
     range: 'טווח',
     loading: 'טוען',
+    noRenderer: 'לא רשום מציג לסוג הווידג׳ט {type}.',
     percent: '{value}%',
     duration: {
         minutes: '{value} דק׳',

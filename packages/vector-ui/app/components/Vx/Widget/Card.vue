@@ -45,9 +45,12 @@ const builtIn: Record<string, Component> = {
     table: defineAsyncComponent(() => import('#vector/app/components/Vx/Widget/Table.vue')),
 }
 
+// null for a type with no built-in card and no registered renderer: an
+// extension type whose module is missing or failed to load. The card says
+// so instead of guessing at a shape.
 const component = computed(() => {
     const override = appConfig.vector.widgets[props.widget.type] ?? useVectorExtensions().widgets.get(props.widget.type)
-    if (!override) return builtIn[props.widget.type] ?? builtIn.stat!
+    if (!override) return builtIn[props.widget.type] ?? null
     return typeof override === 'string' ? resolveComponent(override) : override
 })
 </script>
@@ -73,7 +76,8 @@ const component = computed(() => {
             </template>
         </v-card-item>
         <v-card-text class="flex-grow-1 d-flex flex-column justify-center">
-            <v-progress-linear v-if="loading && !data" indeterminate color="primary" :aria-label="t('dashboard.loading')" />
+            <v-alert v-if="!component" type="warning" variant="tonal" density="compact" :text="t('dashboard.noRenderer', { type: widget.type })" />
+            <v-progress-linear v-else-if="loading && !data" indeterminate color="primary" :aria-label="t('dashboard.loading')" />
             <v-alert v-else-if="error" type="error" variant="tonal" density="compact" :text="error" />
             <component :is="component" v-else-if="data" :data="data" :widget="widget" />
         </v-card-text>

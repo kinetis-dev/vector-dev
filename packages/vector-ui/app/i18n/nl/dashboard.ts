@@ -3,6 +3,7 @@ export default {
     title: 'Dashboard',
     range: 'Periode',
     loading: 'Laden',
+    noRenderer: 'Er is geen renderer geregistreerd voor het widgettype {type}.',
     percent: '{value}%',
     duration: {
         minutes: '{value} min',

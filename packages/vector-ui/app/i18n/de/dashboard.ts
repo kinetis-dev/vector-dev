@@ -3,6 +3,7 @@ export default {
     title: 'Dashboard',
     range: 'Zeitraum',
     loading: 'Wird geladen',
+    noRenderer: 'Für den Widget-Typ {type} ist kein Renderer registriert.',
     percent: '{value} %',
     duration: {
         minutes: '{value} Min.',

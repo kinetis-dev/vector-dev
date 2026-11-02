@@ -3,6 +3,7 @@ export default {
     title: '仪表盘',
     range: '时间范围',
     loading: '加载中',
+    noRenderer: '没有为小组件类型 {type} 注册渲染器。',
     percent: '{value}%',
     duration: {
         minutes: '{value} 分钟',

@@ -128,7 +128,16 @@ export interface VectorActionResponse {
     jobId?: number | null
 }
 
-export type VectorWidgetType = 'stat' | 'trend' | 'partition' | 'progress' | 'table'
+/** The built-in cards' types. */
+export type VectorBuiltInWidgetType = 'stat' | 'trend' | 'partition' | 'progress' | 'table'
+
+/**
+ * A built-in type, or an extension type: a kebab-case name whose card a
+ * runtime extension registers (defineWidget) or app.config.vector.widgets
+ * maps. Its data is whatever the widget answered, beside `type`, `range`
+ * and `cached`.
+ */
+export type VectorWidgetType = VectorBuiltInWidgetType | (string & {})
 
 export interface VectorWidget {
     name: string

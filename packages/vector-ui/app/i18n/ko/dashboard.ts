@@ -3,6 +3,7 @@ export default {
     title: '대시보드',
     range: '기간',
     loading: '불러오는 중',
+    noRenderer: '위젯 유형 {type}에 등록된 렌더러가 없습니다.',
     percent: '{value}%',
     duration: {
         minutes: '{value}분',

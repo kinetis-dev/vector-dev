@@ -3,6 +3,7 @@ export default {
     title: 'لوحة المعلومات',
     range: 'النطاق',
     loading: 'جارٍ التحميل',
+    noRenderer: 'لا يوجد عارض مسجَّل لنوع الأداة {type}.',
     percent: '{value}%',
     duration: {
         minutes: '{value} دقيقة',

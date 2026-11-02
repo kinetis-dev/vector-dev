@@ -3,6 +3,7 @@ export default {
     title: 'Dashboard',
     range: 'Intervallo',
     loading: 'Caricamento',
+    noRenderer: 'Nessun renderer registrato per il tipo di widget {type}.',
     percent: '{value}%',
     duration: {
         minutes: '{value} min',
