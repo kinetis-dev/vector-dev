@@ -14,6 +14,7 @@ use Kinetis\Vector\Attributes\Dashboard;
 use Kinetis\Vector\Attributes\Settings;
 use Kinetis\Vector\Exception\ResourceCompileException;
 use Kinetis\Vector\Settings\SettingsGroup;
+use Kinetis\Vector\Ui\PackageExtensions;
 use Kinetis\Vector\Widgets\VectorDashboard;
 use Kinetis\Vector\Exception\ResourceNotFoundException;
 use ReflectionClass;
@@ -23,6 +24,12 @@ use ReflectionClass;
  * build` from every #[Resource] class and the ORM's own metadata, and
  * bound on AppScope before any package bootstrap runs. Immutable and
  * request-neutral; the per-user permission overlay is computed elsewhere.
+ *
+ * It also carries the runtime UI extensions installed packages declare
+ * in `extra.kinetis.vector.extensions` ({@see PackageExtensions}): read
+ * from Composer's record at compile time, so which package boots first
+ * makes no difference. They are not part of the descriptor the UI
+ * reads, so {@see VERSION} does not change with them.
  */
 final readonly class VectorRegistry implements CacheableDiscoveryInterface
 {
@@ -35,7 +42,7 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
     private array $settings;
 
     /**
-     * @param array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>} $data
+     * @param array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>, uiExtensions?: list<array{package: string, root: string, entry: string}>} $data
      */
     private function __construct(private array $data)
     {
@@ -57,8 +64,9 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
 
     /**
      * Resource, settings and dashboard classes come from the operation's
-     * shared class scan, and entity metadata from the ORM's own discovery
-     * section, which the context compiles once for every consumer.
+     * shared class scan, entity metadata from the ORM's own discovery
+     * section, which the context compiles once for every consumer, and
+     * the packages' UI extensions from Composer's installed.json.
      */
     #[\Override]
     public static function compile(DiscoveryContext $context): array
@@ -104,6 +112,7 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
             'resources' => $resources,
             'settings' => SettingsCompiler::compile($groupClasses, $resources),
             'dashboards' => WidgetCompiler::dashboards($dashboardClasses),
+            'uiExtensions' => PackageExtensions::discover($context->projectRoot),
         ];
     }
 
@@ -124,7 +133,19 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
             }
         }
 
-        /** @var array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>} $data */
+        $extensions = $data['uiExtensions'] ?? [];
+
+        if (!is_array($extensions) || !array_is_list($extensions)) {
+            throw InvalidCacheArtifactException::malformedEntry('VectorRegistry', 'a UI extensions entry that is not a list');
+        }
+
+        foreach ($extensions as $extension) {
+            if (!is_array($extension) || !is_string($extension['package'] ?? null) || !is_string($extension['root'] ?? null) || !is_string($extension['entry'] ?? null)) {
+                throw InvalidCacheArtifactException::malformedEntry('VectorRegistry', 'a malformed UI extension entry');
+            }
+        }
+
+        /** @var array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>, uiExtensions?: list<array{package: string, root: string, entry: string}>} $data */
         return new self($data);
     }
 
@@ -155,10 +176,21 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
         return $this->settings[$name] ?? throw ResourceNotFoundException::slug("settings/{$name}");
     }
 
-    /** @return array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>} */
+    /** @return array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>, uiExtensions?: list<array{package: string, root: string, entry: string}>} */
     public function toArray(): array
     {
         return $this->data;
+    }
+
+    /**
+     * The UI extensions installed packages declare, by package name, then
+     * in declared order; empty for a registry compiled without them.
+     *
+     * @return list<array{package: string, root: string, entry: string}>
+     */
+    public function uiExtensions(): array
+    {
+        return $this->data['uiExtensions'] ?? [];
     }
 
     /** @return array<string, ResourceDescriptor> slug => descriptor, ordered by slug */

@@ -1,0 +1,29 @@
+{
+    "name": "acme/vector-queues-fixture",
+    "description": "A test fixture: a Composer package that declares Vector UI extensions and a bootstrap of its own, the way kinetis/vector-queues will.",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "App\\Tests\\Vector\\Fixtures\\UiExtensionPackage\\": ""
+        }
+    },
+    "extra": {
+        "kinetis": {
+            "bootstrap": "App\\Tests\\Vector\\Fixtures\\UiExtensionPackage\\FixtureBootstrap",
+            "vector": {
+                "extensions": [
+                    "resources/ui/queues.js",
+                    "resources/ui/more/panel.mjs",
+                    "../escape.js",
+                    "/etc/passwd.js",
+                    "resources/./ui/queues.js",
+                    "resources/.hidden.js",
+                    "resources/ui/missing.js",
+                    "README.md",
+                    "resources/other/queues.js",
+                    42
+                ]
+            }
+        }
+    }
+}

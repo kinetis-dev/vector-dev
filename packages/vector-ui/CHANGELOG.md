@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `window.Vector.vuetify` also hands extensions `VDialog`, `VTabs`,
+  `VTab`, `VTabsWindow`, `VTabsWindowItem`, `VTooltip`, `VMenu`,
+  `VList`, `VListItem`, `VExpansionPanels`, `VExpansionPanel`,
+  `VExpansionPanelTitle`, `VExpansionPanelText`, `VPagination`,
+  `VDivider` and `VSkeletonLoader`. The API is still `version: 1`.
+
 ## [0.11.4] - 2026-10-30
 
 ### Changed

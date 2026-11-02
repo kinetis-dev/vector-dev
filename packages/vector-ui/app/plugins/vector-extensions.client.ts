@@ -1,11 +1,16 @@
 import * as vue from 'vue'
 import { Extension as TiptapExtension, Mark as TiptapMark, Node as TiptapNode, mergeAttributes } from '@tiptap/core'
-import { VAlert, VAutocomplete, VBtn, VCard, VCheckbox, VChip, VIcon, VProgressLinear, VRating, VSelect, VSwitch, VTable, VTextField, VTextarea } from 'vuetify/components'
+import {
+    VAlert, VAutocomplete, VBtn, VCard, VCheckbox, VChip, VDialog, VDivider, VExpansionPanel, VExpansionPanels, VExpansionPanelText,
+    VExpansionPanelTitle, VIcon, VList, VListItem, VMenu, VPagination, VProgressLinear, VRating, VSelect, VSkeletonLoader, VSwitch,
+    VTab, VTable, VTabs, VTabsWindow, VTabsWindowItem, VTextField, VTextarea, VTooltip,
+} from 'vuetify/components'
 
 /**
  * Runtime UI extensions (§4.15 tier 2). `window.Vector` is the
  * registration API an extension module calls; the URLs come from the
- * hosted shell (`VECTOR_UI_EXTENSIONS`) or from runtime config in
+ * hosted shell (the modules installed Composer packages declare, then
+ * `VECTOR_UI_EXTENSIONS`) or from runtime config in
  * standalone mode, and are imported after the app is created. Vue and a
  * curated set of Vuetify components are handed over so an extension
  * needs no bundler and no copy of either library.
@@ -17,8 +22,13 @@ export default defineNuxtPlugin(() => {
     const notifications = useVectorNotifications()
     const appConfig = useAppConfig()
     const config = useRuntimeConfig()
-    // VTable for a custom page's tables: its wrapper, not a bare <table>, carries Vuetify's table styles
-    const vuetify = { VAlert, VAutocomplete, VBtn, VCard, VCheckbox, VChip, VIcon, VProgressLinear, VRating, VSelect, VSwitch, VTable, VTextField, VTextarea }
+    // Tree-shaking keeps only what is imported here, so this is every Vuetify component an extension can reach.
+    // VTable for a custom page's tables: its wrapper, not a bare <table>, carries Vuetify's table styles.
+    const vuetify = {
+        VAlert, VAutocomplete, VBtn, VCard, VCheckbox, VChip, VDialog, VDivider, VExpansionPanel, VExpansionPanels, VExpansionPanelText,
+        VExpansionPanelTitle, VIcon, VList, VListItem, VMenu, VPagination, VProgressLinear, VRating, VSelect, VSkeletonLoader, VSwitch,
+        VTab, VTable, VTabs, VTabsWindow, VTabsWindowItem, VTextField, VTextarea, VTooltip,
+    }
 
     const api = {
         version: 1,

@@ -64,7 +64,8 @@ final readonly class VectorUi
      * security headers send. `VECTOR_UI_EXTENSIONS` lists ES-module URLs
      * (comma-separated, same-origin or CORS-enabled) the bundle imports
      * after boot: runtime extensions of §4.15, the deployer's second way
-     * to add script.
+     * to add script. The shell lists them after the modules installed
+     * packages declare ({@see ExtensionModules}).
      */
     public static function fromConfig(Config $config, string $projectRoot, ?string $pinFile = null): self
     {

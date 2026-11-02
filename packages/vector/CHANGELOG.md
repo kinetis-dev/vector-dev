@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A Composer package can ship its own runtime UI extensions: it lists
+  ES modules, relative to its root, under
+  `extra.kinetis.vector.extensions` in its `composer.json`. Vector
+  compiles the declarations from Composer's `installed.json` into its
+  registry, so the order packages boot in does not matter. Each worker
+  reads them into memory once and serves them at
+  `GET /vector/extensions/{vendor}/{package}/{hash}/{file}`, with a
+  content hash in the URL, as `text/javascript; charset=utf-8` with
+  `Cache-Control: public, max-age=31536000, immutable`. The route is
+  public, like the hosted bundle's own scripts. Only declared `.js` and
+  `.mjs` files inside the package are served; any other path answers
+  `404`, and a declaration Vector refuses is written to the error log
+  and skipped.
+- The hosted shell's `extensions` lists those modules first, in
+  package-name order, then the `VECTOR_UI_EXTENSIONS` entries.
+
 ## [0.13.4] - 2026-10-30
 
 ### Changed

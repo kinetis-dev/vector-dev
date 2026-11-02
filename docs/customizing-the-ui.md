@@ -66,12 +66,24 @@ A widget renderer receives `data` and `widget`.
 ## Runtime extensions
 
 An extension is a plain ES module. List it in `VECTOR_UI_EXTENSIONS`
-(hosted) or `runtimeConfig.public.vector.extensions` (standalone). Its
-default export receives `window.Vector`, which hands it Vue, a curated
-set of Vuetify components (`VAlert`, `VAutocomplete`, `VBtn`, `VCard`,
-`VCheckbox`, `VChip`, `VIcon`, `VProgressLinear`, `VRating`, `VSelect`,
-`VSwitch`, `VTable`, `VTextField`, `VTextarea`) and the registration
-functions. For a table, render `VTable` with your `thead` and `tbody` as
+(hosted) or `runtimeConfig.public.vector.extensions` (standalone), or
+ship it in a Composer package (see "Extensions in a Composer package"
+below).
+Its default export receives `window.Vector`, which hands it Vue, a
+curated set of Vuetify components and the registration functions. The
+Vuetify components are the only ones an extension can reach, since the
+bundle keeps no other:
+
+- `VAlert`, `VAutocomplete`, `VBtn`, `VCard`, `VCheckbox`, `VChip`,
+  `VDivider`, `VIcon`, `VProgressLinear`, `VRating`, `VSelect`,
+  `VSkeletonLoader`, `VSwitch`, `VTable`, `VTextField`, `VTextarea`;
+- `VDialog`, `VMenu`, `VTooltip`;
+- `VList`, `VListItem`, `VPagination`;
+- `VTabs`, `VTab`, `VTabsWindow`, `VTabsWindowItem`;
+- `VExpansionPanels`, `VExpansionPanel`, `VExpansionPanelTitle`,
+  `VExpansionPanelText`.
+
+For a table, render `VTable` with your `thead` and `tbody` as
 its content: Vuetify's table styles belong to its wrapper, so the class
 on a bare `<table>` leaves the columns unaligned.
 
@@ -90,6 +102,55 @@ Number::make('stock')->component('stock-level'),
 
 An extension is served under `public/`, same-origin or CORS-enabled. The
 demo's `public/vector-extensions/stock-level.js` is this one.
+
+### Extensions in a Composer package
+
+A Composer package can ship its own extensions, so installing it is the
+whole step: list the modules in its `composer.json`, relative to the
+package's root.
+
+```json
+{
+    "extra": {
+        "kinetis": {
+            "vector": { "extensions": ["resources/ui/queues.js"] }
+        }
+    }
+}
+```
+
+Vector reads these declarations from Composer's `installed.json` when
+it compiles its registry (`kinetis build`, or every boot in
+development), never from a bootstrap, so it does not matter whether the
+package boots before or after Vector. Each worker reads the modules
+into memory once, at boot, and serves them itself at
+`/vector/extensions/{vendor}/{package}/{hash}/{file}`, where `hash` is a
+digest of the file's bytes. The hosted shell lists them first, in
+package-name order, then the `VECTOR_UI_EXTENSIONS` entries.
+
+- **What is served:** an entry must be a `.js` or `.mjs` file inside the
+  package: a relative path with no `.`, `..` or hidden segment, no
+  symlink out of the package, and a file name unique within it. Vector
+  skips any other entry and writes the reason to the PHP error log.
+  Only declared files are served; every other path under
+  `/vector/extensions` answers `404`.
+- **Caching:** a module answers as `text/javascript; charset=utf-8`
+  with `Cache-Control: public, max-age=31536000, immutable`. When a
+  package upgrade changes a module, its hash and its URL change with
+  it, so a browser never runs a stale copy. A request naming an old hash
+  gets a `404`, not the new bytes. Restart workers after an upgrade, as
+  after any deploy; in production, rebuild with `kinetis build` too.
+- **Access:** the modules are public, like the hosted bundle's own
+  scripts, which the web server serves from `public/vector/ui` to anyone.
+  A module is code from a package, not data. Keep secrets out of it, and
+  fetch data through `api`, which is behind the `vector` group.
+- **CSP:** the modules are same-origin, so a policy whose `script-src`
+  admits `'self'`, as the documented `SECURITY_CSP` does, admits them.
+  A `VECTOR_SHELL_CSP` with only a nonce in `script-src` must add
+  `'self'`.
+- **Standalone mode:** the hosted shell publishes this list, and the
+  standalone UI does not receive it. A package's modules are for the
+  hosted admin.
 
 `window.Vector` also offers `defineInput`, `defineWidget`, `definePage`,
 `defineMessages`, `defineRichTextExtension`, `api` (the admin's API

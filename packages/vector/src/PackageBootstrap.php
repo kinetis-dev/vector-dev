@@ -18,13 +18,14 @@ use Kinetis\Vector\Jobs\VectorQueue;
 use Kinetis\Vector\OpenApi\OpenApiCache;
 use Kinetis\Vector\Translation\MessagesTranslator;
 use Kinetis\Vector\Translation\TranslatorInterface;
+use Kinetis\Vector\Ui\ExtensionModules;
 use Kinetis\Vector\Ui\VectorUi;
 use Kinetis\Vector\Widgets\WidgetCache;
 
 /**
  * Wiring only: binds the hosted UI document, the application's login
- * and logout URLs and the deployment's shell additions once per
- * worker. Everything else Vector registers is discovered from
+ * and logout URLs, the deployment's shell additions and the packages'
+ * UI extension modules once per worker. Everything else Vector registers is discovered from
  * attributes.
  */
 final readonly class PackageBootstrap implements PackageBootstrapInterface
@@ -39,6 +40,10 @@ final readonly class PackageBootstrap implements PackageBootstrapInterface
         }
 
         $app->instance(VectorUi::class, VectorUi::fromConfig($config, $root->path));
+        $registry = $app->get(VectorRegistry::class);
+        // The UI extensions installed packages declare, read into memory once: the registry compiled their
+        // declarations from Composer's record and is bound before any bootstrap, so boot order plays no part.
+        $app->instance(ExtensionModules::class, ExtensionModules::load($registry instanceof VectorRegistry ? $registry->uiExtensions() : [], $root->path));
         $app->instance(VectorDefaults::class, VectorDefaults::fromConfig($config));
         $app->instance(WidgetCache::class, new WidgetCache());
         // The schemas every GET /vector/openapi.json shares, whoever asks: a request-neutral memo.
@@ -54,8 +59,6 @@ final readonly class PackageBootstrap implements PackageBootstrapInterface
         $app->instance(VectorStorage::class, VectorStorage::fromConfig($app, $config));
         // A hashed password field needs the application's hasher, which its bootstrap.php binds after this runs:
         // the first unit of work checks, so a missing binding fails closed with its reason rather than storing plaintext.
-        $registry = $app->get(VectorRegistry::class);
-
         if ($registry instanceof VectorRegistry && ($hashed = self::fieldsHashedByTheApplication($registry)) !== []) {
             $app->onRequestScopeCreated(static function () use ($app, $hashed): void {
                 if (!$app->has(PasswordHasherInterface::class)) {
