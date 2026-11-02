@@ -2,7 +2,10 @@
 
 Every route is under `/vector`, in the `vector` middleware group,
 except hosted mode's page under `/vector/ui`, which is in the
-`vector-shell` group ({doc}`authentication`). The API is the authority:
+`vector-shell` group ({doc}`authentication`), and the packages' UI
+modules under `/vector/extensions`, which are in neither group and
+answer anyone, like the hosted bundle's own scripts
+({doc}`customizing-the-ui`). The API is the authority:
 the UI and the MCP tools are clients of it, and anything they do, a
 script can do.
 
@@ -48,6 +51,7 @@ application).
 | `GET /vector/notifications`, `POST …/{id}/read`, `POST …/read-all` | The inbox. |
 | `POST /vector/impersonate/{userId}`, `DELETE /vector/impersonate` | Impersonation. |
 | `GET /vector/ui`, `GET /vector/ui/{path}` | Hosted mode: the admin's page. |
+| `GET /vector/extensions/{vendor}/{package}/{hash}/{file}` | A UI module a package declares under `extra.kinetis.vector.extensions`, as `text/javascript`, cached as immutable; `404` for anything not declared or a stale hash. No login. |
 
 ## Envelopes
 
