@@ -159,9 +159,20 @@ package-name order, then the `VECTOR_UI_EXTENSIONS` entries.
   only a nonce blocks them; a `VECTOR_SHELL_CSP` like that must add
   `'self'`. No documented policy uses `'strict-dynamic'`: the shell
   nonces its inline scripts only, not the bundle's own `src` scripts.
-- **Standalone mode:** the hosted shell publishes this list, and the
-  standalone UI does not receive it. A package's modules are for the
-  hosted admin.
+- **Standalone mode:** the descriptor (`GET /vector/schema`) lists the
+  same modules under `ui.extensions`, as same-origin paths of the API.
+  Once signed in, the standalone UI joins each to its `apiBase` and
+  imports it from the API's origin, after the runtime config's own
+  `extensions`. That is a cross-origin module script, so the API's CORS
+  must also cover `/vector/extensions/*` for the UI's origin
+  ({doc}`deployment`), and a `script-src` on the UI's own pages must
+  admit the API's origin. The hosted admin ignores the descriptor's list,
+  because its shell already lists the same modules. Either way each
+  module is imported once per page load: signing out and in again loads
+  nothing more. A custom page a package declares, opened straight from
+  a link, shows a loading bar until the modules have settled, and only
+  then reads "unknown page". The deployment's `VECTOR_UI_EXTENSIONS`
+  stay the hosted shell's alone.
 
 `window.Vector` also offers `defineInput`, `defineWidget`, `definePage`,
 `defineMessages`, `defineRichTextExtension`, `api` (the admin's API

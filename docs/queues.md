@@ -26,13 +26,14 @@ the whole wiring:
 - its `extra.kinetis.vector.extensions` declares its admin UI module,
   `resources/ui/queues.js`. Vector reads the declaration from
   Composer's `installed.json` and serves the module itself, and the
-  hosted admin loads it ("Extensions in a Composer package" in
-  {doc}`customizing-the-ui`).
+  admin loads it, hosted or standalone ("Extensions in a Composer
+  package" in {doc}`customizing-the-ui`).
   Run `composer install` (or `composer update kinetis/vector-queues`)
   after any change to the package's `composer.json`, so `installed.json`
   carries it, and rebuild with `kinetis build` in production. The
-  standalone UI does not receive a package's modules, so the page is
-  for the hosted admin.
+  standalone UI imports the module from the API's origin, once it is
+  signed in, so the API's CORS must cover `/vector/extensions/*` for the
+  UI's origin ({doc}`deployment`).
 
 Installing the package also turns on recording metrics, in every process
 that runs `queue:work`.
@@ -202,9 +203,9 @@ what it shows: a viewer the policy refuses gets the card's "no access"
 notice, not the figures. The widget's own answer, `GET
 /vector/dashboards/{name}/widgets/queues`, carries no queue data and
 opens no database or queue connection. It offers no range and caches
-nothing. Like the page, the card needs the hosted admin, which loads the
-module; without the module it says that no renderer is registered for
-`vector-queues`.
+nothing. Like the page, the card needs the package's UI module, which
+the hosted and the standalone admin both load. Without the module it
+says that no renderer is registered for `vector-queues`.
 
 ## Endpoints
 

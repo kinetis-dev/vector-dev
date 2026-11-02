@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The standalone admin imports the UI modules installed Composer
+  packages declare, which the descriptor lists as `ui.extensions`, from
+  the API's origin (`runtimeConfig.public.vector.apiBase`) once signed
+  in. Before, only the hosted shell loaded them. The hosted admin
+  ignores the descriptor's copy, since its shell already lists the same
+  modules. Each module is imported once per page load, so signing out
+  and in again imports nothing more, and a module that fails is logged
+  without holding the admin back. In standalone mode the extension
+  registries become `ready` only after these modules have settled, so a
+  link straight to a package's custom page shows its loading bar until
+  then, not "unknown page".
+
 ## [0.12.0] - 2026-11-02
 
 ### Added

@@ -10,7 +10,8 @@ duration metrics. Built on
 On the 0.x line, so a minor release may break. The package ships the
 JSON API and an admin UI module,
 `resources/ui/queues.js`, which its `composer.json` declares
-(`extra.kinetis.vector.extensions`), so the hosted admin loads it: a
+(`extra.kinetis.vector.extensions`), so the admin loads it, hosted or
+standalone: a
 "Queues" page (overview, failed jobs, metrics) that offers only the
 actions `GET /vector/queues/permissions` allows, and the renderer of
 the `vector-queues` dashboard card. To show the card, list

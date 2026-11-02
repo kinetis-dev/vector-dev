@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The descriptor (`GET /vector/schema`) lists the UI extension modules
+  installed packages declare under `ui.extensions`: their same-origin
+  paths under `/vector/extensions/`, in declared order, for a standalone
+  admin to import from the API's origin. The deployment's
+  `VECTOR_UI_EXTENSIONS` are not among them; they stay the hosted
+  shell's. The descriptor schema requires the field. A standalone
+  deployment's CORS must cover `/vector/extensions/*` for the UI's
+  origin, as a globally registered `CorsMiddleware` does.
+
 ## [0.14.0] - 2026-11-02
 
 ### Added
