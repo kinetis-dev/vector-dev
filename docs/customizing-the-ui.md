@@ -144,10 +144,13 @@ package-name order, then the `VECTOR_UI_EXTENSIONS` entries.
   scripts, which the web server serves from `public/vector/ui` to anyone.
   A module is code from a package, not data. Keep secrets out of it, and
   fetch data through `api`, which is behind the `vector` group.
-- **CSP:** the modules are same-origin, so a policy whose `script-src`
-  admits `'self'`, as the documented `SECURITY_CSP` does, admits them.
-  A `VECTOR_SHELL_CSP` with only a nonce in `script-src` must add
-  `'self'`.
+- **CSP:** the modules are same-origin scripts, and the shell imports
+  them with `import()`. The `SECURITY_CSP` in {doc}`deployment` has
+  `script-src 'self' 'nonce-{nonce}'`, and its `'self'` admits them, as
+  it admits the bundle's own scripts. A policy whose `script-src` holds
+  only a nonce blocks them; a `VECTOR_SHELL_CSP` like that must add
+  `'self'`. No documented policy uses `'strict-dynamic'`: the shell
+  nonces its inline scripts only, not the bundle's own `src` scripts.
 - **Standalone mode:** the hosted shell publishes this list, and the
   standalone UI does not receive it. A package's modules are for the
   hosted admin.

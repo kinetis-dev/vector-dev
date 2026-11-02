@@ -22,7 +22,8 @@ final class ExtensionModuleRouteTest extends VectorTestCase
 
     private const string FIXTURE = 'acme/vector-queues-fixture';
 
-    private const string DEPLOYED = '/vector-extensions/stock-level.js,https://cdn.example.test/ext.js';
+    /** a repeated entry stays repeated, as before packages could declare modules */
+    private const string DEPLOYED = '/vector-extensions/stock-level.js,https://cdn.example.test/ext.js,/vector-extensions/stock-level.js';
 
     private string $root;
 
@@ -76,6 +77,7 @@ final class ExtensionModuleRouteTest extends VectorTestCase
             self::url('resources/ui/more/panel.mjs'),
             '/vector-extensions/stock-level.js',
             'https://cdn.example.test/ext.js',
+            '/vector-extensions/stock-level.js',
         ], $config['extensions']);
     }
 

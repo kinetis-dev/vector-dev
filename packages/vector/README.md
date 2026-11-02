@@ -79,7 +79,7 @@ Installing this package auto-registers, via `extra.kinetis`:
   under `extra.kinetis.vector.extensions` in its `composer.json` has
   them read at boot, served with content-hashed, immutable URLs and
   listed by the hosted shell before `VECTOR_UI_EXTENSIONS`; see
-  [Runtime extensions](https://kinetis.dev/vector/docs/customizing-the-ui.html#runtime-extensions).
+  [Runtime extensions](https://kinetis.dev/vector/docs/customizing-the-ui.html).
 - **Commands** on `vendor/bin/kinetis`: `vector:install`,
   `vector:install-ui`, `vector:list`, `vector:jobs:reap` and
   `vector:files:prune`.

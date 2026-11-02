@@ -7,11 +7,7 @@ namespace App\Tests\Vector;
 use App\Tests\Vector\Fixtures\UiExtensionPackage\FixtureBootstrap;
 use App\Tests\Vector\Fixtures\UiExtensionPackage\FixtureBooted;
 use Kinetis\Cache\DiscoveryContext;
-use Kinetis\Cache\PluginDiscovery;
-use Kinetis\Cache\RoutesFile;
-use Kinetis\Config\Config;
-use Kinetis\Container\AppScope;
-use Kinetis\Runtime\ProjectRoot;
+use Kinetis\Testing\TestApplication;
 use Kinetis\Vector\PackageBootstrap;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Ui\ExtensionModules;
@@ -92,44 +88,50 @@ final class PackageExtensionsTest extends TestCase
     }
 
     /**
-     * The fixture package is recorded, and so booted, before
-     * kinetis/vector — the order installed.json gives a vendor named
-     * before `kinetis`. Its bootstrap runs while Vector's modules are not
-     * yet bound, and registers nothing; Vector's, run after it, serves
-     * its modules anyway.
+     * The framework's own boot, end to end, for a project where the
+     * fixture package is recorded — and so booted — before kinetis/vector,
+     * as installed.json orders a vendor named before `kinetis`: discovery
+     * compiles Vector's registry section, BootSequence::run() binds it and
+     * runs the bootstrap chain, routes are discovered, and the module is
+     * fetched through the Kernel.
+     *
+     * Order independence rests on kinetis/framework v1.24.1
+     * src/Cache/BootSequence.php, lines 86-92 of run():
+     * `PluginDiscovery::bindInstances($app, $pluginInstances);` comes
+     * before `RoutesFile::loadBootstrap($projectRoot, $packageBootstraps)($app, $config);`,
+     * so the compiled section, declarations included, is bound before any
+     * package bootstrap runs. TestApplication::boot() (src/Testing/TestApplication.php,
+     * line 108) and HttpStartup (src/Runtime/HttpStartup.php, line 205) both go
+     * through it, which is why this test drives TestApplication.
      */
-    public function testAPackageThatBootsBeforeVectorIsRegistered(): void
+    public function testTheFrameworksBootServesAPackageThatBootsBeforeVector(): void
     {
-        $this->install([self::FIXTURE => self::fixtureDir(), 'kinetis/vector' => dirname(__DIR__, 4) . '/packages/vector']);
-        $context = new DiscoveryContext($this->root);
-        $bootstraps = $context->packageBootstraps();
-        self::assertSame([FixtureBootstrap::class, PackageBootstrap::class], $bootstraps, 'the fixture boots first');
+        $this->installWithTheDemosPackages();
+        $bootstraps = (new DiscoveryContext($this->root))->packageBootstraps();
+        self::assertSame(FixtureBootstrap::class, $bootstraps[0], 'the fixture boots first');
+        self::assertContains(PackageBootstrap::class, $bootstraps);
 
-        $app = new AppScope();
-        $config = new Config(['VECTOR_UI_DIR' => $this->root . '/ui']);
-        $app->instance(ProjectRoot::class, new ProjectRoot($this->root));
-        $app->instance(Config::class, $config);
-        // what the framework binds before the bootstrap chain: Vector's section, with what its compile() reads
-        PluginDiscovery::bindInstances($app, [VectorRegistry::class => VectorRegistry::fromArray([
-            'version' => VectorRegistry::VERSION,
-            'resources' => [],
-            'settings' => [],
-            'dashboards' => [],
-            'uiExtensions' => PackageExtensions::discover($this->root),
-        ])]);
+        $application = TestApplication::boot($this->root, ['VECTOR_UI_DIR' => $this->root . '/ui', 'VECTOR_UI_EXTENSIONS' => '', 'VECTOR_TRANSLATIONS_DIR' => '']);
 
-        RoutesFile::loadBootstrap($this->root, $bootstraps)($app, $config);
+        try {
+            $booted = $application->get(FixtureBooted::class);
+            self::assertInstanceOf(FixtureBooted::class, $booted);
+            self::assertFalse($booted->sawVectorModules, "the fixture ran before Vector's bootstrap");
 
-        $booted = $app->get(FixtureBooted::class);
-        self::assertInstanceOf(FixtureBooted::class, $booted);
-        self::assertFalse($booted->sawVectorModules, "the fixture ran before Vector's bootstrap");
+            $registry = $application->get(VectorRegistry::class);
+            self::assertInstanceOf(VectorRegistry::class, $registry);
+            self::assertSame(['resources/ui/queues.js', 'resources/ui/more/panel.mjs'], array_column($registry->uiExtensions(), 'entry'), 'compiled by discovery');
 
-        $modules = $app->get(ExtensionModules::class);
-        self::assertInstanceOf(ExtensionModules::class, $modules);
-        self::assertSame([
-            ExtensionModules::PATH . '/' . self::FIXTURE . '/' . self::hashOf('resources/ui/queues.js') . '/queues.js',
-            ExtensionModules::PATH . '/' . self::FIXTURE . '/' . self::hashOf('resources/ui/more/panel.mjs') . '/panel.mjs',
-        ], $modules->urls());
+            $modules = $application->get(ExtensionModules::class);
+            self::assertInstanceOf(ExtensionModules::class, $modules);
+            $url = ExtensionModules::PATH . '/' . self::FIXTURE . '/' . self::hashOf('resources/ui/queues.js') . '/queues.js';
+            self::assertSame([$url, ExtensionModules::PATH . '/' . self::FIXTURE . '/' . self::hashOf('resources/ui/more/panel.mjs') . '/panel.mjs'], $modules->urls());
+
+            $response = $application->client()->get($url)->assertOk()->assertHeader('Content-Type', 'text/javascript; charset=utf-8');
+            self::assertSame((string) file_get_contents(self::fixtureDir() . '/resources/ui/queues.js'), $response->body());
+        } finally {
+            $application->dispose();
+        }
     }
 
     public function testAModuleRemovedAfterTheBuildIsLeftOutAtBoot(): void
@@ -161,6 +163,36 @@ final class PackageExtensionsTest extends TestCase
     public static function hashOf(string $entry): string
     {
         return ExtensionModules::hash((string) file_get_contents(self::fixtureDir() . '/' . $entry));
+    }
+
+    /**
+     * A project of its own holding the demo's installed packages, each
+     * linked at vendor/{name}, with the fixture package recorded first.
+     */
+    private function installWithTheDemosPackages(): void
+    {
+        $vendor = dirname(__DIR__, 2) . '/vendor';
+        $installed = json_decode((string) file_get_contents($vendor . '/composer/installed.json'), true);
+        self::assertIsArray($installed);
+        self::assertIsArray($installed['packages'] ?? null);
+        $fixture = json_decode((string) file_get_contents(self::fixtureDir() . '/composer.json'), true);
+        self::assertIsArray($fixture);
+        $records = [['name' => self::FIXTURE, 'install-path' => '../' . self::FIXTURE, 'extra' => $fixture['extra']]];
+        @mkdir($this->root . '/vendor/acme', 0755, true);
+        symlink(self::fixtureDir(), $this->root . '/vendor/' . self::FIXTURE);
+
+        foreach ($installed['packages'] as $package) {
+            self::assertIsArray($package);
+            self::assertIsString($package['name'] ?? null);
+            $name = $package['name'];
+            @mkdir(dirname($this->root . '/vendor/' . $name), 0755, true);
+            symlink((string) realpath($vendor . '/' . $name), $this->root . '/vendor/' . $name);
+            $records[] = [...$package, 'install-path' => '../' . $name];
+        }
+
+        @mkdir($this->root . '/vendor/composer', 0755, true);
+        file_put_contents($this->root . '/vendor/composer/installed.json', json_encode(['packages' => $records], JSON_THROW_ON_ERROR));
+        file_put_contents($this->root . '/composer.json', '{"name": "acme/app"}');
     }
 
     /**
