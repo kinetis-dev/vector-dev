@@ -15,8 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in. Before, only the hosted shell loaded them. The hosted admin
   ignores the descriptor's copy, since its shell already lists the same
   modules. Each module is imported once per page load, so signing out
-  and in again imports nothing more, and a module that fails is logged
-  without holding the admin back. In standalone mode the extension
+  and in again imports nothing more. A module that fails, or a
+  descriptor that fails to load, is logged without holding the admin
+  back. An entry that resolves anywhere but the API's origin under
+  `/vector/extensions/` is logged and never imported. In standalone mode the extension
   registries become `ready` only after these modules have settled, so a
   link straight to a package's custom page shows its loading bar until
   then, not "unknown page".

@@ -161,9 +161,12 @@ package-name order, then the `VECTOR_UI_EXTENSIONS` entries.
   nonces its inline scripts only, not the bundle's own `src` scripts.
 - **Standalone mode:** the descriptor (`GET /vector/schema`) lists the
   same modules under `ui.extensions`, as same-origin paths of the API.
-  Once signed in, the standalone UI joins each to its `apiBase` and
-  imports it from the API's origin, after the runtime config's own
-  `extensions`. That is a cross-origin module script, so the API's CORS
+  The standalone UI imports them once signed in, as soon as the
+  descriptor arrives, each resolved against its `apiBase`. An entry that
+  resolves anywhere but the API's own origin under `/vector/extensions/`
+  is logged and skipped. A module that fails to load, or a descriptor
+  that fails, is logged and never blocks the admin. Each module loads
+  from the API's origin as a cross-origin module script, so the API's CORS
   must also cover `/vector/extensions/*` for the UI's origin
   ({doc}`deployment`), and a `script-src` on the UI's own pages must
   admit the API's origin. The hosted admin ignores the descriptor's list,
