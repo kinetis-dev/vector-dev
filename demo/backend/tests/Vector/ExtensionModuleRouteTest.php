@@ -81,6 +81,13 @@ final class ExtensionModuleRouteTest extends VectorTestCase
         ], $config['extensions']);
     }
 
+    /** The descriptor a standalone admin reads lists the packages' modules, and nothing of VECTOR_UI_EXTENSIONS. */
+    public function testTheDescriptorListsExactlyThePackagesModules(): void
+    {
+        $this->client->get('/vector/schema', headers: $this->adminHeaders())->assertOk()
+            ->assertJsonPath('ui.extensions', [self::url('resources/ui/queues.js'), self::url('resources/ui/more/panel.mjs')]);
+    }
+
     public function testAModuleIsImmutableJavaScriptAnyoneCanLoad(): void
     {
         $module = $this->client->get(self::url('resources/ui/queues.js'))->assertOk();
