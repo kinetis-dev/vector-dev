@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c7956f2b16e85a654688d0431ed2fd86",
+    "content-hash": "47e6e8ac8066290c2cdac20c3bd7d71b",
     "packages": [
         {
             "name": "amphp/amp",
@@ -89,16 +89,16 @@
         },
         {
             "name": "amphp/byte-stream",
-            "version": "v2.1.2",
+            "version": "v2.1.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/amphp/byte-stream.git",
-                "reference": "55a6bd071aec26fa2a3e002618c20c35e3df1b46"
+                "reference": "1511cdfdf868a706307358bd48f155c3df2c490f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/amphp/byte-stream/zipball/55a6bd071aec26fa2a3e002618c20c35e3df1b46",
-                "reference": "55a6bd071aec26fa2a3e002618c20c35e3df1b46",
+                "url": "https://api.github.com/repos/amphp/byte-stream/zipball/1511cdfdf868a706307358bd48f155c3df2c490f",
+                "reference": "1511cdfdf868a706307358bd48f155c3df2c490f",
                 "shasum": ""
             },
             "require": {
@@ -114,7 +114,7 @@
                 "amphp/php-cs-fixer-config": "^2",
                 "amphp/phpunit-util": "^3",
                 "phpunit/phpunit": "^9",
-                "psalm/phar": "5.22.1"
+                "psalm/phar": "6.16.1"
             },
             "type": "library",
             "autoload": {
@@ -152,7 +152,7 @@
             ],
             "support": {
                 "issues": "https://github.com/amphp/byte-stream/issues",
-                "source": "https://github.com/amphp/byte-stream/tree/v2.1.2"
+                "source": "https://github.com/amphp/byte-stream/tree/v2.1.3"
             },
             "funding": [
                 {
@@ -160,7 +160,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2025-03-16T17:10:27+00:00"
+            "time": "2026-10-31T19:10:04+00:00"
         },
         {
             "name": "amphp/cache",
@@ -229,16 +229,16 @@
         },
         {
             "name": "amphp/dns",
-            "version": "v2.4.1",
+            "version": "v2.4.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/amphp/dns.git",
-                "reference": "ec5948bfafac808f410406e18bc7b52a2d4629b7"
+                "reference": "2e2b4daa214a18b1528919d6781988ea65a9a47d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/amphp/dns/zipball/ec5948bfafac808f410406e18bc7b52a2d4629b7",
-                "reference": "ec5948bfafac808f410406e18bc7b52a2d4629b7",
+                "url": "https://api.github.com/repos/amphp/dns/zipball/2e2b4daa214a18b1528919d6781988ea65a9a47d",
+                "reference": "2e2b4daa214a18b1528919d6781988ea65a9a47d",
                 "shasum": ""
             },
             "require": {
@@ -306,7 +306,7 @@
             ],
             "support": {
                 "issues": "https://github.com/amphp/dns/issues",
-                "source": "https://github.com/amphp/dns/tree/v2.4.1"
+                "source": "https://github.com/amphp/dns/tree/v2.4.2"
             },
             "funding": [
                 {
@@ -314,7 +314,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-07-26T17:53:54+00:00"
+            "time": "2026-10-31T19:53:43+00:00"
         },
         {
             "name": "amphp/file",
@@ -617,16 +617,16 @@
         },
         {
             "name": "amphp/process",
-            "version": "v2.1.0",
+            "version": "v2.1.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/amphp/process.git",
-                "reference": "583959df17d00304ad7b0b32285373f985935643"
+                "reference": "6ee0d11112a9b1338b7dc270d51f254e872c90b5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/amphp/process/zipball/583959df17d00304ad7b0b32285373f985935643",
-                "reference": "583959df17d00304ad7b0b32285373f985935643",
+                "url": "https://api.github.com/repos/amphp/process/zipball/6ee0d11112a9b1338b7dc270d51f254e872c90b5",
+                "reference": "6ee0d11112a9b1338b7dc270d51f254e872c90b5",
                 "shasum": ""
             },
             "require": {
@@ -673,7 +673,7 @@
             "homepage": "https://amphp.org/process",
             "support": {
                 "issues": "https://github.com/amphp/process/issues",
-                "source": "https://github.com/amphp/process/tree/v2.1.0"
+                "source": "https://github.com/amphp/process/tree/v2.1.1"
             },
             "funding": [
                 {
@@ -681,7 +681,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-05-31T15:11:55+00:00"
+            "time": "2026-11-01T22:46:42+00:00"
         },
         {
             "name": "amphp/redis",
@@ -917,16 +917,16 @@
         },
         {
             "name": "amphp/sync",
-            "version": "v2.3.0",
+            "version": "v2.3.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/amphp/sync.git",
-                "reference": "217097b785130d77cfcc58ff583cf26cd1770bf1"
+                "reference": "2f711b6651270449d59c770ffb518698655022f7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/amphp/sync/zipball/217097b785130d77cfcc58ff583cf26cd1770bf1",
-                "reference": "217097b785130d77cfcc58ff583cf26cd1770bf1",
+                "url": "https://api.github.com/repos/amphp/sync/zipball/2f711b6651270449d59c770ffb518698655022f7",
+                "reference": "2f711b6651270449d59c770ffb518698655022f7",
                 "shasum": ""
             },
             "require": {
@@ -940,7 +940,7 @@
                 "amphp/php-cs-fixer-config": "^2",
                 "amphp/phpunit-util": "^3",
                 "phpunit/phpunit": "^9",
-                "psalm/phar": "5.23"
+                "psalm/phar": "6.16.1"
             },
             "type": "library",
             "autoload": {
@@ -980,7 +980,7 @@
             ],
             "support": {
                 "issues": "https://github.com/amphp/sync/issues",
-                "source": "https://github.com/amphp/sync/tree/v2.3.0"
+                "source": "https://github.com/amphp/sync/tree/v2.3.1"
             },
             "funding": [
                 {
@@ -988,7 +988,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2024-08-03T19:31:26+00:00"
+            "time": "2026-06-14T17:37:39+00:00"
         },
         {
             "name": "daverandom/libdns",
@@ -1456,16 +1456,16 @@
         },
         {
             "name": "kinetis/framework",
-            "version": "v1.24.1",
+            "version": "v1.24.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/framework.git",
-                "reference": "8d902cd5e04093a80c83f2996e44a74fda4b9ec8"
+                "reference": "1f216f6198e3796c7112a9d6cd99b30e160fc8a8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/framework/zipball/8d902cd5e04093a80c83f2996e44a74fda4b9ec8",
-                "reference": "8d902cd5e04093a80c83f2996e44a74fda4b9ec8",
+                "url": "https://api.github.com/repos/kinetis-dev/framework/zipball/1f216f6198e3796c7112a9d6cd99b30e160fc8a8",
+                "reference": "1f216f6198e3796c7112a9d6cd99b30e160fc8a8",
                 "shasum": ""
             },
             "require": {
@@ -1518,9 +1518,9 @@
             "description": "The Runtime-Aware PHP Framework",
             "support": {
                 "issues": "https://github.com/kinetis-dev/framework/issues",
-                "source": "https://github.com/kinetis-dev/framework/tree/v1.24.1"
+                "source": "https://github.com/kinetis-dev/framework/tree/v1.24.2"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-10-31T15:29:06+00:00"
         },
         {
             "name": "kinetis/mcp",
@@ -1845,20 +1845,20 @@
         },
         {
             "name": "kinetis/queue",
-            "version": "v1.7.2",
+            "version": "v1.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/queue.git",
-                "reference": "b3c5cf9b0139e13e593ca8e3de9916613851daee"
+                "reference": "748e940ba86318a938348928c96a0d265e23d8c1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/queue/zipball/b3c5cf9b0139e13e593ca8e3de9916613851daee",
-                "reference": "b3c5cf9b0139e13e593ca8e3de9916613851daee",
+                "url": "https://api.github.com/repos/kinetis-dev/queue/zipball/748e940ba86318a938348928c96a0d265e23d8c1",
+                "reference": "748e940ba86318a938348928c96a0d265e23d8c1",
                 "shasum": ""
             },
             "require": {
-                "kinetis/framework": "^1.24.1",
+                "kinetis/framework": "^1.24.2",
                 "php": "^8.4",
                 "psr/container": "^2.0.2",
                 "psr/log": "^3.0.2",
@@ -1871,7 +1871,8 @@
                 "vimeo/psalm": "^6.17"
             },
             "suggest": {
-                "ext-pcntl": "Lets `kinetis queue:work` stop gracefully on SIGTERM, finishing the job in flight instead of being killed mid-job. Not loaded by default in the official PHP Docker images."
+                "ext-pcntl": "Lets `kinetis queue:work` stop gracefully on SIGTERM, finishing the job in flight instead of being killed mid-job. Not loaded by default in the official PHP Docker images.",
+                "kinetis/queue-failed-jobs": "Records every job the worker gives up on in a MySQL/Postgres table before the backend deletes it, with queue:failed, queue:retry, queue:forget and queue:prune."
             },
             "type": "library",
             "extra": {
@@ -1897,9 +1898,67 @@
             "description": "A backend-agnostic background job queue for Kinetis — no fluent job-scheduling DSL. Redis, SQL, SQS, and RabbitMQ backends each live in their own separate package.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/queue/issues",
-                "source": "https://github.com/kinetis-dev/queue/tree/v1.7.2"
+                "source": "https://github.com/kinetis-dev/queue/tree/v1.9.0"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T07:05:35+00:00"
+        },
+        {
+            "name": "kinetis/queue-failed-jobs",
+            "version": "v1.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/kinetis-dev/queue-failed-jobs.git",
+                "reference": "60488449998ab6311e75acf43d1261bb80d52eb4"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/kinetis-dev/queue-failed-jobs/zipball/60488449998ab6311e75acf43d1261bb80d52eb4",
+                "reference": "60488449998ab6311e75acf43d1261bb80d52eb4",
+                "shasum": ""
+            },
+            "require": {
+                "kinetis/database-bridge": "^1.4.2",
+                "kinetis/framework": "^1.24.2",
+                "kinetis/persistence": "^1.4.5",
+                "kinetis/queue": "^1.9.0",
+                "php": "^8.4",
+                "psr/container": "^2.0.2"
+            },
+            "require-dev": {
+                "infection/infection": "^0.35.0",
+                "kinetis/migrations": "^1.4.2",
+                "kinetis/queue-sql": "^1.6.7",
+                "phpstan/phpstan": "^2.2.8",
+                "phpunit/phpunit": "^13.3.3",
+                "vimeo/psalm": "^6.17"
+            },
+            "type": "library",
+            "extra": {
+                "kinetis": {
+                    "scan": "Kinetis\\QueueFailedJobs\\Console\\",
+                    "bootstrap": "Kinetis\\QueueFailedJobs\\PackageBootstrap"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Kinetis\\QueueFailedJobs\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Alon Noy"
+                }
+            ],
+            "description": "Retained failed jobs for kinetis/queue — every job the worker gives up on is recorded in a MySQL/Postgres table before the backend deletes it, with commands to list, retry, forget and prune the records.",
+            "support": {
+                "issues": "https://github.com/kinetis-dev/queue-failed-jobs/issues",
+                "source": "https://github.com/kinetis-dev/queue-failed-jobs/tree/v1.1.0"
+            },
+            "time": "2026-11-02T07:05:35+00:00"
         },
         {
             "name": "kinetis/queue-redis",
@@ -1956,23 +2015,23 @@
         },
         {
             "name": "kinetis/queue-sql",
-            "version": "v1.6.6",
+            "version": "v1.6.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/queue-sql.git",
-                "reference": "3e72319491b1de6c8f0b25f4009e0f56bf41ff32"
+                "reference": "752da8ff913d130503c7637d274a93cb518e0053"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/queue-sql/zipball/3e72319491b1de6c8f0b25f4009e0f56bf41ff32",
-                "reference": "3e72319491b1de6c8f0b25f4009e0f56bf41ff32",
+                "url": "https://api.github.com/repos/kinetis-dev/queue-sql/zipball/752da8ff913d130503c7637d274a93cb518e0053",
+                "reference": "752da8ff913d130503c7637d274a93cb518e0053",
                 "shasum": ""
             },
             "require": {
                 "kinetis/database-bridge": "^1.4.2",
                 "kinetis/framework": "^1.24.1",
                 "kinetis/persistence": "^1.4.5",
-                "kinetis/queue": "^1.7.2",
+                "kinetis/queue": "^1.7.3",
                 "php": "^8.4"
             },
             "require-dev": {
@@ -2002,9 +2061,9 @@
             "description": "A SQL-backed (MySQL/Postgres) queue implementation for kinetis/queue's QueueInterface — SELECT ... FOR UPDATE SKIP LOCKED for atomic reservation, token-fenced settlement, and a finite visibility timeout that redelivers a crashed worker's job.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/queue-sql/issues",
-                "source": "https://github.com/kinetis-dev/queue-sql/tree/v1.6.6"
+                "source": "https://github.com/kinetis-dev/queue-sql/tree/v1.6.7"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-10-30T23:41:32+00:00"
         },
         {
             "name": "kinetis/redis",
@@ -2187,22 +2246,22 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector",
-                "reference": "6a22b8ec4a6de302127bee852fd3f7d3f4ba9e42"
+                "reference": "1f25da43bf91a5c1341288e00aae0fb1e4b99251"
             },
             "require": {
                 "composer-runtime-api": "^2.0",
                 "ext-openssl": "*",
                 "ext-zlib": "*",
-                "kinetis/authorization": "^1.0.5",
-                "kinetis/database-bridge": "^1.4.1",
-                "kinetis/framework": "^1.24.0",
-                "kinetis/mcp": "^1.8.1",
-                "kinetis/mcp-protocol": "^1.1.0",
-                "kinetis/migrations": "^1.4.1",
-                "kinetis/orm": "^1.13.0",
-                "kinetis/persistence": "^1.4.4",
-                "kinetis/query-builder": "^1.8.1",
-                "kinetis/queue": "^1.7.1",
+                "kinetis/authorization": "^1.0.6",
+                "kinetis/database-bridge": "^1.4.2",
+                "kinetis/framework": "^1.24.1",
+                "kinetis/mcp": "^1.8.2",
+                "kinetis/mcp-protocol": "^1.1.1",
+                "kinetis/migrations": "^1.4.2",
+                "kinetis/orm": "^1.13.1",
+                "kinetis/persistence": "^1.4.5",
+                "kinetis/query-builder": "^1.8.2",
+                "kinetis/queue": "^1.7.2",
                 "php": "^8.4",
                 "psr/http-message": "^2.0",
                 "psr/http-server-handler": "^1.0.2",
@@ -5050,16 +5109,16 @@
         },
         {
             "name": "kinetis/mcp-docs",
-            "version": "v1.9.1",
+            "version": "v1.9.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/mcp-docs.git",
-                "reference": "668580c27c55d0f993d631a15f451357e1f9f35d"
+                "reference": "bbd2ed4316ab9dc0b9122465f2982cbbe5615e2e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/mcp-docs/zipball/668580c27c55d0f993d631a15f451357e1f9f35d",
-                "reference": "668580c27c55d0f993d631a15f451357e1f9f35d",
+                "url": "https://api.github.com/repos/kinetis-dev/mcp-docs/zipball/bbd2ed4316ab9dc0b9122465f2982cbbe5615e2e",
+                "reference": "bbd2ed4316ab9dc0b9122465f2982cbbe5615e2e",
                 "shasum": ""
             },
             "require": {
@@ -5095,9 +5154,9 @@
             "description": "A standalone Model Context Protocol server exposing the Kinetis documentation over stdio: a tool that returns a bounded line window of a page, which is how a page is read, a tool that reports the lines of one page containing a literal string, and the same pages whole as MCP resources. Framework-agnostic: it depends on kinetis/mcp-protocol alone and contributes no application bootstrap.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/mcp-docs/issues",
-                "source": "https://github.com/kinetis-dev/mcp-docs/tree/v1.9.1"
+                "source": "https://github.com/kinetis-dev/mcp-docs/tree/v1.9.2"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-10-31T15:29:06+00:00"
         },
         {
             "name": "kinetis/orbitron",
@@ -6459,16 +6518,16 @@
         },
         {
             "name": "phpunit/phpunit",
-            "version": "13.4.5",
+            "version": "13.4.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/sebastianbergmann/phpunit.git",
-                "reference": "941457a4f147a60fe2074d40e1fce0d08ea8d930"
+                "reference": "4821376960d0e1e5a7b7b700955ebcab33ecd71b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/941457a4f147a60fe2074d40e1fce0d08ea8d930",
-                "reference": "941457a4f147a60fe2074d40e1fce0d08ea8d930",
+                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/4821376960d0e1e5a7b7b700955ebcab33ecd71b",
+                "reference": "4821376960d0e1e5a7b7b700955ebcab33ecd71b",
                 "shasum": ""
             },
             "require": {
@@ -6482,7 +6541,7 @@
                 "phar-io/manifest": "^2.0.4",
                 "phar-io/version": "^3.2.1",
                 "php": ">=8.4.1",
-                "phpunit/php-code-coverage": "^14.4.1",
+                "phpunit/php-code-coverage": "^14.5.0",
                 "phpunit/php-file-iterator": "^7.0.2",
                 "phpunit/php-invoker": "^7.0.0",
                 "phpunit/php-text-template": "^6.0.1",
@@ -6539,7 +6598,7 @@
             "support": {
                 "issues": "https://github.com/sebastianbergmann/phpunit/issues",
                 "security": "https://github.com/sebastianbergmann/phpunit/security/policy",
-                "source": "https://github.com/sebastianbergmann/phpunit/tree/13.4.5"
+                "source": "https://github.com/sebastianbergmann/phpunit/tree/13.4.6"
             },
             "funding": [
                 {
@@ -6547,7 +6606,7 @@
                     "type": "other"
                 }
             ],
-            "time": "2026-10-27T04:16:22+00:00"
+            "time": "2026-11-02T07:12:28+00:00"
         },
         {
             "name": "psr/clock",
@@ -9234,16 +9293,16 @@
         },
         {
             "name": "vimeo/psalm",
-            "version": "6.20.4",
+            "version": "6.20.5",
             "source": {
                 "type": "git",
                 "url": "https://github.com/vimeo/psalm.git",
-                "reference": "e53db692e6600cf729c88190b892bcf96e1c550e"
+                "reference": "e447b655502f2058630e6ee03f2ea1c3789fe166"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/vimeo/psalm/zipball/e53db692e6600cf729c88190b892bcf96e1c550e",
-                "reference": "e53db692e6600cf729c88190b892bcf96e1c550e",
+                "url": "https://api.github.com/repos/vimeo/psalm/zipball/e447b655502f2058630e6ee03f2ea1c3789fe166",
+                "reference": "e447b655502f2058630e6ee03f2ea1c3789fe166",
                 "shasum": ""
             },
             "require": {
@@ -9348,7 +9407,7 @@
                 "issues": "https://github.com/vimeo/psalm/issues",
                 "source": "https://github.com/vimeo/psalm"
             },
-            "time": "2026-10-29T10:26:19+00:00"
+            "time": "2026-10-31T16:01:17+00:00"
         },
         {
             "name": "webmozart/assert",
