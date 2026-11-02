@@ -213,7 +213,7 @@ final class RegistryRefusalsTest extends TestCase
 
         /** @phpstan-ignore argument.type (a mistaken resource naming a class that is no widget) */
         self::assertSame($owner . 'widgets() names stdClass, which is not a VectorWidget', self::refusal(static fn () => WidgetCompiler::widgets([\stdClass::class], self::OWNER)));
-        self::assertSame($owner . 'widget ' . RefusalPieWidget::class . ' has the type "pie"', self::refusal(static fn () => WidgetCompiler::widgets([RefusalPieWidget::class], self::OWNER)));
+        self::assertSame($owner . 'widget ' . RefusalPieWidget::class . ' has the type "Pie_Chart"; a widget type is stat, trend, partition, progress, table, or an extension type in lower-case kebab-case', self::refusal(static fn () => WidgetCompiler::widgets([RefusalPieWidget::class], self::OWNER)));
         self::assertSame($owner . 'two widgets are named "refusal"', self::refusal(static fn () => WidgetCompiler::widgets([RefusalWidget::class, RefusalWidget::class], self::OWNER)));
     }
 
@@ -311,6 +311,6 @@ final class RefusalPieWidget extends RefusalWidget
 {
     public function type(): string
     {
-        return 'pie';
+        return 'Pie_Chart';
     }
 }

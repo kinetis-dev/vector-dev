@@ -700,13 +700,8 @@
                     "type": "string"
                 },
                 "type": {
-                    "enum": [
-                        "stat",
-                        "trend",
-                        "partition",
-                        "progress",
-                        "table"
-                    ]
+                    "description": "stat, trend, partition, progress or table, the built-in cards, or an extension type: lower-case kebab-case, rendered by the card a UI extension registers for it (defineWidget).",
+                    "$ref": "#/$defs/slug"
                 },
                 "icon": {
                     "type": [

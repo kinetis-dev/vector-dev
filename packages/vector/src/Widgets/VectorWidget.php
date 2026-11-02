@@ -22,6 +22,21 @@ abstract class VectorWidget
     public const string PROGRESS = 'progress';
     public const string TABLE = 'table';
 
+    /** The types the UI ships a card for, each with the data shape its WidgetResult factory builds. */
+    public const array BUILT_IN_TYPES = [self::STAT, self::TREND, self::PARTITION, self::PROGRESS, self::TABLE];
+
+    /** A widget name's grammar, and an extension type's: lower-case kebab-case. */
+    public const string KEBAB_CASE = '/^[a-z0-9]+(?:-[a-z0-9]+)*$/';
+
+    /**
+     * Whether `$type` names an extension type: lower-case kebab-case and
+     * none of BUILT_IN_TYPES.
+     */
+    public static function isExtensionType(string $type): bool
+    {
+        return preg_match(self::KEBAB_CASE, $type) === 1 && !in_array($type, self::BUILT_IN_TYPES, true);
+    }
+
     /** The URL segment; kebab-case of the class name by default. */
     public function name(): string
     {
@@ -36,7 +51,19 @@ abstract class VectorWidget
         return \Kinetis\Vector\Fields\Field::labelFrom(str_replace('-', '_', $this->name()));
     }
 
-    /** One of the type constants; decides the card the UI renders. */
+    /**
+     * Decides the card the UI renders: one of the type constants, or an
+     * extension type.
+     *
+     * An extension type is a lower-case kebab-case name that is none of
+     * the built-in ones (`isExtensionType()`), such as `vector-queues`.
+     * Vector ships no card for it: the UI must register a renderer for
+     * the type, through `window.Vector.defineWidget(type, component)` in
+     * a runtime extension or `vector.widgets` in the app's `app.config`.
+     * Without one the card says that no renderer is registered for the
+     * type. `calculate()` answers it with `WidgetResult::extension()`,
+     * whose data Vector passes to the renderer as it is.
+     */
     abstract public function type(): string;
 
     public function icon(): ?string
