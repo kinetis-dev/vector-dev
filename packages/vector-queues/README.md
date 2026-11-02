@@ -7,8 +7,12 @@ duration metrics. Built on
 [`kinetis/queue`](https://github.com/kinetis-dev/queue) and
 [`kinetis/queue-failed-jobs`](https://github.com/kinetis-dev/queue-failed-jobs).
 
-In development: this release ships the JSON API. The admin UI module
-comes later.
+In development. The package ships the JSON API and an admin UI module,
+`resources/ui/queues.js`, which its `composer.json` declares
+(`extra.kinetis.vector.extensions`), so the hosted admin loads it: a
+"Queues" page (overview, failed jobs, metrics) that offers only the
+actions `GET /vector/queues/permissions` allows, and a renderer for a
+dashboard widget of type `vector-queues`.
 
 ## Requirements
 
@@ -61,6 +65,7 @@ answer is JSON.
 | Method and path | What it does |
 |---|---|
 | `GET /vector/queues` | `{data: [{name, size, clearable, failed}]}` per watched queue. `size` is `null` when the backend cannot report it. |
+| `GET /vector/queues/permissions` | What the policy lets the caller do, for the UI to leave out the rest: `{view, retry, forget, prune, clear: {<queue>: bool}}`, `clear` per watched queue. Reads nothing but the policy; every route still asks it. |
 | `GET /vector/queues/failed` | Failed jobs, newest first: `{data, nextCursor, hasMore, limit}`. Query: `queue`, `class`, `failedFrom`, `failedTo` (RFC 3339, whole seconds, inclusive), `limit` (default 25, at most 100), `cursor` (the previous page's `nextCursor`). An unknown parameter or a bad value is a `422`. Rows carry no job arguments. |
 | `GET /vector/queues/failed/{id}` | One failed job. Every argument passes through `JobSerializer::redact()`, so a `#[Sensitive]` value is `[redacted]` — and every value is, when the job class no longer loads. `exception.trace` is always `null`: the store keeps no trace. |
 | `POST /vector/queues/failed/retry` | `{"ids": [...]}`, 1 to 50 ids, through `FailedJobRetrier`: `{data: [{id, status, class, queue, reason}]}`, one per id in order, `status` being `retried`, `not_found` or `failed`. |

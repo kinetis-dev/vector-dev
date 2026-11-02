@@ -2319,7 +2319,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector-queues",
-                "reference": "cede1907985349a8579b86931b8490b941c8a52d"
+                "reference": "a99deb70856d598bbadff86d29614a2d9d58a4a3"
             },
             "require": {
                 "kinetis/database-bridge": "^1.4.2",
@@ -2335,7 +2335,12 @@
             "extra": {
                 "kinetis": {
                     "scan": "Kinetis\\Vector\\Queues\\",
-                    "bootstrap": "Kinetis\\Vector\\Queues\\PackageBootstrap"
+                    "bootstrap": "Kinetis\\Vector\\Queues\\PackageBootstrap",
+                    "vector": {
+                        "extensions": [
+                            "resources/ui/queues.js"
+                        ]
+                    }
                 }
             },
             "autoload": {

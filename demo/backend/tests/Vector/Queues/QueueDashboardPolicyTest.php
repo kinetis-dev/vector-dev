@@ -44,6 +44,16 @@ final class QueueDashboardPolicyTest extends QueuesTestCase
         self::assertSame(1, $this->queue->size('qa-reports'));
     }
 
+    public function testAnAdminsPermissionsAllowEveryMutationOnEveryWatchedQueue(): void
+    {
+        $this->client->get('/vector/queues/permissions', headers: $this->adminHeaders())->assertOk()
+            ->assertJsonPath('view', true)
+            ->assertJsonPath('retry', true)
+            ->assertJsonPath('forget', true)
+            ->assertJsonPath('prune', true)
+            ->assertJsonPath('clear', ['qa-mail' => true, 'qa-reports' => true, 'qa-idle' => true]);
+    }
+
     public function testEveryMutationIsAllowedForAnAdmin(): void
     {
         $retried = $this->recordFailure('qa-mail', 1_800_000_000);

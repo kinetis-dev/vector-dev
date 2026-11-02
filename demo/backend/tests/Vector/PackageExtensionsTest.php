@@ -120,12 +120,17 @@ final class PackageExtensionsTest extends TestCase
 
             $registry = $application->get(VectorRegistry::class);
             self::assertInstanceOf(VectorRegistry::class, $registry);
-            self::assertSame(['resources/ui/queues.js', 'resources/ui/more/panel.mjs'], array_column($registry->uiExtensions(), 'entry'), 'compiled by discovery');
+            // the fixture's, then kinetis/vector-queues' own: the demo installs it, and a package's modules come in package-name order
+            self::assertSame(
+                [[self::FIXTURE, 'resources/ui/queues.js'], [self::FIXTURE, 'resources/ui/more/panel.mjs'], ['kinetis/vector-queues', 'resources/ui/queues.js']],
+                array_map(static fn (array $declared): array => [$declared['package'], $declared['entry']], $registry->uiExtensions()),
+                'compiled by discovery',
+            );
 
             $modules = $application->get(ExtensionModules::class);
             self::assertInstanceOf(ExtensionModules::class, $modules);
             $url = ExtensionModules::PATH . '/' . self::FIXTURE . '/' . self::hashOf('resources/ui/queues.js') . '/queues.js';
-            self::assertSame([$url, ExtensionModules::PATH . '/' . self::FIXTURE . '/' . self::hashOf('resources/ui/more/panel.mjs') . '/panel.mjs'], $modules->urls());
+            self::assertSame([$url, ExtensionModules::PATH . '/' . self::FIXTURE . '/' . self::hashOf('resources/ui/more/panel.mjs') . '/panel.mjs'], array_slice($modules->urls(), 0, 2));
 
             $response = $application->client()->get($url)->assertOk()->assertHeader('Content-Type', 'text/javascript; charset=utf-8');
             self::assertSame((string) file_get_contents(self::fixtureDir() . '/resources/ui/queues.js'), $response->body());
@@ -151,7 +156,11 @@ final class PackageExtensionsTest extends TestCase
     {
         $registry = VectorRegistry::fromArray(VectorRegistry::compile(new DiscoveryContext(dirname(__DIR__, 2))));
 
-        self::assertSame([], $registry->uiExtensions(), 'no package the demo installs declares one');
+        self::assertSame(
+            [['package' => 'kinetis/vector-queues', 'root' => 'vendor/composer/../kinetis/vector-queues', 'entry' => 'resources/ui/queues.js']],
+            $registry->uiExtensions(),
+            'kinetis/vector-queues is the one package the demo installs that declares one',
+        );
         self::assertArrayHasKey('uiExtensions', $registry->toArray());
     }
 

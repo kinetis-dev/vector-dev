@@ -39,7 +39,12 @@
     "extra": {
         "kinetis": {
             "scan": "Kinetis\\Vector\\Queues\\",
-            "bootstrap": "Kinetis\\Vector\\Queues\\PackageBootstrap"
+            "bootstrap": "Kinetis\\Vector\\Queues\\PackageBootstrap",
+            "vector": {
+                "extensions": [
+                    "resources/ui/queues.js"
+                ]
+            }
         }
     },
     "minimum-stability": "stable",

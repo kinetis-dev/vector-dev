@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kinetis\Vector\Queues\Http;
 
+use Kinetis\Container\RequestScope;
 use Kinetis\Http\Attributes\Delete;
 use Kinetis\Http\Attributes\Get;
 use Kinetis\Http\Attributes\Middleware;
@@ -39,6 +40,13 @@ use Psr\Http\Message\ServerRequestInterface;
  * kinetis/queue-failed-jobs' records, on the queues VECTOR_QUEUES names
  * only. A job's arguments leave the server only through
  * JobSerializer::redact(), and never reach the audit trail.
+ *
+ * Every route asks the policy before anything else, and resolves what it
+ * reads or changes — the queue backend, the failed-job store, the
+ * browser, the retrier — from the request scope only afterwards: a method
+ * parameter would be built before the policy is asked, so a refused
+ * caller would reach the database link (and see a 500 when it is down)
+ * instead of a 403.
  */
 #[RoutePrefix('/vector/queues')]
 #[Middleware('@vector')]
@@ -64,10 +72,11 @@ final readonly class QueuesController
 
     /** @return array{data: list<array{name: string, size: int|null, clearable: bool, failed: int}>} */
     #[Get('/')]
-    public function overview(QueueInterface $queue, FailedJobBrowser $browser): array
+    public function overview(RequestScope $scope): array
     {
         $this->authorize($this->policy->view($this->actor));
-        $failed = $browser->failedCounts($this->queues->names);
+        $queue = self::resolve($scope, QueueInterface::class);
+        $failed = self::resolve($scope, FailedJobBrowser::class)->failedCounts($this->queues->names);
         $data = [];
 
         foreach ($this->queues->names as $name) {
@@ -82,13 +91,41 @@ final readonly class QueuesController
         return ['data' => $data];
     }
 
+    /**
+     * What the policy lets the current actor do, so the UI can leave out
+     * what it would refuse: `clear` per watched queue, as a JSON object
+     * whatever the names. It reads nothing but the policy, and hides
+     * nothing on the server — every route still asks the policy itself.
+     *
+     * @return array{view: true, retry: bool, forget: bool, prune: bool, clear: \stdClass}
+     */
+    #[Get('/permissions')]
+    public function permissions(): array
+    {
+        $this->authorize($this->policy->view($this->actor));
+        // an object, not an array: a queue named "0" would make a PHP array encode as a JSON list
+        $clear = new \stdClass();
+
+        foreach ($this->queues->names as $name) {
+            $clear->{$name} = $this->policy->clear($this->actor, $name);
+        }
+
+        return [
+            'view' => true,
+            'retry' => $this->policy->retry($this->actor),
+            'forget' => $this->policy->forget($this->actor),
+            'prune' => $this->policy->prune($this->actor),
+            'clear' => $clear,
+        ];
+    }
+
     /** @return array{data: list<array<string, mixed>>, nextCursor: string|null, hasMore: bool, limit: int} */
     #[Get('/failed')]
-    public function failed(ServerRequestInterface $request, FailedJobBrowser $browser): array
+    public function failed(ServerRequestInterface $request, RequestScope $scope): array
     {
         $this->authorize($this->policy->view($this->actor));
         $filter = FailedJobFilter::fromQueryParams($request->getQueryParams(), $this->queues);
-        $page = $browser->page($filter, $this->queues->names);
+        $page = self::resolve($scope, FailedJobBrowser::class)->page($filter, $this->queues->names);
         $last = $page['rows'] === [] ? null : $page['rows'][array_key_last($page['rows'])];
 
         return [
@@ -115,10 +152,10 @@ final readonly class QueuesController
      * @return array{data: array<string, mixed>}
      */
     #[Get('/failed/{id}')]
-    public function show(string $id, SqlFailedJobStore $store): array
+    public function show(string $id, RequestScope $scope): array
     {
         $this->authorize($this->policy->view($this->actor));
-        $job = $this->watched($store, $id)->job;
+        $job = $this->watched(self::resolve($scope, SqlFailedJobStore::class), $id)->job;
 
         return ['data' => [
             'id' => $id,
@@ -141,7 +178,7 @@ final readonly class QueuesController
      * @return array{data: list<array{id: string, status: string, class: string|null, queue: string|null, reason: string|null}>}
      */
     #[Post('/failed/retry')]
-    public function retry(ServerRequestInterface $request, SqlFailedJobStore $store, FailedJobRetrier $retrier): array
+    public function retry(ServerRequestInterface $request, RequestScope $scope): array
     {
         $this->authorize($this->policy->retry($this->actor));
         $ids = self::body($request)['ids'] ?? null;
@@ -149,6 +186,9 @@ final readonly class QueuesController
         if (!is_array($ids) || !array_is_list($ids) || $ids === [] || count($ids) > self::MAX_RETRY_BATCH || array_filter($ids, is_string(...)) !== $ids) {
             throw ValidationException::fromViolations([new Violation(['ids'], 'type_mismatch', 'must be a list of 1 to ' . self::MAX_RETRY_BATCH . ' failed-job ids.')]);
         }
+
+        $store = self::resolve($scope, SqlFailedJobStore::class);
+        $retrier = self::resolve($scope, FailedJobRetrier::class);
 
         /** @var list<string> $ids */
         $results = [];
@@ -167,9 +207,10 @@ final readonly class QueuesController
     }
 
     #[Delete('/failed/{id}', status: 204)]
-    public function forget(string $id, SqlFailedJobStore $store): ResponseInterface
+    public function forget(string $id, RequestScope $scope): ResponseInterface
     {
         $this->authorize($this->policy->forget($this->actor));
+        $store = self::resolve($scope, SqlFailedJobStore::class);
         $job = $this->watched($store, $id)->job;
         $store->forget($id);
         $this->record([$id], 'queue:forget', ['class' => $job->class, 'queue' => $job->queue]);
@@ -185,7 +226,7 @@ final readonly class QueuesController
      * @return array{data: array{deleted: int, olderThanSeconds: int}}
      */
     #[Post('/failed/prune')]
-    public function prune(ServerRequestInterface $request, SqlFailedJobStore $store): array
+    public function prune(ServerRequestInterface $request, RequestScope $scope): array
     {
         $this->authorize($this->policy->prune($this->actor));
         $body = self::body($request);
@@ -204,7 +245,7 @@ final readonly class QueuesController
         }
 
         $seconds = $value * ($unit === 'days' ? 86_400 : 3_600);
-        $deleted = $store->prune($seconds);
+        $deleted = self::resolve($scope, SqlFailedJobStore::class)->prune($seconds);
         $this->record(['failed'], 'queue:prune', ['olderThanSeconds' => $seconds, 'deleted' => $deleted]);
 
         return ['data' => ['deleted' => $deleted, 'olderThanSeconds' => $seconds]];
@@ -218,7 +259,7 @@ final readonly class QueuesController
      * @return array{data: array{queue: string, cleared: int}}
      */
     #[Post('/{queue}/clear')]
-    public function clear(string $queue, ServerRequestInterface $request, QueueInterface $backend): array
+    public function clear(string $queue, ServerRequestInterface $request, RequestScope $scope): array
     {
         // the policy first, as for every other mutation: a refused caller cannot tell watched queues from others
         $this->authorize($this->policy->clear($this->actor, $queue));
@@ -230,6 +271,8 @@ final readonly class QueuesController
         if ((self::body($request)['confirm'] ?? null) !== $queue) {
             throw ValidationException::fromViolations([new Violation(['confirm'], 'confirmation_mismatch', 'must be the name of the queue to clear, exactly.')]);
         }
+
+        $backend = self::resolve($scope, QueueInterface::class);
 
         if (!$backend instanceof ClearableQueueInterface) {
             throw new ConflictException('This queue backend cannot discard waiting jobs.');
@@ -246,6 +289,26 @@ final readonly class QueuesController
         if (!$allowed) {
             throw new ForbiddenOperationException('This account may not do that on the queue dashboard.');
         }
+    }
+
+    /**
+     * What a route reads or changes, built only once the policy has
+     * answered: resolved here rather than injected, since a method
+     * parameter is built before the route runs.
+     *
+     * @template T of object
+     * @param class-string<T> $id
+     * @return T
+     */
+    private static function resolve(RequestScope $scope, string $id): object
+    {
+        $resolved = $scope->get($id);
+
+        if (!$resolved instanceof $id) {
+            throw new \LogicException("{$id} is bound to something else.");
+        }
+
+        return $resolved;
     }
 
     /** A record on a watched queue, or a 404 — the same for a malformed id, a missing record and one on another queue. */
