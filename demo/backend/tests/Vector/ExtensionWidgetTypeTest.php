@@ -86,7 +86,7 @@ final class ExtensionWidgetTypeTest extends TestCase
                 WidgetResult::extension($type);
                 self::fail("\"{$type}\" made an extension result");
             } catch (\InvalidArgumentException $refusal) {
-                self::assertStringStartsWith("\"{$type}\" is no extension widget type", $refusal->getMessage());
+                self::assertSame("\"{$type}\" is no extension widget type: one is lower-case kebab-case and none of stat, trend, partition, progress, table, which have factories of their own.", $refusal->getMessage());
             }
         }
 
