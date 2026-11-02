@@ -9,18 +9,19 @@ seeded.
 
 ```text
 packages/vector/            kinetis/vector: registry, REST API, jobs, MCP tools, migration stubs
+packages/vector-queues/     kinetis/vector-queues: the queue dashboard's API over kinetis/queue-failed-jobs
 packages/vector-ui/         @kinetis/vector-ui, the Nuxt layer; its Vitest suite in test/nuxt/
   hosted/                   the hosted bundle's build entry: the layer alone, built into dist/static
 demo/docker-compose.yml     the stack: app, worker, nginx, frankenphp, mysql, postgres, redis, node; e2e and oha on demand
 demo/docker/                the PHP images (PHP-FPM and FrankenPHP) and their shared extension recipe, nginx, the Caddyfile, php.ini
 demo/bin/                   check-frankenphp and benchmark, for the FrankenPHP worker service
-demo/backend/               the demo application, kinetis/vector installed from ../../packages/vector
+demo/backend/               the demo application, kinetis/vector and kinetis/vector-queues installed from ../../packages
   src/Auth/                 both sign-ins, their throttling, the vector and mcp group middleware, impersonation
   src/Console/              demo:seed
   src/Http/Diagnostics/     GET /_demo/runtime, the development-only runtime report bin/check-frankenphp reads
   src/Domain/               the shop's entities, on MySQL; Support/ the support desk's, on PostgreSQL
   src/Vector/               the demo's resources, actions, widgets, dashboards and settings groups
-  migrations/               the shop, the queue table and Vector's tables for MySQL
+  migrations/               the shop, the queue and failed-jobs tables and Vector's tables for MySQL
   migrations/admin/         Vector's tables for PostgreSQL, on the connection admin
   migrations/support/       the support desk, on the connection support
   bootstrap.php             JWT keys, CORS for the standalone UI, the Vector bindings
@@ -100,7 +101,8 @@ docker compose exec node pnpm lint
 docker compose exec node pnpm --filter frontend generate
 ```
 
-PHPStan runs at level 8 over the demo and `packages/vector/src`, with
+PHPStan runs at level 8 over the demo, `packages/vector/src` and
+`packages/vector-queues/src`, with
 two Kinetis rules. `NoStaticPropertiesRule` flags a `static` property,
 which outlives every request a worker handles; `NoBlockingIoRule` flags
 a call that blocks the event loop instead of yielding. They catch two
@@ -112,8 +114,8 @@ docker compose exec app composer psalm          # Psalm, plain
 docker compose exec app composer psalm:taint    # Psalm, taint analysis; writes backend/psalm.sarif
 ```
 
-Psalm covers the demo's `src/` and `migrations/` and
-`packages/vector/src`, at its level 7 (Psalm's 1 is its strictest).
+Psalm covers the demo's `src/` and `migrations/`,
+`packages/vector/src` and `packages/vector-queues/src`, at its level 7 (Psalm's 1 is its strictest).
 It runs twice on purpose: `--taint-analysis` reports only taint issues,
 so it cannot replace the plain run. The taint run needs
 `zend.assertions=-1`, which the script sets. Request input reaches this
