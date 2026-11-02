@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import VxWidgetCard from '#vector/app/components/Vx/Widget/Card.vue'
 import type { VectorWidget, VectorWidgetData } from '#vector/app/types/vector'
 
@@ -15,7 +15,10 @@ const Sparkline = defineComponent({
 })
 
 describe('VxWidgetCard', () => {
-    afterEach(() => useVectorExtensions().widgets.delete('sparkline-chart'))
+    afterEach(() => {
+        useVectorExtensions().widgets.delete('sparkline-chart')
+        useVectorExtensions().widgets.delete('sparkline-late')
+    })
 
     it('says no renderer is registered for a type with no built-in card, instead of drawing a stat', async () => {
         const wrapper = await mountSuspended(VxWidgetCard, { props: { widget: widget('sparkline-chart'), load: load('sparkline-chart', { value: 7 }) } })
@@ -33,6 +36,20 @@ describe('VxWidgetCard', () => {
         await flushPromises()
 
         expect(wrapper.find('.sparkline').text()).toBe('samples 3,1,4 for card')
+        expect(wrapper.text()).not.toContain('No renderer')
+        wrapper.unmount()
+    })
+
+    it('swaps the notice for a renderer registered after the card mounted, as a slow extension module does', async () => {
+        const wrapper = await mountSuspended(VxWidgetCard, { props: { widget: widget('sparkline-late'), load: load('sparkline-late', { samples: [2, 7] }) } })
+        await flushPromises()
+        expect(wrapper.text()).toContain('No renderer is registered for the widget type sparkline-late.')
+        expect(wrapper.find('.sparkline').exists()).toBe(false)
+
+        useVectorExtensions().widgets.set('sparkline-late', Sparkline)
+        await nextTick()
+
+        expect(wrapper.find('.sparkline').text()).toBe('samples 2,7 for card')
         expect(wrapper.text()).not.toContain('No renderer')
         wrapper.unmount()
     })
