@@ -25,7 +25,11 @@ comes later.
   `migrations/<name>/` when `FAILED_JOBS_DB_CONNECTION_NAME` names a
   connection — renamed with a timestamp prefix, e.g.
   `20261103000001_create_vector_queue_metrics_table.php`, and run
-  `vendor/bin/kinetis migrate`.
+  `vendor/bin/kinetis migrate`. Queue names and job classes are compared
+  exactly: on MySQL `queue` is `ascii_bin` and `job_class` is
+  `VARBINARY(255)`; on Postgres both are `VARCHAR`, whose default
+  collation is already byte-exact, so a class name must be valid in the
+  database's encoding there.
 
 ## Configuration
 
@@ -118,7 +122,9 @@ vendor/bin/kinetis vector:queues:prune-metrics --days=7
 ```
 
 It deletes the rows whose minute began more than `--days` days ago (a
-whole number from 1; 7 when absent) and prints how many it deleted.
+whole number from 1 to 36500; 7 when absent) and prints how many it
+deleted. Any other `--days` is refused with exit code 1, deleting
+nothing.
 
 ## Access
 

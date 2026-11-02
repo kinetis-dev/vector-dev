@@ -28,9 +28,10 @@ final readonly class PruneMetricsCommand
     private const int MAX_DAYS = 36_500;
 
     /**
-     * @param resource $output mixed, not resource, since PHP has no native
-     *     "resource" type and a readonly property requires one
-     * @param resource $errors the same, for refusals
+     * Both are typed mixed because PHP has no native resource type.
+     *
+     * @param resource $output
+     * @param resource $errors
      */
     public function __construct(
         private JobMetricsStore $store,
@@ -45,7 +46,7 @@ final readonly class PruneMetricsCommand
         $days = $arguments->hasOption('days') ? ($arguments->option('days') ?? '') : (string) self::DEFAULT_DAYS;
 
         if (preg_match('/^[1-9]\d{0,4}$/D', $days) !== 1 || (int) $days > self::MAX_DAYS) {
-            fwrite($this->errors, '--days needs a whole number of days from 1 to ' . self::MAX_DAYS . ": --days=7.\n");
+            fwrite($this->errors, '--days needs a whole number of days from 1 to ' . self::MAX_DAYS . ", e.g. --days=7.\n");
 
             return 1;
         }

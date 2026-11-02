@@ -15,10 +15,15 @@ use Kinetis\Migrations\Migration;
 //
 // One row per (minute, queue, job class). `bucket` and
 // `last_processed_at` are unix seconds, `bucket` floored to its minute.
-// `queue` is ascii_bin and `job_class` utf8mb4_bin: MySQL's default
-// collation compares case-insensitively, and both are matched for exact
-// equality — a class name may hold any byte PHP admits, so it is not
-// ascii. Postgres compares byte-exactly already — see the .pgsql. sibling
+// Both key columns are matched for exact equality, and MySQL's default
+// collation compares case-insensitively, so neither uses it: `queue` is
+// ascii_bin, as in kinetis/queue-failed-jobs' stub — kinetis/queue's
+// queue-name grammar is ASCII — and `job_class` is VARBINARY, compared
+// and stored as bytes, with no character set to validate the name
+// against. (The failed-jobs stub's own `class VARCHAR(255) NOT NULL` takes
+// the table's default, case-insensitive collation; this column keys a
+// unique index, where two classes differing only in case must stay two
+// rows.) Postgres compares byte-exactly already — see the .pgsql. sibling
 // stub.
 //
 // The unique key is what every write upserts on, and serves the reads
@@ -34,7 +39,7 @@ return new class implements Migration
             CREATE TABLE vector_queue_metrics (
                 bucket BIGINT NOT NULL,
                 queue VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-                job_class VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+                job_class VARBINARY(255) NOT NULL,
                 succeeded INT UNSIGNED NOT NULL DEFAULT 0,
                 released INT UNSIGNED NOT NULL DEFAULT 0,
                 failed INT UNSIGNED NOT NULL DEFAULT 0,

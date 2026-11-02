@@ -77,9 +77,11 @@ final class QueueMetricsStoreFailureTest extends MetricsTestCase
         self::assertCount(4, $this->down->statements, 'every outcome was attempted');
         self::assertCount(2, $this->logger->at('warning'));
 
-        // no listener failure surfaced through the worker's own best-effort net either
-        foreach ($this->logger->lines as $line) {
-            self::assertStringNotContainsString('listener failed', $line['message']);
+        // and nothing reached the worker's own net for a throwing listener, which logs
+        // "A <Event> listener failed for job \"<class>\": <message>" at error level (kinetis/queue
+        // v1.9.0 QueueWorker::dispatch() and runBestEffort())
+        foreach ($this->logger->at('error') as $line) {
+            self::assertDoesNotMatchRegularExpression('/^A Job(Succeeded|Released|FailedPermanently) listener failed for job "/', $line['message']);
         }
     }
 }

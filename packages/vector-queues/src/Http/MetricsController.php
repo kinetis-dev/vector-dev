@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kinetis\Vector\Queues\Http;
 
+use Kinetis\Container\RequestScope;
 use Kinetis\Http\Attributes\Get;
 use Kinetis\Http\Attributes\Middleware;
 use Kinetis\Http\Attributes\RoutePrefix;
@@ -19,7 +20,10 @@ use Psr\Http\Message\ServerRequestInterface;
 /**
  * The job metrics, in the same `vector` middleware group as
  * {@see QueuesController} and decided by the same policy's view(),
- * asked before the query is read or the database touched. Only the
+ * asked before anything else. Then the query is validated (an unwatched
+ * queue or a bad window is a 422), and only then is the metrics store
+ * resolved: a refused caller or a bad query never builds the store, nor
+ * the database link under it. Only the
  * queues VECTOR_QUEUES names are read, and only the window asked for:
  * three grouped reads of `vector_queue_metrics`, each bounded by the
  * window's buckets.
@@ -44,13 +48,21 @@ final readonly class MetricsController
      * @return array{data: array<string, mixed>}
      */
     #[Get('/metrics')]
-    public function metrics(ServerRequestInterface $request, JobMetricsStore $store): array
+    public function metrics(ServerRequestInterface $request, RequestScope $scope): array
     {
         if (!$this->policy->view($this->actor)) {
             throw new ForbiddenOperationException('This account may not do that on the queue dashboard.');
         }
 
         $query = MetricsQuery::fromQueryParams($request->getQueryParams(), $this->queues, $this->clock->now());
+
+        // resolved here, not injected: a method parameter would be built before the policy is asked
+        $store = $scope->get(JobMetricsStore::class);
+
+        if (!$store instanceof JobMetricsStore) {
+            throw new \LogicException(JobMetricsStore::class . ' is bound to something else.');
+        }
+
         $perMinute = $this->read($store, $query, 'bucket');
         $buckets = [];
 

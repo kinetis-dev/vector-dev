@@ -38,15 +38,22 @@ final readonly class PackageBootstrap implements PackageBootstrapInterface
         // The same connection SqlFailedJobStore uses, on a link of its own: built on first resolve, shared
         // for the worker's lifetime (bind() is shared by default) and closed with the application scope.
         //
-        // One link serves both FailedJobBrowser and JobMetricsStore, deliberately. A kinetis/persistence
-        // link (v1.4.5; the paths below are under its src/) is safe for concurrent statements from several Fibers in one worker: the async drivers are
-        // pools that put one statement in flight per connection and make a Fiber beyond maxConnections wait
-        // for one (Driver/MysqliAsyncClient.php:46-49, Driver/PgsqlAsyncClient.php:50-52), the per-Fiber
-        // transaction guard exists precisely because "a second Fiber running its own queries is served on
-        // its own connection and must keep working" (Driver/FiberTransactions.php:14-17), and the PDO
-        // fallback never suspends mid-statement, so overlapping work simply runs in turn
-        // (Driver/PdoMysqlClient.php:25-28). Neither reader nor the metrics store begins a transaction on
-        // it. A second link would only double the connections the worker holds open.
+        // One link serves both FailedJobBrowser and JobMetricsStore, deliberately: a kinetis/persistence link
+        // is safe for concurrent statements from several Fibers in one worker, whichever driver it is.
+        // ConnectionFactory::fromConfig() (kinetis/database-bridge v1.4.2 src/ConnectionFactory.php:103)
+        // takes DB_DRIVER, `auto` when unset, and SqlConnectionFactory::create() (kinetis/persistence v1.4.5
+        // src/SqlConnectionFactory.php:56, :127-136) makes `auto` the native async pool under FrankenPHP or
+        // RoadRunner and PDO everywhere else — PHP-FPM and a CLI `queue:work`, as in the demo. Both are safe:
+        // - the native clients are pools with one statement in flight per connection, "and callers beyond it
+        //   wait for a connection like any pool" (src/Driver/MysqliAsyncClient.php:46-49,
+        //   src/Driver/PgsqlAsyncClient.php:50-52), and "a second Fiber running its own queries is served on
+        //   its own connection and must keep working" (src/Driver/FiberTransactions.php:14-17);
+        // - PDO is "one lazily-opened PDO connection doing native-speed blocking work", where concurrent work
+        //   still produces correct results and "the queries simply run sequentially"
+        //   (src/Driver/PdoMysqlClient.php:25-28): a blocking statement never suspends its Fiber, so no
+        //   other Fiber can interleave a statement on that connection.
+        // Neither the browser nor the store begins a transaction on it. A second link would only double the
+        // connections a worker holds open.
         $app->bind(FailedJobsLink::class, static function (AppScope $app) use ($config): FailedJobsLink {
             $link = ConnectionFactory::fromConfig($config, FailedJobsLink::connectionName($config));
             $app->onDispose($link->close(...));

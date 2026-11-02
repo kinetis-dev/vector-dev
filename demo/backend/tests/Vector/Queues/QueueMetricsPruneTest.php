@@ -69,7 +69,7 @@ final class QueueMetricsPruneTest extends MetricsTestCase
         foreach (['--days=0', '--days=-1', '--days=seven', '--days=1.5', '--days=', '--days', '--days=36501'] as $bad) {
             [$code, $out] = $this->prune($bad);
             self::assertSame(1, $code, $bad);
-            self::assertStringContainsString('--days needs a whole number of days from 1 to 36500', $out, $bad);
+            self::assertSame("--days needs a whole number of days from 1 to 36500, e.g. --days=7.\n", $out, $bad);
         }
 
         self::assertCount(1, $this->rows());
