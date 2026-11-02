@@ -61,7 +61,11 @@ globally registered component names, keyed by field type, by a field's
 A cell receives `value`, `field`, `record`, `resource` and `context`
 (`index` or `show`). An input receives `modelValue`, `field`, `rules`,
 `errorMessages`, `record` and `resource` and emits `update:modelValue`.
-A widget renderer receives `data` and `widget`.
+A widget renderer receives `data` and `widget`. A dashboard declares
+only Vector's five built-in widget types (`stat`, `trend`, `partition`,
+`progress` and `table`), so a renderer registered for any other type,
+such as `kinetis/vector-queues`' `vector-queues`, is never reached
+from a dashboard yet.
 
 ## Runtime extensions
 
@@ -127,6 +131,7 @@ into memory once, at boot, and serves them itself at
 `/vector/extensions/{vendor}/{package}/{hash}/{file}`, where `hash` is a
 digest of the file's bytes. The hosted shell lists them first, in
 package-name order, then the `VECTOR_UI_EXTENSIONS` entries.
+`kinetis/vector-queues` ships its admin page this way ({doc}`queues`).
 
 - **What is served:** an entry must be a `.js` or `.mjs` file inside the
   package: a relative path with no `.`, `..` or hidden segment, no

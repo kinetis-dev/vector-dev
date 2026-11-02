@@ -1,13 +1,14 @@
 # kinetis/vector-queues
 
-A queue dashboard for [`kinetis/vector`](../vector): the size of each
+A queue dashboard for [`kinetis/vector`](https://github.com/kinetis-dev/vector): the size of each
 queue, the jobs the worker gave up on — to browse, retry, forget and
 prune — queues to clear, and per-minute throughput, failure and
 duration metrics. Built on
 [`kinetis/queue`](https://github.com/kinetis-dev/queue) and
 [`kinetis/queue-failed-jobs`](https://github.com/kinetis-dev/queue-failed-jobs).
 
-In development. The package ships the JSON API and an admin UI module,
+On the 0.x line, so a minor release may break. The package ships the
+JSON API and an admin UI module,
 `resources/ui/queues.js`, which its `composer.json` declares
 (`extra.kinetis.vector.extensions`), so the hosted admin loads it: a
 "Queues" page (overview, failed jobs, metrics) that offers only the
@@ -17,9 +18,19 @@ but cannot yet be placed on a dashboard: Vector accepts only its five
 built-in widget types, so no dashboard can declare a `vector-queues`
 widget.
 
+The user manual's
+[Queue dashboard](https://kinetis.dev/vector/docs/queues.html) page
+covers it in full.
+
+## Install
+
+```sh
+composer require kinetis/vector-queues
+```
+
 ## Requirements
 
-- PHP 8.4, `kinetis/vector`, `kinetis/queue` ^1.9 and
+- PHP 8.4, `kinetis/vector` ^0.14, `kinetis/queue` ^1.9 and
   `kinetis/queue-failed-jobs` ^1.1.
 - The `kinetis_failed_jobs` table: copy the migration stub
   `kinetis/queue-failed-jobs` ships for your database into your
@@ -137,9 +148,12 @@ nothing.
 ## Access
 
 `Kinetis\Vector\Queues\Auth\QueueDashboardPolicyInterface` decides each
-call — `view` (the overview, the failed list and detail, and the
-metrics), `retry`, `forget`, `prune` and `clear`, each given
-Vector's `ActorContext` — and a refusal is a `403`. The package binds
+call — `view` (the overview, the failed list and detail, the metrics
+and the permissions), `retry`, `forget`, `prune`, and `clear`, which is
+also given the queue's name so it can answer per queue, each given
+Vector's `ActorContext` — and a refusal is a `403`. It is asked before
+the request is validated and before any database or queue connection is
+opened. The package binds
 `ViewOnlyQueueDashboardPolicy`: anyone Vector admits may look, and
 nobody may change anything. Bind your own in `bootstrap.php`, which runs
 after the package and wins:
