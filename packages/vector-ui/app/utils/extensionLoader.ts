@@ -29,6 +29,9 @@ import { computed, watch, type Ref } from 'vue'
  * it, and every one is behind sign-in, so the login page never waits on
  * it, and after signing in the page the login form returns to still
  * waits for the modules.
+ * Each list's modules are fetched at once but run in the order listed,
+ * a later one waiting for those before it to load or fail, so the custom
+ * pages they define reach the menu in the same order on every load.
  * Nothing is imported twice in a page's lifetime: the descriptor's list
  * is read once, so signing out and in again, or as someone else, loads
  * nothing more, and a URL already imported (the same module also named
@@ -87,10 +90,14 @@ export function loadVectorExtensions(options: ExtensionLoaderOptions): Promise<v
     // by absolute URL: what a browser would import once and run twice
     const seen = new Set<string>()
 
-    const load = (urls: string[]) => Promise.allSettled(urls.map(url => options.importModule(url)
-        .then(module => options.run(module, url))
-        .catch(error => console.error(`Vector extension ${url} failed to load`, error))))
-        .then(() => undefined)
+    // fetched in parallel, run one after another in the order listed, so what they register (the
+    // menu's custom pages and groups) comes in that order rather than whichever arrived first
+    const load = (urls: string[]) => {
+        const imports = urls.map(url => options.importModule(url))
+        return urls.reduce<Promise<void>>((previous, url, index) => previous.then(() => imports[index]!
+            .then(module => options.run(module, url))
+            .catch(error => console.error(`Vector extension ${url} failed to load`, error))), Promise.resolve())
+    }
 
     // as given, repeats included, as before the descriptor listed any
     for (const url of options.initial) {

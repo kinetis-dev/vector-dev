@@ -109,6 +109,23 @@ describe('loadVectorExtensions', () => {
         expect(importModule.mock.calls.map(([url]) => url)).toEqual([MODULE, '/vector-extensions/stock-level.js'])
     })
 
+    it('fetches the modules at once but runs them in the order listed, whichever arrives first', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        const { importModule, pending, ready, run } = setup(true, ['/a.js', '/b.js', '/c.js'])
+        expect(importModule).toHaveBeenCalledTimes(3) // none waits for another's download
+
+        pending.get('/c.js')!.resolve({})
+        pending.get('/b.js')!.reject(new TypeError('Failed to fetch dynamically imported module'))
+        await settle()
+        expect(run).not.toHaveBeenCalled() // /a.js, listed first, has not arrived
+
+        pending.get('/a.js')!.resolve({})
+        await settle()
+        expect(run.mock.calls.map(([, url]) => url)).toEqual(['/a.js', '/c.js']) // the failed one skipped, the order kept
+        expect(ready.value).toBe(true)
+        error.mockRestore()
+    })
+
     it('does not wait on a module that fails to load: it is logged, and the admin is ready', async () => {
         const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
         const { pending, descriptorModules, ready, run } = setup(false)
