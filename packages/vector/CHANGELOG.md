@@ -17,6 +17,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shell's. The descriptor schema requires the field. A standalone
   deployment's CORS must cover `/vector/extensions/*` for the UI's
   origin, as a globally registered `CorsMiddleware` does.
+- A Composer package can ship the translations of the labels it emits
+  on the server: it names one directory of `{locale}.php` files,
+  relative to its root, under `extra.kinetis.vector.translations` in
+  its `composer.json`. Vector compiles the declarations from Composer's
+  `installed.json` into its registry, beside the UI extensions, and
+  each worker layers them at boot, in package-name order, over Vector's
+  own translations and under `VECTOR_TRANSLATIONS_DIR`, so the
+  application's wording always wins. A declaration that is not a
+  relative path to a directory inside the package, or a directory gone
+  by the time a worker boots, is written to the PHP error log and
+  skipped, never fatal. A registry cached by an earlier version loads
+  with none.
 
 ### Changed
 

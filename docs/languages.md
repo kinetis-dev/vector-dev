@@ -71,11 +71,48 @@ are flattened with dots. A regional tag falls back to its language
 (`pt-BR` reads `pt.php`). The files are read once, when the worker
 starts.
 
-Vector binds a `MessagesTranslator` over its own `translations/` (the
-labels of its built-in settings groups, machine-translated like the UI's
-catalogs) and your `VECTOR_TRANSLATIONS_DIR`. To use your framework's
-own translator instead, bind
+Vector binds a `MessagesTranslator` over three layers, each overriding
+the one before it, key by key:
+
+1. Vector's own `translations/`: the labels of its built-in settings
+   groups, machine-translated like the UI's catalogs.
+2. The directory each installed package declares for the labels it
+   emits on the server, in package-name order (see below).
+3. Your `VECTOR_TRANSLATIONS_DIR`.
+
+So your wording always wins, over a package's and over Vector's. To use
+your framework's own translator instead, bind
 `Kinetis\Vector\Translation\TranslatorInterface` in your application.
+
+### Translations in a Composer package
+
+A package that declares labels on the server, such as a dashboard
+card's, ships their translations in its own directory of
+`{locale}.php` files, in the format above, and names it, relative to the
+package's root, in its `composer.json`:
+
+```json
+{
+    "extra": {
+        "kinetis": {
+            "vector": { "translations": "resources/translations" }
+        }
+    }
+}
+```
+
+One directory per package, as a string. Vector reads the declaration
+from Composer's `installed.json` when it compiles its registry
+(`kinetis build`, or every boot in development), beside the package's
+UI extensions ({doc}`customizing-the-ui`), so it does not matter whether
+the package boots before or after Vector. Run `composer install` after a
+change to the package's `composer.json`. The directory must be inside
+the package: a relative path with no `.`, `..` or hidden segment and no
+symlink out of it. Vector skips any other declaration, and a directory
+gone by the time a worker boots, and writes the reason to the PHP error
+log; neither stops the application. A missing `VECTOR_TRANSLATIONS_DIR`
+still does. `kinetis/vector-queues` ships its card's label this way
+({doc}`queues`).
 
 Translation happens at response time — the descriptor, settings groups,
 dashboards and widget results — so the compiled registry stays in your

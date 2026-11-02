@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The page and card text ships in Vector's 16 other languages (machine
   translations); English is still the fallback for any other locale.
+- The dashboard card's label, **Queues**, is translated on the server
+  in the same languages, from the package's own `resources/translations/`,
+  declared under `extra.kinetis.vector.translations`; an application
+  no longer has to carry it in its `VECTOR_TRANSLATIONS_DIR`, which
+  still overrides it. This needs a `kinetis/vector` that reads that
+  declaration.
 
 ### Fixed
 

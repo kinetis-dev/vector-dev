@@ -33,7 +33,10 @@ the whole wiring:
   carries it, and rebuild with `kinetis build` in production. The
   standalone UI imports the module from the API's origin, once it is
   signed in, so the API's CORS must cover `/vector/extensions/*` for the
-  UI's origin ({doc}`deployment`).
+  UI's origin ({doc}`deployment`);
+- its `extra.kinetis.vector.translations` declares the translations of
+  the labels it emits on the server, `resources/translations/`, which
+  Vector layers under your own ({doc}`languages`).
 
 Installing the package also turns on recording metrics, in every process
 that runs `queue:work`.
@@ -180,6 +183,13 @@ ships in every language Vector's UI ships, as machine translations; override
 any of it with `defineMessages` under `vectorQueues`. English is the fallback.
 Server text such as exception messages is rendered as text, never as
 HTML.
+
+The labels the package declares on the server, the dashboard card's
+**Queues**, are translated in the same languages by the package's own
+`resources/translations/`, which its `extra.kinetis.vector.translations`
+declares ("Translations in a Composer package" in {doc}`languages`).
+Your `VECTOR_TRANSLATIONS_DIR` overrides them: give the key `Queues` a
+wording of your own there.
 
 ## The dashboard card
 

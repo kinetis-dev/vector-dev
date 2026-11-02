@@ -135,6 +135,10 @@ into memory once, at boot, and serves them itself at
 digest of the file's bytes. The hosted shell lists them first, in
 package-name order, then the `VECTOR_UI_EXTENSIONS` entries.
 `kinetis/vector-queues` ships its admin page this way ({doc}`queues`).
+Beside `extensions`, the same `vector` object takes `translations`:
+one directory, relative to the package's root, with the translations of
+the labels the package emits on the server ("Translations in a Composer
+package" in {doc}`languages`).
 
 - **What is served:** an entry must be a `.js` or `.mjs` file inside the
   package: a relative path with no `.`, `..` or hidden segment, no
