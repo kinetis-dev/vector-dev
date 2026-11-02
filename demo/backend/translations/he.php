@@ -111,7 +111,6 @@ return [
     'Published' => 'פורסם',
     'Publishing' => 'פרסום',
     'Quantity' => 'כמות',
-    'Queues' => 'תורים',
     'Release date' => 'תאריך השקה',
     'Released at' => 'מועד ההשקה',
     'Replies' => 'תגובות',

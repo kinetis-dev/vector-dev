@@ -111,7 +111,6 @@ return [
     'Published' => '公開済み',
     'Publishing' => '公開',
     'Quantity' => '数量',
-    'Queues' => 'キュー',
     'Release date' => '発売日',
     'Released at' => '発売日時',
     'Replies' => '返信',

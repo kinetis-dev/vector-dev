@@ -111,7 +111,6 @@ return [
     'Published' => 'Yayımlandı',
     'Publishing' => 'Yayın',
     'Quantity' => 'Miktar',
-    'Queues' => 'Kuyruklar',
     'Release date' => 'Çıkış tarihi',
     'Released at' => 'Çıkış zamanı',
     'Replies' => 'Yanıtlar',

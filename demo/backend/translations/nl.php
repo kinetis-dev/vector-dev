@@ -111,7 +111,6 @@ return [
     'Published' => 'Gepubliceerd',
     'Publishing' => 'Publicatie',
     'Quantity' => 'Aantal',
-    'Queues' => 'Wachtrijen',
     'Release date' => 'Releasedatum',
     'Released at' => 'Uitgebracht op',
     'Replies' => 'Antwoorden',

@@ -111,7 +111,6 @@ return [
     'Published' => 'Publicado',
     'Publishing' => 'Publicación',
     'Quantity' => 'Cantidad',
-    'Queues' => 'Colas',
     'Release date' => 'Fecha de lanzamiento',
     'Released at' => 'Lanzado el',
     'Replies' => 'Respuestas',

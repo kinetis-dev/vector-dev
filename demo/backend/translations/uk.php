@@ -111,7 +111,6 @@ return [
     'Published' => 'Опубліковано',
     'Publishing' => 'Публікація',
     'Quantity' => 'Кількість',
-    'Queues' => 'Черги',
     'Release date' => 'Дата виходу',
     'Released at' => 'Випущено',
     'Replies' => 'Відповіді',

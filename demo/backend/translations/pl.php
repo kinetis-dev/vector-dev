@@ -111,7 +111,6 @@ return [
     'Published' => 'Opublikowane',
     'Publishing' => 'Publikacja',
     'Quantity' => 'Ilość',
-    'Queues' => 'Kolejki',
     'Release date' => 'Data premiery',
     'Released at' => 'Wydano',
     'Replies' => 'Odpowiedzi',

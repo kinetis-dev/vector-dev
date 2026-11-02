@@ -111,7 +111,6 @@ return [
     'Published' => '已发布',
     'Publishing' => '发布',
     'Quantity' => '数量',
-    'Queues' => '队列',
     'Release date' => '发布日期',
     'Released at' => '发布时间',
     'Replies' => '回复',

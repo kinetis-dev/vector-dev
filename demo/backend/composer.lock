@@ -2319,7 +2319,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector-queues",
-                "reference": "5a17da770e0b3e0e2d4142d9f85e2a2f9e18ce3f"
+                "reference": "9af44eb64c0d0485b5553281ad6bd701cb251f8a"
             },
             "require": {
                 "kinetis/database-bridge": "^1.4.3",
@@ -2339,7 +2339,8 @@
                     "vector": {
                         "extensions": [
                             "resources/ui/queues.js"
-                        ]
+                        ],
+                        "translations": "resources/translations"
                     }
                 }
             },

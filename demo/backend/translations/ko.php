@@ -111,7 +111,6 @@ return [
     'Published' => '게시됨',
     'Publishing' => '게시',
     'Quantity' => '수량',
-    'Queues' => '대기열',
     'Release date' => '출시일',
     'Released at' => '출시 일시',
     'Replies' => '답변',

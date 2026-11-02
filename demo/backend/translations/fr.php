@@ -111,7 +111,6 @@ return [
     'Published' => 'Publié',
     'Publishing' => 'Publication',
     'Quantity' => 'Quantité',
-    'Queues' => 'Files d’attente',
     'Release date' => 'Date de sortie',
     'Released at' => 'Sorti le',
     'Replies' => 'Réponses',

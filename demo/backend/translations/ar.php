@@ -111,7 +111,6 @@ return [
     'Published' => 'منشور',
     'Publishing' => 'النشر',
     'Quantity' => 'الكمية',
-    'Queues' => 'قوائم الانتظار',
     'Release date' => 'تاريخ الإصدار',
     'Released at' => 'وقت الإصدار',
     'Replies' => 'الردود',

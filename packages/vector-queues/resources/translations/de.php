@@ -1,0 +1,8 @@
+<?php
+
+declare(strict_types=1);
+
+// German (machine translation). Keys are the labels as declared in English.
+return [
+    'Queues' => 'Warteschlangen',
+];

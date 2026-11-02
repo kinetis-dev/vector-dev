@@ -43,7 +43,8 @@
             "vector": {
                 "extensions": [
                     "resources/ui/queues.js"
-                ]
+                ],
+                "translations": "resources/translations"
             }
         }
     },
