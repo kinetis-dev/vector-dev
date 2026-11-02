@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `VExpansionPanelTitle`, `VExpansionPanelText`, `VPagination`,
   `VDivider` and `VSkeletonLoader`. The API is still `version: 1`.
 
+### Changed
+
+- **Breaking:** Node 22 and 24 are no longer supported. `engines.node`
+  is now `>=26.0.0`.
+
 ## [0.11.4] - 2026-10-30
 
 ### Changed

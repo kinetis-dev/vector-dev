@@ -165,9 +165,9 @@ services:
       retries: 20
 
   node:
-    image: node:22-alpine
+    image: node:26-alpine
     working_dir: /workspace
-    command: sh -c "corepack enable && corepack prepare pnpm@10.17.1 --activate && pnpm install --frozen-lockfile=false && pnpm --filter frontend dev"
+    command: sh -c "npm install -g pnpm@10.17.1 && pnpm install --frozen-lockfile=false && pnpm --filter frontend dev"
     environment:
       NUXT_PUBLIC_VECTOR_API_BASE: http://localhost:8080
       NUXT_TELEMETRY_DISABLED: "1"

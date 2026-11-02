@@ -40,7 +40,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '26'
 
       - name: Check packages.manifest.json against the tree and its history
         # Exactly one base is set: the pull request's base and head, or

@@ -76,7 +76,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '26'
 
       - name: Check the versions, and ask the mirror and npm what is out
         id: plan
@@ -105,14 +105,16 @@ jobs:
           ref: ${{ needs.plan.outputs.source }}
           persist-credentials: false
 
+      # pnpm's version comes from package.json's packageManager field.
+      - uses: pnpm/action-setup@v6
+
       - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '26'
 
       - name: Install npm 11 and the workspace
         run: |
           npm install --global npm@^11.5.1
-          corepack enable
           pnpm install --frozen-lockfile
 
       - name: Build the hosted admin bundle
@@ -150,17 +152,20 @@ jobs:
           ref: ${{ needs.plan.outputs.source }}
           persist-credentials: false
 
+      # pnpm's version comes from package.json's packageManager field.
+      - uses: pnpm/action-setup@v6
+
       - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '26'
 
       - name: Install npm 11 and the workspace
         # Trusted publishing needs the npm CLI at 11.5.1 or later; Node
-        # 22's own npm is older. It publishes, not pnpm.
+        # 26 bundles npm 11.20, so this is a floor guard. It publishes,
+        # not pnpm.
         run: |
           npm install --global npm@^11.5.1
           npm --version
-          corepack enable
           pnpm install --frozen-lockfile
 
       - name: Ask npm whether this version is out
@@ -226,7 +231,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '26'
 
       - name: Split packages/vector (S, the mirror's main and the tag's target)
         id: split
