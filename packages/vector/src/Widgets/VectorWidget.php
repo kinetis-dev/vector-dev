@@ -56,7 +56,7 @@ abstract class VectorWidget
      * extension type.
      *
      * An extension type is a lower-case kebab-case name that is none of
-     * the built-in ones (`isExtensionType()`), such as `vector-queues`.
+     * the built-in ones (`isExtensionType()`), such as `sparkline`.
      * Vector ships no card for it: the UI must register a renderer for
      * the type, through `window.Vector.defineWidget(type, component)` in
      * a runtime extension or `vector.widgets` in the app's `app.config`.
