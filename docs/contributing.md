@@ -156,8 +156,8 @@ suite) the tests use the base databases.
 
 `infection:vector` and `infection:vector-queues` run four workers.
 `infection` runs one, on worker 1's stores: its whole suite includes
-tests that share state outside them. Neither run touches the base
-databases beyond what PHPUnit itself does, but both still need them
+tests that share state outside them. None of these runs touches the base
+databases beyond what PHPUnit itself does, but all of them still need them
 seeded, so run them one at a time, never beside PHPUnit or the
 end-to-end suite. A killed mutant stops its test before the test puts its
 rows back, so afterwards a worker's databases can hold missing order
