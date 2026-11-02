@@ -175,8 +175,10 @@ The UI module registers the page `/p/queues`, **Queues** in the menu's
 The page reads `GET /vector/queues/permissions` and leaves out every
 action the policy refuses. That only shapes the page: every endpoint
 asks the policy again. Each action asks for confirmation first. All the
-page's text goes through the admin's translator (`defineMessages`), and
-server text such as exception messages is rendered as text, never as
+page's text goes through the admin's translator (`defineMessages`) and
+ships in every language Vector's UI ships, as machine translations; override
+any of it with `defineMessages` under `vectorQueues`. English is the fallback.
+Server text such as exception messages is rendered as text, never as
 HTML.
 
 ## The dashboard card

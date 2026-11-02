@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The page and card text ships in Vector's 16 other languages (machine
+  translations); English is still the fallback for any other locale.
+
 ## [0.1.0] - 2026-11-02
 
 ### Added
