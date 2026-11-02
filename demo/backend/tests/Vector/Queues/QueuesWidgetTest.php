@@ -27,6 +27,20 @@ final class QueuesWidgetTest extends VectorTestCase
         );
     }
 
+    /**
+     * The demo's translations no longer carry "Queues": the package's own
+     * resources/translations, declared in its composer.json, do.
+     */
+    public function testTheCardsLabelIsTranslatedByThePackageItself(): void
+    {
+        foreach (['de' => 'Warteschlangen', 'he' => 'תורים', 'pt-BR' => 'Filas'] as $locale => $label) {
+            $page = $this->client->get('/vector/dashboards/main', headers: $this->headersIn($locale))->assertOk()->json();
+            self::assertIsArray($page);
+
+            self::assertSame($label, array_column($page['data']['widgets'], 'label', 'name')['queues'] ?? null, $locale);
+        }
+    }
+
     public function testTheCardsOwnAnswerCarriesNoQueueData(): void
     {
         $this->client->get('/vector/dashboards/main/widgets/queues', headers: $this->adminHeaders())->assertOk()
