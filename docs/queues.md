@@ -178,13 +178,33 @@ page's text goes through the admin's translator (`defineMessages`), and
 server text such as exception messages is rendered as text, never as
 HTML.
 
-The module also registers a widget renderer for the type
-`vector-queues`, which shows the total waiting and failed jobs with a
-link to the page. **It cannot be placed on a dashboard yet**: a
-dashboard widget's type must be one of Vector's five built-in types
-(`stat`, `trend`, `partition`, `progress` and `table`;
-`packages/vector/src/Registry/WidgetCompiler.php`), so no dashboard can
-declare a `vector-queues` widget.
+## The dashboard card
+
+The package's `Kinetis\Vector\Queues\Widgets\QueuesWidget` is a
+dashboard card: the jobs waiting and failed across the watched queues,
+with a link to the page. The package places it on no dashboard. List it
+in one of your own:
+
+```php
+use Kinetis\Vector\Queues\Widgets\QueuesWidget;
+
+#[Dashboard]
+final class MainDashboard extends VectorDashboard
+{
+    public function widgets(): array { return [RevenueStat::class, QueuesWidget::class]; }
+}
+```
+
+Its name is `queues` and its type `vector-queues`, an extension widget
+type ({doc}`dashboards`) whose renderer the UI module registers. The
+card reads `GET /vector/queues` itself, so the policy's `view` decides
+what it shows: a viewer the policy refuses gets the card's "no access"
+notice, not the figures. The widget's own answer, `GET
+/vector/dashboards/{name}/widgets/queues`, carries no queue data and
+opens no database or queue connection. It offers no range and caches
+nothing. Like the page, the card needs the hosted admin, which loads the
+module; without the module it says that no renderer is registered for
+`vector-queues`.
 
 ## Endpoints
 

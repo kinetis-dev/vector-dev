@@ -45,8 +45,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `extra.kinetis.vector.extensions` so the hosted admin loads it: the
   **Queues** page (`/p/queues`, in the menu's Operations section) with
   Overview, Failed jobs and Metrics tabs, offering only the actions
-  `/permissions` allows. It also registers a renderer for a dashboard
-  widget of type `vector-queues`, which cannot be placed yet: Vector
-  accepts only its five built-in widget types.
+  `/permissions` allows. It also registers the renderer for the
+  `vector-queues` dashboard card.
+- `Kinetis\Vector\Queues\Widgets\QueuesWidget`, the dashboard card
+  (name `queues`, extension type `vector-queues`): the jobs waiting and
+  failed across the watched queues, with a link to the Queues page. An
+  application lists it in a dashboard's `widgets()`; the package places
+  it on none. The card reads `GET /vector/queues` itself, so the
+  policy's `view` governs it. The widget's own answer carries no queue
+  data and opens no connection. It has no range and caches nothing.
 - Requires PHP 8.4, `kinetis/vector` `^0.14`, `kinetis/queue` `^1.9` and
   `kinetis/queue-failed-jobs` `^1.1`.

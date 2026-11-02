@@ -216,7 +216,9 @@ standalone admin's origin (`localhost:3000`), which calls the API on
 ## The queue dashboard
 
 The hosted admin's **Queues** page (`/p/queues`) watches `default` and
-`vector`, the two queues the `worker` serves. It starts empty. To give it
+`vector`, the two queues the `worker` serves. The **Overview** dashboard
+also places the package's `QueuesWidget`, a card with the waiting and
+failed totals that links to the page. Both start empty. To give it
 failed jobs and metrics to show, queue the demo's flaky job:
 
 ```console

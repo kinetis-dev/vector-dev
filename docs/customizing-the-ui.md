@@ -61,11 +61,14 @@ globally registered component names, keyed by field type, by a field's
 A cell receives `value`, `field`, `record`, `resource` and `context`
 (`index` or `show`). An input receives `modelValue`, `field`, `rules`,
 `errorMessages`, `record` and `resource` and emits `update:modelValue`.
-A widget renderer receives `data` and `widget`. A dashboard declares
-only Vector's five built-in widget types (`stat`, `trend`, `partition`,
-`progress` and `table`), so a renderer registered for any other type,
-such as `kinetis/vector-queues`' `vector-queues`, is never reached
-from a dashboard yet.
+A widget renderer receives `data` and `widget`. For a widget type, the
+lookup order is the `app.config` override, then a runtime extension's
+`defineWidget`, then the built-in card. A widget can also declare an
+extension type, a kebab-case name Vector has no card for, such as
+`kinetis/vector-queues`' `vector-queues` ("Extension widget types" in
+{doc}`dashboards`). Its renderer must be registered one of those two
+ways. Without a renderer the card says that none is registered for the
+type, rather than drawing it as a `stat`.
 
 ## Runtime extensions
 

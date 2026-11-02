@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** Node 22 and 24 are no longer supported. `engines.node`
   is now `>=26.0.0`.
 - `vue-i18n` is now required at `^11.4.17`.
+- A dashboard card whose type has no built-in card and no registered
+  renderer now says that no renderer is registered for the type
+  (`dashboard.noRenderer`, in every shipped language) instead of
+  drawing it as a `stat`. `VectorWidgetType` now also admits extension
+  types, and `VectorBuiltInWidgetType` names the five built-in ones.
 
 ## [0.11.4] - 2026-10-30
 

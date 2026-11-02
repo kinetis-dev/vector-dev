@@ -26,6 +26,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and skipped.
 - The hosted shell's `extensions` lists those modules first, in
   package-name order, then the `VECTOR_UI_EXTENSIONS` entries.
+- Extension widget types: `VectorWidget::type()` may return a
+  lower-case kebab-case name that is none of the five built-in types,
+  such as `vector-queues`. The UI renders it with the renderer a runtime
+  extension registers (`defineWidget`) or `app.config` `vector.widgets`
+  maps. `WidgetResult::extension($type, $data)` answers such a widget,
+  and its data is served as it is, without a built-in card's shape. Any
+  other type is still refused at compile time, now with a message that
+  says what a type may be. The descriptor schema's widget `type` is the
+  kebab-case pattern instead of the five-name enum, and
+  `VectorWidget::BUILT_IN_TYPES`, `KEBAB_CASE` and `isExtensionType()`
+  are new.
 
 ### Changed
 

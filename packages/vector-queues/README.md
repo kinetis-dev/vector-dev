@@ -12,11 +12,11 @@ JSON API and an admin UI module,
 `resources/ui/queues.js`, which its `composer.json` declares
 (`extra.kinetis.vector.extensions`), so the hosted admin loads it: a
 "Queues" page (overview, failed jobs, metrics) that offers only the
-actions `GET /vector/queues/permissions` allows, and a renderer for a
-dashboard widget of type `vector-queues`. That renderer is registered
-but cannot yet be placed on a dashboard: Vector accepts only its five
-built-in widget types, so no dashboard can declare a `vector-queues`
-widget.
+actions `GET /vector/queues/permissions` allows, and the renderer of
+the `vector-queues` dashboard card. To show the card, list
+`Kinetis\Vector\Queues\Widgets\QueuesWidget` in a dashboard's
+`widgets()`; the package adds it to none. The card reads
+`GET /vector/queues` itself, behind the same policy.
 
 The user manual's
 [Queue dashboard](https://kinetis.dev/vector/docs/queues.html) page

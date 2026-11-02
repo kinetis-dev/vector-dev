@@ -89,6 +89,7 @@
  "dashboards.html": [
   "dashboards",
   "dashboards-and-widgets",
+  "extension-widget-types",
   "resource-widgets",
   "see-also",
   "shaping-a-widget",
@@ -236,6 +237,7 @@
   "queue-dashboard",
   "see-also",
   "the-admin-page",
+  "the-dashboard-card",
   "who-may-do-what"
  ],
  "records.html": [
