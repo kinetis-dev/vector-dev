@@ -16,6 +16,9 @@ export const DESCRIPTOR_VERSION = 4
 export function useVectorSchema() {
     const schema = useState<VectorSchema | null>('vector.schema', () => null)
     const loading = useState<boolean>('vector.schema.loading', () => false)
+    // whether the latest load failed (network, 5xx, CORS, a refusal, another contract version): what
+    // waits on the descriptor, such as the extension loader's ready, settles on it instead of hanging
+    const failed = useState<boolean>('vector.schema.failed', () => false)
     const api = useVectorApi()
 
     async function load(force = false): Promise<VectorSchema> {
@@ -39,10 +42,14 @@ export function useVectorSchema() {
 
             if (request === latestLoad) {
                 schema.value = answer
+                failed.value = false
                 adoptMinorUnits(answer.minorUnits ?? {})
             }
 
             return answer
+        } catch (error) {
+            if (request === latestLoad) failed.value = true
+            throw error
         } finally {
             if (request === latestLoad) loading.value = false
         }
@@ -50,6 +57,7 @@ export function useVectorSchema() {
 
     function clear() {
         schema.value = null
+        failed.value = false
     }
 
     function resource(slug: string): VectorResource | undefined {
@@ -63,5 +71,5 @@ export function useVectorSchema() {
             .filter((resource): resource is VectorResource => resource !== undefined),
     })))
 
-    return { schema, loading, load, clear, resource, menu }
+    return { schema, loading, failed, load, clear, resource, menu }
 }

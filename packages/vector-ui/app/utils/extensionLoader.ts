@@ -1,4 +1,4 @@
-import { watch, type Ref } from 'vue'
+import { computed, watch, type Ref } from 'vue'
 
 /**
  * Imports the runtime extension modules and turns `ready` true once every
@@ -11,15 +11,24 @@ import { watch, type Ref } from 'vue'
  *   then `VECTOR_UI_EXTENSIONS`) and runtime config's. Imported as given,
  *   at once.
  * - the packages' modules the descriptor lists (`ui.extensions`), read in
- *   standalone mode only, once the descriptor is loaded after sign-in.
- *   Each is a same-origin path of the API, so it is joined to `apiBase`
- *   as the API client joins its requests. The hosted shell already
- *   listed exactly these, from the same server-side list, so hosted mode
- *   skips the descriptor's copy instead of importing a module twice.
+ *   standalone mode only, once the descriptor is loaded after sign-in
+ *   (on a deep link, the `vector` layout's `load()`; after the login
+ *   form, its own). Each is a path on the API's origin, resolved against
+ *   `apiBase`; an entry that resolves anywhere but the API origin's
+ *   `/vector/extensions/` is logged and skipped, never imported. The
+ *   hosted shell already listed exactly these, from the same server-side
+ *   list, so hosted mode skips the descriptor's copy instead of importing
+ *   a module twice.
  *
  * In standalone mode `ready` also waits for the descriptor's modules:
  * a custom page a package declares, opened straight from a link, stays a
- * loading bar until they settle rather than reading "unknown page".
+ * loading bar until they settle rather than reading "unknown page". A
+ * descriptor that fails to load settles that wait too, as an empty list,
+ * so the admin is never held back by it; one that loads later is still
+ * read, once. Signed out, `ready` stays false: only a custom page reads
+ * it, and every one is behind sign-in, so the login page never waits on
+ * it, and after signing in the page the login form returns to still
+ * waits for the modules.
  * Nothing is imported twice in a page's lifetime: the descriptor's list
  * is read once, so signing out and in again, or as someone else, loads
  * nothing more, and a URL already imported (the same module also named
@@ -31,6 +40,8 @@ export interface ExtensionLoaderOptions {
     apiBase: string
     /** The descriptor's `ui.extensions` once it is loaded, null before. */
     descriptorModules: Ref<string[] | null>
+    /** Whether the latest descriptor load failed: settles the wait as if it listed nothing. */
+    descriptorFailed: Ref<boolean>
     ready: Ref<boolean>
     importModule: (url: string) => Promise<unknown>
     /** Runs a loaded module, its default export called with `window.Vector`. */
@@ -38,9 +49,37 @@ export interface ExtensionLoaderOptions {
     base?: string
 }
 
-/** A descriptor path on the API origin, joined to apiBase the way the API client joins a request path. */
-export function apiModuleUrl(path: string, apiBase: string, base: string): string {
-    return new URL(`${apiBase.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`, base).href
+/** Where the API answers: `apiBase` resolved against the page, which an empty `apiBase` names itself. */
+function apiRoot(apiBase: string, base: string): URL {
+    return new URL(apiBase === '' ? new URL(base).origin : apiBase, base)
+}
+
+/**
+ * A descriptor entry as the URL to import, or null for one that resolves
+ * off the API's origin or outside `/vector/extensions/`: `\\host/x.js`,
+ * `//host/x.js` or an absolute URL elsewhere is never imported, whatever
+ * the descriptor says.
+ */
+export function apiModuleUrl(path: string, apiBase: string, base: string): string | null {
+    let api: URL
+    let url: URL
+    try {
+        api = apiRoot(apiBase, base)
+        url = new URL(path, api)
+    } catch {
+        return null
+    }
+
+    return url.origin === api.origin && url.pathname.startsWith('/vector/extensions/') ? url.href : null
+}
+
+/** The descriptor as the loader reads it: the plugin's wiring, and the tests'. */
+export function descriptorSignals(): Pick<ExtensionLoaderOptions, 'descriptorModules' | 'descriptorFailed'> {
+    const { schema, failed } = useVectorSchema()
+    return {
+        descriptorModules: computed(() => (schema.value ? schema.value.ui?.extensions ?? [] : null)),
+        descriptorFailed: failed,
+    }
 }
 
 export function loadVectorExtensions(options: ExtensionLoaderOptions): Promise<void> {
@@ -66,19 +105,30 @@ export function loadVectorExtensions(options: ExtensionLoaderOptions): Promise<v
     const packages = options.hosted
         ? Promise.resolve()
         : new Promise<void>((resolve) => {
+            // a failed descriptor settles the wait; the import still happens, once, if one loads later
+            const stopFailed = watch(options.descriptorFailed, (isFailed) => {
+                if (isFailed) resolve()
+            }, { immediate: true })
+
             let done = false
             const stop = watch(options.descriptorModules, (paths) => {
                 if (paths === null || done) return
                 done = true
-                queueMicrotask(() => stop())
-                const fresh = paths
-                    .map(path => apiModuleUrl(path, options.apiBase, base))
-                    .filter((url) => {
-                        if (seen.has(url)) return false
+                queueMicrotask(() => {
+                    stop()
+                    stopFailed()
+                })
+                const fresh: string[] = []
+                for (const path of paths) {
+                    const url = typeof path === 'string' ? apiModuleUrl(path, options.apiBase, base) : null
+                    if (url === null) {
+                        console.error(`Vector extension ${String(path)} is not a module of the API's /vector/extensions/; not loaded`)
+                    } else if (!seen.has(url)) {
                         seen.add(url)
-                        return true
-                    })
-                void load(fresh).then(resolve)
+                        fresh.push(url)
+                    }
+                }
+                void load(fresh).then(() => resolve())
             }, { immediate: true })
         })
 

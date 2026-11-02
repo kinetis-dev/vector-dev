@@ -65,7 +65,6 @@ export default defineNuxtPlugin(() => {
 
     window.Vector = api
 
-    const { schema } = useVectorSchema()
     const vectorConfig = config.public.vector as { extensions?: string[], apiBase?: string }
 
     // see loadVectorExtensions: the hosted shell's list, or runtime config's, at once; in standalone
@@ -74,7 +73,7 @@ export default defineNuxtPlugin(() => {
         hosted: window.__VECTOR__ !== undefined,
         initial: [...(window.__VECTOR__?.extensions ?? []), ...(vectorConfig.extensions ?? [])],
         apiBase: vectorConfig.apiBase ?? '',
-        descriptorModules: computed(() => (schema.value ? schema.value.ui?.extensions ?? [] : null)),
+        ...descriptorSignals(),
         ready: registries.ready,
         importModule: url => import(/* @vite-ignore */ url),
         run: module => (typeof (module as { default?: unknown }).default === 'function' ? (module as { default: (vector: typeof api) => unknown }).default(api) : undefined),
