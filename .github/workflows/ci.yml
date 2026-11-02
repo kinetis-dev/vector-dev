@@ -59,7 +59,7 @@ jobs:
             node:
               - 'packages/vector-ui/**'
               # the queue dashboard's UI module: pnpm lint, and its smoke test in scripts/
-              - 'packages/vector-queues/resources/**'
+              - 'packages/vector-queues/resources/ui/**'
               - 'demo/frontend/**'
               - 'demo/e2e/**'
               - 'scripts/**'

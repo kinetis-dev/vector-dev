@@ -48,7 +48,7 @@ The dashboard needs two tables, on the same database connection:
   (`create_kinetis_failed_jobs_table.mysql.php.stub` or
   `….pgsql.php.stub`), as that package's README describes.
 - `vector_queue_metrics`, the job metrics. Copy
-  `vendor/kinetis/vector-queues/migrations/create_vector_queue_metrics_table.mysql.php.stub`
+  `vendor/kinetis/vector-queues/resources/migrations/create_vector_queue_metrics_table.mysql.php.stub`
   or `create_vector_queue_metrics_table.pgsql.php.stub`. On MySQL it
   needs **8.0.19 or later**: every write is one
   `INSERT … AS incoming ON DUPLICATE KEY UPDATE`, and the row alias

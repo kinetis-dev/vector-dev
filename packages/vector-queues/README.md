@@ -1,4 +1,27 @@
-# kinetis/vector-queues
+<p align="center">
+  <img src="logo.svg" alt="Kinetis" width="420">
+</p>
+
+<p align="center">
+  <strong>kinetis/vector-queues</strong>
+  <br>
+  <strong>A queue dashboard for kinetis/vector: queue sizes, failed jobs, metrics</strong>
+</p>
+
+<p align="center">
+  <a href="https://packagist.org/packages/kinetis/vector-queues"><img src="https://img.shields.io/packagist/v/kinetis/vector-queues?label=version" alt="Packagist Version"></a>
+  <a href="https://packagist.org/packages/kinetis/vector-queues"><img src="https://img.shields.io/packagist/dt/kinetis/vector-queues" alt="Packagist Downloads"></a>
+  <a href="https://packagist.org/packages/kinetis/vector-queues"><img src="https://img.shields.io/packagist/php-v/kinetis/vector-queues" alt="PHP Version"></a>
+  <a href="https://packagist.org/packages/kinetis/vector-queues"><img src="https://img.shields.io/packagist/l/kinetis/vector-queues" alt="License"></a>
+  <a href="https://github.com/kinetis-dev/vector-dev/actions/workflows/ci.yml"><img src="https://github.com/kinetis-dev/vector-dev/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+</p>
+
+---
+
+Part of [Kinetis](https://kinetis.dev/), a non-blocking PHP framework for
+API-first applications. Vector Queues is developed in the
+[kinetis-dev/vector-dev](https://github.com/kinetis-dev/vector-dev)
+monorepo, beside Vector, its admin UI and a demo application.
 
 A queue dashboard for [`kinetis/vector`](https://github.com/kinetis-dev/vector): the size of each
 queue, the jobs the worker gave up on — to browse, retry, forget and
@@ -19,36 +42,30 @@ the `vector-queues` dashboard card. To show the card, list
 `widgets()`; the package adds it to none. The card reads
 `GET /vector/queues` itself, behind the same policy.
 
-The user manual's
-[Queue dashboard](https://kinetis.dev/vector/docs/queues.html) page
-covers it in full.
+## The dashboard needs two tables
 
-## Install
+Both on the same database connection. Copy each stub for your database
+into your [`kinetis/migrations`](https://github.com/kinetis-dev/migrations)
+`migrations/` directory — `migrations/<name>/` when
+`FAILED_JOBS_DB_CONNECTION_NAME` names a connection — with a timestamp
+prefix, e.g. `20261103000001_create_vector_queue_metrics_table.php`,
+and run `vendor/bin/kinetis migrate`:
 
-```sh
-composer require kinetis/vector-queues
+- `kinetis_failed_jobs`, where `kinetis/queue-failed-jobs` keeps the
+  jobs the worker gave up on, from that package's stubs, as its README
+  describes.
+- `vector_queue_metrics`, the job metrics, from this package's stubs
+  (MySQL 8.0.19 or later):
+
+```text
+vendor/kinetis/vector-queues/resources/migrations/create_vector_queue_metrics_table.mysql.php.stub
+vendor/kinetis/vector-queues/resources/migrations/create_vector_queue_metrics_table.pgsql.php.stub
 ```
 
-## Requirements
-
-- PHP 8.4, `kinetis/vector` ^0.14, `kinetis/queue` ^1.9 and
-  `kinetis/queue-failed-jobs` ^1.1.
-- The `kinetis_failed_jobs` table: copy the migration stub
-  `kinetis/queue-failed-jobs` ships for your database into your
-  `migrations/` directory, as its README describes, and run
-  `vendor/bin/kinetis migrate`.
-- The `vector_queue_metrics` table, on the same connection: copy
-  `migrations/create_vector_queue_metrics_table.mysql.php.stub` (MySQL
-  8.0.19 or later) or `create_vector_queue_metrics_table.pgsql.php.stub`
-  from this package into the same `migrations/` directory —
-  `migrations/<name>/` when `FAILED_JOBS_DB_CONNECTION_NAME` names a
-  connection — renamed with a timestamp prefix, e.g.
-  `20261103000001_create_vector_queue_metrics_table.php`, and run
-  `vendor/bin/kinetis migrate`. Queue names and job classes are compared
-  exactly: on MySQL `queue` is `ascii_bin` and `job_class` is
-  `VARBINARY(255)`; on Postgres both are `VARCHAR`, whose default
-  collation is already byte-exact, so a class name must be valid in the
-  database's encoding there.
+Queue names and job classes are compared exactly: on MySQL `queue` is
+`ascii_bin` and `job_class` is `VARBINARY(255)`; on Postgres both are
+`VARCHAR`, whose default collation is already byte-exact, so a class
+name must be valid in the database's encoding there.
 
 ## Configuration
 
@@ -174,6 +191,20 @@ any impersonator: `queue:retry` per id with its status, class and
 queue; `queue:forget` per id with its class and queue; `queue:prune`
 with the age and the count deleted; `queue:clear` with the count
 cleared. No entry carries a job argument.
+
+## Installation
+
+```sh
+composer require kinetis/vector-queues
+```
+
+Requires PHP 8.4+, [`kinetis/vector`](https://github.com/kinetis-dev/vector),
+[`kinetis/framework`](https://github.com/kinetis-dev/framework),
+[`kinetis/queue`](https://github.com/kinetis-dev/queue),
+[`kinetis/queue-failed-jobs`](https://github.com/kinetis-dev/queue-failed-jobs),
+[`kinetis/persistence`](https://github.com/kinetis-dev/persistence), and
+[`kinetis/database-bridge`](https://github.com/kinetis-dev/database-bridge). Full documentation:
+[Queue dashboard](https://kinetis.dev/vector/docs/queues.html).
 
 ## License
 

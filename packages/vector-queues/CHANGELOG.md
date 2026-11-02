@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The `vector_queue_metrics` migration stubs moved from `migrations/` to
+  `resources/migrations/`, where `kinetis/vector` and the Kinetis
+  packages keep theirs. A copy already in your `migrations/` directory
+  is unaffected.
 - Requires the Kinetis patch releases built with Psalm 7:
   `kinetis/framework` `^1.24.3`, `kinetis/database-bridge` `^1.4.3`,
   `kinetis/persistence` `^1.4.6`, `kinetis/queue` `^1.9.1` and
