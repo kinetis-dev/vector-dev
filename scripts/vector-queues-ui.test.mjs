@@ -186,9 +186,12 @@ test('the module registers the queues page and the vector-queues widget, with ev
 
     assert.deepEqual([...loaded.pages.keys()], ['queues'])
     const page = loaded.pages.get('queues')
-    assert.equal(page.title, 'vectorQueues.title')
+    // functions, called by the shell each time it shows them, so the menu entry follows the language
+    assert.equal(typeof page.title, 'function')
+    assert.equal(page.title(), 'vectorQueues.title')
     assert.ok(page.icon.startsWith('mdi-'))
-    assert.equal(typeof page.group, 'string')
+    assert.equal(typeof page.group, 'function')
+    assert.equal(typeof page.group(), 'string')
     assert.deepEqual([...loaded.widgets.keys()], ['vector-queues'])
 
     for (const tab of ['overview', 'failed', 'metrics']) unmountAll((await renderTab(loaded, tab)).page)

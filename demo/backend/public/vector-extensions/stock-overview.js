@@ -31,9 +31,10 @@ export default function ({ vue, vuetify, definePage, defineMessages, t }) {
     for (const [code, catalogue] of Object.entries(messages)) defineMessages(code, { demo: { stockOverview: catalogue } })
 
     definePage('stock-overview', {
-        title: t('demo.stockOverview.title'),
+        // functions, so the menu entry follows a change of language
+        title: () => t('demo.stockOverview.title'),
         icon: 'mdi-warehouse',
-        group: t('demo.stockOverview.group'),
+        group: () => t('demo.stockOverview.group'),
         component: {
             props: { vector: { type: Object, required: true } },
             setup(props) {

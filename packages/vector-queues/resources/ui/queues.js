@@ -2645,9 +2645,10 @@ export default function ({ vue, vuetify, definePage, defineWidget, defineMessage
     }
 
     definePage('queues', {
-        title: tq('title'),
+        // functions, so the menu entry follows a change of language
+        title: () => tq('title'),
         icon: 'mdi-tray-full',
-        group: tq('menuGroup'),
+        group: () => tq('menuGroup'),
         component: {
             props: { vector: { type: Object, required: true } },
             setup(props) {

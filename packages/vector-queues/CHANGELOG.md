@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The page and card text ships in Vector's 16 other languages (machine
   translations); English is still the fallback for any other locale.
 
+### Fixed
+
+- The menu entry and its section follow a change of language at once;
+  they kept the language the module loaded in until a reload. This needs
+  a `@kinetis/vector-ui` that accepts function labels in `definePage()`.
+
 ## [0.1.0] - 2026-11-02
 
 ### Added
