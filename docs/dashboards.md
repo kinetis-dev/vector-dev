@@ -60,6 +60,23 @@ public function calculate(WidgetRequest $request): WidgetResult
 }
 ```
 
+The card is a runtime extension, listed in `VECTOR_UI_EXTENSIONS`
+(hosted) or `runtimeConfig.public.vector.extensions` (standalone)
+({doc}`customizing-the-ui`); it receives the answer as `data` and the
+widget's descriptor as `widget`:
+
+```js
+export default function ({ vue, vuetify, defineWidget }) {
+    defineWidget('sparkline', {
+        props: { data: {}, widget: {} },
+        setup: props => () => vue.h(vuetify.VChip, { size: 'small' }, () => props.data.samples.join(', ')),
+    })
+}
+```
+
+Alternatively, map the type to a globally registered component name in
+the app's `app.config`: `vector: { widgets: { sparkline: 'MySparkline' } }`.
+
 The data reaches the card as the widget wrote it, beside the `type`,
 `range` and `cached` that Vector sets on every answer, so it cannot use
 those three keys; a built-in type is refused too, since its card reads
