@@ -36,6 +36,7 @@ export default {
         cleared: '"{queue}"에서 작업 {count}개를 삭제했습니다.',
         clearUnsupported: '이 대기열 백엔드는 대기 중인 작업을 삭제할 수 없어 "{queue}"을(를) 비우지 못했습니다.',
         clearInvalid: '"{queue}"을(를) 비우지 못했습니다: {detail}',
+        clearType: 'Type "{queue}" to confirm',
     },
     failed: {
         filters: {
@@ -46,8 +47,10 @@ export default {
             to: '실패 종료',
             apply: '적용',
             reset: '초기화',
+            invalidDate: 'Enter a complete, valid date and time.',
         },
         select: '{id} 선택',
+        selection: 'Selection',
         id: 'ID',
         class: '작업 클래스',
         queue: '대기열',
@@ -104,6 +107,7 @@ export default {
         byQueue: '대기열별',
         byClass: '작업 클래스별',
         throughput: '분당 시도',
+        throughputLabel: 'Attempts per minute, {window}, {queue}: {total} in total',
         empty: '이 기간에는 실행된 작업이 없습니다.',
     },
     widget: {

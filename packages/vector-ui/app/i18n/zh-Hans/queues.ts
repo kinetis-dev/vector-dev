@@ -36,6 +36,7 @@ export default {
         cleared: '已从“{queue}”中丢弃 {count} 个任务。',
         clearUnsupported: '此队列后端无法丢弃等待中的任务，因此未清空“{queue}”。',
         clearInvalid: '未清空“{queue}”：{detail}',
+        clearType: 'Type "{queue}" to confirm',
     },
     failed: {
         filters: {
@@ -46,8 +47,10 @@ export default {
             to: '失败截止',
             apply: '应用',
             reset: '重置',
+            invalidDate: 'Enter a complete, valid date and time.',
         },
         select: '选择 {id}',
+        selection: 'Selection',
         id: 'ID',
         class: '任务类',
         queue: '队列',
@@ -104,6 +107,7 @@ export default {
         byQueue: '按队列',
         byClass: '按任务类',
         throughput: '每分钟尝试次数',
+        throughputLabel: 'Attempts per minute, {window}, {queue}: {total} in total',
         empty: '此时间范围内没有运行任何任务。',
     },
     widget: {

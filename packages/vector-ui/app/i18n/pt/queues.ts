@@ -36,6 +36,7 @@ export default {
         cleared: 'Foram descartadas {count} tarefa(s) de "{queue}".',
         clearUnsupported: 'Este backend de filas não pode descartar as tarefas em espera, por isso "{queue}" não foi limpa.',
         clearInvalid: '"{queue}" não foi limpa: {detail}',
+        clearType: 'Type "{queue}" to confirm',
     },
     failed: {
         filters: {
@@ -46,8 +47,10 @@ export default {
             to: 'Falha até',
             apply: 'Aplicar',
             reset: 'Repor',
+            invalidDate: 'Enter a complete, valid date and time.',
         },
         select: 'Selecionar {id}',
+        selection: 'Selection',
         id: 'ID',
         class: 'Classe da tarefa',
         queue: 'Fila',
@@ -104,6 +107,7 @@ export default {
         byQueue: 'Por fila',
         byClass: 'Por classe da tarefa',
         throughput: 'Tentativas por minuto',
+        throughputLabel: 'Attempts per minute, {window}, {queue}: {total} in total',
         empty: 'Nada foi executado neste período.',
     },
     widget: {

@@ -36,6 +36,7 @@ export default {
         cleared: '{count} taak/taken uit "{queue}" verwijderd.',
         clearUnsupported: 'Deze wachtrij-backend kan wachtende taken niet verwijderen, dus "{queue}" is niet geleegd.',
         clearInvalid: '"{queue}" is niet geleegd: {detail}',
+        clearType: 'Type "{queue}" to confirm',
     },
     failed: {
         filters: {
@@ -46,8 +47,10 @@ export default {
             to: 'Mislukt tot',
             apply: 'Toepassen',
             reset: 'Standaard herstellen',
+            invalidDate: 'Enter a complete, valid date and time.',
         },
         select: '{id} selecteren',
+        selection: 'Selection',
         id: 'ID',
         class: 'Taakklasse',
         queue: 'Wachtrij',
@@ -104,6 +107,7 @@ export default {
         byQueue: 'Per wachtrij',
         byClass: 'Per taakklasse',
         throughput: 'Pogingen per minuut',
+        throughputLabel: 'Attempts per minute, {window}, {queue}: {total} in total',
         empty: 'In deze periode is niets uitgevoerd.',
     },
     widget: {

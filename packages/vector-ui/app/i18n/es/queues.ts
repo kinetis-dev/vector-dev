@@ -36,6 +36,7 @@ export default {
         cleared: 'Se descartaron {count} tarea(s) de "{queue}".',
         clearUnsupported: 'Este backend de colas no puede descartar las tareas en espera, así que "{queue}" no se vació.',
         clearInvalid: '"{queue}" no se vació: {detail}',
+        clearType: 'Type "{queue}" to confirm',
     },
     failed: {
         filters: {
@@ -46,8 +47,10 @@ export default {
             to: 'Fallida hasta',
             apply: 'Aplicar',
             reset: 'Restablecer',
+            invalidDate: 'Enter a complete, valid date and time.',
         },
         select: 'Seleccionar {id}',
+        selection: 'Selection',
         id: 'ID',
         class: 'Clase de tarea',
         queue: 'Cola',
@@ -104,6 +107,7 @@ export default {
         byQueue: 'Por cola',
         byClass: 'Por clase de tarea',
         throughput: 'Intentos por minuto',
+        throughputLabel: 'Attempts per minute, {window}, {queue}: {total} in total',
         empty: 'No se ejecutó nada en este periodo.',
     },
     widget: {

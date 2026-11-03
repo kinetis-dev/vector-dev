@@ -36,6 +36,7 @@ export default {
         cleared: '「{queue}」から {count} 件のジョブを破棄しました。',
         clearUnsupported: 'このキューバックエンドは待機中のジョブを破棄できないため、「{queue}」はクリアされませんでした。',
         clearInvalid: '「{queue}」をクリアできませんでした: {detail}',
+        clearType: 'Type "{queue}" to confirm',
     },
     failed: {
         filters: {
@@ -46,8 +47,10 @@ export default {
             to: '失敗日時（終了）',
             apply: '適用',
             reset: 'リセット',
+            invalidDate: 'Enter a complete, valid date and time.',
         },
         select: '{id} を選択',
+        selection: 'Selection',
         id: 'ID',
         class: 'ジョブクラス',
         queue: 'キュー',
@@ -104,6 +107,7 @@ export default {
         byQueue: 'キュー別',
         byClass: 'ジョブクラス別',
         throughput: '1 分あたりの試行回数',
+        throughputLabel: 'Attempts per minute, {window}, {queue}: {total} in total',
         empty: 'この期間に実行されたものはありません。',
     },
     widget: {

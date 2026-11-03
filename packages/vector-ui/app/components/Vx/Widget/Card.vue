@@ -50,8 +50,10 @@ const builtIn: Record<string, Component> = {
 // extension type the application registered no card for (defineWidget in
 // its runtime extension, or app.config vector.widgets), or whose runtime
 // extension failed to load. The card says so instead of guessing at a shape.
+// The registries are taken in setup; the computed only reads them.
+const extensions = useVectorExtensions()
 const component = computed(() => {
-    const override = appConfig.vector.widgets[props.widget.type] ?? useVectorExtensions().widgets.get(props.widget.type)
+    const override = appConfig.vector.widgets[props.widget.type] ?? extensions.widgets.get(props.widget.type)
     if (!override) return builtIn[props.widget.type] ?? null
     return typeof override === 'string' ? resolveComponent(override) : override
 })

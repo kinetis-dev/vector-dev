@@ -36,6 +36,7 @@ export default {
         cleared: 'تم تجاهل {count} مهمة من "{queue}".',
         clearUnsupported: 'لا يمكن لواجهة قائمة الانتظار هذه تجاهل المهام المنتظرة، لذا لم يتم تفريغ "{queue}".',
         clearInvalid: 'لم يتم تفريغ "{queue}": {detail}',
+        clearType: 'Type "{queue}" to confirm',
     },
     failed: {
         filters: {
@@ -46,8 +47,10 @@ export default {
             to: 'فشلت حتى',
             apply: 'تطبيق',
             reset: 'إعادة تعيين',
+            invalidDate: 'Enter a complete, valid date and time.',
         },
         select: 'تحديد {id}',
+        selection: 'Selection',
         id: 'المعرّف',
         class: 'فئة المهمة',
         queue: 'قائمة الانتظار',
@@ -104,6 +107,7 @@ export default {
         byQueue: 'حسب قائمة الانتظار',
         byClass: 'حسب فئة المهمة',
         throughput: 'المحاولات في الدقيقة',
+        throughputLabel: 'Attempts per minute, {window}, {queue}: {total} in total',
         empty: 'لم يُنفَّذ شيء في هذه النافذة.',
     },
     widget: {

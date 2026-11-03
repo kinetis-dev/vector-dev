@@ -27,9 +27,13 @@ export function useVectorQueues() {
         return await api<VectorQueuePermissions>('/vector/queues/permissions')
     }
 
-    /** Discards every job waiting on `queue`; the body names it again, as the server requires. */
-    async function clear(queue: string): Promise<number> {
-        return (await api<{ data: { queue: string, cleared: number } }>(`${path(queue)}/clear`, { method: 'POST', body: { confirm: queue } })).data.cleared
+    /**
+     * Discards every job waiting on `queue`. `confirm` is the name the user
+     * typed, sent as typed: the server clears only when it equals `queue`
+     * and answers 422 otherwise.
+     */
+    async function clear(queue: string, confirm: string): Promise<number> {
+        return (await api<{ data: { queue: string, cleared: number } }>(`${path(queue)}/clear`, { method: 'POST', body: { confirm } })).data.cleared
     }
 
     /** One page, newest first: the first for `filters`, or the one after `cursor`. */

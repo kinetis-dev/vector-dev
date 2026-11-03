@@ -10,12 +10,14 @@ const props = defineProps<{ permissions: VectorQueuePermissions, failedJobs: boo
 const { t } = useVectorT()
 const queues = useVectorQueues()
 const notifications = useVectorNotifications()
-const { confirm } = useConfirm()
+const { confirmTyped } = useConfirm()
+const uid = useId()
 
 const rows = ref<VectorQueue[] | null>(null)
 const refused = ref(false)
 const error = ref<string | null>(null)
-const busy = ref(false)
+// the queue being cleared: only its row's Clear shows as loading, and no second clear starts meanwhile
+const acting = ref<string | null>(null)
 let timer: ReturnType<typeof setTimeout> | null = null
 let inFlight = false
 let again = false
@@ -78,20 +80,23 @@ onBeforeUnmount(() => {
 
 const canClear = (row: VectorQueue) => props.permissions.clear[row.name] === true
 
+/** Asks the user to type the queue's name, then sends what they typed as the server's `confirm`. */
 async function clear(queue: string) {
-    if (busy.value) return
-    const confirmed = await confirm({
+    if (acting.value !== null) return
+    const typed = await confirmTyped({
         title: t('queues.overview.clearTitle', { queue }),
         text: t('queues.overview.clearText', { queue }),
         confirmText: t('queues.actions.confirm'),
         cancelText: t('queues.actions.cancel'),
         destructive: true,
+        requireText: queue,
+        requireLabel: t('queues.overview.clearType', { queue }),
     })
-    if (!confirmed) return
+    if (typed === null || acting.value !== null) return
 
-    busy.value = true
+    acting.value = queue
     try {
-        const cleared = await queues.clear(queue)
+        const cleared = await queues.clear(queue, typed)
         notifications.success(t('queues.overview.cleared', { queue, count: cleared }))
     } catch (caught) {
         const status = queueErrorStatus(caught)
@@ -99,7 +104,7 @@ async function clear(queue: string) {
             ? t('queues.overview.clearUnsupported', { queue })
             : status === 422 ? t('queues.overview.clearInvalid', { queue, detail: vectorErrorMessage(caught) }) : describeQueueError(caught))
     } finally {
-        busy.value = false
+        acting.value = null
     }
     void refresh()
 }
@@ -120,11 +125,11 @@ async function clear(queue: string) {
                     <th scope="col" class="text-start">{{ t('queues.overview.queue') }}</th>
                     <th scope="col" class="text-end">{{ t('queues.overview.size') }}</th>
                     <th v-if="failedJobs" scope="col" class="text-end" data-column="failed">{{ t('queues.overview.failed') }}</th>
-                    <th scope="col" class="text-end" />
+                    <th scope="col" class="text-end"><span class="d-sr-only">{{ t('common.actions') }}</span></th>
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="row in rows" :key="row.name" :data-queue="row.name">
+                <tr v-for="(row, index) in rows" :key="row.name" :data-queue="row.name">
                     <td>{{ row.name }}</td>
                     <td class="text-end" style="font-variant-numeric: tabular-nums">{{ row.size === null ? t('queues.overview.unknownSize') : queueNumber(row.size) }}</td>
                     <td v-if="failedJobs" class="text-end" style="font-variant-numeric: tabular-nums">
@@ -139,15 +144,17 @@ async function clear(queue: string) {
                                 variant="tonal"
                                 color="error"
                                 prepend-icon="mdi-delete-sweep-outline"
-                                :loading="busy"
+                                :loading="acting === row.name"
                                 data-action="clear"
                                 @click="clear(row.name)"
                             >{{ t('queues.overview.clear') }}</v-btn>
-                            <!-- a disabled button receives no pointer events: the tooltip hangs on a wrapper -->
+                            <!-- a disabled button receives neither pointer events nor focus: the tooltip hangs on a
+                                 wrapper the keyboard reaches, which also names the reason for a screen reader -->
                             <v-tooltip v-else :text="t('queues.overview.clearUnavailable')" location="top">
                                 <template #activator="{ props: activator }">
-                                    <span v-bind="activator">
+                                    <span v-bind="activator" tabindex="0" :aria-describedby="`${uid}-unavailable-${index}`" class="d-inline-block" data-state="clear-unavailable">
                                         <v-btn size="small" variant="tonal" color="error" prepend-icon="mdi-delete-sweep-outline" disabled data-action="clear">{{ t('queues.overview.clear') }}</v-btn>
+                                        <span :id="`${uid}-unavailable-${index}`" class="d-sr-only">{{ t('queues.overview.clearUnavailable') }}</span>
                                     </span>
                                 </template>
                             </v-tooltip>

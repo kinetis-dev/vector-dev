@@ -36,6 +36,7 @@ export default {
         cleared: '{count} Job(s) aus „{queue}“ entfernt.',
         clearUnsupported: 'Dieses Warteschlangen-Backend kann wartende Jobs nicht verwerfen, daher wurde „{queue}“ nicht geleert.',
         clearInvalid: '„{queue}“ wurde nicht geleert: {detail}',
+        clearType: 'Type "{queue}" to confirm',
     },
     failed: {
         filters: {
@@ -46,8 +47,10 @@ export default {
             to: 'Fehlgeschlagen bis',
             apply: 'Anwenden',
             reset: 'Zurücksetzen',
+            invalidDate: 'Enter a complete, valid date and time.',
         },
         select: '{id} auswählen',
+        selection: 'Selection',
         id: 'ID',
         class: 'Job-Klasse',
         queue: 'Warteschlange',
@@ -104,6 +107,7 @@ export default {
         byQueue: 'Nach Warteschlange',
         byClass: 'Nach Job-Klasse',
         throughput: 'Versuche pro Minute',
+        throughputLabel: 'Attempts per minute, {window}, {queue}: {total} in total',
         empty: 'In diesem Zeitraum lief nichts.',
     },
     widget: {

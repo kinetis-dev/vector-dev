@@ -36,6 +36,7 @@ export default {
         cleared: '{count} tâche(s) supprimée(s) de « {queue} ».',
         clearUnsupported: 'Ce backend de file d’attente ne peut pas supprimer les tâches en attente ; « {queue} » n’a donc pas été vidée.',
         clearInvalid: '« {queue} » n’a pas été vidée : {detail}',
+        clearType: 'Type "{queue}" to confirm',
     },
     failed: {
         filters: {
@@ -46,8 +47,10 @@ export default {
             to: 'Échec jusqu’au',
             apply: 'Appliquer',
             reset: 'Réinitialiser',
+            invalidDate: 'Enter a complete, valid date and time.',
         },
         select: 'Sélectionner {id}',
+        selection: 'Selection',
         id: 'ID',
         class: 'Classe de tâche',
         queue: 'File d’attente',
@@ -104,6 +107,7 @@ export default {
         byQueue: 'Par file d’attente',
         byClass: 'Par classe de tâche',
         throughput: 'Tentatives par minute',
+        throughputLabel: 'Attempts per minute, {window}, {queue}: {total} in total',
         empty: 'Rien ne s’est exécuté sur cette période.',
     },
     widget: {

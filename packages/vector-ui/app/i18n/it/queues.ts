@@ -36,6 +36,7 @@ export default {
         cleared: '{count} job eliminati da "{queue}".',
         clearUnsupported: 'Questo backend di code non può eliminare i job in attesa, quindi "{queue}" non è stata svuotata.',
         clearInvalid: '"{queue}" non è stata svuotata: {detail}',
+        clearType: 'Type "{queue}" to confirm',
     },
     failed: {
         filters: {
@@ -46,8 +47,10 @@ export default {
             to: 'Non riuscito fino al',
             apply: 'Applica',
             reset: 'Ripristina',
+            invalidDate: 'Enter a complete, valid date and time.',
         },
         select: 'Seleziona {id}',
+        selection: 'Selection',
         id: 'ID',
         class: 'Classe del job',
         queue: 'Coda',
@@ -104,6 +107,7 @@ export default {
         byQueue: 'Per coda',
         byClass: 'Per classe del job',
         throughput: 'Tentativi al minuto',
+        throughputLabel: 'Attempts per minute, {window}, {queue}: {total} in total',
         empty: 'In questo intervallo non è stato eseguito nulla.',
     },
     widget: {

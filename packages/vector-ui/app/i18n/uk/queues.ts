@@ -36,6 +36,7 @@ export default {
         cleared: 'З «{queue}» видалено завдань: {count}.',
         clearUnsupported: 'Цей бекенд черг не може видаляти завдання, що очікують, тому «{queue}» не очищено.',
         clearInvalid: '«{queue}» не очищено: {detail}',
+        clearType: 'Type "{queue}" to confirm',
     },
     failed: {
         filters: {
@@ -46,8 +47,10 @@ export default {
             to: 'Невдача до',
             apply: 'Застосувати',
             reset: 'Скинути',
+            invalidDate: 'Enter a complete, valid date and time.',
         },
         select: 'Вибрати {id}',
+        selection: 'Selection',
         id: 'ID',
         class: 'Клас завдання',
         queue: 'Черга',
@@ -104,6 +107,7 @@ export default {
         byQueue: 'За чергами',
         byClass: 'За класами завдань',
         throughput: 'Спроб за хвилину',
+        throughputLabel: 'Attempts per minute, {window}, {queue}: {total} in total',
         empty: 'У цьому періоді нічого не виконувалось.',
     },
     widget: {

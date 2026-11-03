@@ -15,7 +15,8 @@ const { confirm } = useConfirm()
 const job = ref<VectorFailedJob | null>(null)
 const refused = ref(false)
 const error = ref<string | null>(null)
-const busy = ref(false)
+// the action running: only its own button shows as loading, and no second one starts meanwhile
+const acting = ref<'retry' | 'forget' | null>(null)
 
 onMounted(async () => {
     try {
@@ -27,13 +28,14 @@ onMounted(async () => {
 })
 
 async function ask(title: string, text: string): Promise<boolean> {
-    if (busy.value) return false
-    return await confirm({ title, text, confirmText: t('queues.actions.confirm'), cancelText: t('queues.actions.cancel'), destructive: true })
+    if (acting.value !== null) return false
+    const confirmed = await confirm({ title, text, confirmText: t('queues.actions.confirm'), cancelText: t('queues.actions.cancel'), destructive: true })
+    return confirmed && acting.value === null
 }
 
 async function retry() {
     if (!await ask(t('queues.failed.retryTitle', { count: 1 }), t('queues.failed.retryText'))) return
-    busy.value = true
+    acting.value = 'retry'
     try {
         const results = await queues.retry([props.id])
         const summary = queueRetrySummary(results)
@@ -44,13 +46,13 @@ async function retry() {
     } catch (caught) {
         notifications.error(describeQueueError(caught))
     } finally {
-        busy.value = false
+        acting.value = null
     }
 }
 
 async function forget() {
     if (!await ask(t('queues.failed.forgetTitle'), t('queues.failed.forgetText'))) return
-    busy.value = true
+    acting.value = 'forget'
     try {
         await queues.forget(props.id)
         notifications.success(t('queues.failed.forgotten'))
@@ -59,7 +61,7 @@ async function forget() {
     } catch (caught) {
         notifications.error(describeQueueError(caught))
     } finally {
-        busy.value = false
+        acting.value = null
     }
 }
 
@@ -72,8 +74,8 @@ const preStyle = 'white-space: pre-wrap; word-break: break-word; max-height: 24r
             <v-btn variant="text" prepend-icon="mdi-arrow-left" @click="emit('back')">{{ t('queues.actions.back') }}</v-btn>
             <v-spacer />
             <template v-if="job">
-                <v-btn v-if="permissions.retry" variant="tonal" color="primary" prepend-icon="mdi-replay" :loading="busy" data-action="retry" @click="retry">{{ t('queues.failed.retry') }}</v-btn>
-                <v-btn v-if="permissions.forget" variant="tonal" color="error" prepend-icon="mdi-delete-outline" :loading="busy" data-action="forget" @click="forget">{{ t('queues.failed.forget') }}</v-btn>
+                <v-btn v-if="permissions.retry" variant="tonal" color="primary" prepend-icon="mdi-replay" :loading="acting === 'retry'" data-action="retry" @click="retry">{{ t('queues.failed.retry') }}</v-btn>
+                <v-btn v-if="permissions.forget" variant="tonal" color="error" prepend-icon="mdi-delete-outline" :loading="acting === 'forget'" data-action="forget" @click="forget">{{ t('queues.failed.forget') }}</v-btn>
             </template>
         </div>
         <v-alert v-if="refused" type="warning" variant="tonal" :text="t('queues.noAccess')" data-state="no-access" />
@@ -93,7 +95,7 @@ const preStyle = 'white-space: pre-wrap; word-break: break-word; max-height: 24r
             </div>
             <div class="mb-3">
                 <div class="text-caption text-medium-emphasis mb-1">{{ t('queues.failed.detail.trace') }}</div>
-                <pre class="pa-2 rounded bg-surface-variant" :style="preStyle">{{ job.exception.trace ?? t('queues.failed.detail.noTrace') }}</pre>
+                <pre class="pa-2 rounded bg-surface-variant" :style="preStyle" data-field="trace">{{ job.exception.trace ?? t('queues.failed.detail.noTrace') }}</pre>
             </div>
             <div class="mb-3">
                 <div class="text-caption text-medium-emphasis mb-1">{{ t('queues.failed.detail.args') }}</div>

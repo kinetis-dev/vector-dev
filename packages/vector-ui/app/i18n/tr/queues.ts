@@ -36,6 +36,7 @@ export default {
         cleared: '"{queue}" içinden {count} iş silindi.',
         clearUnsupported: 'Bu kuyruk altyapısı bekleyen işleri silemez, bu yüzden "{queue}" temizlenmedi.',
         clearInvalid: '"{queue}" temizlenmedi: {detail}',
+        clearType: 'Type "{queue}" to confirm',
     },
     failed: {
         filters: {
@@ -46,8 +47,10 @@ export default {
             to: 'Başarısızlık bitişi',
             apply: 'Uygula',
             reset: 'Sıfırla',
+            invalidDate: 'Enter a complete, valid date and time.',
         },
         select: '{id} seç',
+        selection: 'Selection',
         id: 'Kimlik',
         class: 'İş sınıfı',
         queue: 'Kuyruk',
@@ -104,6 +107,7 @@ export default {
         byQueue: 'Kuyruğa göre',
         byClass: 'İş sınıfına göre',
         throughput: 'Dakika başına deneme',
+        throughputLabel: 'Attempts per minute, {window}, {queue}: {total} in total',
         empty: 'Bu aralıkta hiçbir şey çalışmadı.',
     },
     widget: {

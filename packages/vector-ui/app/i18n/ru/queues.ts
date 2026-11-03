@@ -36,6 +36,7 @@ export default {
         cleared: 'Из «{queue}» удалено задач: {count}.',
         clearUnsupported: 'Этот бэкенд очередей не может удалять ожидающие задачи, поэтому «{queue}» не очищена.',
         clearInvalid: '«{queue}» не очищена: {detail}',
+        clearType: 'Type "{queue}" to confirm',
     },
     failed: {
         filters: {
@@ -46,8 +47,10 @@ export default {
             to: 'Неудача по',
             apply: 'Применить',
             reset: 'Сбросить',
+            invalidDate: 'Enter a complete, valid date and time.',
         },
         select: 'Выбрать {id}',
+        selection: 'Selection',
         id: 'ID',
         class: 'Класс задачи',
         queue: 'Очередь',
@@ -104,6 +107,7 @@ export default {
         byQueue: 'По очередям',
         byClass: 'По классам задач',
         throughput: 'Попыток в минуту',
+        throughputLabel: 'Attempts per minute, {window}, {queue}: {total} in total',
         empty: 'В этом периоде ничего не выполнялось.',
     },
     widget: {

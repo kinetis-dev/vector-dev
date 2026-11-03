@@ -36,6 +36,7 @@ export default {
         cleared: 'Cleared {count} job(s) from "{queue}".',
         clearUnsupported: 'This queue backend cannot discard waiting jobs, so "{queue}" was not cleared.',
         clearInvalid: '"{queue}" was not cleared: {detail}',
+        clearType: 'Type "{queue}" to confirm',
     },
     failed: {
         filters: {
@@ -46,8 +47,10 @@ export default {
             to: 'Failed until',
             apply: 'Apply',
             reset: 'Reset',
+            invalidDate: 'Enter a complete, valid date and time.',
         },
         select: 'Select {id}',
+        selection: 'Selection',
         id: 'ID',
         class: 'Job class',
         queue: 'Queue',
@@ -104,6 +107,7 @@ export default {
         byQueue: 'By queue',
         byClass: 'By job class',
         throughput: 'Attempts per minute',
+        throughputLabel: 'Attempts per minute, {window}, {queue}: {total} in total',
         empty: 'Nothing ran in this window.',
     },
     widget: {

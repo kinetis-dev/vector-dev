@@ -8,7 +8,7 @@ import {
 import type { VectorPageLabel } from '../composables/useVectorExtensions'
 
 /**
- * Runtime UI extensions (§4.15 tier 2). `window.Vector` is the
+ * Runtime UI extensions. `window.Vector` is the
  * registration API an extension module calls; the URLs come from the
  * hosted shell (`VECTOR_UI_EXTENSIONS`) or, in standalone mode, from
  * runtime config, and are imported after the app is created. Vue and a
@@ -90,7 +90,7 @@ declare global {
             defineWidget: (type: string, component: vue.Component) => void
             defineRichTextExtension: (name: string, extension: import('@tiptap/core').AnyExtension) => void
             defineMessages: (locale: string, messages: Record<string, unknown>) => void
-            definePage: (name: string, page: { title: string | (() => string), icon?: string, group?: string | (() => string), component: vue.Component }) => void
+            definePage: (name: string, page: { title: VectorPageLabel, icon?: string, group?: VectorPageLabel, component: vue.Component }) => void
             api: import('nitropack').$Fetch
             notify: { success: (message: string) => void, error: (message: string) => void }
             navigate: (path: string) => unknown

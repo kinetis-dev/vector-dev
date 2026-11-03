@@ -36,6 +36,7 @@ export default {
         cleared: 'Usunięto zadania z „{queue}”: {count}.',
         clearUnsupported: 'Ten backend kolejek nie może odrzucać oczekujących zadań, więc „{queue}” nie została wyczyszczona.',
         clearInvalid: '„{queue}” nie została wyczyszczona: {detail}',
+        clearType: 'Type "{queue}" to confirm',
     },
     failed: {
         filters: {
@@ -46,8 +47,10 @@ export default {
             to: 'Nieudane do',
             apply: 'Zastosuj',
             reset: 'Resetuj',
+            invalidDate: 'Enter a complete, valid date and time.',
         },
         select: 'Wybierz {id}',
+        selection: 'Selection',
         id: 'ID',
         class: 'Klasa zadania',
         queue: 'Kolejka',
@@ -104,6 +107,7 @@ export default {
         byQueue: 'Według kolejki',
         byClass: 'Według klasy zadania',
         throughput: 'Próby na minutę',
+        throughputLabel: 'Attempts per minute, {window}, {queue}: {total} in total',
         empty: 'W tym okresie nic się nie wykonało.',
     },
     widget: {

@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import type { VectorQueueMetrics } from '#vector/app/types/vector'
-// Imported by hand: Nuxt's export scan misses the declaration that follows
-// QUEUE_WINDOWS' `as const`, so it is never auto-imported.
-import { QUEUE_DEFAULT_WINDOW } from '#vector/app/utils/queues'
 
 // The job metrics: GET /metrics for a watched queue (or all) over a window
 // of at most 7 days, the last hour by default — the window's totals,
@@ -39,6 +36,12 @@ watch([queue, minutes], () => void load())
 
 const totals = computed(() => queueMetricsTotals(metrics.value))
 const spark = computed(() => queueSparkline(metrics.value?.buckets ?? []))
+// the chart's own words for a screen reader: which window, which queue, how many attempts in all
+const sparkLabel = computed(() => t('queues.metrics.throughputLabel', {
+    window: t(`queues.metrics.windows.m${minutes.value}`),
+    queue: queue.value === '' ? t('queues.metrics.allQueues') : queue.value,
+    total: queueNumber(totals.value.succeeded + totals.value.released + totals.value.failed),
+}))
 const queueItems = computed(() => [{ title: t('queues.metrics.allQueues'), value: '' }, ...props.queues.map(name => ({ title: name, value: name }))])
 const windowItems = computed(() => QUEUE_WINDOWS.map(value => ({ title: t(`queues.metrics.windows.m${value}`), value })))
 const stats = computed(() => [
@@ -74,7 +77,7 @@ const tables = computed(() => metrics.value === null ? [] : [
             </div>
             <div class="mb-4 text-primary">
                 <div class="text-caption text-medium-emphasis">{{ t('queues.metrics.throughput') }}</div>
-                <svg :viewBox="`0 0 ${spark.width} 40`" preserveAspectRatio="none" width="100%" height="48" role="img" :aria-label="t('queues.metrics.throughput')" data-chart="throughput">
+                <svg :viewBox="`0 0 ${spark.width} 40`" preserveAspectRatio="none" width="100%" height="48" role="img" :aria-label="sparkLabel" data-chart="throughput">
                     <polyline :points="spark.points" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke" />
                 </svg>
             </div>

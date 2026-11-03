@@ -24,7 +24,10 @@ const error = ref<string | null>(null)
 const selected = ref(new Set<string>())
 const openId = ref<string | null>(null)
 const pruneDays = ref('30')
-const busy = ref(false)
+// the action running: only its own button shows as loading, and no second one starts meanwhile
+const acting = ref<'retry' | 'forget' | 'prune' | null>(null)
+// a date field the browser could not read (a partly typed date: its value is then '', not the text)
+const badInput = ref({ failedFrom: false, failedTo: false })
 let request = 0
 
 /** The first page for the applied filters, or (more) the page after the last one shown. */
@@ -50,13 +53,27 @@ async function load(more = false) {
 
 onMounted(() => load())
 
+// an unreadable date is an error on its field, not a filter silently dropped
+const dateError = (field: 'failedFrom' | 'failedTo') => badInput.value[field] || !queueLocalDateValid(filters.value[field])
+    ? t('queues.failed.filters.invalidDate')
+    : ''
+const fromError = computed(() => dateError('failedFrom'))
+const toError = computed(() => dateError('failedTo'))
+const filtersValid = computed(() => fromError.value === '' && toError.value === '')
+
+function onDateInput(field: 'failedFrom' | 'failedTo', event: Event) {
+    badInput.value = { ...badInput.value, [field]: (event.target as HTMLInputElement | null)?.validity?.badInput === true }
+}
+
 function apply() {
+    if (!filtersValid.value) return
     applied = { ...filters.value }
     void load()
 }
 
 function reset() {
     filters.value = emptyFilters()
+    badInput.value = { failedFrom: false, failedTo: false }
     apply()
 }
 
@@ -68,22 +85,23 @@ function toggle(id: string, on: boolean | null) {
 }
 
 /** Asks, then runs `action` once — a second click while one runs does nothing — and reloads the list either way. */
-async function guarded(title: string, text: string, action: () => Promise<void>) {
-    if (busy.value) return
+async function guarded(kind: 'retry' | 'forget' | 'prune', title: string, text: string, action: () => Promise<void>) {
+    if (acting.value !== null) return
     if (!await confirm({ title, text, confirmText: t('queues.actions.confirm'), cancelText: t('queues.actions.cancel'), destructive: true })) return
-    busy.value = true
+    if (acting.value !== null) return
+    acting.value = kind
     try {
         await action()
     } catch (caught) {
         notifications.error(describeQueueError(caught))
     } finally {
-        busy.value = false
+        acting.value = null
     }
     await load()
 }
 
 function retry(ids: string[]) {
-    void guarded(t('queues.failed.retryTitle', { count: ids.length }), t('queues.failed.retryText'), async () => {
+    void guarded('retry', t('queues.failed.retryTitle', { count: ids.length }), t('queues.failed.retryText'), async () => {
         const summary = queueRetrySummary(await api.retry(ids))
         if (summary.ok) notifications.success(summary.text)
         else notifications.error(summary.text)
@@ -91,7 +109,7 @@ function retry(ids: string[]) {
 }
 
 function forget(id: string) {
-    void guarded(t('queues.failed.forgetTitle'), t('queues.failed.forgetText'), async () => {
+    void guarded('forget', t('queues.failed.forgetTitle'), t('queues.failed.forgetText'), async () => {
         await api.forget(id)
         notifications.success(t('queues.failed.forgotten'))
     })
@@ -102,7 +120,7 @@ const days = computed(() => queuePruneDays(pruneDays.value))
 function prune() {
     const value = days.value
     if (value === null) return
-    void guarded(t('queues.failed.pruneTitle', { days: value }), t('queues.failed.pruneText'), async () => {
+    void guarded('prune', t('queues.failed.pruneTitle', { days: value }), t('queues.failed.pruneText'), async () => {
         notifications.success(t('queues.failed.pruned', { count: await api.prune(value) }))
     })
 }
@@ -118,14 +136,36 @@ const atLimit = computed(() => selected.value.size >= QUEUE_MAX_RETRY_BATCH)
         <div class="d-flex flex-wrap align-center ga-2 mb-3">
             <v-select v-model="filters.queue" :items="queueItems" :label="t('queues.failed.filters.queue')" density="compact" hide-details style="max-width: 14rem" />
             <v-text-field v-model="filters.class" :label="t('queues.failed.filters.class')" density="compact" hide-details style="max-width: 22rem" @keydown.enter="apply" />
-            <v-text-field v-model="filters.failedFrom" type="datetime-local" step="1" :label="t('queues.failed.filters.from')" density="compact" hide-details style="max-width: 14rem" />
-            <v-text-field v-model="filters.failedTo" type="datetime-local" step="1" :label="t('queues.failed.filters.to')" density="compact" hide-details style="max-width: 14rem" />
-            <v-btn variant="tonal" color="primary" data-action="apply" @click="apply">{{ t('queues.failed.filters.apply') }}</v-btn>
+            <v-text-field
+                v-model="filters.failedFrom"
+                type="datetime-local"
+                step="1"
+                :label="t('queues.failed.filters.from')"
+                :error-messages="fromError"
+                density="compact"
+                hide-details="auto"
+                style="max-width: 14rem"
+                data-filter="failedFrom"
+                @input="onDateInput('failedFrom', $event)"
+            />
+            <v-text-field
+                v-model="filters.failedTo"
+                type="datetime-local"
+                step="1"
+                :label="t('queues.failed.filters.to')"
+                :error-messages="toError"
+                density="compact"
+                hide-details="auto"
+                style="max-width: 14rem"
+                data-filter="failedTo"
+                @input="onDateInput('failedTo', $event)"
+            />
+            <v-btn variant="tonal" color="primary" :disabled="!filtersValid" data-action="apply" @click="apply">{{ t('queues.failed.filters.apply') }}</v-btn>
             <v-btn variant="text" @click="reset">{{ t('queues.failed.filters.reset') }}</v-btn>
         </div>
         <div v-if="permissions.retry || permissions.prune" class="d-flex flex-wrap align-center ga-2 mb-3">
             <template v-if="permissions.retry">
-                <v-btn variant="tonal" color="primary" prepend-icon="mdi-replay" :disabled="selected.size === 0" :loading="busy" data-action="retry-selected" @click="retry([...selected])">
+                <v-btn variant="tonal" color="primary" prepend-icon="mdi-replay" :disabled="selected.size === 0" :loading="acting === 'retry'" data-action="retry-selected" @click="retry([...selected])">
                     {{ t('queues.failed.retrySelected', { count: selected.size }) }}
                 </v-btn>
                 <span v-if="atLimit" class="text-caption text-medium-emphasis">{{ t('queues.failed.retryLimit', { max: QUEUE_MAX_RETRY_BATCH }) }}</span>
@@ -133,7 +173,7 @@ const atLimit = computed(() => selected.value.size >= QUEUE_MAX_RETRY_BATCH)
             <template v-if="permissions.prune">
                 <v-spacer />
                 <v-text-field v-model="pruneDays" type="number" :min="1" :max="QUEUE_MAX_PRUNE_DAYS" :label="t('queues.failed.pruneDays')" density="compact" hide-details style="max-width: 11rem" />
-                <v-btn variant="tonal" color="error" prepend-icon="mdi-broom" :disabled="days === null" :loading="busy" data-action="prune" @click="prune">{{ t('queues.failed.prune') }}</v-btn>
+                <v-btn variant="tonal" color="error" prepend-icon="mdi-broom" :disabled="days === null" :loading="acting === 'prune'" data-action="prune" @click="prune">{{ t('queues.failed.prune') }}</v-btn>
             </template>
         </div>
         <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mb-3" :text="error" />
@@ -142,13 +182,13 @@ const atLimit = computed(() => selected.value.size >= QUEUE_MAX_RETRY_BATCH)
         <v-table v-else hover density="compact">
             <thead>
                 <tr>
-                    <th v-if="permissions.retry" scope="col" />
+                    <th v-if="permissions.retry" scope="col"><span class="d-sr-only">{{ t('queues.failed.selection') }}</span></th>
                     <th scope="col" class="text-start">{{ t('queues.failed.class') }}</th>
                     <th scope="col" class="text-start">{{ t('queues.failed.queue') }}</th>
                     <th scope="col" class="text-start">{{ t('queues.failed.exception') }}</th>
                     <th scope="col" class="text-end">{{ t('queues.failed.attempts') }}</th>
                     <th scope="col" class="text-start">{{ t('queues.failed.failedAt') }}</th>
-                    <th scope="col" class="text-end" />
+                    <th scope="col" class="text-end"><span class="d-sr-only">{{ t('common.actions') }}</span></th>
                 </tr>
             </thead>
             <tbody>

@@ -36,6 +36,7 @@ export default {
         cleared: '{count} משימות הוסרו מ-"{queue}".',
         clearUnsupported: 'מנגנון התורים הזה אינו יכול להשליך משימות ממתינות, ולכן "{queue}" לא נוקה.',
         clearInvalid: '"{queue}" לא נוקה: {detail}',
+        clearType: 'Type "{queue}" to confirm',
     },
     failed: {
         filters: {
@@ -46,8 +47,10 @@ export default {
             to: 'נכשלו עד תאריך',
             apply: 'החלה',
             reset: 'איפוס',
+            invalidDate: 'Enter a complete, valid date and time.',
         },
         select: 'בחירת {id}',
+        selection: 'Selection',
         id: 'מזהה',
         class: 'מחלקת משימה',
         queue: 'תור',
@@ -104,6 +107,7 @@ export default {
         byQueue: 'לפי תור',
         byClass: 'לפי מחלקת משימה',
         throughput: 'ניסיונות בדקה',
+        throughputLabel: 'Attempts per minute, {window}, {queue}: {total} in total',
         empty: 'שום דבר לא רץ בחלון הזה.',
     },
     widget: {

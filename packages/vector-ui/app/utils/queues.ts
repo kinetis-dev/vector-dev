@@ -13,8 +13,7 @@ export const QUEUE_METRICS_MAX_MINUTES = 7 * 24 * 60
 /** How often the overview asks again while it is shown. */
 export const QUEUE_POLL_MS = 5000
 
-/** The metrics windows offered, in minutes; the last hour by default. */
-export const QUEUE_WINDOWS = [15, 60, 360, 1440, QUEUE_METRICS_MAX_MINUTES] as const
+/** The metrics window shown first, in minutes: the last hour, one of QUEUE_WINDOWS (at the end of this file). */
 export const QUEUE_DEFAULT_WINDOW = 60
 
 /** The most points the throughput sparkline draws: a longer window sums neighbouring minutes. */
@@ -48,11 +47,19 @@ export function compactQuery<T extends Record<string, string | number | null | u
     return Object.fromEntries(Object.entries(query).filter(([, value]) => value !== '' && value !== null && value !== undefined)) as Record<string, string | number>
 }
 
-/** A `datetime-local` value in the browser's zone as RFC 3339 in whole seconds, UTC; '' when unset or invalid. */
+/**
+ * A `datetime-local` value in the browser's zone as RFC 3339 in whole seconds, UTC; '' when unset or invalid.
+ * An invalid one must not reach it unnoticed — '' drops the filter — so a form checks queueLocalDateValid() first.
+ */
 export function toRfc3339(local: string): string {
     if (!local) return ''
     const date = new Date(local)
     return Number.isNaN(date.getTime()) ? '' : date.toISOString().replace(/\.\d{3}Z$/, 'Z')
+}
+
+/** Whether a `datetime-local` value is unset or a date toRfc3339() can read. */
+export function queueLocalDateValid(local: string): boolean {
+    return !local || !Number.isNaN(new Date(local).getTime())
 }
 
 /** A count, or the dashboard's dash for none. */
@@ -137,3 +144,10 @@ export function queueSparkline(buckets: VectorQueueMetrics['buckets']): { width:
         points: sums.map((value, index) => `${index},${(40 - (value / peak) * 38 - 1).toFixed(2)}`).join(' '),
     }
 }
+
+/**
+ * The metrics windows offered, in minutes, QUEUE_DEFAULT_WINDOW among them. Kept the
+ * last declaration in this file: Nuxt's export scan misses a declaration that
+ * follows an `as const`, so nothing may come after it.
+ */
+export const QUEUE_WINDOWS = [15, 60, 360, 1440, QUEUE_METRICS_MAX_MINUTES] as const
