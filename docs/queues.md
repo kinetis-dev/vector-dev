@@ -196,7 +196,9 @@ page's text ships in every language Vector's UI ships, as machine
 translations, in the layer's `queues` messages; override any of it in
 app config `vector.messages` or with `defineMessages` under `queues`
 ({doc}`languages`). English is the fallback. Server text such as
-exception messages is rendered as text, never as HTML.
+exception messages is rendered as text, never as HTML, and unredacted:
+any viewer sees a failed job's exception message as the job threw it, so
+keep secrets out of exception messages.
 
 The label the dashboard declares on the server, the card's **Queues**,
 is translated in the same languages by Vector's own translations. Your

@@ -14,7 +14,7 @@ packages/vector-ui/         @kinetis/vector-ui, the Nuxt layer; its Vitest suite
 demo/docker-compose.yml     the stack: app, worker, nginx, frankenphp, mysql, postgres, redis, node; e2e and oha on demand
 demo/docker/                the PHP images (PHP-FPM and FrankenPHP) and their shared extension recipe, nginx, the Caddyfile, php.ini
 demo/bin/                   check-frankenphp and benchmark, for the FrankenPHP worker service
-demo/backend/               the demo application, kinetis/vector installed from ../../packages
+demo/backend/               the demo application, kinetis/vector installed from ../../packages/vector
   src/Auth/                 both sign-ins, their throttling, the vector and mcp group middleware, impersonation
   src/Console/              demo:seed, and demo:queue-flaky, which queues the flaky job below
   src/Jobs/                 SyncWarehouseStockJob, a job that fails on purpose, for the queue dashboard
@@ -190,9 +190,9 @@ pull requests, each for the paths it covers:
 
 - `ci.yml` — on PHP 8.4 and 8.5, in the demo's own PHP image with
   MySQL, PostgreSQL and Redis as services: `composer validate --strict`
-  for the packages' and the demo's `composer.json` files, `composer audit`, the PHPUnit suite
-  (both placements of Vector's tables, as above), PHPStan and both Psalm
-  runs; `pnpm lint`, `pnpm typecheck`, `pnpm test`,
+  for the package's and the demo's `composer.json` files, `composer audit`, the PHPUnit suite
+  (both placements of Vector's tables, as above), PHPStan and Psalm (one run, ordinary and
+  taint issues together); `pnpm lint`, `pnpm typecheck`, `pnpm test`,
   `pnpm test:scripts`, and `pnpm generate:hosted` followed by
   `node scripts/check-vector-ui-pack.mjs --packed`, which fails unless
   npm would pack `vector-bundle.json` and every file it lists; and the

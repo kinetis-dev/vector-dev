@@ -6,10 +6,8 @@ use Kinetis\Persistence\Contract\MysqlLink;
 use Kinetis\Persistence\Contract\PostgresLink;
 use Kinetis\Migrations\Migration;
 
-// MySQL version. Copy this file into your own migrations/ directory (see
-// kinetis/migrations) — migrations/<name>/ when FAILED_JOBS_DB_CONNECTION_NAME
-// selects a named connection — renaming it with a timestamp prefix, e.g.
-// 20260810143000_create_kinetis_failed_jobs_table.php.
+// The demo's failed-jobs table, kinetis/queue-failed-jobs' own stub, on the
+// default connection (MySQL and PostgreSQL).
 // Required by Kinetis\QueueFailedJobs\SqlFailedJobStore.
 //
 // `id`, `queue_connection` and `queue` are ascii_bin: MySQL's default
