@@ -47,7 +47,7 @@ application).
 | `GET /vector/jobs`, `GET /vector/jobs/{id}`, `GET /vector/jobs/{id}/download` | This user's jobs and their files. |
 | `GET /vector/notifications`, `POST …/{id}/read`, `POST …/read-all` | The inbox. |
 | `POST /vector/impersonate/{userId}`, `DELETE /vector/impersonate` | Impersonation. |
-| `GET /vector/queues`, `GET /vector/queues/permissions` | The queue dashboard's watched queues, and what the caller may do there ({doc}`queues`). Only where queues are configured. |
+| `GET /vector/queues`, `GET /vector/queues/permissions` | The queue dashboard's watched queues, and what the caller may do there ({doc}`queues`). Only where queues are configured and the policy lets the caller view. |
 | `GET /vector/queues/failed`, `GET /vector/queues/failed/{id}` | Failed jobs, a cursor-paged list and one record. Only with `kinetis/queue-failed-jobs` ({doc}`queues`). |
 | `POST /vector/queues/failed/retry`, `DELETE /vector/queues/failed/{id}`, `POST /vector/queues/failed/prune` | Retries up to 50 failed jobs, forgets one, or prunes them by age across every queue ({doc}`queues`). |
 | `POST /vector/queues/{queue}/clear` | Discards every job waiting on a queue, `{"confirm": "<queue>"}`; `409` on a backend that cannot ({doc}`queues`). |

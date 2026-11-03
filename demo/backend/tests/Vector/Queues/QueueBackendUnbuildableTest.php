@@ -23,6 +23,10 @@ final class QueueBackendUnbuildableTest extends QueuesTestCase
     {
         $this->client->get('/vector/queues', headers: $this->adminHeaders())
             ->assertOk()
-            ->assertJsonPath('data.0', ['name' => 'qa-mail', 'size' => null, 'clearable' => false, 'failed' => 0]);
+            ->assertJsonPath('data', [
+                ['name' => 'qa-mail', 'size' => null, 'clearable' => false, 'failed' => 0],
+                ['name' => 'qa-reports', 'size' => null, 'clearable' => false, 'failed' => 0],
+                ['name' => 'qa-idle', 'size' => null, 'clearable' => false, 'failed' => 0],
+            ]);
     }
 }

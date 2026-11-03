@@ -409,10 +409,17 @@ final readonly class QueuesController
     private static function backend(RequestScope $scope): ?QueueInterface
     {
         try {
-            return self::resolve($scope, QueueInterface::class);
-        } catch (\Throwable) {
+            $queue = $scope->get(QueueInterface::class);
+        } catch (\Exception) {
+            // a backend that cannot connect while it is built; an \Error is a programming mistake and surfaces
             return null;
         }
+
+        if (!$queue instanceof QueueInterface) {
+            throw new \LogicException(QueueInterface::class . ' is bound to something else.');
+        }
+
+        return $queue;
     }
 
     /** A backend that cannot answer — unreachable, not built, or with no count to give — has no size, rather than failing the overview. */

@@ -122,10 +122,12 @@ descriptor's `capabilities.queues` is false and every endpoint answers
 | `prune(ActorContext $actor)` | Deleting every failed-job record older than an age. |
 | `clear(ActorContext $actor, string $queue)` | Discarding every job waiting on `$queue`, one queue at a time. |
 
-The policy is asked before anything else, before the request is
-validated and before any database or queue connection is opened. A
-refused caller learns nothing about which queues exist. The policy runs
-for an unwatched queue's clear too, ahead of its `404`.
+The policy is asked before the request is validated and before any
+database or queue connection is opened; only a clear's queue name is
+checked first, and a name outside the queue-name grammar is a `404`
+before the policy runs. A refused caller learns nothing about which
+queues exist. The policy runs for an unwatched queue's clear too, ahead
+of its `404`.
 
 Vector binds `ViewOnlyQueueDashboardPolicy`: anyone Vector admits
 may look, and nobody may retry, forget, prune or clear. Every viewer
@@ -254,7 +256,7 @@ each `/failed` one is a `404` without failed jobs
 | `GET /vector/queues/metrics` | Job metrics over a window; see below. |
 
 A clear answers in a fixed order: `404` when the dashboard is not there,
-`403` when the policy refuses, `404` for an unwatched queue, `422` for a wrong confirmation, `409` for a
+`404` for a name outside the queue-name grammar, `403` when the policy refuses, `404` for an unwatched queue, `422` for a wrong confirmation, `409` for a
 backend that cannot clear.
 
 **Pruning failed jobs spans every queue.** It goes through the store's
