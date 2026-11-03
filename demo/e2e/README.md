@@ -54,6 +54,25 @@ docker compose run --rm -p 9323:9323 e2e show-report --host 0.0.0.0
 The hosted project tests the bundle last published, not the layer's
 current source: publish it again after changing the UI.
 
+## Documentation screenshots
+
+`tests/screenshots.standalone.spec.ts` is not a test. It captures the
+documentation's screenshots into `docs/_static/screenshots/`, as
+`<name>-light.png` and `<name>-dark.png`, and is skipped unless
+`VECTOR_SCREENSHOTS=1`:
+
+```sh
+docker compose run --rm -e VECTOR_SCREENSHOTS=1 e2e test tests/screenshots.standalone.spec.ts
+```
+
+Each pair is one prepared page captured twice. The admin follows
+`prefers-color-scheme` while **Settings → Branding → Default theme** is
+*System*, so the spec switches the emulated scheme in place. The
+`admin` fixture keeps the UI in English. The spec leaves the demo data
+as it found it: it submits nothing, cancels every dialog, and aborts any
+request from the page that is not a read, failing the capture if there
+was one. See "Documentation screenshots" in `docs/contributing.md`.
+
 ## What it assumes
 
 - The seed: `e2e@vector.local`, the suite's own admin, and
@@ -87,4 +106,5 @@ playwright.config.ts    the two projects, timeouts, reporters
 support/global-setup.ts forwards the ports, waits for the stack, warms up the dev server
 support/fixtures.ts     accounts, signIn(), the admin/api/cleanup fixtures, unique()
 tests/                  the specs
+tests/screenshots.standalone.spec.ts  the docs screenshots, only with VECTOR_SCREENSHOTS=1
 ```
