@@ -47,6 +47,9 @@ final class FailedJobStoreDownTest extends VectorTestCase
         self::assertCount(1, $entries, 'the batch stopped at the first id');
         self::assertSame($id, $entries[0]['record_id']);
         self::assertSame('queue:retry', $entries[0]['event']);
-        self::assertStringContainsString('"status":"error"', (string) $entries[0]['changes']);
+        // decoded: a MySQL JSON column hands the document back in its own normalised spacing
+        $changes = json_decode((string) $entries[0]['changes'], true, 16, JSON_THROW_ON_ERROR);
+        self::assertIsArray($changes);
+        self::assertSame('error', $changes['status'] ?? null);
     }
 }
