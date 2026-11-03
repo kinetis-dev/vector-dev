@@ -65,13 +65,23 @@ documentation's screenshots into `docs/_static/screenshots/`, as
 docker compose run --rm -e VECTOR_SCREENSHOTS=1 e2e test tests/screenshots.standalone.spec.ts
 ```
 
-Each pair is one prepared page captured twice. The admin follows
+Run it on the stock data set (`demo:seed --fresh`) with the flaky
+queue jobs (`demo:queue-flaky --count=20 --failure=40`) failed.
+
+First, in a `beforeAll`, `support/screenshot-data.ts` makes through the
+API what the seed does not: SKU-00014's history, the saved views *Low
+stock* (shared) and *Drafts*, and a finished export and import with
+their notifications. It writes only what is missing, so a second run
+adds nothing. None of the views is a default, which would open the
+products list filtered for every other spec.
+
+Then each pair is one prepared page captured twice. The admin follows
 `prefers-color-scheme` while **Settings → Branding → Default theme** is
 *System*, so the spec switches the emulated scheme in place. The
-`admin` fixture keeps the UI in English. The spec leaves the demo data
-as it found it: it submits nothing, cancels every dialog, and aborts any
-request from the page that is not a read, failing the capture if there
-was one. See "Documentation screenshots" in `docs/contributing.md`.
+`admin` fixture keeps the UI in English. The capture only reads: it
+submits nothing, cancels every dialog, and aborts any request from the
+page that is not a read, failing the capture if there was one. See
+"Documentation screenshots" in `docs/contributing.md`.
 
 ## What it assumes
 
@@ -105,6 +115,7 @@ uses `it.fails` the same way.
 playwright.config.ts    the two projects, timeouts, reporters
 support/global-setup.ts forwards the ports, waits for the stack, warms up the dev server
 support/fixtures.ts     accounts, signIn(), the admin/api/cleanup fixtures, unique()
+support/screenshot-data.ts  the data the docs screenshots show, made through the API
 tests/                  the specs
 tests/screenshots.standalone.spec.ts  the docs screenshots, only with VECTOR_SCREENSHOTS=1
 ```

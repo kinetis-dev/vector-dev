@@ -89,6 +89,68 @@ export class Api {
         return (await response.json()).data
     }
 
+    /** A record's history, newest first: `update`, `action:<name>`, … with the field changes. */
+    async audit(resource: string, id: unknown): Promise<{ event: string, changes: Record<string, unknown> }[]> {
+        const response = await this.request.get(`${API}/vector/r/${resource}/${id}/audit`, { headers: this.headers })
+        expect(response.ok(), await response.text()).toBeTruthy()
+        return (await response.json()).data
+    }
+
+    /** Runs an action on the records `ids`, with the values its dialog asks for. */
+    async action(resource: string, action: string, ids: unknown[], fields: Record<string, unknown> = {}): Promise<void> {
+        const response = await this.request.post(`${API}/vector/r/${resource}/actions/${action}`, { headers: this.headers, data: { ids, fields } })
+        expect(response.ok(), await response.text()).toBeTruthy()
+    }
+
+    /** The saved views of a list this account sees: its own and the shared ones. */
+    async views(resource: string): Promise<{ id: number, name: string, mine: boolean }[]> {
+        const response = await this.request.get(`${API}/vector/views/${resource}`, { headers: this.headers })
+        expect(response.ok(), await response.text()).toBeTruthy()
+        return (await response.json()).data
+    }
+
+    /** Saves a view of a list: a new one, or the view `id` replaced. */
+    async saveView(resource: string, view: { name: string, state: Record<string, unknown>, shared: boolean, isDefault: boolean }, id?: number): Promise<void> {
+        const url = id === undefined ? `${API}/vector/views/${resource}` : `${API}/vector/views/${resource}/${id}`
+        const response = await this.request.fetch(url, { method: id === undefined ? 'POST' : 'PUT', headers: this.headers, data: { ...view, resourceDefault: false } })
+        expect(response.ok(), await response.text()).toBeTruthy()
+    }
+
+    /** This account's background jobs, newest first. */
+    async jobs(): Promise<{ id: number, kind: string, resource: string, status: string }[]> {
+        const response = await this.request.get(`${API}/vector/jobs`, { headers: this.headers })
+        expect(response.ok(), await response.text()).toBeTruthy()
+        return (await response.json()).data
+    }
+
+    /** Waits for a job to finish, and says how it ended. */
+    async finished(id: number): Promise<string> {
+        let status = 'queued'
+        await expect.poll(async () => {
+            const response = await this.request.get(`${API}/vector/jobs/${id}`, { headers: this.headers })
+            status = (await response.json()).data.status
+            return ['done', 'failed'].includes(status)
+        }, { message: `job ${id} finishes`, timeout: 120_000 }).toBe(true)
+        return status
+    }
+
+    /** Starts an export that runs as a job (every XLSX does): its job's id. */
+    async exportJob(resource: string, params: Record<string, string>): Promise<number> {
+        const response = await this.request.get(`${API}/vector/r/${resource}/export`, { headers: this.headers, params })
+        expect(response.status(), await response.text()).toBe(202)
+        return (await response.json()).jobId
+    }
+
+    /** Starts a CSV import, which runs as a job: its job's id. */
+    async importCsv(resource: string, csv: string, mapping: Record<string, string>, mode: 'create' | 'update' | 'upsert', key = ''): Promise<number> {
+        const response = await this.request.post(`${API}/vector/r/${resource}/import`, {
+            headers: this.headers,
+            multipart: { file: { name: `${resource}.csv`, mimeType: 'text/csv', buffer: Buffer.from(csv) }, mapping: JSON.stringify(mapping), mode, ...(key ? { key } : {}) },
+        })
+        expect(response.ok(), await response.text()).toBeTruthy()
+        return (await response.json()).jobId
+    }
+
     /** Deletes a record; `force` removes a soft-deleting resource's record for good. */
     async remove(resource: string, id: unknown, force = false): Promise<void> {
         const response = await this.request.delete(`${API}/vector/r/${resource}/${id}`, { headers: this.headers, params: force ? { force: '1' } : {} })

@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { API, expect, test } from '../support/fixtures'
+import { API, Api, expect, test } from '../support/fixtures'
+import { HISTORY_PRODUCT, prepareScreenshotData } from '../support/screenshot-data'
 import type { Locator, Page } from '@playwright/test'
 
 // The documentation's screenshots, not a test: docs/_static/screenshots/
@@ -16,9 +17,12 @@ import type { Locator, Page } from '@playwright/test'
 // suite account's preferences and resets the Languages settings, so every
 // page is in English.
 //
-// The demo's data is shared, and this spec leaves it as it found it: no
-// form or dialog is submitted, and every request from the page that is not
-// a read is aborted and fails the capture (writes()).
+// What `demo:seed --fresh` does not make — a product's history, saved
+// views, finished jobs and their notifications — is made first, through the
+// admin API (support/screenshot-data.ts), and only what is missing: a
+// second run adds nothing. The capture itself then only reads: no form or
+// dialog is submitted, and every request from the page that is not a read
+// is aborted and fails the capture (writes()).
 
 const OUT = fileURLToPath(new URL('../../../docs/_static/screenshots/', import.meta.url))
 
@@ -33,6 +37,13 @@ test.use({
 })
 
 test.beforeAll(() => mkdirSync(OUT, { recursive: true }))
+
+// the data the screens show, before any page opens; not through a page, so writes() does not see it
+test.beforeAll(async ({ playwright }) => {
+    const request = await playwright.request.newContext()
+    await prepareScreenshotData(await Api.as(request))
+    await request.dispose()
+})
 
 /** Aborts every request from the page that could change the API's data, and lists them. */
 async function writes(page: Page): Promise<string[]> {
@@ -194,17 +205,22 @@ test.describe('docs screenshots', () => {
         await pair(page, 'products-bulk')
     })
 
-    test('products list, saving a view', async ({ admin: page }) => {
+    test('products list, a saved view', async ({ admin: page }) => {
         await products(page)
-        await lowStock(page)
-        await main(page).getByRole('button', { name: 'Views' }).click()
-        await page.getByText('Save current as view…').click()
-        const dialog = page.getByRole('dialog').filter({ hasText: 'Save view' })
-        await dialog.getByLabel('Name').fill('Low stock')
-        await pair(page, 'products-save-view')
-        // cancelled: no view is created
-        await dialog.getByRole('button', { name: 'Cancel' }).click()
-        await expect(dialog).toBeHidden()
+        const views = main(page).getByRole('button', { name: 'Views' })
+        await views.click()
+        const menu = page.locator('.v-overlay--active').filter({ hasText: 'All records' })
+        await menu.locator('.v-list-item').filter({ hasText: 'Low stock' }).locator('.v-list-item-title').click()
+        // applied: the button names the view, its filters are chips, the list reloaded through them
+        const applied = main(page).getByRole('button', { name: 'Low stock' })
+        await expect(applied).toBeVisible()
+        await expect(main(page).locator('.v-chip').filter({ hasText: 'Stock' })).toBeVisible()
+        await settle(page)
+        // and the menu open again, the view picked in it
+        await applied.click()
+        await expect(menu.locator('.v-list-item--active').filter({ hasText: 'Low stock' })).toBeVisible()
+        await pair(page, 'products-saved-view')
+        await page.keyboard.press('Escape')
     })
 
     test('product record', async ({ admin: page }) => {
@@ -212,6 +228,14 @@ test.describe('docs screenshots', () => {
         await expect(main(page).getByText('SKU-00001')).toBeVisible()
         await expect(page.locator('.vx-richtext-view')).toBeVisible()
         await pair(page, 'product-record')
+    })
+
+    test('product history', async ({ admin: page }) => {
+        await page.goto(`r/products/${HISTORY_PRODUCT}`)
+        const history = main(page).locator('.v-card').filter({ has: page.locator('.v-card-title', { hasText: /^History$/ }) })
+        await expect(history.locator('.v-timeline-item')).toHaveCount(3)
+        await history.scrollIntoViewIfNeeded()
+        await pair(page, 'product-history', history, 16)
     })
 
     test('product form', async ({ admin: page }) => {
@@ -259,6 +283,14 @@ test.describe('docs screenshots', () => {
         await pair(page, 'jobs')
     })
 
+    test('job detail', async ({ admin: page, api }) => {
+        const job = (await api.jobs()).find(j => j.kind === 'import' && j.resource === 'tags')!
+        await page.goto(`jobs/${job.id}`)
+        await expect(main(page).getByRole('button', { name: 'Download' }).or(main(page).getByRole('link', { name: 'Download' }))).toBeVisible()
+        // the job's card: the rest of the page is empty
+        await pair(page, 'job-detail', main(page).locator('.v-card').first(), 8)
+    })
+
     test('settings', async ({ admin: page }) => {
         await page.goto('settings')
         await expect(main(page).getByRole('tab', { name: 'Branding' })).toBeVisible()
@@ -269,6 +301,13 @@ test.describe('docs screenshots', () => {
         await page.goto('queues')
         await expect(main(page).getByRole('heading', { level: 1 })).toBeVisible()
         await pair(page, 'queues')
+    })
+
+    test('queue dashboard, failed jobs', async ({ admin: page }) => {
+        await page.goto('queues')
+        await main(page).getByRole('tab', { name: 'Failed jobs' }).click()
+        await expect(main(page).locator('tr[data-failed-job]').first()).toBeVisible()
+        await pair(page, 'queues-failed')
     })
 
     test('tickets list', async ({ admin: page }) => {
