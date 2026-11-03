@@ -1,0 +1,25 @@
+/* lightbox2 (from sphinxcontrib-images) always draws a black backdrop
+   and a white frame. Follow the theme instead: the backdrop takes the
+   page background, and the frame the opposite colour so it still stands
+   out (dark in light mode, white in dark mode). */
+.lightboxOverlay {
+    background-color: var(--pst-color-background, #000);
+}
+
+.lb-outerContainer {
+    background-color: var(--pst-color-text-base, #fff);
+}
+
+.lightbox .lb-image {
+    border-color: var(--pst-color-text-base, #fff);
+}
+
+.lb-data,
+.lb-data .lb-number {
+    color: var(--pst-color-text-muted, #ccc);
+}
+
+/* The close button is a white PNG; darken it on the light backdrop. */
+html[data-theme="light"] .lb-data .lb-close {
+    filter: invert(1);
+}

@@ -54,6 +54,35 @@ docker compose run --rm -p 9323:9323 e2e show-report --host 0.0.0.0
 The hosted project tests the bundle last published, not the layer's
 current source: publish it again after changing the UI.
 
+## Documentation screenshots
+
+`tests/screenshots.standalone.spec.ts` is not a test. It captures the
+documentation's screenshots into `docs/_static/screenshots/`, as
+`<name>-light.png` and `<name>-dark.png`, and is skipped unless
+`VECTOR_SCREENSHOTS=1`:
+
+```sh
+docker compose run --rm -e VECTOR_SCREENSHOTS=1 e2e test tests/screenshots.standalone.spec.ts
+```
+
+Run it on the stock data set (`demo:seed --fresh`) with the flaky
+queue jobs (`demo:queue-flaky --count=20 --failure=40`) failed.
+
+First, in a `beforeAll`, `support/screenshot-data.ts` makes through the
+API what the seed does not: SKU-00014's history, the saved views *Low
+stock* (shared) and *Drafts*, and a finished export and import with
+their notifications. It writes only what is missing, so a second run
+adds nothing. None of the views is a default, which would open the
+products list filtered for every other spec.
+
+Then each pair is one prepared page captured twice. The admin follows
+`prefers-color-scheme` while **Settings → Branding → Default theme** is
+*System*, so the spec switches the emulated scheme in place. The
+`admin` fixture keeps the UI in English. The capture only reads: it
+submits nothing, cancels every dialog, and aborts any request from the
+page that is not a read, failing the capture if there was one. See
+"Documentation screenshots" in `docs/contributing.md`.
+
 ## What it assumes
 
 - The seed: `e2e@vector.local`, the suite's own admin, and
@@ -86,5 +115,7 @@ uses `it.fails` the same way.
 playwright.config.ts    the two projects, timeouts, reporters
 support/global-setup.ts forwards the ports, waits for the stack, warms up the dev server
 support/fixtures.ts     accounts, signIn(), the admin/api/cleanup fixtures, unique()
+support/screenshot-data.ts  the data the docs screenshots show, made through the API
 tests/                  the specs
+tests/screenshots.standalone.spec.ts  the docs screenshots, only with VECTOR_SCREENSHOTS=1
 ```

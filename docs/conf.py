@@ -19,7 +19,17 @@ extensions = [
     "sphinxext.opengraph",
     "sphinx_sitemap",
     "sphinx.ext.intersphinx",
+    "sphinxcontrib.images",
 ]
+
+# sphinxcontrib-images takes over the {image} directive, so every
+# screenshot opens full size in a LightBox2 overlay when clicked.
+images_config = {
+    "override_image_directive": True,
+    # Its default is 100%, which would stretch the narrow sign-in
+    # screenshot; auto keeps each image's own width, capped by the theme.
+    "default_image_width": "auto",
+}
 
 myst_enable_extensions = [
     "colon_fence",
@@ -54,6 +64,8 @@ def setup(app):
 
 html_theme = "kinetis_website_theme"
 html_static_path = ["_static"]
+# Matches the lightbox's frame to the light or dark theme.
+html_css_files = ["lightbox-theme.css"]
 # Copied verbatim to the build root, so served under /vector/docs/:
 # llms.txt, the plain-text index AI coding tools look for
 # (https://llmstxt.org), at /vector/docs/llms.txt.

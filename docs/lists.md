@@ -14,6 +14,16 @@ records or ten million.
 - The footer pages through the list and sets how many rows a page shows.
 - Click a **row** to open the record.
 
+```{image} _static/screenshots/products-list-light.png
+:alt: The products list: search, views, grouping and trash selectors, the published summary card, and a page of products with status, category, price and stock
+:class: only-light
+```
+
+```{image} _static/screenshots/products-list-dark.png
+:alt: The products list: search, views, grouping and trash selectors, the published summary card, and a page of products with status, category, price and stock
+:class: only-dark
+```
+
 ## Paging
 
 A list pages in one of three ways, set by its resource (see
@@ -48,6 +58,16 @@ All filters must hold. For alternatives, **Add "any of"** starts a group
 where any one alternative may hold — *status is archived*, **or**
 *stock ≤ 5*. A list can hold several such groups.
 
+```{image} _static/screenshots/products-filters-light.png
+:alt: The products list filtered to Stock < 20, the filter shown as a chip above the rows
+:class: only-light
+```
+
+```{image} _static/screenshots/products-filters-dark.png
+:alt: The products list filtered to Stock < 20, the filter shown as a chip above the rows
+:class: only-dark
+```
+
 On a resource with a trash, the trash selector shows *Active* records,
 the *Trash*, or both.
 
@@ -77,6 +97,16 @@ columns, page size — under a name.
 - **Update view with the current list** and **Delete view** change a
   view you own.
 
+```{image} _static/screenshots/products-saved-view-light.png
+:alt: The products list showing the saved view Low stock: its name on the Views button, its filters as chips, the seven matching products, and the Views menu open with All records, the personal view Drafts and the shared view Low stock selected
+:class: only-light
+```
+
+```{image} _static/screenshots/products-saved-view-dark.png
+:alt: The products list showing the saved view Low stock: its name on the Views button, its filters as chips, the seven matching products, and the Views menu open with All records, the personal view Drafts and the shared view Low stock selected
+:class: only-dark
+```
+
 ## Select and act
 
 Tick rows to select them. The selection bar then offers:
@@ -94,6 +124,16 @@ Tick rows to select them. The selection bar then offers:
 Every selected record is checked against your permissions. If one of
 them may not be changed, the whole operation is refused and nothing
 changes.
+
+```{image} _static/screenshots/products-bulk-light.png
+:alt: Three products checked: the selection bar offers Select all 150 matching, Edit, Delete and the resource's actions — Publish, Archive, Adjust stock, Reprice
+:class: only-light
+```
+
+```{image} _static/screenshots/products-bulk-dark.png
+:alt: Three products checked: the selection bar offers Select all 150 matching, Edit, Delete and the resource's actions — Publish, Archive, Adjust stock, Reprice
+:class: only-dark
+```
 
 ## Edit in place
 

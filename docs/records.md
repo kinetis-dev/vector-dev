@@ -7,10 +7,30 @@ then its **History**. The buttons at the top depend on what you may do
 with this record: **Edit**, **Delete**, **Actions**, and, in the trash,
 **Restore** and **Delete forever**.
 
+```{image} _static/screenshots/product-record-light.png
+:alt: A product's record page: its details, its pricing and stock section, and the Edit, Duplicate, Delete and Actions buttons
+:class: only-light
+```
+
+```{image} _static/screenshots/product-record-dark.png
+:alt: A product's record page: its details, its pricing and stock section, and the Edit, Duplicate, Delete and Actions buttons
+:class: only-dark
+```
+
 ## Creating and editing
 
 **New *record*** on a list, or **Edit** on a record, opens a form with
 one input per field you may write.
+
+```{image} _static/screenshots/product-form-light.png
+:alt: A product's edit form, with its details, pricing and stock section, and content tabs
+:class: only-light
+```
+
+```{image} _static/screenshots/product-form-dark.png
+:alt: A product's edit form, with its details, pricing and stock section, and content tabs
+:class: only-dark
+```
 
 - **Sections and tabs** — a long form may be grouped. A folded section
   opens, and a tab switches, when a field inside it needs attention; a
@@ -35,6 +55,18 @@ one input per field you may write.
 Editing sends only what you changed. If someone saved the record after
 you opened it, your save is refused rather than overwriting their
 change; reload and edit again.
+
+A form submitted with required fields empty marks each one and saves nothing:
+
+```{image} _static/screenshots/product-form-errors-light.png
+:alt: A new product's form submitted empty: the required fields are marked in red with “Required”, and the section holding them carries a red dot
+:class: only-light
+```
+
+```{image} _static/screenshots/product-form-errors-dark.png
+:alt: A new product's form submitted empty: the required fields are marked in red with “Required”, and the section holding them carries a red dot
+:class: only-dark
+```
 
 ### Saving
 
@@ -73,6 +105,16 @@ through the same checks as an edit. If one of those fields changed
 since, the revert is refused rather than overwriting the later change.
 The revert itself appears in the history.
 
+```{image} _static/screenshots/product-history-light.png
+:alt: A product's History: an Adjust stock action run, then an update publishing it (Status draft → active, Released at set), then an update of its Price, each by user 3 with its time, and Revert on both updates
+:class: only-light
+```
+
+```{image} _static/screenshots/product-history-dark.png
+:alt: A product's History: an Adjust stock action run, then an update publishing it (Status draft → active, Released at set), then an update of its Price, each by user 3 with its time, and Revert on both updates
+:class: only-dark
+```
+
 ## Deleting and the trash
 
 **Delete** asks for confirmation. On a resource with a trash, the record
@@ -85,6 +127,16 @@ moves there and can be restored. Otherwise deletion cannot be undone.
 action may ask for values first, or confirmation. It reports its result
 as a notification, a file to download, a page to open, or a background
 job to follow.
+
+```{image} _static/screenshots/action-confirm-light.png
+:alt: The confirmation of the Archive action on one product, with Cancel and Archive
+:class: only-light
+```
+
+```{image} _static/screenshots/action-confirm-dark.png
+:alt: The confirmation of the Archive action on one product, with Cancel and Archive
+:class: only-dark
+```
 
 ## See also
 

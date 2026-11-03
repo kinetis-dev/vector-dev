@@ -25,6 +25,18 @@ ORM refuses such a mapping at build time), so every relation Vector
 follows stays on one database. A value pointing into another database,
 such as a shop customer's id on a support ticket, is an ordinary field.
 
+In the demo, tickets are on PostgreSQL and the shop on MySQL; the tickets list works like any other:
+
+```{image} _static/screenshots/tickets-list-light.png
+:alt: The tickets list, from the support database: a tickets-by-status card, then each ticket's number, subject, status, priority, customer, team and assignee
+:class: only-light
+```
+
+```{image} _static/screenshots/tickets-list-dark.png
+:alt: The tickets list, from the support database: a tickets-by-status card, then each ticket's number, subject, status, priority, customer, team and assignee
+:class: only-dark
+```
+
 Each connection commits on its own: an action or batch over one
 resource is one flush, and Vector's own rows (action log, audit, jobs)
 commit on Vector's connection after it, separately when that is another

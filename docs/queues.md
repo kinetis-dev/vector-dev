@@ -192,6 +192,26 @@ menu, with up to three tabs:
   per minute (neighbouring minutes summed into at most 240 points on
   windows longer than 4 hours), and tables per queue and per job class.
 
+```{image} _static/screenshots/queues-light.png
+:alt: The Queues page's Overview tab: the default and vector queues with their waiting and failed counts, and Clear
+:class: only-light
+```
+
+```{image} _static/screenshots/queues-dark.png
+:alt: The Queues page's Overview tab: the default and vector queues with their waiting and failed counts, and Clear
+:class: only-dark
+```
+
+```{image} _static/screenshots/queues-failed-light.png
+:alt: The Queues page's Failed jobs tab: the queue, job class and date filters, Retry selected and Prune, and three failed jobs with their exception, attempts and failure time, each with Details, Retry and Forget
+:class: only-light
+```
+
+```{image} _static/screenshots/queues-failed-dark.png
+:alt: The Queues page's Failed jobs tab: the queue, job class and date filters, Retry selected and Prune, and three failed jobs with their exception, attempts and failure time, each with Details, Retry and Forget
+:class: only-dark
+```
+
 The page reads `GET /vector/queues/permissions` and leaves out every
 action the policy refuses. That only shapes the page: every endpoint
 asks the policy again. Each action asks for confirmation first, and

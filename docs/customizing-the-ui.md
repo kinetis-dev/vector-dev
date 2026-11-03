@@ -165,6 +165,18 @@ export default function ({ vue, definePage }) {
 }
 ```
 
+The demo's *Stock overview* page is a fuller one, in `demo/backend/public/vector-extensions/`:
+
+```{image} _static/screenshots/stock-overview-light.png
+:alt: The demo's Stock overview page under Catalog: active products, units in stock and low-stock counts per category
+:class: only-light
+```
+
+```{image} _static/screenshots/stock-overview-dark.png
+:alt: The demo's Stock overview page under Catalog: active products, units in stock and low-stock counts per category
+:class: only-dark
+```
+
 `group` places the page under a menu section (a resource group's name,
 or its own); without one it goes under *Pages*. `title` and `group` may
 also be functions returning the text, which the admin calls each time it

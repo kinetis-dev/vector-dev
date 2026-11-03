@@ -27,6 +27,16 @@ Chinese. The settings page lists them the same way. Choosing one
 switches the whole admin at once — menus, labels, dates and numbers —
 and is remembered as your preference, on every device you sign in from.
 
+```{image} _static/screenshots/language-menu-light.png
+:alt: The language menu open from the app bar: each language in its own name, with its English name beneath
+:class: only-light
+```
+
+```{image} _static/screenshots/language-menu-dark.png
+:alt: The language menu open from the app bar: each language in its own name, with its English name beneath
+:class: only-dark
+```
+
 Until you choose, the admin is in the default language the administrator
 set; your browser's language plays no part.
 

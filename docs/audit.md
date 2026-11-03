@@ -10,6 +10,16 @@ field-level changes the writer observed; deletes, restores and action
 runs are recorded as the event alone (`action:<name>` for an action). A
 record's **History** shows it, limited to the fields the viewer may see.
 
+```{image} _static/screenshots/product-history-light.png
+:alt: A product's History: an Adjust stock action run, then an update publishing it (Status draft → active, Released at set), then an update of its Price, each by user 3 with its time, and Revert on both updates
+:class: only-light
+```
+
+```{image} _static/screenshots/product-history-dark.png
+:alt: A product's History: an Adjust stock action run, then an update publishing it (Status draft → active, Released at set), then an update of its Price, each by user 3 with its time, and Revert on both updates
+:class: only-dark
+```
+
 Action runs are also logged, once per run, in `vector_action_events`.
 
 ## Revert
