@@ -60,7 +60,10 @@
             "type": "object",
             "required": [
                 "impersonation",
-                "queue"
+                "queue",
+                "queues",
+                "failedJobs",
+                "queueMetrics"
             ],
             "properties": {
                 "impersonation": {

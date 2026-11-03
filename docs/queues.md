@@ -186,8 +186,9 @@ menu, with up to three tabs:
   **Retry** works on one job or a selection of up to 50; **Forget** and
   **Prune** (by age in days) are offered where the policy allows them.
 - **Metrics**, unless `VECTOR_QUEUE_METRICS` is off: a queue and a
-  window from 15 minutes to 7 days, the totals, a per-minute sparkline,
-  and tables per queue and per job class.
+  window from 15 minutes to 7 days, the totals, a sparkline of attempts
+  per minute (neighbouring minutes summed into at most 240 points on
+  windows longer than 4 hours), and tables per queue and per job class.
 
 The page reads `GET /vector/queues/permissions` and leaves out every
 action the policy refuses. That only shapes the page: every endpoint
@@ -245,10 +246,10 @@ each `/failed` one is a `404` without failed jobs
 | `GET /vector/queues/permissions` | What the policy lets the caller do: `{view, retry, forget, prune, clear: {<queue>: bool}}`, `clear` for each watched queue. It reads nothing but the policy. Without failed jobs `retry`, `forget` and `prune` are `false`. |
 | `GET /vector/queues/failed` | Failed jobs, newest first: `{data, nextCursor, hasMore, limit}`. Query: `queue`, `class`, `failedFrom`, `failedTo` (RFC 3339, whole seconds, inclusive), `limit` (default 25, at most 100), `cursor` (the previous page's opaque `nextCursor`). An unknown parameter or a bad value is a `422`. Rows carry no job arguments. |
 | `GET /vector/queues/failed/{id}` | One failed job, its arguments redacted as above. |
-| `POST /vector/queues/failed/retry` | `{"ids": [...]}`, **1 to 50 ids**, each 32 lowercase hex digits (one that is not refuses the whole batch with 422), through `FailedJobRetrier`: `{data: [{id, status, class, queue, reason}]}`, one per id in order, `status` being `retried`, `not_found` or `failed`. A record on an unwatched queue is `not_found`. |
+| `POST /vector/queues/failed/retry` | `{"ids": [...]}`, **1 to 50 ids**, each 32 lowercase hex digits (one that is not refuses the whole batch with 422), through `FailedJobRetrier`: `{data: [{id, status, class, queue, reason}]}`, one per distinct id in order (a repeated id is retried and answered once), `status` being `retried`, `not_found` or `failed`. A record on an unwatched queue is `not_found`. |
 | `DELETE /vector/queues/failed/{id}` | Forgets one record: `204`. |
 | `POST /vector/queues/failed/prune` | `{"hours": n}` or `{"days": n}`, exactly one, a whole number from 1 (at most 36 500 days): `{data: {deleted, olderThanSeconds}}`. |
-| `POST /vector/queues/{queue}/clear` | `{"confirm": "<queue>"}`, the queue's name exactly, or a `422`. A backend without `ClearableQueueInterface` (SQS) is refused with a `409`. `{data: {queue, cleared}}`. |
+| `POST /vector/queues/{queue}/clear` | `{"confirm": "<queue>"}`, the queue's name exactly, or a `422`. A name outside the queue-name grammar (letters, digits, `-` and `_`, up to 80) is a `404` before the policy is asked; any other unwatched name is a `404` after it. A backend without `ClearableQueueInterface` (SQS) is refused with a `409`. `{data: {queue, cleared}}`. |
 | `GET /vector/queues/metrics` | Job metrics over a window; see below. |
 
 A clear answers in a fixed order: `404` when the dashboard is not there,

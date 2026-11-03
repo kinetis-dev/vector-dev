@@ -47,6 +47,11 @@ application).
 | `GET /vector/jobs`, `GET /vector/jobs/{id}`, `GET /vector/jobs/{id}/download` | This user's jobs and their files. |
 | `GET /vector/notifications`, `POST …/{id}/read`, `POST …/read-all` | The inbox. |
 | `POST /vector/impersonate/{userId}`, `DELETE /vector/impersonate` | Impersonation. |
+| `GET /vector/queues`, `GET /vector/queues/permissions` | The queue dashboard's watched queues, and what the caller may do there ({doc}`queues`). Only where queues are configured. |
+| `GET /vector/queues/failed`, `GET /vector/queues/failed/{id}` | Failed jobs, a cursor-paged list and one record. Only with `kinetis/queue-failed-jobs` ({doc}`queues`). |
+| `POST /vector/queues/failed/retry`, `DELETE /vector/queues/failed/{id}`, `POST /vector/queues/failed/prune` | Retries up to 50 failed jobs, forgets one, or prunes them by age across every queue ({doc}`queues`). |
+| `POST /vector/queues/{queue}/clear` | Discards every job waiting on a queue, `{"confirm": "<queue>"}`; `409` on a backend that cannot ({doc}`queues`). |
+| `GET /vector/queues/metrics` | Per-minute job metrics over a window, where `VECTOR_QUEUE_METRICS` is on ({doc}`queues`). |
 | `GET /vector/ui`, `GET /vector/ui/{path}` | Hosted mode: the admin's page. |
 
 ## Envelopes
@@ -219,8 +224,8 @@ A list, a show and a write run a fixed number of statements; see
 |---|---|
 | `401` | No identity. |
 | `403` | Not admitted, or refused by a policy: `{"error": "…"}`. |
-| `404` | Unknown resource or record. |
-| `409` | A stale version, or a revert over a field changed since. |
+| `404` | Unknown resource or record, or a queue-dashboard route that is not there for this user or this application ({doc}`queues`). |
+| `409` | A stale version, a revert over a field changed since, or a clear on a queue backend that cannot discard jobs. |
 | `422` | Validation — the framework's RFC 9457 document, with `errors[].path`, `code` and `message` — or an invalid list request. |
 
 ## OpenAPI document

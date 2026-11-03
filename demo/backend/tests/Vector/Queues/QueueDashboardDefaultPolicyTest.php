@@ -46,4 +46,14 @@ final class QueueDashboardDefaultPolicyTest extends QueuesTestCase
         $this->client->post('/vector/queues/qa-elsewhere/clear', ['confirm' => 'qa-elsewhere'], $this->adminHeaders())->assertStatus(403);
         $this->client->post('/vector/queues/qa-mail/clear', ['confirm' => 'qa-mail'], $this->adminHeaders())->assertStatus(403);
     }
+
+    /** A segment no queue anywhere could be named is a 404 before the policy is asked, so a policy only ever sees a well-formed name; the 404 depends on the grammar alone, not on which queues are watched. */
+    public function testAClearOfAMalformedQueueNameIsA404BeforeThePolicy(): void
+    {
+        foreach (['qa.mail', str_repeat('q', 81), 'qa%20mail'] as $segment) {
+            $this->client->post("/vector/queues/{$segment}/clear", ['confirm' => $segment], $this->adminHeaders())->assertStatus(404);
+        }
+
+        $this->client->post('/vector/queues/' . str_repeat('q', 80) . '/clear', ['confirm' => str_repeat('q', 80)], $this->adminHeaders())->assertStatus(403);
+    }
 }

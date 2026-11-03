@@ -27,12 +27,18 @@ final readonly class QueueNames
         $names = array_values(array_unique(array_filter(array_map(trim(...), explode(',', $config->string('VECTOR_QUEUES', ''))), static fn (string $name): bool => $name !== '')));
 
         foreach ($names as $name) {
-            if (preg_match(self::QUEUE_NAME, $name) !== 1) {
+            if (!self::isQueueName($name)) {
                 throw new \InvalidArgumentException("VECTOR_QUEUES names \"{$name}\", which is not a queue name: letters, digits, hyphens and underscores, up to 80 characters.");
             }
         }
 
         return new self($names === [] ? ['default'] : $names);
+    }
+
+    /** Whether $name is in kinetis/queue's grammar, whatever this dashboard watches. */
+    public static function isQueueName(string $name): bool
+    {
+        return preg_match(self::QUEUE_NAME, $name) === 1;
     }
 
     public function has(string $name): bool

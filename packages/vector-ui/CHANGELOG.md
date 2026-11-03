@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of each watched queue polled every five seconds while shown, with
   Clear; the failed jobs with their filters, cursor paging, detail,
   Retry (up to 50 at once), Forget and Prune; and the job metrics over a
-  window of 15 minutes to 7 days, with a per-minute sparkline. The menu
+  window of 15 minutes to 7 days, with a sparkline of attempts per
+  minute, summed into at most 240 points on longer windows. The menu
   entry sits beside Jobs and shows only with the descriptor's
   `capabilities.queues`; the failed-jobs tab, column and figures only
   with `capabilities.failedJobs`. Actions follow

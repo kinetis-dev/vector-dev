@@ -6,14 +6,14 @@ use Kinetis\Persistence\Contract\MysqlLink;
 use Kinetis\Persistence\Contract\PostgresLink;
 use Kinetis\Migrations\Migration;
 
-// The demo's failed-jobs table, kinetis/queue-failed-jobs' own stub, on the
-// default connection (MySQL and PostgreSQL).
+// The demo's failed-jobs table, kinetis/queue-failed-jobs' own MySQL stub,
+// on the default connection, which is MySQL in this demo. The DDL is
+// MySQL-only; a PostgreSQL connection needs the package's PostgreSQL stub.
 // Required by Kinetis\QueueFailedJobs\SqlFailedJobStore.
 //
 // `id`, `queue_connection` and `queue` are ascii_bin: MySQL's default
 // collation compares case-insensitively, and all three are matched for
-// exact equality. `failed_at` is unix seconds. Postgres compares
-// byte-exactly already — see the .pgsql. sibling stub.
+// exact equality. `failed_at` is unix seconds.
 //
 // `args` holds each job's payload in full, #[Sensitive] values included.
 // Give this table the access controls the queue's own storage has. It is

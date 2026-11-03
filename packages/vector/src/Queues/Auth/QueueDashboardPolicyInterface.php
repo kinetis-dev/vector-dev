@@ -32,6 +32,11 @@ interface QueueDashboardPolicyInterface
     /** Deleting every failed-job record older than an age. */
     public function prune(ActorContext $actor): bool;
 
-    /** Discarding every job waiting on $queue. */
+    /**
+     * Discarding every job waiting on $queue. $queue is always in
+     * kinetis/queue's grammar (letters, digits, `-` and `_`, up to 80
+     * characters), but may be a queue this dashboard does not watch: the
+     * policy is asked before the dashboard says whether it exists.
+     */
     public function clear(ActorContext $actor, string $queue): bool;
 }

@@ -187,7 +187,8 @@ final readonly class QueuesController
 
     /**
      * Retries `{"ids": [...]}`, 1 to MAX_RETRY_BATCH of them, in order,
-     * one result each. A record on a queue the dashboard does not watch is
+     * one result per distinct id: a repeated id is retried and answered
+     * once, at its first position. A record on a queue the dashboard does not watch is
      * `not_found`, exactly as a missing one is.
      *
      * @return array{data: list<array{id: string, status: string, class: string|null, queue: string|null, reason: string|null}>}
@@ -278,6 +279,12 @@ final readonly class QueuesController
     {
         // the gate and the policy first, as for every other mutation: a refused caller cannot tell watched queues from others
         $this->gate($request);
+
+        // a segment outside kinetis/queue's grammar names no queue anywhere, so its 404 reveals nothing about which are watched, and the policy never sees it
+        if (!QueueNames::isQueueName($queue)) {
+            throw new RecordNotFoundException('No queue by that name is on this dashboard.');
+        }
+
         $this->authorize($this->policy->clear($this->actor, $queue));
 
         if (!$this->queues->has($queue)) {
