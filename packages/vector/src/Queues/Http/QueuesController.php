@@ -64,8 +64,8 @@ final readonly class QueuesController
     /** The oldest prune age accepted: a hundred years. */
     private const int MAX_PRUNE_DAYS = 36_500;
 
-    /** The audit trail's resource name for every dashboard entry. */
-    public const string AUDIT_RESOURCE = 'queues';
+    /** The audit trail's resource name for every dashboard entry, prefixed to keep it apart from application resources. */
+    public const string AUDIT_RESOURCE = 'vector-queues';
 
     private const string ID = '/^[0-9a-f]{32}$/D';
 

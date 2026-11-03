@@ -156,7 +156,7 @@ no request state. The demo's `App\Auth\DemoQueueDashboardPolicy` lets
 admins mutate ({doc}`demo`).
 
 Every retry, forget, prune and clear writes to Vector's audit trail
-({doc}`audit`) under the resource `queues`, with the actor and any
+({doc}`audit`) under the resource `vector-queues` (prefixed to keep it apart from your own resources), with the actor and any
 impersonator. No entry carries a job argument.
 
 ## The admin page

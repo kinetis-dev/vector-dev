@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the overview's `failed` is `null` and the permissions name no
   failed-job action. `kinetis/queue-failed-jobs` is a suggestion, not a
   requirement. The audit trail records the dashboard's actions under the
-  resource `queues`.
+  resource `vector-queues`, prefixed to keep it apart from the application's own resources.
 - `vector_queue_metrics`, the job metrics, is one of Vector's own tables,
   on Vector's own connection (`VECTOR_DB_CONNECTION`): `vector:install`
   publishes its migration, `20260926000008_vector_queue_metrics`, for
