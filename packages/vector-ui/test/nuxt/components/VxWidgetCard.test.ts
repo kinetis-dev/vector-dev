@@ -35,6 +35,29 @@ describe('VxWidgetCard', () => {
         wrapper.unmount()
     })
 
+    // a type this UI has no card for (a newer server's, say) and a payload with none of the stat fields:
+    // drawn as a stat, which shows "—" rather than crashing, and never renders a server string as markup
+    it('draws a type it has no card for as a stat, without crashing on a payload of another shape', async () => {
+        const type = 'sparkline-chart' as VectorWidgetType
+        const wrapper = await mountSuspended(VxWidgetCard, { props: { widget: widget(type), load: load(type, { samples: [3, 1, 4], label: '<img src=x onerror=alert(1)>' }) } })
+        await settle()
+
+        expect(wrapper.find('.text-h4').exists()).toBe(true) // the stat card's figure
+        expect(wrapper.find('.text-h4').text()).toBe('—')
+        expect(wrapper.find('img').exists()).toBe(false)
+        wrapper.unmount()
+    })
+
+    it('shows a server string in the fallback stat card as text, never as markup', async () => {
+        const type = 'sparkline-chart' as VectorWidgetType
+        const wrapper = await mountSuspended(VxWidgetCard, { props: { widget: widget(type), load: load(type, { caption: '<img src=x onerror=alert(1)>' }) } })
+        await settle()
+
+        expect(wrapper.text()).toContain('<img src=x onerror=alert(1)>')
+        expect(wrapper.find('img').exists()).toBe(false)
+        wrapper.unmount()
+    })
+
     it('draws a type with the card the application registered for it instead, handing it the data as the server answered', async () => {
         useVectorExtensions().widgets.set('stat', Gauge)
         const wrapper = await mountSuspended(VxWidgetCard, { props: { widget: widget('stat'), load: load('stat', { value: 7, previous: null, format: 'number', caption: null }) } })

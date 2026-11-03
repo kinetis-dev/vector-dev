@@ -89,11 +89,12 @@ describe('useVectorSchema', () => {
         ])
     })
 
-    it('refuses a descriptor of another contract version, and keeps none', async () => {
-        cleanup = endpoint('/vector/schema', { body: { ...descriptor, version: 6 } }).unregister
+    // 4: a kinetis/vector from before the package mechanisms were removed; 6: a newer one
+    it.each([4, 6])('refuses a descriptor of contract version %i, and keeps none', async (version) => {
+        cleanup = endpoint('/vector/schema', { body: { ...descriptor, version } }).unregister
         const { load, loading, schema: loaded } = useVectorSchema()
 
-        await expect(load()).rejects.toThrow('The API publishes descriptor version 6; this admin reads version 5.')
+        await expect(load()).rejects.toThrow(`The API publishes descriptor version ${version}; this admin reads version 5.`)
 
         expect(loaded.value).toBeNull()
         expect(loading.value).toBe(false)
