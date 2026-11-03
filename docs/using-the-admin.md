@@ -111,6 +111,18 @@ rows offers **Download**.
 :class: only-dark
 ```
 
+An import with refused rows, opened:
+
+```{image} _static/screenshots/job-detail-light.png
+:alt: An import job's page: done, 3 of 3 rows processed, 0 created, 2 updated and 1 failed, with Download tags-failed-rows.csv
+:class: only-light
+```
+
+```{image} _static/screenshots/job-detail-dark.png
+:alt: An import job's page: done, 3 of 3 rows processed, 0 created, 2 updated and 1 failed, with Download tags-failed-rows.csv
+:class: only-dark
+```
+
 ## Settings
 
 **Settings** holds the groups of values your account may manage, such

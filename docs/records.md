@@ -105,6 +105,16 @@ through the same checks as an edit. If one of those fields changed
 since, the revert is refused rather than overwriting the later change.
 The revert itself appears in the history.
 
+```{image} _static/screenshots/product-history-light.png
+:alt: A product's History: an Adjust stock action run, then an update publishing it (Status draft → active, Released at set), then an update of its Price, each by user 3 with its time, and Revert on both updates
+:class: only-light
+```
+
+```{image} _static/screenshots/product-history-dark.png
+:alt: A product's History: an Adjust stock action run, then an update publishing it (Status draft → active, Released at set), then an update of its Price, each by user 3 with its time, and Revert on both updates
+:class: only-dark
+```
+
 ## Deleting and the trash
 
 **Delete** asks for confirmation. On a resource with a trash, the record

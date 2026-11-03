@@ -97,13 +97,13 @@ columns, page size — under a name.
 - **Update view with the current list** and **Delete view** change a
   view you own.
 
-```{image} _static/screenshots/products-save-view-light.png
-:alt: The Save view dialog over a filtered products list: the view's name and its sharing and default switches
+```{image} _static/screenshots/products-saved-view-light.png
+:alt: The products list showing the saved view Low stock: its name on the Views button, its filters as chips, the seven matching products, and the Views menu open with All records, the personal view Drafts and the shared view Low stock selected
 :class: only-light
 ```
 
-```{image} _static/screenshots/products-save-view-dark.png
-:alt: The Save view dialog over a filtered products list: the view's name and its sharing and default switches
+```{image} _static/screenshots/products-saved-view-dark.png
+:alt: The products list showing the saved view Low stock: its name on the Views button, its filters as chips, the seven matching products, and the Views menu open with All records, the personal view Drafts and the shared view Low stock selected
 :class: only-dark
 ```
 

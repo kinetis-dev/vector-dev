@@ -202,6 +202,16 @@ menu, with up to three tabs:
 :class: only-dark
 ```
 
+```{image} _static/screenshots/queues-failed-light.png
+:alt: The Queues page's Failed jobs tab: the queue, job class and date filters, Retry selected and Prune, and three failed jobs with their exception, attempts and failure time, each with Details, Retry and Forget
+:class: only-light
+```
+
+```{image} _static/screenshots/queues-failed-dark.png
+:alt: The Queues page's Failed jobs tab: the queue, job class and date filters, Retry selected and Prune, and three failed jobs with their exception, attempts and failure time, each with Details, Retry and Forget
+:class: only-dark
+```
+
 The page reads `GET /vector/queues/permissions` and leaves out every
 action the policy refuses. That only shapes the page: every endpoint
 asks the policy again. Each action asks for confirmation first, and
