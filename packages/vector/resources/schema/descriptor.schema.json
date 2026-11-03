@@ -80,6 +80,10 @@
                     "description": "Whether the queue dashboard shows failed jobs: queues is true and kinetis/queue-failed-jobs is installed and wired. False leaves out the failed-jobs tab, column and actions, and the /vector/queues/failed endpoints answer 404.",
                     "type": "boolean"
                 },
+                "queueMetrics": {
+                    "description": "Whether the queue dashboard shows the job metrics: queues is true and VECTOR_QUEUE_METRICS has not turned the metrics off. False leaves out the Metrics tab, and GET /vector/queues/metrics answers 404.",
+                    "type": "boolean"
+                },
                 "exportFormats": {
                     "description": "The export formats offered: csv always; xlsx where openspout/openspout and ext-zip are installed, VECTOR_EXPORT_FORMATS lists it, and a queue runs it.",
                     "type": "array",
