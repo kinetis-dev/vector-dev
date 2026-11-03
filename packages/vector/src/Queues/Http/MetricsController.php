@@ -21,7 +21,8 @@ use Psr\Http\Message\ServerRequestInterface;
  * The job metrics, in the same `vector` middleware group as
  * {@see QueuesController}, behind the same gate — the Kernel's own 404
  * unless a queue is configured and the policy's view() lets the actor
- * look — asked before anything else. They are Vector's own table, on
+ * look — asked before anything else, and that same 404 when
+ * VECTOR_QUEUE_METRICS turned the metrics off. They are Vector's own table, on
  * Vector's own connection, so they need nothing of
  * kinetis/queue-failed-jobs. Then the query is validated (an unwatched
  * queue or a bad window is a 422), and only then is the metrics store
@@ -54,7 +55,7 @@ final readonly class MetricsController
     #[Get('/metrics')]
     public function metrics(ServerRequestInterface $request, RequestScope $scope): array
     {
-        if (!$this->dashboard->available($this->policy, $this->actor)) {
+        if (!$this->dashboard->available($this->policy, $this->actor) || !$this->dashboard->metricsEnabled()) {
             throw QueueDashboard::notFound($request);
         }
 

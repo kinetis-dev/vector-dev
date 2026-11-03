@@ -102,7 +102,8 @@ final readonly class SchemaController
                 'impersonation' => $this->scope->has(ImpersonationInterface::class) && $this->impersonation()?->canImpersonate($this->user) === true,
                 'queue' => $this->vectorQueue()->available(),
                 // the queue dashboard (/vector/queues): a queue configured and the policy letting this user view;
-                // failed jobs on top of that where kinetis/queue-failed-jobs is installed and wired
+                // failed jobs on top of that where kinetis/queue-failed-jobs is installed and wired; the job metrics on
+                // top of it unless VECTOR_QUEUE_METRICS turns them off
                 ...$this->queueDashboard(),
                 // XLSX is written in the queue worker only
                 'exportFormats' => array_values(array_filter($this->defaults->exportFormats, fn (string $format): bool => $format === 'csv' || $this->vectorQueue()->available())),
@@ -155,10 +156,10 @@ final readonly class SchemaController
     }
 
     /**
-     * `queues` and `failedJobs`, as the queue dashboard's own routes decide
-     * them: nothing is built or opened to answer.
+     * `queues`, `failedJobs` and `queueMetrics`, as the queue dashboard's
+     * own routes decide them: nothing is built or opened to answer.
      *
-     * @return array{queues: bool, failedJobs: bool}
+     * @return array{queues: bool, failedJobs: bool, queueMetrics: bool}
      */
     private function queueDashboard(): array
     {
@@ -172,7 +173,11 @@ final readonly class SchemaController
 
         $queues = $dashboard->available($policy, $actor);
 
-        return ['queues' => $queues, 'failedJobs' => $queues && $dashboard->failedJobsWired()];
+        return [
+            'queues' => $queues,
+            'failedJobs' => $queues && $dashboard->failedJobsWired(),
+            'queueMetrics' => $queues && $dashboard->metricsEnabled(),
+        ];
     }
 
     private function vectorQueue(): \Kinetis\Vector\Jobs\VectorQueue

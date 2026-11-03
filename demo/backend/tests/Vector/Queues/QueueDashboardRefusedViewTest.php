@@ -42,7 +42,8 @@ final class QueueDashboardRefusedViewTest extends RefusedDashboardTestCase
     {
         $this->client->get('/vector/schema', headers: $this->adminHeaders())->assertOk()
             ->assertJsonPath('capabilities.queues', false)
-            ->assertJsonPath('capabilities.failedJobs', false);
+            ->assertJsonPath('capabilities.failedJobs', false)
+            ->assertJsonPath('capabilities.queueMetrics', false);
         $this->assertNothingWasBuilt();
     }
 }

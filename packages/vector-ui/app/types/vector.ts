@@ -480,8 +480,9 @@ export interface VectorSchema {
      * `exportFormats`: what the export menu offers — csv always, xlsx where the server can write it (in the queue).
      * `queues`: the queue dashboard is there for this user (a queue configured, the policy lets them view);
      * `failedJobs`: it shows failed jobs too (kinetis/queue-failed-jobs installed and wired). Absent is false.
+     * `queueMetrics`: it shows the job metrics too (VECTOR_QUEUE_METRICS not turned off). Absent is false.
      */
-    capabilities: { impersonation: boolean, queue: boolean, uploads?: boolean, exportFormats?: VectorExportFormat[], queues?: boolean, failedJobs?: boolean }
+    capabilities: { impersonation: boolean, queue: boolean, uploads?: boolean, exportFormats?: VectorExportFormat[], queues?: boolean, failedJobs?: boolean, queueMetrics?: boolean }
     branding: VectorBranding | null
     /** The language this descriptor is in, and the ones this user may switch to. */
     i18n?: VectorSchemaI18n

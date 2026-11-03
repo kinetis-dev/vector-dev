@@ -45,6 +45,11 @@ use Psr\Http\Message\ServerRequestInterface;
  *   is installed and its store and retrier are bound; otherwise the
  *   /vector/queues/failed routes are that 404 too, and nothing of that
  *   package is touched — it is a suggestion, not a requirement.
+ * - the job metrics are there when, on top of the dashboard,
+ *   VECTOR_QUEUE_METRICS has not turned them off (unset is on), read once
+ *   at boot: off, nothing is recorded, the listener never builds the
+ *   metrics store nor the link under it, and /vector/queues/metrics is
+ *   that 404 too.
  *
  * Request-neutral: the only state is the application scope.
  */
@@ -53,16 +58,20 @@ final readonly class QueueDashboard
     /**
      * @param bool $failedJobsInstalled whether kinetis/queue-failed-jobs' classes are installed, decided once at
      *     boot by {@see self::register()}; a test builds one that says no, as an application without it would
+     * @param bool $metricsEnabled whether job metrics are recorded and served: VECTOR_QUEUE_METRICS, on unless it says
+     *     otherwise, read once at boot by {@see self::register()}
      */
     public function __construct(
         private AppScope $app,
         private bool $failedJobsInstalled,
+        private bool $metricsEnabled = true,
     ) {}
 
     public static function register(AppScope $app, Config $config): void
     {
         // class_exists() asks the autoloader, which loads nothing that is not installed
-        $app->instance(self::class, new self($app, class_exists(SqlFailedJobStore::class)));
+        // Config::bool(): unset or blank is the default, on; anything it cannot read as a boolean stops the boot
+        $app->instance(self::class, new self($app, class_exists(SqlFailedJobStore::class), $config->bool('VECTOR_QUEUE_METRICS', true)));
         $app->instance(QueueNames::class, QueueNames::fromConfig($config));
         $app->bind(QueueDashboardPolicyInterface::class, ViewOnlyQueueDashboardPolicy::class);
         $app->instance(MetricsClock::class, new MetricsClock());
@@ -128,6 +137,15 @@ final readonly class QueueDashboard
     public function available(QueueDashboardPolicyInterface $policy, ActorContext $actor): bool
     {
         return $this->configured() && $policy->view($actor);
+    }
+
+    /**
+     * Whether job metrics are recorded and served (VECTOR_QUEUE_METRICS, read at boot). Off, the metrics listener
+     * returns before it resolves anything and /vector/queues/metrics is the Kernel's own 404.
+     */
+    public function metricsEnabled(): bool
+    {
+        return $this->metricsEnabled;
     }
 
     /**

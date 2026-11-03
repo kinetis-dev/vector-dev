@@ -10,10 +10,14 @@ import { schema } from '../fixtures'
 
 // The queue dashboard is Vector's own page: its menu entry follows the
 // descriptor's capabilities.queues, its failed-jobs tab, column and actions
-// follow capabilities.failedJobs, and its actions call the server's
+// follow capabilities.failedJobs, its metrics tab follows
+// capabilities.queueMetrics, and its actions call the server's
 // /vector/queues endpoints.
 
-const capabilities = (queues: boolean, failedJobs: boolean): VectorSchema['capabilities'] => ({ impersonation: false, queue: false, queues, failedJobs })
+// queueMetrics null leaves the key out, as a descriptor from a server without it would
+const capabilities = (queues: boolean, failedJobs: boolean, queueMetrics: boolean | null = true): VectorSchema['capabilities'] => ({
+    impersonation: false, queue: false, queues, failedJobs, ...(queueMetrics === null ? {} : { queueMetrics }),
+})
 
 const permissions = (overrides: Partial<VectorQueuePermissions> = {}): VectorQueuePermissions => ({
     view: true, retry: true, forget: true, prune: true, clear: { mail: true, reports: false }, ...overrides,
@@ -84,16 +88,17 @@ describe('the Queues page', () => {
         useVectorAuthStore().clear()
     })
 
-    async function page(failedJobs: boolean, granted: VectorQueuePermissions = permissions()) {
-        useVectorSchema().schema.value = schema([], { capabilities: capabilities(true, failedJobs) })
+    async function page(failedJobs: boolean, granted: VectorQueuePermissions = permissions(), queueMetrics: boolean | null = true) {
+        useVectorSchema().schema.value = schema([], { capabilities: capabilities(true, failedJobs, queueMetrics) })
         const overview = endpoint('/vector/queues', { body: { data: rows(failedJobs ? 2 : null) } }, 'GET')
         const failed = endpoint('/vector/queues/failed', { body: { data: [], nextCursor: null, hasMore: false, limit: 25 } })
-        cleanups.push(endpoint('/vector/queues/permissions', { body: failedJobs ? granted : { ...granted, retry: false, forget: false, prune: false } }).unregister, overview.unregister, failed.unregister)
+        const metrics = endpoint('/vector/queues/metrics', { body: { data: { from: 0, to: 0, bucketSeconds: 60, buckets: [], queues: [], classes: [] } } })
+        cleanups.push(endpoint('/vector/queues/permissions', { body: failedJobs ? granted : { ...granted, retry: false, forget: false, prune: false } }).unregister, overview.unregister, failed.unregister, metrics.unregister)
         const wrapper = await mountSuspended(QueuesPage, { route: '/queues' })
         // the permissions load on mount, through the environment's endpoint registry: wait for the tabs they gate
         await vi.waitFor(() => expect(wrapper.find('[data-tab="overview"]').exists()).toBe(true))
         await flushPromises()
-        return { wrapper, overview, failed }
+        return { wrapper, overview, failed, metrics }
     }
 
     it('leaves out the failed-jobs tab and column without failed jobs', async () => {
@@ -116,6 +121,50 @@ describe('the Queues page', () => {
         expect(wrapper.find('[data-tab="failed"]').text()).toBe('Failed jobs')
         expect(wrapper.find('[data-column="failed"]').exists()).toBe(true)
         expect(wrapper.find('[data-queue="mail"]').text()).toContain('2')
+        wrapper.unmount()
+    })
+
+    it.each([
+        ['false', false],
+        ['absent', null],
+    ])('leaves out the metrics tab when capabilities.queueMetrics is %s, and never asks for the metrics', async (_, queueMetrics) => {
+        const { wrapper, metrics } = await page(true, permissions(), queueMetrics)
+
+        expect(wrapper.find('[data-tab="overview"]').exists()).toBe(true)
+        expect(wrapper.find('[data-tab="failed"]').exists()).toBe(true)
+        expect(wrapper.find('[data-tab="metrics"]').exists()).toBe(false)
+        expect(wrapper.text()).not.toContain('Metrics')
+
+        // nor does opening the other tabs mount the metrics panel in its place
+        await wrapper.find('[data-tab="failed"]').trigger('click')
+        await vi.waitFor(() => expect(wrapper.text()).toContain('No failed jobs match.'))
+        await flushPromises()
+        expect(metrics.requests).toHaveLength(0)
+        wrapper.unmount()
+    })
+
+    it('shows the metrics tab with capabilities.queueMetrics, which asks for the metrics: the control', async () => {
+        const { wrapper, metrics } = await page(true)
+
+        expect(wrapper.find('[data-tab="metrics"]').text()).toBe('Metrics')
+        expect(metrics.requests).toHaveLength(0)
+        await wrapper.find('[data-tab="metrics"]').trigger('click')
+        await vi.waitFor(() => expect(metrics.requests).toHaveLength(1))
+        expect(metrics.requests[0]?.method).toBe('GET')
+        wrapper.unmount()
+    })
+
+    it('goes back to the overview when the metrics turn off while their tab is open', async () => {
+        const { wrapper, metrics } = await page(true)
+
+        await wrapper.find('[data-tab="metrics"]').trigger('click')
+        await vi.waitFor(() => expect(metrics.requests).toHaveLength(1))
+        useVectorSchema().schema.value = schema([], { capabilities: capabilities(true, true, false) })
+        await flushPromises()
+
+        expect(wrapper.find('[data-tab="metrics"]').exists()).toBe(false)
+        await vi.waitFor(() => expect(wrapper.find('[data-queue="mail"]').exists()).toBe(true))
+        expect(metrics.requests).toHaveLength(1)
         wrapper.unmount()
     })
 

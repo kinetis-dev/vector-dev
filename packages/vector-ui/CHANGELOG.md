@@ -23,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   strings are the `queues` messages, in every shipped locale. It replaces
   the runtime extension the separate queue-dashboard package shipped,
   which is gone.
+- The Queues page's Metrics tab shows only with the descriptor's
+  `capabilities.queueMetrics`, and nothing calls
+  `GET /vector/queues/metrics` without it. When the metrics turn off
+  while the tab is open, the page goes back to the overview. The schema
+  type's `capabilities` carries `queueMetrics`, and absent means false.
+  A `kinetis/vector` that does not report it therefore shows no Metrics
+  tab. The two packages release together, so pair this layer with the
+  matching `kinetis/vector`.
 - The schema type's `capabilities` carries `queues` and `failedJobs`, and
   `VectorBuiltInWidgetType` names `queues`.
 - The standalone admin imports the UI modules installed Composer

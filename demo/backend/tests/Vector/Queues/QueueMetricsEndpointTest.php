@@ -11,6 +11,14 @@ use Kinetis\Vector\Queues\Metrics\JobOutcome;
 /** `GET /vector/queues/metrics`, as the demo's admin calls it. */
 final class QueueMetricsEndpointTest extends MetricsTestCase
 {
+    /** VECTOR_QUEUE_METRICS unset, as here: the metrics are on, and the descriptor says so. */
+    public function testTheSchemaOffersTheMetricsByDefault(): void
+    {
+        $this->client->get('/vector/schema', headers: $this->adminHeaders())->assertOk()
+            ->assertJsonPath('capabilities.queues', true)
+            ->assertJsonPath('capabilities.queueMetrics', true);
+    }
+
     public function testTheDefaultWindowIsTheLastHourZeroFilled(): void
     {
         $this->record('qa-mail', OtherJob::class, JobOutcome::Succeeded, 10.0, self::NOW);

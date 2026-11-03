@@ -26,6 +26,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   failed-job action. `kinetis/queue-failed-jobs` is a suggestion, not a
   requirement. The audit trail records the dashboard's actions under the
   resource `vector-queues`, prefixed to keep it apart from the application's own resources.
+- `VECTOR_QUEUE_METRICS` turns the queue dashboard's job metrics off.
+  Unset or blank, they are on, as before. `false`, `0`, `off` or `no`
+  turns them off, and a value `Config::bool()` cannot read stops the boot.
+  Each worker reads it once, at boot. Off, the listener records nothing,
+  builds neither the metrics store nor its link and logs no warning, even
+  without `vector_queue_metrics`. `GET /vector/queues/metrics` then
+  answers the Kernel's own `404`, after the dashboard's own `404` and
+  before any `422`, and the descriptor's new `capabilities.queueMetrics`
+  (the dashboard there and the metrics on) is `false`.
+  `vector:queues:prune-metrics` and the migration stay as they are.
 - `vector_queue_metrics`, the job metrics, is one of Vector's own tables,
   on Vector's own connection (`VECTOR_DB_CONNECTION`): `vector:install`
   publishes its migration, `20260926000008_vector_queue_metrics`, for

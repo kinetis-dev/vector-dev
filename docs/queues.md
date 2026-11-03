@@ -39,7 +39,8 @@ own, per user:
   serves the rest of the dashboard without it.
 
 Recording metrics is on in every process that runs `queue:work`, failed
-jobs or not.
+jobs or not, unless `VECTOR_QUEUE_METRICS` turns it off (see
+Configuration below).
 
 ## Migrations
 
@@ -74,6 +75,7 @@ sensitive value (see below).
 
 ```text
 VECTOR_QUEUES=default,mail,reports
+VECTOR_QUEUE_METRICS=true
 ```
 
 These are the queues the dashboard watches, comma-separated, listed in
@@ -89,6 +91,18 @@ Only these names are accepted. Any other queue is a `404` in a path and
 a `422` in a filter, and failed jobs on other queues are not listed,
 shown, retried or forgotten. Sizes and clears go to the application's
 bound `QueueInterface`.
+
+`VECTOR_QUEUE_METRICS` turns the job metrics on or off. Unset or blank,
+they are on. `false`, `0`, `off` or `no` turns them off, and `true`, `1`,
+`on` or `yes` keeps them on. Any other value stops the boot. Each worker
+reads it once, when it boots, so restart the HTTP workers and every
+`queue:work` after changing it. While it is off, no attempt is recorded
+and nothing is opened to record one: the listener never builds the
+metrics store or its database link, so a missing `vector_queue_metrics`
+logs no warning. `GET /vector/queues/metrics` answers `404`,
+`capabilities.queueMetrics` is `false`, and the page shows no **Metrics**
+tab. The table and its migration stay. `vector:queues:prune-metrics`
+still works, so you can delete what was recorded before.
 
 ## Who may do what
 
@@ -171,9 +185,9 @@ menu, with up to three tabs:
   **Load more** that follows the server's cursor, and each job's detail.
   **Retry** works on one job or a selection of up to 50; **Forget** and
   **Prune** (by age in days) are offered where the policy allows them.
-- **Metrics**: a queue and a window from 15 minutes to 7 days, the
-  totals, a per-minute sparkline, and tables per queue and per job
-  class.
+- **Metrics**, unless `VECTOR_QUEUE_METRICS` is off: a queue and a
+  window from 15 minutes to 7 days, the totals, a per-minute sparkline,
+  and tables per queue and per job class.
 
 The page reads `GET /vector/queues/permissions` and leaves out every
 action the policy refuses. That only shapes the page: every endpoint
@@ -220,7 +234,8 @@ nothing.
 All answers are JSON, under `/vector/queues`. Each is a `404` when the
 dashboard is not there for the caller (`capabilities.queues` false), and
 each `/failed` one is a `404` without failed jobs
-(`capabilities.failedJobs` false):
+(`capabilities.failedJobs` false). `/metrics` is a `404` while
+`VECTOR_QUEUE_METRICS` is off (`capabilities.queueMetrics` false):
 
 | Method and path | What it does |
 |---|---|
@@ -254,6 +269,8 @@ handler durations and the last time a job was processed. Recording never
 affects a job. A failed write, for example a missing table or a database
 that is down, is logged as a warning at most once a minute per worker
 and dropped.
+With `VECTOR_QUEUE_METRICS` off, the listener returns before it touches
+the database, and nothing is recorded or logged.
 
 `GET /vector/queues/metrics` reads a window of it, on the watched queues
 only:
