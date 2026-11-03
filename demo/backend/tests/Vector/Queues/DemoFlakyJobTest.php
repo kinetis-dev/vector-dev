@@ -57,9 +57,20 @@ final class DemoFlakyJobTest extends QueuesTestCase
 
         self::assertSame(0, $code);
         self::assertSame(array_fill(0, 3, ['job' => SyncWarehouseStockJob::class, 'queue' => 'default', 'maxAttempts' => DemoFlakyJobsCommand::MAX_ATTEMPTS]), $queue->pushed);
+        self::assertSame([0, 0, 0], $queue->delays, 'runnable at once unless --delay says otherwise');
         self::assertSame("Queued 3 flaky job(s) on \"default\", each failing 50% of its attempts, up to 3 attempts.\n", $out);
         // the queue it uses is one the demo's dashboard watches (.env.example's VECTOR_QUEUES)
         self::assertContains(DemoFlakyJobsCommand::QUEUE, self::demoQueues());
+    }
+
+    public function testTheCommandDelaysEveryJobByTheGivenSeconds(): void
+    {
+        $queue = new RecordingQueue();
+        [$code, $out] = $this->command($queue, '--count=2', '--failure=0', '--delay=900');
+
+        self::assertSame(0, $code);
+        self::assertSame([900, 900], $queue->delays);
+        self::assertSame("Queued 2 flaky job(s) on \"default\", runnable in 900s, each failing 0% of its attempts, up to 3 attempts.\n", $out);
     }
 
     /** The dashboard watches what the demo's worker serves (docker-compose.yml), in the same order. */
@@ -75,7 +86,7 @@ final class DemoFlakyJobTest extends QueuesTestCase
 
     public function testTheCommandRefusesABadCountOrShareAndQueuesNothing(): void
     {
-        foreach (['--count=0', '--count=1001', '--count=x', '--failure=101', '--failure=-1'] as $bad) {
+        foreach (['--count=0', '--count=1001', '--count=x', '--failure=101', '--failure=-1', '--delay=901', '--delay=-5', '--delay=1.5'] as $bad) {
             $queue = new RecordingQueue();
             [$code, $out] = $this->command($queue, $bad);
 

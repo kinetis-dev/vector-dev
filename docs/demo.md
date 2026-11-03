@@ -232,7 +232,9 @@ Each job goes on `default` with up to three attempts and fails
 `--failure` percent of them (`--count` 1 to 1000, 20 by default;
 `--failure` 0 to 100, 40 by default), so the worker records retries and
 failures, and a job out of attempts lands in **Failed jobs** with its
-`#[Sensitive]` API key shown as `[redacted]`. Admins may retry, forget,
+`#[Sensitive]` API key shown as `[redacted]`. `--delay=<seconds>` (0 to
+900, 0 by default) holds every job back that long first, so the page
+shows them waiting before the worker takes them. Admins may retry, forget,
 prune and clear there; `editor@vector.local` is refused by the admin
 altogether. Nothing prunes the metrics in the demo; run
 `vendor/bin/kinetis vector:queues:prune-metrics` by hand when you want

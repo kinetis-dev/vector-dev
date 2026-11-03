@@ -14,9 +14,13 @@ final class RecordingQueue implements QueueInterface
     /** @var list<array{job: class-string, queue: string, maxAttempts: int|null}> */
     public array $pushed = [];
 
+    /** @var list<int> each push's $delaySeconds, in push order */
+    public array $delays = [];
+
     public function push(Job $job, int $delaySeconds = 0, string $queue = 'default', ?int $maxAttempts = null): void
     {
         $this->pushed[] = ['job' => $job::class, 'queue' => $queue, 'maxAttempts' => $maxAttempts];
+        $this->delays[] = $delaySeconds;
     }
 
     public function pop(int $timeoutSeconds = 0, array $queues = ['default']): ?QueuedJob

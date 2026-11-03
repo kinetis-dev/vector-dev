@@ -296,7 +296,8 @@ Each `App\Jobs\SyncWarehouseStockJob` goes on `default` with up to three
 attempts and fails the given share of them, so the metrics show releases
 and failures, and a job that runs out of attempts lands in **Failed
 jobs**. Its `apiKey` argument is `#[Sensitive]`, so its detail shows it
-as `[redacted]`. See {doc}`demo`.
+as `[redacted]`. Add `--delay=<seconds>` (up to 900) to hold the jobs
+back first and watch them wait. See {doc}`demo`.
 
 ## See also
 
