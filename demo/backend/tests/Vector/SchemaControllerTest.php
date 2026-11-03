@@ -10,7 +10,7 @@ final class SchemaControllerTest extends VectorTestCase
     {
         $response = $this->client->get('/vector/schema', headers: $this->adminHeaders())
             ->assertOk()
-            ->assertJsonPath('version', 4)
+            ->assertJsonPath('version', 5)
             ->assertJsonPath('resources.products.slug', 'products')
             ->assertJsonPath('resources.products.titleField', 'name')
             ->assertJsonPath('resources.products.permissions.viewAny', true)
