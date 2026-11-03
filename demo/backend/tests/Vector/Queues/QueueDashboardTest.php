@@ -179,13 +179,12 @@ final class QueueDashboardTest extends QueuesTestCase
         $missing = str_repeat('f', 32);
         $broken = $this->recordFailure('qa-mail', 1_800_000_003, SendInvoiceJob::class, ['invoiceId' => 9]);
 
-        $malformed = str_repeat('not-an-id ', 40);
-        $results = $this->client->post('/vector/queues/failed/retry', ['ids' => [$first, $missing, $second, $foreign, $broken, $malformed]], $this->adminHeaders())
+        $results = $this->client->post('/vector/queues/failed/retry', ['ids' => [$first, $missing, $second, $foreign, $broken]], $this->adminHeaders())
             ->assertOk()
             ->json();
         self::assertIsArray($results);
         self::assertSame(
-            [[$first, 'retried'], [$missing, 'not_found'], [$second, 'retried'], [$foreign, 'not_found'], [$broken, 'failed'], [$malformed, 'not_found']],
+            [[$first, 'retried'], [$missing, 'not_found'], [$second, 'retried'], [$foreign, 'not_found'], [$broken, 'failed']],
             array_map(static fn (array $r): array => [$r['id'], $r['status']], $results['data']),
         );
         self::assertIsString($results['data'][4]['reason']);
@@ -224,6 +223,16 @@ final class QueueDashboardTest extends QueuesTestCase
         $this->client->post('/vector/queues/failed/retry', ['ids' => [1, 2]], $headers)->assertValidationError('ids');
         $tooMany = array_map(static fn (int $i): string => str_pad(dechex($i), 32, '0', STR_PAD_LEFT), range(1, 51));
         $this->client->post('/vector/queues/failed/retry', ['ids' => $tooMany], $headers)->assertValidationError('ids');
+
+        // one malformed id refuses the whole batch: the well-formed one beside it is neither retried nor audited
+        $id = $this->recordFailure('qa-mail', 1_800_000_000);
+        foreach ([str_repeat('not-an-id ', 40), strtoupper($id), $id . "\n", substr($id, 1)] as $malformed) {
+            $response = $this->client->post('/vector/queues/failed/retry', ['ids' => [$id, $malformed]], $headers)->assertValidationError('ids');
+            self::assertStringNotContainsString('not-an-id', $response->body());
+        }
+        self::assertNotNull($this->store()->find($id));
+        self::assertSame([], $this->auditFor($id));
+        self::assertSame(0, $this->queue->size('qa-mail'));
     }
 
     public function testForgettingDeletesTheRecord(): void
@@ -242,14 +251,17 @@ final class QueueDashboardTest extends QueuesTestCase
         // 2001 and 2002: older than any record the demo's worker could have made
         $old = $this->recordFailure('qa-mail', 1_000_000_000);
         $older = $this->recordFailure('qa-reports', 1_010_000_000);
+        // prune spans every queue, the unwatched one included
+        $foreign = $this->recordFailure('qa-elsewhere', 1_005_000_000);
         $recent = $this->recordFailure('qa-mail', time() - 60);
 
         $this->client->post('/vector/queues/failed/prune', ['days' => 8000], $this->adminHeaders())
             ->assertOk()
-            ->assertJsonPath('data.deleted', 2);
+            ->assertJsonPath('data.deleted', 3);
 
         self::assertNull($this->store()->find($old));
         self::assertNull($this->store()->find($older));
+        self::assertNull($this->store()->find($foreign));
         self::assertNotNull($this->store()->find($recent));
 
         $this->client->post('/vector/queues/failed/prune', ['hours' => 200_000], $this->adminHeaders())->assertOk()->assertJsonPath('data.deleted', 0);

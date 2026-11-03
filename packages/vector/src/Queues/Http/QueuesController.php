@@ -199,24 +199,21 @@ final readonly class QueuesController
         $this->authorize($this->policy->retry($this->actor));
         $ids = self::body($request)['ids'] ?? null;
 
-        if (!is_array($ids) || !array_is_list($ids) || $ids === [] || count($ids) > self::MAX_RETRY_BATCH || array_filter($ids, is_string(...)) !== $ids) {
-            throw ValidationException::fromViolations([new Violation(['ids'], 'type_mismatch', 'must be a list of 1 to ' . self::MAX_RETRY_BATCH . ' failed-job ids.')]);
+        // every id must have the store's own shape, or the whole batch is refused: none is retried, and none is echoed back
+        if (!is_array($ids) || !array_is_list($ids) || $ids === [] || count($ids) > self::MAX_RETRY_BATCH
+            || array_filter($ids, static fn (mixed $id): bool => is_string($id) && preg_match(self::ID, $id) === 1) !== $ids) {
+            throw ValidationException::fromViolations([new Violation(['ids'], 'type_mismatch', 'must be a list of 1 to ' . self::MAX_RETRY_BATCH . ' failed-job ids, each 32 lowercase hex digits.')]);
         }
 
         $store = self::resolve($scope, SqlFailedJobStore::class);
         $retrier = self::resolve($scope, FailedJobRetrier::class);
 
-        /** @var list<string> $ids */
         $results = [];
 
         foreach (array_values(array_unique($ids)) as $id) {
             $result = $this->find($store, $id) === null ? RetryResult::notFound($id) : $retrier->retry($id);
             $results[] = ['id' => $result->id, 'status' => $result->status->value, 'class' => $result->class, 'queue' => $result->queue, 'reason' => $result->reason];
-
-            // a malformed id names no record, and is no audit row's record_id either
-            if (preg_match(self::ID, $id) === 1) {
-                $this->record([$id], 'queue:retry', ['status' => $result->status->value, 'class' => $result->class, 'queue' => $result->queue]);
-            }
+            $this->record([$id], 'queue:retry', ['status' => $result->status->value, 'class' => $result->class, 'queue' => $result->queue]);
         }
 
         return ['data' => $results];
