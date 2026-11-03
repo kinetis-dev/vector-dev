@@ -76,7 +76,8 @@ function applyLink() {
     <v-input :model-value="model" :rules="rules" :error-messages="errorMessages" :hint="field.help ?? undefined" :persistent-hint="!!field.help" class="vx-richtext">
         <div class="vx-richtext-frame" :class="{ 'vx-richtext-frame--error': errorMessages.length > 0 }">
             <div class="text-caption text-medium-emphasis px-3 pt-2">{{ field.label }}</div>
-            <div class="vx-richtext-toolbar d-flex flex-wrap align-center ga-1 px-2 py-1" role="toolbar" :aria-label="t('fields.richtext.toolbar', { label: field.label })">
+            <!-- a mouse press on a toolbar button keeps the focus in the editor (see RichText.vue) -->
+            <div class="vx-richtext-toolbar d-flex flex-wrap align-center ga-1 px-2 py-1" role="toolbar" :aria-label="t('fields.richtext.toolbar', { label: field.label })" @mousedown.prevent>
                 <template v-if="!source">
                     <v-btn v-if="on('bold')" icon="mdi-format-bold" size="small" variant="text" :active="active('bold')" :aria-label="t('fields.richtext.bold')" @click="run(e => e.chain().focus().toggleBold().run())" />
                     <v-btn v-if="on('italic')" icon="mdi-format-italic" size="small" variant="text" :active="active('italic')" :aria-label="t('fields.richtext.italic')" @click="run(e => e.chain().focus().toggleItalic().run())" />
