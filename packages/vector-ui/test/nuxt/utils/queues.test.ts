@@ -1,16 +1,45 @@
 import { describe, expect, it } from 'vitest'
-import * as autoImports from '#imports'
 import * as queues from '#vector/app/utils/queues'
 
 describe('the queue utilities', () => {
     // Nuxt's export scan once missed the declaration after QUEUE_WINDOWS' `as const`,
-    // so QUEUE_DEFAULT_WINDOW was imported by hand: every export must be auto-imported.
+    // so QUEUE_DEFAULT_WINDOW was imported by hand. Each export is named below as a
+    // bare identifier — the auto-import, with no import of its own — so one the scan
+    // misses is a ReferenceError here, and each must be the module's own export.
     it('are every one auto-imported', () => {
-        const missing = Object.keys(queues).filter(name => !(name in autoImports))
+        const bare: Record<string, unknown> = {
+            QUEUE_MAX_RETRY_BATCH,
+            QUEUE_MAX_PRUNE_DAYS,
+            QUEUE_METRICS_MAX_MINUTES,
+            QUEUE_POLL_MS,
+            QUEUE_DEFAULT_WINDOW,
+            QUEUE_SPARK_POINTS,
+            queueErrorStatus,
+            describeQueueError,
+            queueAccessRefused,
+            compactQuery,
+            toRfc3339,
+            queueLocalDateValid,
+            queueNumber,
+            queueMs,
+            queueRate,
+            queueTime,
+            queueAttempts,
+            queueRetrySummary,
+            queuePruneDays,
+            queueMetricsTotals,
+            queueSparkline,
+            QUEUE_WINDOWS,
+        }
 
-        expect(missing).toEqual([])
-        expect((autoImports as Record<string, unknown>).QUEUE_DEFAULT_WINDOW).toBe(60)
-        expect((autoImports as Record<string, unknown>).QUEUE_WINDOWS).toEqual([15, 60, 360, 1440, 10080])
+        // the list above names every export: a new one must be added to it
+        expect(Object.keys(bare).sort()).toEqual(Object.keys(queues).sort())
+        for (const [name, value] of Object.entries(bare)) {
+            if (typeof value === 'function') expect(value.name, name).toBe(name)
+            else expect(value, name).toEqual((queues as Record<string, unknown>)[name])
+        }
+        expect(QUEUE_DEFAULT_WINDOW).toBe(60)
+        expect(QUEUE_WINDOWS).toEqual([15, 60, 360, 1440, 10080])
     })
 
     it('offer the default metrics window among the windows', () => {

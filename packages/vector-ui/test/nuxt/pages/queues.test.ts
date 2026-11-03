@@ -6,6 +6,7 @@ import VectorLayout from '#vector/app/layouts/vector.vue'
 import QueuesPage from '#vector/app/pages/queues/index.vue'
 import VxConfirm from '#vector/app/components/Vx/Confirm.vue'
 import QueuesOverview from '#vector/app/components/Vx/Queues/Overview.vue'
+import { QUEUE_POLL_MS } from '#vector/app/utils/queues'
 import type { VectorFailedJob, VectorQueue, VectorQueuePermissions, VectorSchema } from '#vector/app/types/vector'
 import { endpoint, standaloneApi, type Received } from '../endpoints'
 import { schema } from '../fixtures'
@@ -526,11 +527,47 @@ describe('the Queues page', () => {
     })
 
     describe('the overview on its own', () => {
-        /** Lets the overview's requests settle without advancing the clock past now (the poll is QUEUE_POLL_MS away). */
+        /** Lets the overview's requests settle; real timers throughout. */
         async function settle() {
-            for (let round = 0; round < 10; round++) {
-                if (vi.isFakeTimers()) vi.advanceTimersByTime(0)
-                await flushPromises()
+            for (let round = 0; round < 10; round++) await flushPromises()
+        }
+
+        /**
+         * Holds the overview's poll — the setTimeout of QUEUE_POLL_MS it arms
+         * after each request — instead of arming it, so a test elapses the
+         * interval by firing it. Every other timer (the test utilities',
+         * Vuetify's) is the real one, so mounting and flushPromises work as
+         * usual. Restored in the test's `finally`, and by restoreMocks.
+         */
+        function holdPolls() {
+            const realSet = globalThis.setTimeout as unknown as (handler: unknown, delay?: number, ...args: unknown[]) => unknown
+            const realClear = globalThis.clearTimeout as unknown as (id?: unknown) => void
+            const held = new Map<number, () => void>()
+            let nextId = 1_000_000
+            const set = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((handler: unknown, delay?: number, ...args: unknown[]) => {
+                if (delay !== QUEUE_POLL_MS || typeof handler !== 'function') return realSet(handler, delay, ...args)
+                const id = nextId++
+                held.set(id, () => (handler as (...values: unknown[]) => void)(...args))
+                return id
+            }) as unknown as typeof setTimeout)
+            const clear = vi.spyOn(globalThis, 'clearTimeout').mockImplementation(((id?: unknown) => {
+                if (typeof id === 'number' && held.delete(id)) return
+                realClear(id)
+            }) as unknown as typeof clearTimeout)
+
+            return {
+                /** The polls armed and not cancelled. */
+                armed: () => held.size,
+                /** Runs every armed poll, as the interval elapsing would. */
+                fire() {
+                    const due = [...held.values()]
+                    held.clear()
+                    due.forEach(run => run())
+                },
+                restore() {
+                    set.mockRestore()
+                    clear.mockRestore()
+                },
             }
         }
 
@@ -543,31 +580,45 @@ describe('the Queues page', () => {
         }
 
         it('polls every QUEUE_POLL_MS while mounted, and never after it is unmounted', async () => {
-            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-            const { wrapper, overview } = await overviewOf({ body: { data: rows(2) } })
-            expect(overview.requests).toHaveLength(1)
+            const polls = holdPolls()
+            try {
+                const { wrapper, overview } = await overviewOf({ body: { data: rows(2) } })
+                await vi.waitFor(() => expect(overview.requests).toHaveLength(1))
+                // the next request is armed once this one settled
+                await vi.waitFor(() => expect(polls.armed()).toBe(1))
 
-            // the control: while mounted, the next request is one interval away
-            vi.advanceTimersByTime(QUEUE_POLL_MS)
-            await settle()
-            expect(overview.requests).toHaveLength(2)
+                // the control: while mounted, the interval elapsing asks again, and arms the next
+                polls.fire()
+                await vi.waitFor(() => expect(overview.requests).toHaveLength(2))
+                await vi.waitFor(() => expect(polls.armed()).toBe(1))
 
-            wrapper.unmount()
-            vi.advanceTimersByTime(QUEUE_POLL_MS * 3)
-            await settle()
-            expect(overview.requests).toHaveLength(2)
+                wrapper.unmount()
+                expect(polls.armed()).toBe(0)
+                // whatever was still armed elapsing asks nothing
+                polls.fire()
+                await settle()
+                expect(overview.requests).toHaveLength(2)
+            } finally {
+                polls.restore()
+            }
         })
 
         it('stops polling once the server answers 404', async () => {
-            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-            const { wrapper, overview } = await overviewOf({ status: 404, body: { error: 'Not found.' } })
+            const polls = holdPolls()
+            try {
+                const { wrapper, overview } = await overviewOf({ status: 404, body: { error: 'Not found.' } })
+                await vi.waitFor(() => expect(wrapper.find('[data-state="no-access"]').exists()).toBe(true))
+                await settle()
 
-            expect(wrapper.find('[data-state="no-access"]').exists()).toBe(true)
-            expect(overview.requests).toHaveLength(1)
-            vi.advanceTimersByTime(QUEUE_POLL_MS * 3)
-            await settle()
-            expect(overview.requests).toHaveLength(1)
-            wrapper.unmount()
+                expect(overview.requests).toHaveLength(1)
+                expect(polls.armed()).toBe(0)
+                polls.fire()
+                await settle()
+                expect(overview.requests).toHaveLength(1)
+                wrapper.unmount()
+            } finally {
+                polls.restore()
+            }
         })
 
         it('shows only the queue being cleared as busy', async () => {
