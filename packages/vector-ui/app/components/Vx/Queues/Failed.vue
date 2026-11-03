@@ -26,8 +26,10 @@ const openId = ref<string | null>(null)
 const pruneDays = ref('30')
 // the action running: only its own button shows as loading, and no second one starts meanwhile
 const acting = ref<'retry' | 'forget' | 'prune' | null>(null)
-// a date field the browser could not read (a partly typed date: its value is then '', not the text)
+// a date field the browser could not read: a partly typed date keeps its value '' and fires no input event,
+// so each input's own validity is read whenever it matters — on input, change and blur, and at Apply
 const badInput = ref({ failedFrom: false, failedTo: false })
+const filterRow = ref<HTMLElement | null>(null)
 let request = 0
 
 /** The first page for the applied filters, or (more) the page after the last one shown. */
@@ -61,11 +63,18 @@ const fromError = computed(() => dateError('failedFrom'))
 const toError = computed(() => dateError('failedTo'))
 const filtersValid = computed(() => fromError.value === '' && toError.value === '')
 
-function onDateInput(field: 'failedFrom' | 'failedTo', event: Event) {
-    badInput.value = { ...badInput.value, [field]: (event.target as HTMLInputElement | null)?.validity?.badInput === true }
+const dateInput = (field: 'failedFrom' | 'failedTo') => filterRow.value?.querySelector<HTMLInputElement>(`[data-filter="${field}"] input`) ?? null
+
+/** Reads both date inputs' validity, as the browser holds it rather than as their values say. */
+function recheckDates() {
+    badInput.value = {
+        failedFrom: dateInput('failedFrom')?.validity?.badInput === true,
+        failedTo: dateInput('failedTo')?.validity?.badInput === true,
+    }
 }
 
 function apply() {
+    recheckDates()
     if (!filtersValid.value) return
     applied = { ...filters.value }
     void load()
@@ -73,7 +82,11 @@ function apply() {
 
 function reset() {
     filters.value = emptyFilters()
-    badInput.value = { failedFrom: false, failedTo: false }
+    // a partly typed date's value is '' already, so the model change would not clear its text: clear the input itself
+    for (const field of ['failedFrom', 'failedTo'] as const) {
+        const input = dateInput(field)
+        if (input) input.value = ''
+    }
     apply()
 }
 
@@ -133,7 +146,7 @@ const atLimit = computed(() => selected.value.size >= QUEUE_MAX_RETRY_BATCH)
     <v-alert v-if="refused" type="warning" variant="tonal" :text="t('queues.noAccess')" data-state="no-access" />
     <VxQueuesFailedDetail v-else-if="openId !== null" :id="openId" :key="openId" :permissions="permissions" @back="openId = null" @changed="load()" />
     <div v-else>
-        <div class="d-flex flex-wrap align-center ga-2 mb-3">
+        <div ref="filterRow" class="d-flex flex-wrap align-center ga-2 mb-3">
             <v-select v-model="filters.queue" :items="queueItems" :label="t('queues.failed.filters.queue')" density="compact" hide-details style="max-width: 14rem" />
             <v-text-field v-model="filters.class" :label="t('queues.failed.filters.class')" density="compact" hide-details style="max-width: 22rem" @keydown.enter="apply" />
             <v-text-field
@@ -146,7 +159,9 @@ const atLimit = computed(() => selected.value.size >= QUEUE_MAX_RETRY_BATCH)
                 hide-details="auto"
                 style="max-width: 14rem"
                 data-filter="failedFrom"
-                @input="onDateInput('failedFrom', $event)"
+                @input="recheckDates"
+                @change="recheckDates"
+                @blur="recheckDates"
             />
             <v-text-field
                 v-model="filters.failedTo"
@@ -158,7 +173,9 @@ const atLimit = computed(() => selected.value.size >= QUEUE_MAX_RETRY_BATCH)
                 hide-details="auto"
                 style="max-width: 14rem"
                 data-filter="failedTo"
-                @input="onDateInput('failedTo', $event)"
+                @input="recheckDates"
+                @change="recheckDates"
+                @blur="recheckDates"
             />
             <v-btn variant="tonal" color="primary" :disabled="!filtersValid" data-action="apply" @click="apply">{{ t('queues.failed.filters.apply') }}</v-btn>
             <v-btn variant="text" @click="reset">{{ t('queues.failed.filters.reset') }}</v-btn>

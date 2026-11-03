@@ -514,15 +514,37 @@ describe('the Queues page', () => {
         wrapper.unmount()
     })
 
+    it('refuses a partly typed date at Apply, though its value is empty and no input event came', async () => {
+        const { wrapper, failed } = await page(true, permissions(), true, failedPage([job(ids(1)[0]!)]))
+
+        await openFailed(wrapper)
+        const loads = failed.requests.length
+        // what a browser holds for a datetime-local with only the day typed: value '', a bad input, and no input event
+        const input = wrapper.find('[data-filter="failedFrom"] input').element as HTMLInputElement
+        Object.defineProperty(input, 'validity', { configurable: true, get: () => ({ badInput: true, valid: false }) })
+        expect(input.value).toBe('')
+
+        await wrapper.find('[data-action="apply"]').trigger('click')
+        await flushPromises()
+
+        expect(failed.requests).toHaveLength(loads)
+        expect(wrapper.find('[data-filter="failedFrom"]').text()).toContain('Enter a complete, valid date and time.')
+        expect(wrapper.find('[data-action="apply"]').attributes('disabled')).toBeDefined()
+        // Enter in the class field applies too: refused the same way
+        await textField(wrapper, 'Job class').find('input').trigger('keydown', { key: 'Enter' })
+        await flushPromises()
+        expect(failed.requests).toHaveLength(loads)
+        wrapper.unmount()
+    })
+
     it('names every column header, the selection and action columns included', async () => {
         const { wrapper } = await page(true, permissions(), true, failedPage([job(ids(1)[0]!)]))
+        // exact English: a missing key would render as its key path
+        const headers = () => wrapper.findAll('th').map(th => th.text().trim())
 
-        const blank = () => wrapper.findAll('th').filter(th => th.text().trim() === '').length
-        expect(wrapper.findAll('th').length).toBeGreaterThan(0)
-        expect(blank()).toBe(0)
+        expect(headers()).toEqual(['Queue', 'Waiting', 'Failed', 'Actions'])
         await openFailed(wrapper)
-        expect(wrapper.findAll('th').length).toBeGreaterThan(0)
-        expect(blank()).toBe(0)
+        expect(headers()).toEqual(['Selection', 'Job class', 'Queue', 'Exception', 'Attempts', 'Failed at', 'Actions'])
         wrapper.unmount()
     })
 
