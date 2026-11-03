@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import type { VectorQueueMetrics } from '#vector/app/types/vector'
+// Imported by hand: Nuxt's export scan misses the declaration that follows
+// QUEUE_WINDOWS' `as const`, so it is never auto-imported.
+import { QUEUE_DEFAULT_WINDOW } from '#vector/app/utils/queues'
 
 // The job metrics: GET /metrics for a watched queue (or all) over a window
 // of at most 7 days, the last hour by default — the window's totals,
