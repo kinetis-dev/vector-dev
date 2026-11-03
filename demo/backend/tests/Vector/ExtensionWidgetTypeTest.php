@@ -31,7 +31,7 @@ final class ExtensionWidgetTypeTest extends TestCase
 
         self::assertSame(['sparkline-chart', 'stat'], array_column($compiled, 'type'));
         self::assertSame(['name' => 'extension-sparkline', 'class' => ExtensionSparklineWidget::class, 'label' => 'Extension sparkline', 'type' => 'sparkline-chart', 'icon' => null, 'ranges' => [], 'width' => 4, 'cacheSeconds' => 0, 'cacheShared' => false], $compiled[0]);
-        self::assertTrue(VectorWidget::isExtensionType('vector-queues'));
+        self::assertTrue(VectorWidget::isExtensionType('stock-gauge'));
         self::assertTrue(VectorWidget::isExtensionType('pie'));
 
         foreach (VectorWidget::BUILT_IN_TYPES as $type) {
@@ -58,7 +58,7 @@ final class ExtensionWidgetTypeTest extends TestCase
                 self::fail("the type \"{$type}\" compiled");
             } catch (ResourceCompileException $refusal) {
                 self::assertSame(
-                    'Resource ' . self::OWNER . ': widget ' . $widget::class . " has the type \"{$type}\"; a widget type is stat, trend, partition, progress, table, or an extension type in lower-case kebab-case",
+                    'Resource ' . self::OWNER . ': widget ' . $widget::class . " has the type \"{$type}\"; a widget type is stat, trend, partition, progress, table, queues, or an extension type in lower-case kebab-case",
                     $refusal->getMessage(),
                 );
             }
@@ -79,14 +79,14 @@ final class ExtensionWidgetTypeTest extends TestCase
 
     public function testAnExtensionResultTakesNoBuiltInTypeAndNoKeyVectorWrites(): void
     {
-        self::assertSame(['type' => 'vector-queues'], WidgetResult::extension('vector-queues')->toArray());
+        self::assertSame(['type' => 'stock-gauge'], WidgetResult::extension('stock-gauge')->toArray());
 
         foreach ([...VectorWidget::BUILT_IN_TYPES, 'Bad_Type', ''] as $type) {
             try {
                 WidgetResult::extension($type);
                 self::fail("\"{$type}\" made an extension result");
             } catch (\InvalidArgumentException $refusal) {
-                self::assertSame("\"{$type}\" is no extension widget type: one is lower-case kebab-case and none of stat, trend, partition, progress, table, which have factories of their own.", $refusal->getMessage());
+                self::assertSame("\"{$type}\" is no extension widget type: one is lower-case kebab-case and none of stat, trend, partition, progress, table, queues, which have factories of their own.", $refusal->getMessage());
             }
         }
 

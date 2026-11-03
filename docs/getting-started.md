@@ -15,12 +15,13 @@ vendor/bin/kinetis vector:install-ui    # the hosted UI, if you serve it
 ```
 
 `vector:install` publishes Vector's migrations — settings, preferences,
-saved views, the action log, the audit trail, jobs and notifications —
-for MySQL or PostgreSQL, as your connection's `DB_CONNECTION` says
-(`mysql` or `pgsql`). There is one migration per table, each under its
-own timestamp: `vector_settings`, `vector_preferences`, `vector_views`,
-`vector_action_events`, `vector_audit`, `vector_jobs` and
-`vector_notifications`. It is idempotent. A later change to Vector's
+saved views, the action log, the audit trail, jobs, notifications and
+the queue dashboard's job metrics — for MySQL or PostgreSQL, as your
+connection's `DB_CONNECTION` says (`mysql` or `pgsql`). There is one
+migration per table, each under its own timestamp: `vector_settings`,
+`vector_preferences`, `vector_views`, `vector_action_events`,
+`vector_audit`, `vector_jobs`, `vector_notifications` and
+`vector_queue_metrics`. It is idempotent. A later change to Vector's
 tables ships as a new migration with a later timestamp, so run it again
 after every upgrade, then `migrate`.
 

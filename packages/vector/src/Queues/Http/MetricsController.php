@@ -9,18 +9,21 @@ use Kinetis\Http\Attributes\Get;
 use Kinetis\Http\Attributes\Middleware;
 use Kinetis\Http\Attributes\RoutePrefix;
 use Kinetis\Vector\Auth\ActorContext;
-use Kinetis\Vector\Exception\ForbiddenOperationException;
 use Kinetis\Vector\Queues\Auth\QueueDashboardPolicyInterface;
 use Kinetis\Vector\Queues\Metrics\JobMetricsStore;
 use Kinetis\Vector\Queues\Metrics\MetricsClock;
 use Kinetis\Vector\Queues\Metrics\MetricsQuery;
+use Kinetis\Vector\Queues\QueueDashboard;
 use Kinetis\Vector\Queues\QueueNames;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
  * The job metrics, in the same `vector` middleware group as
- * {@see QueuesController} and decided by the same policy's view(),
- * asked before anything else. Then the query is validated (an unwatched
+ * {@see QueuesController}, behind the same gate — the Kernel's own 404
+ * unless a queue is configured and the policy's view() lets the actor
+ * look — asked before anything else. They are Vector's own table, on
+ * Vector's own connection, so they need nothing of
+ * kinetis/queue-failed-jobs. Then the query is validated (an unwatched
  * queue or a bad window is a 422), and only then is the metrics store
  * resolved: a refused caller or a bad query never builds the store, nor
  * the database link under it. Only the
@@ -39,6 +42,7 @@ final readonly class MetricsController
         private QueueDashboardPolicyInterface $policy,
         private ActorContext $actor,
         private MetricsClock $clock,
+        private QueueDashboard $dashboard,
     ) {}
 
     /**
@@ -50,8 +54,8 @@ final readonly class MetricsController
     #[Get('/metrics')]
     public function metrics(ServerRequestInterface $request, RequestScope $scope): array
     {
-        if (!$this->policy->view($this->actor)) {
-            throw new ForbiddenOperationException('This account may not do that on the queue dashboard.');
+        if (!$this->dashboard->available($this->policy, $this->actor)) {
+            throw QueueDashboard::notFound($request);
         }
 
         $query = MetricsQuery::fromQueryParams($request->getQueryParams(), $this->queues, $this->clock->now());

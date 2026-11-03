@@ -23,4 +23,5 @@ return [
     'Background jobs' => 'Arka plan işleri',
     'Stalled after (minutes)' => 'Şu süre sonra takılmış say (dakika)',
     'A running job that reports no progress for this many minutes is shown as stalled, and vector:jobs:reap marks it failed.' => 'Bu kadar dakika boyunca ilerleme bildirmeyen çalışan bir iş takılmış olarak gösterilir; vector:jobs:reap onu başarısız olarak işaretler.',
+    'Queues' => 'Kuyruklar',
 ];

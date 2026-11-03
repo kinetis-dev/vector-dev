@@ -11,6 +11,7 @@ use Kinetis\Container\AppScope;
 use Kinetis\Queue\FailedJob;
 use Kinetis\Queue\QueueInterface;
 use Kinetis\QueueFailedJobs\SqlFailedJobStore;
+use Kinetis\Vector\Queues\Http\QueuesController;
 
 /**
  * The queue dashboard over the demo's real failed-jobs table, on queue
@@ -89,7 +90,7 @@ abstract class QueuesTestCase extends VectorTestCase
     protected function auditFor(string $recordId): array
     {
         return $this->vectorQuery()->table('vector_audit')
-            ->where('resource', '=', 'vector-queues')
+            ->where('resource', '=', QueuesController::AUDIT_RESOURCE)
             ->where('record_id', '=', $recordId)
             ->where('id', '>', $this->auditBefore)
             ->orderBy('id', 'DESC')

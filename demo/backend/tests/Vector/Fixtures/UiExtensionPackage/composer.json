@@ -1,6 +1,6 @@
 {
-    "name": "acme/vector-queues-fixture",
-    "description": "A test fixture: a Composer package that declares Vector UI extensions and a bootstrap of its own, the way kinetis/vector-queues will.",
+    "name": "acme/ui-extension-fixture",
+    "description": "A test fixture: a Composer package that declares Vector UI extensions and a bootstrap of its own, the way a package that ships an admin UI of its own does.",
     "type": "library",
     "autoload": {
         "psr-4": {

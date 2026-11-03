@@ -23,4 +23,5 @@ return [
     'Background jobs' => 'Фонові завдання',
     'Stalled after (minutes)' => 'Вважати завислим через (хвилин)',
     'A running job that reports no progress for this many minutes is shown as stalled, and vector:jobs:reap marks it failed.' => 'Завдання, що виконується й не повідомляє про поступ стільки хвилин, показується як зависле; vector:jobs:reap позначає його як невдале.',
+    'Queues' => 'Черги',
 ];

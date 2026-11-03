@@ -10,11 +10,12 @@ use Kinetis\Persistence\Contract\PostgresLink;
 use Kinetis\Queue\QueueContract;
 
 /**
- * The package's one link to the database connection
+ * The queue dashboard's one link to the database connection
  * kinetis/queue-failed-jobs records on, FAILED_JOBS_DB_CONNECTION_NAME,
- * shared by the failed-job reads ({@see FailedJobBrowser}) and the job
- * metrics ({@see Metrics\JobMetricsStore}). Built by
- * {@see PackageBootstrap} on first resolve and closed with the
+ * for the failed-job reads ({@see FailedJobBrowser}); the job metrics are
+ * on Vector's own connection instead. Built by
+ * {@see QueueDashboard::register()} on first resolve — only by a
+ * failed-jobs route, once that package is wired — and closed with the
  * application scope.
  */
 final readonly class FailedJobsLink

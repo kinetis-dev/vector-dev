@@ -13,13 +13,15 @@ use Kinetis\QueueFailedJobs\FailedJobRetrier;
 use Kinetis\QueueFailedJobs\SqlFailedJobStore;
 use Kinetis\Vector\Queues\FailedJobBrowser;
 use Kinetis\Vector\Queues\FailedJobsLink;
+use Kinetis\Vector\Queues\Metrics\JobMetricsStore;
 
 /**
  * The dashboard with everything a route reads or changes bound to a
  * factory that counts its calls and fails, as a database or a queue
  * backend that is down would: the failed-jobs link, the store, the
- * browser, the retrier and the queue. A refused caller must get its 403
- * without any of them being built — before, a route that took one as a
+ * browser, the retrier, the queue and the metrics store. A refused caller
+ * must get its 403 (or, refused even a look, its 404) without any of them
+ * being built — before, a route that took one as a
  * method parameter built it before the policy was asked, so a refused
  * caller got a 500 during an outage. It extends VectorTestCase, not
  * QueuesTestCase, whose setUp() reads the real store.
@@ -47,7 +49,7 @@ abstract class RefusedDashboardTestCase extends VectorTestCase
         parent::registerTestDoubles($app, $config);
         $app->instance(\Kinetis\Vector\Queues\Auth\QueueDashboardPolicyInterface::class, $this->policy());
 
-        foreach ([FailedJobsLink::class, SqlFailedJobStore::class, FailedJobBrowser::class, FailedJobRetrier::class, QueueInterface::class] as $id) {
+        foreach ([FailedJobsLink::class, SqlFailedJobStore::class, FailedJobBrowser::class, FailedJobRetrier::class, QueueInterface::class, JobMetricsStore::class] as $id) {
             $this->built[$id] = 0;
             $app->bind($id, function () use ($id): never {
                 $this->built[$id]++;
@@ -62,17 +64,21 @@ abstract class RefusedDashboardTestCase extends VectorTestCase
         self::assertSame(array_fill_keys(array_keys($this->built), 0), $this->built);
     }
 
-    /** Every mutation, each on a path and with a body that would otherwise pass validation. */
-    protected function assertEveryMutationIsRefused(): void
+    /**
+     * Every mutation, each on a path and with a body that would otherwise
+     * pass validation: a 403 for a caller the policy refuses it, a 404 for
+     * one it does not even let look.
+     */
+    protected function assertEveryMutationIsRefused(int $status = 403): void
     {
         $headers = $this->adminHeaders();
 
-        $this->client->post('/vector/queues/failed/retry', ['ids' => [self::ID]], $headers)->assertStatus(403);
-        $this->client->delete('/vector/queues/failed/' . self::ID, $headers)->assertStatus(403);
-        $this->client->post('/vector/queues/failed/prune', ['days' => 1], $headers)->assertStatus(403);
-        $this->client->post('/vector/queues/qa-mail/clear', ['confirm' => 'qa-mail'], $headers)->assertStatus(403);
+        $this->client->post('/vector/queues/failed/retry', ['ids' => [self::ID]], $headers)->assertStatus($status);
+        $this->client->delete('/vector/queues/failed/' . self::ID, $headers)->assertStatus($status);
+        $this->client->post('/vector/queues/failed/prune', ['days' => 1], $headers)->assertStatus($status);
+        $this->client->post('/vector/queues/qa-mail/clear', ['confirm' => 'qa-mail'], $headers)->assertStatus($status);
         // the policy still answers before the queue name is looked up
-        $this->client->post('/vector/queues/qa-elsewhere/clear', ['confirm' => 'qa-elsewhere'], $headers)->assertStatus(403);
+        $this->client->post('/vector/queues/qa-elsewhere/clear', ['confirm' => 'qa-elsewhere'], $headers)->assertStatus($status);
 
         $this->assertNothingWasBuilt();
     }

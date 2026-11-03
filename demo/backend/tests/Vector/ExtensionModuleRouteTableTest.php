@@ -36,7 +36,7 @@ final class ExtensionModuleRouteTableTest extends TestCase
 
     public function testAModulePathMatchesTheModuleRouteAlone(): void
     {
-        self::assertSame([ExtensionModuleController::class], self::matching('/vector/extensions/acme/vector-queues/0123456789abcdef/queues.js'));
+        self::assertSame([ExtensionModuleController::class], self::matching('/vector/extensions/acme/ui-extension/0123456789abcdef/queues.js'));
     }
 
     public function testAResourceSluggedExtensionsIsUnderTheResourcePrefix(): void
@@ -48,7 +48,7 @@ final class ExtensionModuleRouteTableTest extends TestCase
 
     public function testTheShellsPathsAreNotTheModuleRoutes(): void
     {
-        self::assertSame([ShellController::class], self::matching('/vector/ui/vector/extensions/acme/vector-queues/0123456789abcdef/queues.js'));
+        self::assertSame([ShellController::class], self::matching('/vector/ui/vector/extensions/acme/ui-extension/0123456789abcdef/queues.js'));
         self::assertSame([ShellController::class], self::matching('/vector/ui/extensions'));
     }
 }

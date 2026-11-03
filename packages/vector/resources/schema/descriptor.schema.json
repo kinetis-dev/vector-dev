@@ -72,6 +72,14 @@
                 "uploads": {
                     "type": "boolean"
                 },
+                "queues": {
+                    "description": "Whether the queue dashboard (/vector/queues) is there for this user: the application's queue is configured and the queue dashboard policy lets them view. False hides the Queues page and the queues widget, and every /vector/queues endpoint answers 404.",
+                    "type": "boolean"
+                },
+                "failedJobs": {
+                    "description": "Whether the queue dashboard shows failed jobs: queues is true and kinetis/queue-failed-jobs is installed and wired. False leaves out the failed-jobs tab, column and actions, and the /vector/queues/failed endpoints answer 404.",
+                    "type": "boolean"
+                },
                 "exportFormats": {
                     "description": "The export formats offered: csv always; xlsx where openspout/openspout and ext-zip are installed, VECTOR_EXPORT_FORMATS lists it, and a queue runs it.",
                     "type": "array",
@@ -710,7 +718,7 @@
                     "type": "string"
                 },
                 "type": {
-                    "description": "stat, trend, partition, progress or table, the built-in cards, or an extension type: lower-case kebab-case, rendered by the card a UI extension registers for it (defineWidget).",
+                    "description": "stat, trend, partition, progress, table or queues, the built-in cards, or an extension type: lower-case kebab-case, rendered by the card a UI extension registers for it (defineWidget).",
                     "$ref": "#/$defs/slug"
                 },
                 "icon": {

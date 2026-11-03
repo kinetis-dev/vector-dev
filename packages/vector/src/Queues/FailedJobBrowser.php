@@ -14,7 +14,7 @@ use Kinetis\Persistence\Contract\SqlLink;
  * find(), and are redacted before they leave the server.
  *
  * Application-scoped and request-neutral: the only state is the link,
- * opened by {@see PackageBootstrap} on the connection the store itself
+ * opened by {@see QueueDashboard::register()} on the connection the store itself
  * uses (FAILED_JOBS_DB_CONNECTION_NAME) and closed with the application
  * scope.
  *

@@ -20,7 +20,7 @@ final class ExtensionModuleRouteTest extends VectorTestCase
 {
     use SignsInThroughTheForm;
 
-    private const string FIXTURE = 'acme/vector-queues-fixture';
+    private const string FIXTURE = 'acme/ui-extension-fixture';
 
     /** a repeated entry stays repeated, as before packages could declare modules */
     private const string DEPLOYED = '/vector-extensions/stock-level.js,https://cdn.example.test/ext.js,/vector-extensions/stock-level.js';

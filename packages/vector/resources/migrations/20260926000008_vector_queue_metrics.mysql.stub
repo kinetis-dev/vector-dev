@@ -2,16 +2,13 @@
 
 declare(strict_types=1);
 
+use Kinetis\Migrations\Migration;
 use Kinetis\Persistence\Contract\MysqlLink;
 use Kinetis\Persistence\Contract\PostgresLink;
-use Kinetis\Migrations\Migration;
 
-// MySQL version (8.0.19 or later). Copy this file into your own
-// migrations/ directory (see kinetis/migrations) — migrations/<name>/ when
-// FAILED_JOBS_DB_CONNECTION_NAME selects a named connection, since the
-// metrics live beside the failed jobs — renaming it with a timestamp
-// prefix, e.g. 20261103000001_create_vector_queue_metrics_table.php.
-// Required by Kinetis\Vector\Queues\Metrics\JobMetricsStore.
+// Published by `kinetis vector:install` (MySQL 8.0.19 or later). The
+// queue dashboard's job metrics, on Vector's own connection beside
+// vector_jobs; written by Kinetis\Vector\Queues\Metrics\JobMetricsStore.
 //
 // One row per (minute, queue, job class). `bucket` and
 // `last_processed_at` are unix seconds, `bucket` floored to its minute.
@@ -29,10 +26,8 @@ use Kinetis\Migrations\Migration;
 // The unique key is what every write upserts on, and serves the reads
 // narrowed to a queue or a class; the bucket index serves the unfiltered
 // window reads and the prune.
-
 return new class implements Migration
 {
-    #[\Override]
     public function up(MysqlLink|PostgresLink $db): void
     {
         $db->execute(<<<'SQL'
@@ -52,7 +47,6 @@ return new class implements Migration
             SQL);
     }
 
-    #[\Override]
     public function down(MysqlLink|PostgresLink $db): void
     {
         $db->execute('DROP TABLE vector_queue_metrics');

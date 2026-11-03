@@ -163,11 +163,8 @@ final class PackageTranslationsTest extends TestCase
     {
         $data = VectorRegistry::compile(new DiscoveryContext(dirname(__DIR__, 2)));
 
-        self::assertSame(
-            [['package' => 'kinetis/vector-queues', 'root' => 'vendor/composer/../kinetis/vector-queues', 'directory' => 'resources/translations']],
-            $data['packageTranslations'] ?? null,
-            'kinetis/vector-queues is the one package the demo installs that declares translations',
-        );
+        // the queue dashboard's labels are Vector's own translations now: nothing the demo installs declares any
+        self::assertSame([], $data['packageTranslations'] ?? null, 'no package the demo installs declares translations');
         self::assertSame($data['packageTranslations'], VectorRegistry::fromArray($data)->packageTranslations());
     }
 

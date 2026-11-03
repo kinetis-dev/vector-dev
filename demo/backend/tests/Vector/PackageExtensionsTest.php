@@ -23,7 +23,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class PackageExtensionsTest extends TestCase
 {
-    private const string FIXTURE = 'acme/vector-queues-fixture';
+    private const string FIXTURE = 'acme/ui-extension-fixture';
 
     private string $root;
 
@@ -120,9 +120,9 @@ final class PackageExtensionsTest extends TestCase
 
             $registry = $application->get(VectorRegistry::class);
             self::assertInstanceOf(VectorRegistry::class, $registry);
-            // the fixture's, then kinetis/vector-queues' own: the demo installs it, and a package's modules come in package-name order
+            // the fixture's alone, in its declared order: no package the demo installs declares one of its own
             self::assertSame(
-                [[self::FIXTURE, 'resources/ui/queues.js'], [self::FIXTURE, 'resources/ui/more/panel.mjs'], ['kinetis/vector-queues', 'resources/ui/queues.js']],
+                [[self::FIXTURE, 'resources/ui/queues.js'], [self::FIXTURE, 'resources/ui/more/panel.mjs']],
                 array_map(static fn (array $declared): array => [$declared['package'], $declared['entry']], $registry->uiExtensions()),
                 'compiled by discovery',
             );
@@ -156,11 +156,8 @@ final class PackageExtensionsTest extends TestCase
     {
         $registry = VectorRegistry::fromArray(VectorRegistry::compile(new DiscoveryContext(dirname(__DIR__, 2))));
 
-        self::assertSame(
-            [['package' => 'kinetis/vector-queues', 'root' => 'vendor/composer/../kinetis/vector-queues', 'entry' => 'resources/ui/queues.js']],
-            $registry->uiExtensions(),
-            'kinetis/vector-queues is the one package the demo installs that declares one',
-        );
+        // the queue dashboard is Vector's own UI now, not a package's module: nothing the demo installs declares one
+        self::assertSame([], $registry->uiExtensions(), 'no package the demo installs declares a UI extension');
         self::assertArrayHasKey('uiExtensions', $registry->toArray());
     }
 

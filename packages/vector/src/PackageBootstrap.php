@@ -16,6 +16,7 @@ use Kinetis\Vector\Files\VectorStorage;
 use Kinetis\Vector\Write\EntityWriter;
 use Kinetis\Vector\Jobs\VectorQueue;
 use Kinetis\Vector\OpenApi\OpenApiCache;
+use Kinetis\Vector\Queues\QueueDashboard;
 use Kinetis\Vector\Translation\MessagesTranslator;
 use Kinetis\Vector\Translation\PackageTranslations;
 use Kinetis\Vector\Translation\TranslatorInterface;
@@ -26,7 +27,7 @@ use Kinetis\Vector\Widgets\WidgetCache;
 /**
  * Wiring only: binds the hosted UI document, the application's login
  * and logout URLs, the deployment's shell additions, the packages'
- * UI extension modules and the labels' translations once per worker. Everything else Vector registers is discovered from
+ * UI extension modules, the queue dashboard and the labels' translations once per worker. Everything else Vector registers is discovered from
  * attributes.
  */
 final readonly class PackageBootstrap implements PackageBootstrapInterface
@@ -58,6 +59,9 @@ final readonly class PackageBootstrap implements PackageBootstrapInterface
         $app->instance(VectorQueue::class, VectorQueue::fromConfig($app, $config));
         // Uploaded files for file and image fields: the application's filesystem, or VECTOR_STORAGE_CONNECTION's.
         $app->instance(VectorStorage::class, VectorStorage::fromConfig($app, $config));
+        // The queue dashboard: its queue names, the default view-only policy, the job metrics on Vector's own
+        // connection and the failed-job reads. Whether it is shown is decided per request (QueueDashboard).
+        QueueDashboard::register($app, $config);
         // A hashed password field needs the application's hasher, which its bootstrap.php binds after this runs:
         // the first unit of work checks, so a missing binding fails closed with its reason rather than storing plaintext.
         if ($registry instanceof VectorRegistry && ($hashed = self::fieldsHashedByTheApplication($registry)) !== []) {

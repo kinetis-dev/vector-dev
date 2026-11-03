@@ -54,6 +54,16 @@ final readonly class WidgetResult
     }
 
     /**
+     * The queue dashboard's card. It carries no data: the card reads
+     * GET /vector/queues itself, so that endpoint's gate and policy
+     * decide what it shows, and computing this opens no connection.
+     */
+    public static function queues(): self
+    {
+        return new self(VectorWidget::QUEUES, []);
+    }
+
+    /**
      * The answer of a widget whose type() is an extension type: `$data`
      * reaches the renderer the UI registered for `$type` as it is, with
      * none of a built-in card's shape. A built-in type is refused, since

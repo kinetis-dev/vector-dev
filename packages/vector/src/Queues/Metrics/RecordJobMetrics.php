@@ -16,7 +16,7 @@ use Throwable;
  * released for a retry, failed permanently — into its minute's row of
  * `vector_queue_metrics`, keyed by queue and job class (the events carry
  * no connection name). Discovered from its #[Listener] methods under the
- * package's `extra.kinetis.scan` root; nothing registers it.
+ * `extra.kinetis.scan` root, Kinetis\Vector\ — nothing registers it.
  *
  * Metrics must never cost a job its outcome: the worker dispatches these
  * events only after the backend has settled the job, and a failed write

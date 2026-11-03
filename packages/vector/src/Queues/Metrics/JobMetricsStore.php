@@ -19,8 +19,9 @@ use Kinetis\Persistence\Contract\PostgresLink;
  * without reading it first and without losing an increment.
  *
  * Application-scoped and request-neutral: the only state is the link,
- * opened by {@see \Kinetis\Vector\Queues\PackageBootstrap} on the
- * connection kinetis/queue-failed-jobs records on.
+ * Vector's own connection (VECTOR_DB_CONNECTION, where `vector_jobs` and
+ * Vector's other tables live), bound by
+ * {@see \Kinetis\Vector\Queues\QueueDashboard::register()}.
  *
  * @phpstan-type Aggregate array{succeeded: int, released: int, failed: int, totalDurationMs: float, maxDurationMs: float, lastProcessedAt: int}
  */

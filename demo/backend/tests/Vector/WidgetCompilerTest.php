@@ -105,7 +105,7 @@ final class WidgetCompilerTest extends TestCase
         // the built-in types compile in testAWidgetCompilesToItsCardAndAnUnsupportedWidthFallsBackToFour
         self::assertSame(['sparkline-chart'], array_column(WidgetCompiler::widgets([$extension::class], self::OWNER), 'type'));
         self::assertSame(
-            'Resource ' . self::OWNER . ': widget ' . $snake::class . ' has the type "Bad_Type"; a widget type is stat, trend, partition, progress, table, or an extension type in lower-case kebab-case',
+            'Resource ' . self::OWNER . ': widget ' . $snake::class . ' has the type "Bad_Type"; a widget type is stat, trend, partition, progress, table, queues, or an extension type in lower-case kebab-case',
             $this->refusal(static fn () => WidgetCompiler::widgets([$snake::class], self::OWNER)),
         );
     }

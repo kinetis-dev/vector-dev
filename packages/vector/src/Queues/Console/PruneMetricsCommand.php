@@ -14,7 +14,7 @@ use Kinetis\Vector\Queues\Metrics\MetricsClock;
  * `--days=<n>` days ago (DEFAULT_DAYS when absent), and prints how many
  * it deleted. Nothing prunes the table on its own: run this from a
  * scheduler. Discovered from its #[Command] attribute under the
- * package's `extra.kinetis.scan` root.
+ * `extra.kinetis.scan` root, Kinetis\Vector\.
  *
  * $output and $errors are injectable (defaulting to STDOUT and STDERR)
  * for testability: a #[Command] method takes zero parameters or exactly

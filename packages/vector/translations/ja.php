@@ -23,4 +23,5 @@ return [
     'Background jobs' => 'バックグラウンドジョブ',
     'Stalled after (minutes)' => '停滞とみなすまでの時間（分）',
     'A running job that reports no progress for this many minutes is shown as stalled, and vector:jobs:reap marks it failed.' => '実行中のジョブがこの分数のあいだ進捗を報告しない場合は停滞として表示され、vector:jobs:reap が失敗として記録します。',
+    'Queues' => 'キュー',
 ];

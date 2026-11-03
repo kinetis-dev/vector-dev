@@ -23,4 +23,5 @@ return [
     'Background jobs' => 'Zadania w tle',
     'Stalled after (minutes)' => 'Uznaj za zawieszone po (minuty)',
     'A running job that reports no progress for this many minutes is shown as stalled, and vector:jobs:reap marks it failed.' => 'Uruchomione zadanie, które przez tyle minut nie zgłasza postępu, jest pokazywane jako zawieszone; vector:jobs:reap oznacza je jako nieudane.',
+    'Queues' => 'Kolejki',
 ];

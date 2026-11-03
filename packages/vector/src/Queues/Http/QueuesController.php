@@ -27,6 +27,7 @@ use Kinetis\Vector\Exception\RecordNotFoundException;
 use Kinetis\Vector\Queues\Auth\QueueDashboardPolicyInterface;
 use Kinetis\Vector\Queues\FailedJobBrowser;
 use Kinetis\Vector\Queues\FailedJobFilter;
+use Kinetis\Vector\Queues\QueueDashboard;
 use Kinetis\Vector\Queues\QueueNames;
 use Kinetis\Vector\Store\AuditStore;
 use Psr\Http\Message\ResponseInterface;
@@ -35,18 +36,23 @@ use Psr\Http\Message\ServerRequestInterface;
 /**
  * The queue dashboard's API, in Vector's own `vector` middleware group:
  * the application's authentication and VectorAccessInterface run first,
- * then QueueDashboardPolicyInterface decides each call. Sizes and clears
- * go to the application's bound QueueInterface; failed jobs are
+ * then {@see QueueDashboard} decides whether the dashboard is there at
+ * all — a queue configured and the policy's view() — and every route
+ * answers the Kernel's own 404 when it is not; the /failed routes answer
+ * it too when kinetis/queue-failed-jobs is not wired. Then
+ * QueueDashboardPolicyInterface decides each call. Sizes and clears go
+ * to the application's bound QueueInterface; failed jobs are
  * kinetis/queue-failed-jobs' records, on the queues VECTOR_QUEUES names
  * only. A job's arguments leave the server only through
  * JobSerializer::redact(), and never reach the audit trail.
  *
- * Every route asks the policy before anything else, and resolves what it
- * reads or changes — the queue backend, the failed-job store, the
- * browser, the retrier — from the request scope only afterwards: a method
- * parameter would be built before the policy is asked, so a refused
- * caller would reach the database link (and see a 500 when it is down)
- * instead of a 403.
+ * Every route asks the gate and the policy before anything else, and
+ * resolves what it reads or changes — the queue backend, the failed-job
+ * store, the browser, the retrier — from the request scope only
+ * afterwards: a method parameter would be built before the policy is
+ * asked, so a refused caller would reach the database link (and see a
+ * 500 when it is down) instead of a 403 — and a failed-jobs class would
+ * be loaded where kinetis/queue-failed-jobs is not installed.
  */
 #[RoutePrefix('/vector/queues')]
 #[Middleware('@vector')]
@@ -59,7 +65,7 @@ final readonly class QueuesController
     private const int MAX_PRUNE_DAYS = 36_500;
 
     /** The audit trail's resource name for every dashboard entry. */
-    public const string AUDIT_RESOURCE = 'vector-queues';
+    public const string AUDIT_RESOURCE = 'queues';
 
     private const string ID = '/^[0-9a-f]{32}$/D';
 
@@ -68,15 +74,21 @@ final readonly class QueuesController
         private QueueDashboardPolicyInterface $policy,
         private ActorContext $actor,
         private AuditStore $audit,
+        private QueueDashboard $dashboard,
     ) {}
 
-    /** @return array{data: list<array{name: string, size: int|null, clearable: bool, failed: int}>} */
+    /**
+     * `failed` is null on every queue where kinetis/queue-failed-jobs is
+     * not wired: there is no count to give, rather than none failed.
+     *
+     * @return array{data: list<array{name: string, size: int|null, clearable: bool, failed: int|null}>}
+     */
     #[Get('/')]
-    public function overview(RequestScope $scope): array
+    public function overview(ServerRequestInterface $request, RequestScope $scope): array
     {
-        $this->authorize($this->policy->view($this->actor));
+        $failedJobs = $this->gate($request);
         $queue = self::resolve($scope, QueueInterface::class);
-        $failed = self::resolve($scope, FailedJobBrowser::class)->failedCounts($this->queues->names);
+        $failed = $failedJobs ? self::resolve($scope, FailedJobBrowser::class)->failedCounts($this->queues->names) : null;
         $data = [];
 
         foreach ($this->queues->names as $name) {
@@ -84,7 +96,7 @@ final readonly class QueuesController
                 'name' => $name,
                 'size' => self::size($queue, $name),
                 'clearable' => $queue instanceof ClearableQueueInterface,
-                'failed' => $failed[$name] ?? 0,
+                'failed' => $failed === null ? null : $failed[$name] ?? 0,
             ];
         }
 
@@ -96,13 +108,16 @@ final readonly class QueuesController
      * what it would refuse: `clear` per watched queue, as a JSON object
      * whatever the names. It reads nothing but the policy, and hides
      * nothing on the server — every route still asks the policy itself.
+     * Where kinetis/queue-failed-jobs is not wired there is no failed-job
+     * action to take, so `retry`, `forget` and `prune` are false whatever
+     * the policy says.
      *
      * @return array{view: true, retry: bool, forget: bool, prune: bool, clear: \stdClass}
      */
     #[Get('/permissions')]
-    public function permissions(): array
+    public function permissions(ServerRequestInterface $request): array
     {
-        $this->authorize($this->policy->view($this->actor));
+        $failedJobs = $this->gate($request);
         // an object, not an array: a queue named "0" would make a PHP array encode as a JSON list
         $clear = new \stdClass();
 
@@ -112,9 +127,9 @@ final readonly class QueuesController
 
         return [
             'view' => true,
-            'retry' => $this->policy->retry($this->actor),
-            'forget' => $this->policy->forget($this->actor),
-            'prune' => $this->policy->prune($this->actor),
+            'retry' => $failedJobs && $this->policy->retry($this->actor),
+            'forget' => $failedJobs && $this->policy->forget($this->actor),
+            'prune' => $failedJobs && $this->policy->prune($this->actor),
             'clear' => $clear,
         ];
     }
@@ -123,7 +138,7 @@ final readonly class QueuesController
     #[Get('/failed')]
     public function failed(ServerRequestInterface $request, RequestScope $scope): array
     {
-        $this->authorize($this->policy->view($this->actor));
+        $this->failedGate($request);
         $filter = FailedJobFilter::fromQueryParams($request->getQueryParams(), $this->queues);
         $page = self::resolve($scope, FailedJobBrowser::class)->page($filter, $this->queues->names);
         $last = $page['rows'] === [] ? null : $page['rows'][array_key_last($page['rows'])];
@@ -152,9 +167,9 @@ final readonly class QueuesController
      * @return array{data: array<string, mixed>}
      */
     #[Get('/failed/{id}')]
-    public function show(string $id, RequestScope $scope): array
+    public function show(string $id, ServerRequestInterface $request, RequestScope $scope): array
     {
-        $this->authorize($this->policy->view($this->actor));
+        $this->failedGate($request);
         $job = $this->watched(self::resolve($scope, SqlFailedJobStore::class), $id)->job;
 
         return ['data' => [
@@ -180,6 +195,7 @@ final readonly class QueuesController
     #[Post('/failed/retry')]
     public function retry(ServerRequestInterface $request, RequestScope $scope): array
     {
+        $this->failedGate($request);
         $this->authorize($this->policy->retry($this->actor));
         $ids = self::body($request)['ids'] ?? null;
 
@@ -207,8 +223,9 @@ final readonly class QueuesController
     }
 
     #[Delete('/failed/{id}', status: 204)]
-    public function forget(string $id, RequestScope $scope): ResponseInterface
+    public function forget(string $id, ServerRequestInterface $request, RequestScope $scope): ResponseInterface
     {
+        $this->failedGate($request);
         $this->authorize($this->policy->forget($this->actor));
         $store = self::resolve($scope, SqlFailedJobStore::class);
         $job = $this->watched($store, $id)->job;
@@ -228,6 +245,7 @@ final readonly class QueuesController
     #[Post('/failed/prune')]
     public function prune(ServerRequestInterface $request, RequestScope $scope): array
     {
+        $this->failedGate($request);
         $this->authorize($this->policy->prune($this->actor));
         $body = self::body($request);
         $given = array_values(array_intersect(['hours', 'days'], array_keys($body)));
@@ -261,7 +279,8 @@ final readonly class QueuesController
     #[Post('/{queue}/clear')]
     public function clear(string $queue, ServerRequestInterface $request, RequestScope $scope): array
     {
-        // the policy first, as for every other mutation: a refused caller cannot tell watched queues from others
+        // the gate and the policy first, as for every other mutation: a refused caller cannot tell watched queues from others
+        $this->gate($request);
         $this->authorize($this->policy->clear($this->actor, $queue));
 
         if (!$this->queues->has($queue)) {
@@ -282,6 +301,35 @@ final readonly class QueuesController
         $this->record([$queue], 'queue:clear', ['cleared' => $cleared]);
 
         return ['data' => ['queue' => $queue, 'cleared' => $cleared]];
+    }
+
+    /**
+     * The Kernel's own 404 unless the dashboard is there for this actor;
+     * then whether failed jobs are too. Asks the policy's view(), and
+     * builds nothing.
+     *
+     * @throws \Kinetis\Http\Routing\Exception\RouteNotFoundException
+     */
+    private function gate(ServerRequestInterface $request): bool
+    {
+        if (!$this->dashboard->available($this->policy, $this->actor)) {
+            throw QueueDashboard::notFound($request);
+        }
+
+        return $this->dashboard->failedJobsWired();
+    }
+
+    /**
+     * The gate, and the Kernel's own 404 where kinetis/queue-failed-jobs
+     * is not wired: every /failed route asks this before anything else.
+     *
+     * @throws \Kinetis\Http\Routing\Exception\RouteNotFoundException
+     */
+    private function failedGate(ServerRequestInterface $request): void
+    {
+        if (!$this->gate($request)) {
+            throw QueueDashboard::notFound($request);
+        }
     }
 
     private function authorize(bool $allowed): void

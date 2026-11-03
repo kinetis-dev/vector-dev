@@ -82,7 +82,7 @@ final class VectorQueue
         }
 
         if ($this->connection === null) {
-            return $this->app->has(QueueInterface::class) ? null : 'Background jobs need a queue: set QUEUE_CONNECTION, or VECTOR_QUEUE_CONNECTION for a queue of Vector\'s own.';
+            return self::applicationQueueBound($this->app) ? null : 'Background jobs need a queue: set QUEUE_CONNECTION, or VECTOR_QUEUE_CONNECTION for a queue of Vector\'s own.';
         }
 
         $key = $this->typeKey();
@@ -90,6 +90,19 @@ final class VectorQueue
         return $this->config->get($key) === null
             ? "VECTOR_QUEUE_CONNECTION names the queue connection \"{$this->connection}\", but {$key} is not set."
             : null;
+    }
+
+    /**
+     * Whether the application's own queue backend is configured: a
+     * QueueInterface bound on AppScope explicitly — by kinetis/queue when
+     * QUEUE_CONNECTION is set, or by the application's bootstrap.php.
+     * Read from the bindings alone; nothing is built or opened. Vector's
+     * jobs push to it without VECTOR_QUEUE_CONNECTION, and the queue
+     * dashboard reads and clears it.
+     */
+    public static function applicationQueueBound(AppScope $app): bool
+    {
+        return $app->has(QueueInterface::class);
     }
 
     public function available(): bool

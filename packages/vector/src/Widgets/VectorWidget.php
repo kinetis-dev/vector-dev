@@ -21,9 +21,11 @@ abstract class VectorWidget
     public const string PARTITION = 'partition';
     public const string PROGRESS = 'progress';
     public const string TABLE = 'table';
+    /** The queue dashboard's card ({@see \Kinetis\Vector\Queues\Widgets\QueuesWidget}), which loads its own figures. */
+    public const string QUEUES = 'queues';
 
     /** The types the UI ships a card for, each with the data shape its WidgetResult factory builds. */
-    public const array BUILT_IN_TYPES = [self::STAT, self::TREND, self::PARTITION, self::PROGRESS, self::TABLE];
+    public const array BUILT_IN_TYPES = [self::STAT, self::TREND, self::PARTITION, self::PROGRESS, self::TABLE, self::QUEUES];
 
     /** A widget name's grammar, and an extension type's: lower-case kebab-case. */
     public const string KEBAB_CASE = '/^[a-z0-9]+(?:-[a-z0-9]+)*$/';

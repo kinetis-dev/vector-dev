@@ -23,4 +23,5 @@ return [
     'Background jobs' => 'مهام الخلفية',
     'Stalled after (minutes)' => 'تُعد متوقفة بعد (دقائق)',
     'A running job that reports no progress for this many minutes is shown as stalled, and vector:jobs:reap marks it failed.' => 'المهمة الجارية التي لا تبلّغ عن تقدم طوال هذا العدد من الدقائق تُعرض كمتوقفة؛ ويضع الأمر vector:jobs:reap علامة فشل عليها.',
+    'Queues' => 'قوائم الانتظار',
 ];

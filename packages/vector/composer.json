@@ -45,7 +45,8 @@
     "suggest": {
         "kinetis/storage": "Uploads for file and image fields (FILESYSTEM_DRIVER, or VECTOR_STORAGE_CONNECTION)",
         "openspout/openspout": "XLSX exports (MIT; needs ext-zip), written in the queue worker",
-        "league/flysystem": "The filesystem contract those uploads are written through; kinetis/storage brings it"
+        "league/flysystem": "The filesystem contract those uploads are written through; kinetis/storage brings it",
+        "kinetis/queue-failed-jobs": "Failed jobs on the queue dashboard: browse, retry, forget and prune them (^1.1.1)"
     },
     "autoload": {
         "psr-4": {

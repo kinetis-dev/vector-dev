@@ -7,12 +7,13 @@ namespace App\Tests\Vector\Queues;
 use Kinetis\Config\Config;
 use Kinetis\Container\AppScope;
 use Kinetis\Events\EventDispatcher;
-use Kinetis\Vector\Queues\FailedJobsLink;
+use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\Vector\Queues\Metrics\JobMetricsStore;
 use Kinetis\Vector\Queues\Metrics\MetricsClock;
 
 /**
- * The job metrics over the demo's real `vector_queue_metrics` table, on
+ * The job metrics over the demo's real `vector_queue_metrics` table — on
+ * Vector's own connection (VECTOR_DB_CONNECTION), beside `vector_jobs` — on
  * the tests' own queue names, at a clock the test sets: NOW, half a
  * minute into its minute, unless a test moves it. Every row on the
  * tests' queues is deleted before and after each test.
@@ -94,12 +95,13 @@ abstract class MetricsTestCase extends QueuesTestCase
         return $store;
     }
 
+    /** Vector's own connection, the one the metrics store is built on. */
     private function link(): \Kinetis\Persistence\Contract\SqlLink
     {
-        $shared = $this->app->get(FailedJobsLink::class);
-        self::assertInstanceOf(FailedJobsLink::class, $shared);
+        $vector = $this->app->get(VectorDatabase::class);
+        self::assertInstanceOf(VectorDatabase::class, $vector);
 
-        return $shared->link;
+        return $vector->link();
     }
 
     protected function deleteTestRows(): void

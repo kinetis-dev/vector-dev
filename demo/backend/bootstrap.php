@@ -36,7 +36,7 @@ return static function (AppScope $app, Config $config): void {
 
     $app->instance(VectorAccessInterface::class, new DemoVectorAccess());
 
-    // The queue dashboard (kinetis/vector-queues) is view-only by default: here an admin may also retry, forget, prune and clear.
+    // Vector's queue dashboard is view-only by default: here an admin may also retry, forget, prune and clear.
     $app->instance(QueueDashboardPolicyInterface::class, new DemoQueueDashboardPolicy());
 
     // The users resource lets an admin set a password: hashed here, the way the login verifies it.

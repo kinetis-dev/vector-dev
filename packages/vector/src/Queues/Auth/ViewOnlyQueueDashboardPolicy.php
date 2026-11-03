@@ -7,7 +7,7 @@ namespace Kinetis\Vector\Queues\Auth;
 use Kinetis\Vector\Auth\ActorContext;
 
 /**
- * The package's default: anyone Vector admits may look, and nobody may
+ * Vector's default: anyone Vector admits may look, and nobody may
  * retry, forget, prune or clear until the application binds a policy
  * that says who may.
  */
