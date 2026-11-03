@@ -87,7 +87,7 @@ final readonly class QueuesController
     public function overview(ServerRequestInterface $request, RequestScope $scope): array
     {
         $failedJobs = $this->gate($request);
-        $queue = self::resolve($scope, QueueInterface::class);
+        $queue = self::backend($scope);
         $failed = $failedJobs ? self::resolve($scope, FailedJobBrowser::class)->failedCounts($this->queues->names) : null;
         $data = [];
 
@@ -189,7 +189,9 @@ final readonly class QueuesController
      * Retries `{"ids": [...]}`, 1 to MAX_RETRY_BATCH of them, in order,
      * one result per distinct id: a repeated id is retried and answered
      * once, at its first position. A record on a queue the dashboard does not watch is
-     * `not_found`, exactly as a missing one is.
+     * `not_found`, exactly as a missing one is. A failure of the
+     * failed-job store stops the batch with a 500: the ids before it were
+     * retried and audited, and its own id is audited with status `error`.
      *
      * @return array{data: list<array{id: string, status: string, class: string|null, queue: string|null, reason: string|null}>}
      */
@@ -212,7 +214,19 @@ final readonly class QueuesController
         $results = [];
 
         foreach (array_values(array_unique($ids)) as $id) {
-            $result = $this->find($store, $id) === null ? RetryResult::notFound($id) : $retrier->retry($id);
+            try {
+                $result = $this->find($store, $id) === null ? RetryResult::notFound($id) : $retrier->retry($id);
+            } catch (\Throwable $e) {
+                // only the store itself throws here — a failed push is a Failed result — and it may have failed after the push, with the job back on its queue: the batch stops, every id before it is already audited, and this one is audited as an error before the 500
+                try {
+                    $this->record([$id], 'queue:retry', ['status' => 'error', 'class' => null, 'queue' => null]);
+                } catch (\Throwable) {
+                    // the audit trail usually shares the store's database; the store's own failure is the one to report
+                }
+
+                throw $e;
+            }
+
             $results[] = ['id' => $result->id, 'status' => $result->status->value, 'class' => $result->class, 'queue' => $result->queue, 'reason' => $result->reason];
             $this->record([$id], 'queue:retry', ['status' => $result->status->value, 'class' => $result->class, 'queue' => $result->queue]);
         }
@@ -387,9 +401,27 @@ final readonly class QueuesController
         $this->audit->record(self::AUDIT_RESOURCE, $recordIds, $event, $changes, $this->actor->actorId(), $this->actor->impersonatorId);
     }
 
-    /** A backend that cannot answer — unreachable, or with no count to give — has no size, rather than failing the overview. */
-    private static function size(QueueInterface $queue, string $name): ?int
+    /**
+     * The bound queue backend, or null when building it throws — a
+     * factory that cannot reach its broker, say: the overview then lists
+     * every queue with no size and no clear, rather than failing whole.
+     */
+    private static function backend(RequestScope $scope): ?QueueInterface
     {
+        try {
+            return self::resolve($scope, QueueInterface::class);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /** A backend that cannot answer — unreachable, not built, or with no count to give — has no size, rather than failing the overview. */
+    private static function size(?QueueInterface $queue, string $name): ?int
+    {
+        if ($queue === null) {
+            return null;
+        }
+
         try {
             return $queue->size($name);
         } catch (\Exception) {
