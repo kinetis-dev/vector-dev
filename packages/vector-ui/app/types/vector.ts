@@ -128,8 +128,8 @@ export interface VectorActionResponse {
     jobId?: number | null
 }
 
-/** The built-in cards' types. */
-export type VectorBuiltInWidgetType = 'stat' | 'trend' | 'partition' | 'progress' | 'table'
+/** The built-in cards' types; `queues` is the queue dashboard's card, which loads its own figures. */
+export type VectorBuiltInWidgetType = 'stat' | 'trend' | 'partition' | 'progress' | 'table' | 'queues'
 
 /**
  * A built-in type, or an extension type: a kebab-case name whose card a
@@ -191,6 +191,84 @@ export interface VectorJob {
     createdAt: string
     updatedAt: string
     finishedAt: string | null
+}
+
+/** One watched queue on the queue dashboard: `size` null when the backend cannot count, `failed` null without failed jobs. */
+export interface VectorQueue {
+    name: string
+    size: number | null
+    clearable: boolean
+    failed: number | null
+}
+
+/** What the queue dashboard's policy lets this user do; `clear` per watched queue. */
+export interface VectorQueuePermissions {
+    view: true
+    retry: boolean
+    forget: boolean
+    prune: boolean
+    clear: Record<string, boolean>
+}
+
+/** A failed job as the list shows it; the detail adds its redacted `args` and an always-null `trace`. */
+export interface VectorFailedJob {
+    id: string
+    connection: string | null
+    queue: string
+    class: string
+    attempts: number
+    maxAttempts: number | null
+    exception: { class: string, message: string, trace?: string | null }
+    /** RFC 3339, UTC */
+    failedAt: string
+    args?: unknown
+}
+
+export interface VectorFailedJobPage {
+    data: VectorFailedJob[]
+    nextCursor: string | null
+    hasMore: boolean
+    limit: number
+}
+
+/** The failed-job list's filters, as the user typed them: `failedFrom`/`failedTo` are `datetime-local` values. */
+export interface VectorFailedJobFilters {
+    queue: string
+    class: string
+    failedFrom: string
+    failedTo: string
+}
+
+export interface VectorRetryResult {
+    id: string
+    status: 'retried' | 'not_found' | 'failed'
+    class: string | null
+    queue: string | null
+    reason: string | null
+}
+
+export interface VectorQueueMetricsCounts {
+    succeeded: number
+    released: number
+    failed: number
+    averageDurationMs: number
+    maxDurationMs: number
+}
+
+/** A queue's or a job class's totals over the window; `lastProcessedAt` in unix seconds. */
+export interface VectorQueueMetricsTotals extends VectorQueueMetricsCounts {
+    failureRate: number | null
+    lastProcessedAt: number
+}
+
+/** GET /vector/queues/metrics: per-minute buckets (unix seconds), and totals per queue and per class. */
+export interface VectorQueueMetrics {
+    from: number
+    to: number
+    bucketSeconds: number
+    buckets: (VectorQueueMetricsCounts & { bucket: number })[]
+    queues: (VectorQueueMetricsTotals & { queue: string })[]
+    classes: (VectorQueueMetricsTotals & { class: string })[]
 }
 
 export interface VectorNotification {
@@ -398,8 +476,12 @@ export interface VectorSchema {
     menu: VectorMenuGroup[]
     settings: { name: string, label: string, icon: string | null }[]
     dashboards: { name: string, label: string, icon: string | null }[]
-    /** `exportFormats`: what the export menu offers — csv always, xlsx where the server can write it (in the queue). */
-    capabilities: { impersonation: boolean, queue: boolean, uploads?: boolean, exportFormats?: VectorExportFormat[] }
+    /**
+     * `exportFormats`: what the export menu offers — csv always, xlsx where the server can write it (in the queue).
+     * `queues`: the queue dashboard is there for this user (a queue configured, the policy lets them view);
+     * `failedJobs`: it shows failed jobs too (kinetis/queue-failed-jobs installed and wired). Absent is false.
+     */
+    capabilities: { impersonation: boolean, queue: boolean, uploads?: boolean, exportFormats?: VectorExportFormat[], queues?: boolean, failedJobs?: boolean }
     branding: VectorBranding | null
     /** The language this descriptor is in, and the ones this user may switch to. */
     i18n?: VectorSchemaI18n

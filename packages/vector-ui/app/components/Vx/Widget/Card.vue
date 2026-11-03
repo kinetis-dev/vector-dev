@@ -43,6 +43,7 @@ const builtIn: Record<string, Component> = {
     partition: defineAsyncComponent(() => import('#vector/app/components/Vx/Widget/Partition.vue')),
     progress: defineAsyncComponent(() => import('#vector/app/components/Vx/Widget/Progress.vue')),
     table: defineAsyncComponent(() => import('#vector/app/components/Vx/Widget/Table.vue')),
+    queues: defineAsyncComponent(() => import('#vector/app/components/Vx/Widget/Queues.vue')),
 }
 
 // null for a type with no built-in card and no registered renderer: an

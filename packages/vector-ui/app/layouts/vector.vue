@@ -167,6 +167,7 @@ const pageGroups = computed(() => {
                 </template>
                 <v-divider class="my-2" />
                 <v-list-item v-if="schema?.capabilities.queue" :to="`${appConfig.vector.basePath}/jobs`" prepend-icon="mdi-progress-clock" :title="t('shell.nav.jobs')" />
+                <v-list-item v-if="schema?.capabilities.queues" :to="`${appConfig.vector.basePath}/queues`" prepend-icon="mdi-tray-full" :title="t('queues.title')" data-nav="queues" />
                 <v-list-item v-if="schema?.settings.length" :to="`${appConfig.vector.basePath}/settings`" prepend-icon="mdi-cog-outline" :title="t('shell.nav.settings')" />
             </v-list>
         </v-navigation-drawer>
