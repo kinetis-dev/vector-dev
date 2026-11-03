@@ -63,10 +63,14 @@ A cell receives `value`, `field`, `record`, `resource` and `context`
 `errorMessages`, `record` and `resource` and emits `update:modelValue`.
 A widget renderer receives `data` and `widget`. For a widget type, the
 lookup order is the `app.config` override, then a runtime extension's
-`defineWidget`, then the built-in card. A dashboard declares only
-Vector's built-in widget types (`stat`, `trend`, `partition`,
-`progress`, `table` and `queues`), so a renderer replaces one of those
-cards; one registered for any other type is never reached.
+`defineWidget`, then the built-in card. A renderer registered for a
+built-in type (`stat`, `trend`, `partition`, `progress`, `table` or
+`queues`) replaces that card. A widget can also declare an extension
+type, a kebab-case name Vector has no card for, such as `sparkline`
+("Extension widget types" in {doc}`dashboards`). The application must
+register its renderer one of those two ways. Without a renderer the
+card says that none is registered for the type, rather than drawing it
+as a `stat`.
 
 ## Runtime extensions
 

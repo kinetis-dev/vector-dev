@@ -32,10 +32,40 @@ final class RevenueStat extends VectorWidget
 
 A value's format is a number, `money:EUR`, `percent` or `duration`.
 
-Any other type is refused when the registry compiles. An application
-can replace a type's card in the UI, through `vector.widgets` in its
-`app.config` or `window.Vector.defineWidget()` in a runtime extension
-({doc}`customizing-the-ui`); the data keeps that type's shape.
+An application can replace a built-in type's card in the UI, through
+`vector.widgets` in its `app.config` or `window.Vector.defineWidget()`
+in a runtime extension ({doc}`customizing-the-ui`); the data keeps that
+type's shape.
+
+### Extension widget types
+
+`type()` may also return an extension type: a lower-case kebab-case name
+that is none of the six above, such as `sparkline`. Any other type is
+refused when the registry compiles. Vector ships no card for an
+extension type. The application registers the card for it in its UI,
+either in its runtime extension with
+`window.Vector.defineWidget(type, component)` or in its `app.config`
+under `vector.widgets` ({doc}`customizing-the-ui`). A card whose type
+has no renderer says that none is registered for the type, instead of
+guessing at a shape.
+
+`calculate()` answers such a widget with `WidgetResult::extension()`:
+
+```php
+public function type(): string { return 'sparkline'; }
+
+public function calculate(WidgetRequest $request): WidgetResult
+{
+    return WidgetResult::extension('sparkline', ['samples' => [3, 1, 4]]);
+}
+```
+
+The data reaches the card as the widget wrote it, beside the `type`,
+`range` and `cached` that Vector sets on every answer, so it cannot use
+those three keys; a built-in type is refused too, since its card reads
+the shape its own factory builds. None of the built-in shapes applies.
+Ranges, caching, `canView()` and translated labels work as for any
+widget.
 
 ## Shaping a widget
 
