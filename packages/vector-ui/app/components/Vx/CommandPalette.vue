@@ -66,7 +66,10 @@ watch(results, (list) => {
 })
 
 const pages = useVectorPages()
-const pageItems = computed(() => Object.entries(pages.value).filter(([, p]) => (query.value ?? '').trim() === '' || p.title.toLowerCase().includes((query.value ?? '').trim().toLowerCase())))
+// titles resolved here (a function one in the current language), for the filter and the list alike
+const pageItems = computed(() => Object.entries(pages.value)
+    .map(([name, p]) => ({ name, title: pageLabel(p.title), icon: p.icon }))
+    .filter(p => (query.value ?? '').trim() === '' || p.title.toLowerCase().includes((query.value ?? '').trim().toLowerCase())))
 const resources = computed(() => menu.value.flatMap(g => g.items).filter(r => (query.value ?? '').trim() === '' || r.label.toLowerCase().includes((query.value ?? '').trim().toLowerCase())))
 
 function go(path: string) {
@@ -108,7 +111,7 @@ defineExpose({ open })
                     <v-list-item v-for="r in resources" :key="r.slug" :title="r.label" :prepend-icon="r.icon ?? 'mdi-table'" @click="go(`/r/${r.slug}`)" />
                     <template v-if="pageItems.length">
                         <v-list-subheader>{{ t('shell.nav.pages') }}</v-list-subheader>
-                        <v-list-item v-for="[name, p] in pageItems" :key="name" :title="p.title" :prepend-icon="p.icon ?? 'mdi-file-document-outline'" @click="go(`/p/${name}`)" />
+                        <v-list-item v-for="p in pageItems" :key="p.name" :title="p.title" :prepend-icon="p.icon ?? 'mdi-file-document-outline'" @click="go(`/p/${p.name}`)" />
                     </template>
                     <v-list-item v-if="(query ?? '').trim() && !loading && results.length === 0" :title="t('shell.palette.noMatch')" disabled />
                 </v-list>

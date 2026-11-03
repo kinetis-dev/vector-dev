@@ -79,7 +79,7 @@
   },
   "demo.html": {
    "canonical": "https://kinetis.dev/vector/docs/demo.html",
-   "description": "The Vector repository ships a complete Kinetis application administered by Vector, the one both packages are developed and tested against. It has two business domains on two databases, so every fie...",
+   "description": "The Vector repository ships a complete Kinetis application administered by Vector, the one the packages are developed and tested against. It has two business domains on two databases, so every fiel...",
    "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
    "og:url": "https://kinetis.dev/vector/docs/demo.html",
    "title": "The demo application - Kinetis Vector"
@@ -168,6 +168,13 @@
    "og:url": "https://kinetis.dev/vector/docs/mcp.html",
    "title": "MCP tools - Kinetis Vector"
   },
+  "queues.html": {
+   "canonical": "https://kinetis.dev/vector/docs/queues.html",
+   "description": "Vector has a queue dashboard, in the spirit of Laravel Horizon. It shows the size of each queue and, with kinetis/queue-failed-jobs, the jobs the worker gave up on, which can be browsed, retried, f...",
+   "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
+   "og:url": "https://kinetis.dev/vector/docs/queues.html",
+   "title": "Queue dashboard - Kinetis Vector"
+  },
   "records.html": {
    "canonical": "https://kinetis.dev/vector/docs/records.html",
    "description": "The record page: Opening a record shows its fields, then a panel per related collection, then its History. The buttons at the top depend on what you may do with this record: Edit, Delete, Actions, ...",
@@ -252,6 +259,7 @@
    "https://kinetis.dev/vector/docs/limits.html",
    "https://kinetis.dev/vector/docs/lists.html",
    "https://kinetis.dev/vector/docs/mcp.html",
+   "https://kinetis.dev/vector/docs/queues.html",
    "https://kinetis.dev/vector/docs/records.html",
    "https://kinetis.dev/vector/docs/releasing.html",
    "https://kinetis.dev/vector/docs/resources.html",

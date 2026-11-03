@@ -72,10 +72,12 @@ are flattened with dots. A regional tag falls back to its language
 starts.
 
 Vector binds a `MessagesTranslator` over its own `translations/` (the
-labels of its built-in settings groups, machine-translated like the UI's
-catalogs) and your `VECTOR_TRANSLATIONS_DIR`. To use your framework's
-own translator instead, bind
-`Kinetis\Vector\Translation\TranslatorInterface` in your application.
+labels of its built-in settings groups and the queue dashboard's card,
+machine-translated like the UI's catalogs) and your
+`VECTOR_TRANSLATIONS_DIR`, which overrides them key by key, so your
+wording always wins. To use your framework's own translator instead,
+bind `Kinetis\Vector\Translation\TranslatorInterface` in your
+application.
 
 Translation happens at response time — the descriptor, settings groups,
 dashboards and widget results — so the compiled registry stays in your

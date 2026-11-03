@@ -192,16 +192,18 @@ Once Orbitron is ready, every task runs the same way:
 
    ```sh
    docker compose exec app vendor/bin/phpunit --filter SomeTest
-   docker compose exec app vendor/bin/phpstan analyse
+   docker compose exec app composer phpstan
    docker compose exec app composer psalm
-   docker compose exec app composer psalm:taint
    ```
 
-   `phpstan.neon` registers two Kinetis rules on top of level 8.
+   `phpstan.neon` registers three Kinetis rules on top of level 8.
    `NoStaticPropertiesRule` flags a `static` property, which survives
    every request the worker goes on to handle; `NoBlockingIoRule` flags
    a call that waits synchronously instead of yielding, holding the
-   whole event loop while it does. They are guardrails over two specific
+   whole event loop while it does; `NoProcessGlobalsRule` flags code
+   that reaches past the PSR-7 request and response into the process —
+   `exit` and `die`, the request superglobals, and the SAPI header,
+   cookie and session functions. They are guardrails over three specific
    mistakes, not a proof that the change is correct on a persistent
    worker — step 5 is still yours to do.
 5. Close the change out concisely: request-scoped state stays

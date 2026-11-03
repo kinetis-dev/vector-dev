@@ -10,6 +10,7 @@ use App\Vector\Widgets\OrdersByStatus;
 use App\Vector\Widgets\OrdersTrend;
 use App\Vector\Widgets\RevenueStat;
 use Kinetis\Vector\Attributes\Dashboard;
+use Kinetis\Vector\Queues\Widgets\QueuesWidget;
 use Kinetis\Vector\Widgets\VectorDashboard;
 
 /** The admin's home page. */
@@ -25,6 +26,6 @@ final class MainDashboard extends VectorDashboard
     #[\Override]
     public function widgets(): array
     {
-        return [RevenueStat::class, OrdersByStatus::class, OpenTicketsStat::class, OrdersTrend::class, LowStockTable::class];
+        return [RevenueStat::class, OrdersByStatus::class, OpenTicketsStat::class, OrdersTrend::class, LowStockTable::class, QueuesWidget::class];
     }
 }

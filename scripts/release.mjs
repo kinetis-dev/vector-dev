@@ -1,19 +1,23 @@
 #!/usr/bin/env node
 // The release logic .github/workflows/release.yml runs on every push to
 // main: each product whose version in packages.manifest.json is not yet
-// published goes out — packages/vector to the mirror kinetis-dev/vector
-// (Packagist's kinetis/vector), packages/vector-ui to npm
-// (@kinetis/vector-ui). The two version independently; the vector-dev
-// monorepo itself carries no tags.
+// published goes out. A Composer product goes to a mirror of its own,
+// which Packagist serves under its name — packages/vector to
+// kinetis-dev/vector (kinetis/vector); MIRRORS lists them.
+// packages/vector-ui goes to npm (@kinetis/vector-ui). Every product
+// versions independently; the vector-dev monorepo itself carries no tags.
 //
-//     node scripts/release.mjs plan --source=<sha> [--ref=refs/heads/main] [--mirror=<url>] [--dry-run]
-//     node scripts/release.mjs notes --product=<vector|vector-ui> --version=0.9.0
-//     node scripts/release.mjs split --source=<sha>
+//     node scripts/release.mjs plan --source=<sha> [--ref=refs/heads/main] [--dry-run]
+//     node scripts/release.mjs notes --product=<key> --version=0.9.0
+//     node scripts/release.mjs split --source=<sha> [--product=<mirror key>]
 //     node scripts/release.mjs npm-published --version=0.9.0
-//     node scripts/release.mjs publish-mirror --version=0.9.0 --source=<sha> --split=<sha> [--mirror=<url>] [--dry-run]
+//     node scripts/release.mjs publish-mirror --version=0.9.0 --source=<sha> --split=<sha> [--product=<mirror key>] [--mirror=<url>] [--dry-run]
 //
-// The mirror's history rule. The mirror's main is the pure subtree split
-// S of packages/vector: `git subtree split` derives every commit from the
+// --product is a key of MIRRORS, `vector` when absent; --mirror overrides
+// that product's mirror URL.
+//
+// The mirror's history rule. A mirror's main is the pure subtree split
+// S of its product's path: `git subtree split` derives every commit from the
 // monorepo commit it comes from, metadata included, so S is a function of
 // the source history and each release's S descends from the last one's —
 // main only ever fast-forwards. The version tag v<version> points at that
@@ -53,11 +57,21 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { MANIFEST_FILE, changelogHeading, checkConsistency, manifestAt } from './validate-versions.mjs'
 import { highestVersion, parseVersion, transitionProblem } from './version-policy.mjs'
 
-export const MIRROR = 'https://github.com/kinetis-dev/vector.git'
+/**
+ * The Composer products, by manifest key, and the mirror each is split
+ * onto: the subtree split of the product's manifest path is the mirror's
+ * main, tagged v<version> there. A manifest product that is neither one
+ * of these nor the npm product has no way out, and the plan refuses it.
+ */
+export const MIRRORS = Object.freeze({
+    'vector': 'https://github.com/kinetis-dev/vector.git',
+})
+
+export const MIRROR = MIRRORS.vector
 export const PREFIX = 'packages/vector'
 export const NPM_PACKAGE = '@kinetis/vector-ui'
 
-/** The manifest key of each published product. */
+/** The manifest key of kinetis/vector, which pins the UI, and of the npm product. */
 export const PRODUCTS = { vector: 'vector', ui: 'vector-ui' }
 
 const DEPLOY_CREDENTIAL_VARIABLE = 'RELEASE_DEPLOY_TOKEN'
@@ -250,6 +264,15 @@ export function mirrorVersions(repo, mirror, token) {
     }
 }
 
+/** The mirror URL of a MIRRORS product, or a refusal naming the products that have one. */
+export function mirrorOf(product, mirrors = MIRRORS) {
+    if (!Object.hasOwn(mirrors, product)) {
+        throw new Error(`"${product}" is not a product released to a mirror; the mirror products are ${Object.keys(mirrors).join(', ')}.`)
+    }
+
+    return mirrors[product]
+}
+
 /**
  * Decides what this round publishes, before anything is built: the
  * manifest at the source commit, the files it describes there, and, for
@@ -261,11 +284,17 @@ export function mirrorVersions(repo, mirror, token) {
  * pull request's, before it merges — and reports a commit not on
  * origin/main instead of refusing it. Every other refusal throws on a
  * rehearsal too, and any refusal stops the whole round: nothing is
- * published for one product while the other is refused.
+ * published for one product while another is refused.
  *
- * Returns { source, vector, ui }, each product { version, publish, notes }.
+ * The mirror products are decided in the manifest's order, then the npm
+ * product, so a mirror's refusal comes before npm is even asked. `mirrors`
+ * maps each mirror product to its URL (MIRRORS by default); a manifest
+ * product with neither a mirror nor npm is refused.
+ *
+ * Returns { source, mirrors: { <key>: product }, ui }, each product
+ * { version, publish, notes }.
  */
-export function plan(repo, { source, ref, dryRun, mirror = MIRROR, token, npmView, npmVersionsView, log = console.log }) {
+export function plan(repo, { source, ref, dryRun, mirrors = MIRRORS, token, npmView, npmVersionsView, log = console.log }) {
     sha(source, 'the source commit')
 
     if (!dryRun && ref !== undefined && ref !== 'refs/heads/main') {
@@ -310,17 +339,28 @@ export function plan(repo, { source, ref, dryRun, mirror = MIRROR, token, npmVie
         return { version: entry.version, publish: decision.publish, notes }
     }
 
-    const tags = mirrorVersions(repo, mirror, token)
-    const vector = decide(PRODUCTS.vector, version => tags.includes(version), tags)
+    const channelless = Object.keys(manifest.packages).filter(key => key !== PRODUCTS.ui && !Object.hasOwn(mirrors, key))
+
+    if (channelless.length > 0) {
+        throw new Error(`${MANIFEST_FILE} at ${source} lists ${channelless.join(', ')}, which neither a mirror nor npm publishes; add each to MIRRORS in scripts/release.mjs.`)
+    }
+
+    const decided = {}
+
+    for (const key of Object.keys(manifest.packages).filter(key => key !== PRODUCTS.ui)) {
+        const tags = mirrorVersions(repo, mirrors[key], token)
+        decided[key] = decide(key, version => tags.includes(version), tags)
+    }
+
     const npmVersions = npmPublishedVersions(npmVersionsView)
     const ui = decide(PRODUCTS.ui, version => npmPublished(version, npmView), npmVersions)
 
-    return { source, vector, ui }
+    return { source, mirrors: decided, ui }
 }
 
-/** S: the pure subtree split of packages/vector at the source commit. */
-export function split(repo, source) {
-    return sha(git(repo, ['subtree', 'split', '--quiet', `--prefix=${PREFIX}`, sha(source, 'the source commit')]), 'the split')
+/** S: the pure subtree split of `prefix` (packages/vector by default) at the source commit. */
+export function split(repo, source, prefix = PREFIX) {
+    return sha(git(repo, ['subtree', 'split', '--quiet', `--prefix=${prefix}`, sha(source, 'the source commit')]), 'the split')
 }
 
 /** The askpass helper the push alone reads the credential through, or null without one. */
@@ -365,7 +405,7 @@ function credential(mirror, token) {
  * the version this run builds to the commit it builds from, as the tag
  * bound the two before.
  */
-export function sourceProblem(repo, { source, version }) {
+export function sourceProblem(repo, { source, version, product = PRODUCTS.vector }) {
     const line = git(repo, ['ls-remote', 'origin', 'refs/heads/main'])
     const current = line === '' ? null : sha(line.split('\t')[0], "origin's main")
 
@@ -381,10 +421,11 @@ export function sourceProblem(repo, { source, version }) {
         return `origin's main (${current}) no longer contains ${source}`
     }
 
-    const stated = manifestAt(repo, source)?.packages[PRODUCTS.vector]?.version
+    const entry = manifestAt(repo, source)?.packages[product]
+    const stated = entry?.version
 
     if (stated !== version) {
-        return `the manifest at ${source} states kinetis/vector ${stated ?? 'nothing'}, not ${version}`
+        return `the manifest at ${source} states ${entry?.name ?? product} ${stated ?? 'nothing'}, not ${version}`
     }
 
     return null
@@ -399,7 +440,7 @@ export function sourceProblem(repo, { source, version }) {
  * workflow already runs this only after the npm publish succeeded or had
  * nothing to publish.
  */
-export function publishMirror(repo, { version, source, split: splitCommit, mirror = MIRROR, dryRun = false, token, log = console.log }) {
+export function publishMirror(repo, { version, source, split: splitCommit, product = PRODUCTS.vector, mirror = mirrorOf(product), dryRun = false, token, log = console.log }) {
     const tag = `v${version}`
     const remote = { main: remoteMain(repo, mirror), tag: remoteTagCommit(repo, mirror, tag) }
     const fetched = [remote.main, remote.tag].filter(commit => commit !== null)
@@ -430,7 +471,7 @@ export function publishMirror(repo, { version, source, split: splitCommit, mirro
 
     // Only while the source is still this release. A rehearsal — from a
     // branch not merged yet, say — says so and writes nothing.
-    const problem = sourceProblem(repo, { source, version })
+    const problem = sourceProblem(repo, { source, version, product })
 
     if (problem !== null && dryRun) {
         log(`${problem}; a real run would refuse to write the mirror.`)
@@ -540,6 +581,31 @@ function required(opts, name) {
     return opts[name]
 }
 
+/**
+ * The plan's step outputs: `mirrors`, the JSON list of { product, version }
+ * the mirror job's matrix runs, one per mirror product this round
+ * publishes, in the manifest's order, and `mirrors_publish`, whether
+ * there is any; then npm's, and each product's version and decision,
+ * keyed by its manifest key with `-` as `_`.
+ */
+export function planOutputs(result) {
+    const publishing = Object.entries(result.mirrors).filter(([, product]) => product.publish).map(([key, product]) => ({ product: key, version: product.version }))
+    const each = Object.entries(result.mirrors).flatMap(([key, product]) => {
+        const id = key.replaceAll('-', '_')
+
+        return [[`${id}_version`, product.version], [`${id}_publish`, product.publish]]
+    })
+
+    return {
+        source: result.source,
+        mirrors: JSON.stringify(publishing),
+        mirrors_publish: publishing.length > 0,
+        ...Object.fromEntries(each),
+        ui_version: result.ui.version,
+        ui_publish: result.ui.publish,
+    }
+}
+
 /** Writes key=value lines to $GITHUB_OUTPUT when it is set, and prints them either way. */
 function output(values) {
     const lines = Object.entries(values).map(([key, value]) => `${key}=${value}`)
@@ -551,14 +617,15 @@ function output(values) {
 }
 
 /** What this round publishes, and each release's notes, on the run's summary page when there is one. */
-function summary(result) {
+function summary(result, names) {
     const lines = ['## This round', '']
+    const products = [...Object.entries(result.mirrors).map(([key, product]) => [names[key] ?? key, product]), [NPM_PACKAGE, result.ui]]
 
-    for (const [name, product] of [['kinetis/vector', result.vector], [NPM_PACKAGE, result.ui]]) {
+    for (const [name, product] of products) {
         lines.push(`- **${name} ${product.version}**: ${product.publish ? 'publishes' : 'already published'}`)
     }
 
-    for (const [name, product] of [['kinetis/vector', result.vector], [NPM_PACKAGE, result.ui]]) {
+    for (const [name, product] of products) {
         if (product.publish) {
             lines.push('', `## ${name} ${product.version}`, '', product.notes)
         }
@@ -585,15 +652,11 @@ export function main(argv) {
 
     switch (command) {
         case 'plan': {
-            const result = plan(root, { source: required(opts, 'source'), ref: opts.ref, dryRun, mirror: opts.mirror ?? MIRROR, token })
-            summary(result)
-            output({
-                source: result.source,
-                vector_version: result.vector.version,
-                vector_publish: result.vector.publish,
-                ui_version: result.ui.version,
-                ui_publish: result.ui.publish,
-            })
+            const source = required(opts, 'source')
+            const result = plan(root, { source, ref: opts.ref, dryRun, token })
+            const names = Object.fromEntries(Object.entries(manifestAt(root, source).packages).map(([key, entry]) => [key, entry.name]))
+            summary(result, names)
+            output(planOutputs(result))
             break
         }
         case 'notes': {
@@ -608,9 +671,19 @@ export function main(argv) {
             process.stdout.write(`${changelogSection(readFileSync(path.join(root, entry.path, 'CHANGELOG.md'), 'utf8'), version, `${entry.path}/CHANGELOG.md`)}\n`)
             break
         }
-        case 'split':
-            output({ split: split(root, required(opts, 'source')) })
+        case 'split': {
+            const source = sha(required(opts, 'source'), '--source')
+            const product = opts.product ?? PRODUCTS.vector
+            mirrorOf(product)
+            const entry = manifestAt(root, source)?.packages[product]
+
+            if (entry === undefined) {
+                throw new Error(`${MANIFEST_FILE} at ${source} has no product "${product}".`)
+            }
+
+            output({ split: split(root, source, entry.path) })
             break
+        }
         case 'npm-published': {
             const version = required(opts, 'version')
             const published = npmPublished(version)
@@ -623,7 +696,8 @@ export function main(argv) {
                 version: required(opts, 'version'),
                 source: sha(required(opts, 'source'), '--source'),
                 split: sha(required(opts, 'split'), '--split'),
-                mirror: opts.mirror ?? MIRROR,
+                product: opts.product ?? PRODUCTS.vector,
+                mirror: opts.mirror ?? mirrorOf(opts.product ?? PRODUCTS.vector),
                 dryRun,
                 token,
             })

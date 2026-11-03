@@ -20,6 +20,9 @@ use Kinetis\Vector\Translation\Labels;
 use Kinetis\Vector\Translation\LocaleResolver;
 use Kinetis\Vector\Auth\ImpersonatedUserInterface;
 use Kinetis\Vector\Auth\ImpersonationInterface;
+use Kinetis\Vector\Auth\ActorContext;
+use Kinetis\Vector\Queues\Auth\QueueDashboardPolicyInterface;
+use Kinetis\Vector\Queues\QueueDashboard;
 use Kinetis\Vector\Ui\VectorUi;
 use Kinetis\Vector\Widgets\VectorDashboard;
 use Psr\Http\Message\ResponseInterface;
@@ -96,6 +99,10 @@ final readonly class SchemaController
             'capabilities' => [
                 'impersonation' => $this->scope->has(ImpersonationInterface::class) && $this->impersonation()?->canImpersonate($this->user) === true,
                 'queue' => $this->vectorQueue()->available(),
+                // the queue dashboard (/vector/queues): a queue configured and the policy letting this user view;
+                // failed jobs on top of that where kinetis/queue-failed-jobs is installed and wired; the job metrics on
+                // top of it unless VECTOR_QUEUE_METRICS turns them off
+                ...$this->queueDashboard(),
                 // XLSX is written in the queue worker only
                 'exportFormats' => array_values(array_filter($this->defaults->exportFormats, fn (string $format): bool => $format === 'csv' || $this->vectorQueue()->available())),
                 'uploads' => $this->scope->get(\Kinetis\Vector\Files\VectorStorage::class) instanceof \Kinetis\Vector\Files\VectorStorage
@@ -140,6 +147,31 @@ final readonly class SchemaController
             'preferences' => $this->preferences->all((string) $this->user->id()),
             'impersonator' => $impersonator,
             'unreadNotifications' => $this->notifications->inbox((string) $this->user->id(), true, 1)['unread'],
+        ];
+    }
+
+    /**
+     * `queues`, `failedJobs` and `queueMetrics`, as the queue dashboard's
+     * own routes decide them: nothing is built or opened to answer.
+     *
+     * @return array{queues: bool, failedJobs: bool, queueMetrics: bool}
+     */
+    private function queueDashboard(): array
+    {
+        $dashboard = $this->scope->get(QueueDashboard::class);
+        $policy = $this->scope->get(QueueDashboardPolicyInterface::class);
+        $actor = $this->scope->get(ActorContext::class);
+
+        if (!$dashboard instanceof QueueDashboard || !$policy instanceof QueueDashboardPolicyInterface || !$actor instanceof ActorContext) {
+            throw new \LogicException('The queue dashboard is not wired.');
+        }
+
+        $queues = $dashboard->available($policy, $actor);
+
+        return [
+            'queues' => $queues,
+            'failedJobs' => $queues && $dashboard->failedJobsWired(),
+            'queueMetrics' => $queues && $dashboard->metricsEnabled(),
         ];
     }
 

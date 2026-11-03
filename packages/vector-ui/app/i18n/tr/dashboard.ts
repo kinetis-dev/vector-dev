@@ -3,6 +3,7 @@ export default {
     title: 'Pano',
     range: 'Aralık',
     loading: 'Yükleniyor',
+    noRenderer: '{type} pencere öğesi türü için kayıtlı bir oluşturucu yok.',
     percent: '%{value}',
     duration: {
         minutes: '{value} dk',

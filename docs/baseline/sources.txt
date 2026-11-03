@@ -21,6 +21,7 @@ languages.md
 limits.md
 lists.md
 mcp.md
+queues.md
 records.md
 releasing.md
 resources.md

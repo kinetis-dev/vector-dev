@@ -23,4 +23,5 @@ return [
     'Background jobs' => 'Hintergrundaufträge',
     'Stalled after (minutes)' => 'Als hängend gilt nach (Minuten)',
     'A running job that reports no progress for this many minutes is shown as stalled, and vector:jobs:reap marks it failed.' => 'Ein laufender Auftrag, der so viele Minuten keinen Fortschritt meldet, wird als hängend angezeigt; vector:jobs:reap markiert ihn als fehlgeschlagen.',
+    'Queues' => 'Warteschlangen',
 ];

@@ -15,7 +15,7 @@
     "properties": {
         "version": {
             "type": "integer",
-            "const": 4
+            "const": 5
         },
         "resources": {
             "type": "object",
@@ -60,7 +60,10 @@
             "type": "object",
             "required": [
                 "impersonation",
-                "queue"
+                "queue",
+                "queues",
+                "failedJobs",
+                "queueMetrics"
             ],
             "properties": {
                 "impersonation": {
@@ -70,6 +73,18 @@
                     "type": "boolean"
                 },
                 "uploads": {
+                    "type": "boolean"
+                },
+                "queues": {
+                    "description": "Whether the queue dashboard (/vector/queues) is there for this user: the application's queue is configured and the queue dashboard policy lets them view. False hides the Queues page and the queues widget, and every /vector/queues endpoint answers 404.",
+                    "type": "boolean"
+                },
+                "failedJobs": {
+                    "description": "Whether the queue dashboard shows failed jobs: queues is true and kinetis/queue-failed-jobs is installed and wired. False leaves out the failed-jobs tab, column and actions, and the /vector/queues/failed endpoints answer 404.",
+                    "type": "boolean"
+                },
+                "queueMetrics": {
+                    "description": "Whether the queue dashboard shows the job metrics: queues is true and VECTOR_QUEUE_METRICS has not turned the metrics off. False leaves out the Metrics tab, and GET /vector/queues/metrics answers 404.",
                     "type": "boolean"
                 },
                 "exportFormats": {
@@ -139,13 +154,14 @@
             }
         },
         "ui": {
-            "description": "The @kinetis/vector-ui version this kinetis/vector pins in resources/ui.json, null when the pin is missing or malformed. The dashboard warns when it runs another.",
+            "description": "What the UI is told about itself: the @kinetis/vector-ui version this kinetis/vector pins in resources/ui.json.",
             "type": "object",
             "required": [
                 "expected"
             ],
             "properties": {
                 "expected": {
+                    "description": "The pinned @kinetis/vector-ui version, null when the pin is missing or malformed. The dashboard warns when it runs another.",
                     "type": [
                         "string",
                         "null"
@@ -700,13 +716,8 @@
                     "type": "string"
                 },
                 "type": {
-                    "enum": [
-                        "stat",
-                        "trend",
-                        "partition",
-                        "progress",
-                        "table"
-                    ]
+                    "description": "stat, trend, partition, progress, table or queues, the built-in cards, or an extension type: lower-case kebab-case, rendered by the card the application registers for it (window.Vector.defineWidget in its runtime extension, or vector.widgets in its app.config).",
+                    "$ref": "#/$defs/slug"
                 },
                 "icon": {
                     "type": [

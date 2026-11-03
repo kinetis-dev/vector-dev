@@ -17,13 +17,13 @@ Declare resources over your `kinetis/orm` entities, and Vector serves an
 admin API, a complete admin UI and MCP tools from the same definition,
 enforcing your policies on every request.
 
-This repository is the Vector monorepo: the two packages Vector is
+This repository is the Vector monorepo: the packages Vector is
 delivered as, the demo application they are developed against, and the
 user manual.
 
 | Path | What it is |
 |---|---|
-| [`packages/vector`](packages/vector) | `kinetis/vector`, the PHP package: the compiled resource registry, the REST admin API, background jobs and MCP tools. |
+| [`packages/vector`](packages/vector) | `kinetis/vector`, the PHP package: the compiled resource registry, the REST admin API, background jobs, the queue dashboard ([Queue dashboard](docs/queues.md)) and MCP tools. |
 | [`packages/vector-ui`](packages/vector-ui) | `@kinetis/vector-ui`, the admin UI as a Nuxt 4 layer on Vuetify 4. |
 | [`demo/`](demo) | A Kinetis application administered by Vector — a shop on MySQL and a support desk on PostgreSQL — with the Docker stack that runs it and the end-to-end suite. |
 | [`docs/`](docs) | The user manual. |
@@ -41,6 +41,10 @@ docker compose exec --user www-data app vendor/bin/kinetis demo:seed
 
 Open [http://localhost:3000](http://localhost:3000) and sign in as
 `admin@vector.local` with the password `password`.
+
+The queue dashboard is at `/vector/ui/queues` in the hosted admin. Run
+`docker compose exec app vendor/bin/kinetis demo:queue-flaky` to give it
+failed jobs and metrics to show.
 
 The API answers on `:8080` through nginx and PHP-FPM, and on `:8081`
 through FrankenPHP in worker mode, Kinetis's primary runtime: the same

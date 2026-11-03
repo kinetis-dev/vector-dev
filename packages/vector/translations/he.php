@@ -23,4 +23,5 @@ return [
     'Background jobs' => 'משימות רקע',
     'Stalled after (minutes)' => 'נחשבת תקועה אחרי (דקות)',
     'A running job that reports no progress for this many minutes is shown as stalled, and vector:jobs:reap marks it failed.' => 'משימה פעילה שלא מדווחת על התקדמות במשך מספר הדקות הזה מוצגת כתקועה; vector:jobs:reap מסמנת אותה כנכשלה.',
+    'Queues' => 'תורים',
 ];

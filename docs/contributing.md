@@ -8,7 +8,7 @@ seeded.
 ## Layout
 
 ```text
-packages/vector/            kinetis/vector: registry, REST API, jobs, MCP tools, migration stubs
+packages/vector/            kinetis/vector: registry, REST API, jobs, the queue dashboard (src/Queues/), MCP tools, migration stubs
 packages/vector-ui/         @kinetis/vector-ui, the Nuxt layer; its Vitest suite in test/nuxt/
   hosted/                   the hosted bundle's build entry: the layer alone, built into dist/static
 demo/docker-compose.yml     the stack: app, worker, nginx, frankenphp, mysql, postgres, redis, node; e2e and oha on demand
@@ -16,11 +16,12 @@ demo/docker/                the PHP images (PHP-FPM and FrankenPHP) and their sh
 demo/bin/                   check-frankenphp and benchmark, for the FrankenPHP worker service
 demo/backend/               the demo application, kinetis/vector installed from ../../packages/vector
   src/Auth/                 both sign-ins, their throttling, the vector and mcp group middleware, impersonation
-  src/Console/              demo:seed
+  src/Console/              demo:seed, and demo:queue-flaky, which queues the flaky job below
+  src/Jobs/                 SyncWarehouseStockJob, a job that fails on purpose, for the queue dashboard
   src/Http/Diagnostics/     GET /_demo/runtime, the development-only runtime report bin/check-frankenphp reads
   src/Domain/               the shop's entities, on MySQL; Support/ the support desk's, on PostgreSQL
   src/Vector/               the demo's resources, actions, widgets, dashboards and settings groups
-  migrations/               the shop, the queue table and Vector's tables for MySQL
+  migrations/               the shop, the queue and failed-jobs tables and Vector's tables (queue metrics included) for MySQL
   migrations/admin/         Vector's tables for PostgreSQL, on the connection admin
   migrations/support/       the support desk, on the connection support
   bootstrap.php             JWT keys, CORS for the standalone UI, the Vector bindings
@@ -38,10 +39,9 @@ Controllers, commands, entities and resources anywhere under `App\` or
 under `packages/` may reference `App\`.
 
 The demo installs `kinetis/vector` as a Composer `path` repository, so
-`vendor/composer/installed.json` keeps `packages/vector/composer.json` as
-it was at the last install. After changing that file, its
-`extra.kinetis` keys especially, reinstall the package so discovery sees
-the change:
+`vendor/composer/installed.json` keeps the package's `composer.json` as
+it was at the last install. After changing it, its `extra.kinetis` keys
+especially, reinstall the package so discovery sees the change:
 
 ```console
 docker compose exec app composer update kinetis/vector
@@ -94,34 +94,35 @@ a person using the demo do not disturb each other. See
 ## Static analysis and builds
 
 ```console
-docker compose exec app vendor/bin/phpstan analyse
+docker compose exec app composer phpstan
 docker compose exec app vendor/bin/kinetis build
 docker compose exec node pnpm lint
 docker compose exec node pnpm --filter frontend generate
 ```
 
 PHPStan runs at level 8 over the demo and `packages/vector/src`, with
-two Kinetis rules. `NoStaticPropertiesRule` flags a `static` property,
+three Kinetis rules. `NoStaticPropertiesRule` flags a `static` property,
 which outlives every request a worker handles; `NoBlockingIoRule` flags
-a call that blocks the event loop instead of yielding. They catch two
-specific mistakes; they do not prove a change is correct on a persistent
-worker.
+a call that blocks the event loop instead of yielding;
+`NoProcessGlobalsRule` flags `exit` and `die`, the request superglobals,
+and the SAPI header, cookie and session functions, all of which bypass
+the PSR-7 request and response. `tests/bootstrap.php` is exempt from the
+superglobal check, because it sets each test worker's environment before
+boot. The rules catch three specific mistakes; they do not prove a change
+is correct on a persistent worker.
 
 ```console
-docker compose exec app composer psalm          # Psalm, plain
-docker compose exec app composer psalm:taint    # Psalm, taint analysis; writes backend/psalm.sarif
+docker compose exec app composer psalm          # Psalm, types and taints; writes backend/psalm.sarif
 ```
 
 Psalm covers the demo's `src/` and `migrations/` and
 `packages/vector/src`, at its level 7 (Psalm's 1 is its strictest).
-It runs twice on purpose: `--taint-analysis` reports only taint issues,
-so it cannot replace the plain run. The taint run needs
-`zend.assertions=-1`, which the script sets. Request input reaches this
+Psalm 7 checks types and taints in one run. Request input reaches this
 code through PSR-7 and the framework's hydration, and SQL runs through
 Kinetis's own links. Psalm knows neither as a taint source or sink, so a
 clean taint run only covers flows from PHP's own sources to PHP's own
 sinks. Overriding and implementing methods carry `#[\Override]`, and
-the plain run enforces it.
+Psalm enforces it.
 
 ## Mutation testing
 
@@ -129,11 +130,14 @@ the plain run enforces it.
 docker compose exec app composer infection:workers  # the workers' databases, first
 docker compose exec app composer infection          # the demo's src/, about 70 minutes
 docker compose exec app composer infection:vector   # Vector's Registry and Query
+docker compose exec app composer infection:queues   # Vector's queue dashboard, src/Queues/
 ```
 
 Infection runs the PHPUnit suite against each mutant and fails below the
-`minMsi` and `minCoveredMsi` floors in `backend/infection.json5` and
-`backend/infection.vector.json5`.
+`minMsi` and `minCoveredMsi` floors in `backend/infection.json5`,
+`backend/infection.vector.json5` and
+`backend/infection.queues.json5`. The last runs only the queue
+dashboard's tests (`tests/Vector/Queues`).
 
 The mutated tests write to the databases, so each Infection worker runs
 on stores of its own. Infection numbers its worker processes in
@@ -147,10 +151,10 @@ on MySQL; run it before each mutation-testing run. Without
 `TEST_TOKEN` (PHPUnit on its own, and Infection's initial run of the
 suite) the tests use the base databases.
 
-`infection:vector` runs four workers.
+`infection:vector` and `infection:queues` run four workers.
 `infection` runs one, on worker 1's stores: its whole suite includes
-tests that share state outside them. Neither run touches the base
-databases beyond what PHPUnit itself does, but both still need them
+tests that share state outside them. None of these runs touches the base
+databases beyond what PHPUnit itself does, but all of them still need them
 seeded, so run them one at a time, never beside PHPUnit or the
 end-to-end suite. A killed mutant stops its test before the test puts its
 rows back, so afterwards a worker's databases can hold missing order
@@ -158,8 +162,18 @@ lines, changed product prices and stock, a leftover `hosted-test` tag,
 and, in Vector's own tables, a store `lowStockThreshold` of 0 and saved
 product views; `composer infection:workers` starts them over.
 
-The reports go to `backend/infection.log` and
-`backend/infection.vector.log`, each with a `.summary.log` beside it.
+The reports go to `backend/infection.log`, `backend/infection.vector.log`
+and `backend/infection.queues.log`, each with a `.summary.log`
+beside it.
+
+Infection stops its initial run of the suite at the first line the suite
+writes to STDERR, and reports PHPUnit's exit code as 143, the SIGTERM it
+sent. The queue dashboard's worker tests fail jobs on purpose, and the
+framework's development logger writes each failure through
+`error_log()`, which the CLI sends to STDERR. So
+`infection.queues.json5` sets `initialTestsPhpOptions` to
+`-d error_log=/dev/null` for that run. Do the same for any config whose
+tests log.
 
 `pnpm lint` runs ESLint over every TypeScript and Vue file in the
 workspace: the UI layer and its hosted app, the demo frontend and the
@@ -176,9 +190,12 @@ pull requests, each for the paths it covers:
 
 - `ci.yml` — on PHP 8.4 and 8.5, in the demo's own PHP image with
   MySQL, PostgreSQL and Redis as services: `composer validate --strict`
-  for both `composer.json` files, `composer audit`, the PHPUnit suite
-  (both placements of Vector's tables, as above), PHPStan and both Psalm
-  runs; `pnpm lint`, `pnpm typecheck`, `pnpm test`,
+  for the package's and the demo's `composer.json` files, `composer audit`, the PHPUnit suite
+  (both placements of Vector's tables, as above), PHPStan and Psalm (one run, ordinary and
+  taint issues together), and one more job on PHP 8.4 that removes
+  `kinetis/queue-failed-jobs` from the demo, boots Vector without it and
+  runs `FailedJobsNotInstalledTest`, along with the queue tests that need
+  nothing of that package; `pnpm lint`, `pnpm typecheck`, `pnpm test`,
   `pnpm test:scripts`, and `pnpm generate:hosted` followed by
   `node scripts/check-vector-ui-pack.mjs --packed`, which fails unless
   npm would pack `vector-bundle.json` and every file it lists; and the
@@ -193,12 +210,14 @@ pull requests, each for the paths it covers:
   (`packages/vector/resources/ui.json`, which `bump.mjs vector-ui`
   moves); see {doc}`releasing`.
 - `infection.yml` — `composer infection:workers`, then
-  `composer infection:vector`, when Vector's Registry or Query or the
-  mutation setup changes; the mutated files are split over three
-  parallel jobs, each passing `--filter` and floors of its own.
+  `composer infection:vector` or `composer infection:queues`,
+  when Vector's Registry, Query or Queues or the mutation setup
+  changes; the mutated files are split over parallel jobs, each passing
+  floors of its own and, for Registry and Query, `--filter`. The queue
+  dashboard is one job of its own.
 - `sonarqube.yml` — the PHPUnit suite under pcov, its coverage of
-  `packages/vector/src` reported to SonarQube Cloud with its quality
-  gate.
+  `packages/vector/src` reported to
+  SonarQube Cloud with its quality gate.
 - `semgrep.yml` — Semgrep SAST; `.semgrepignore` lists the reviewed
   false positives.
 

@@ -28,8 +28,61 @@ final class RevenueStat extends VectorWidget
 | `partition` | A breakdown into slices, such as orders by status. |
 | `progress` | A figure against a target. |
 | `table` | A few rows, optionally linking to the full list. |
+| `queues` | The queue dashboard's card: jobs waiting and failed, linking to the Queues page. Only `QueuesWidget` uses it ({doc}`queues`). |
 
 A value's format is a number, `money:EUR`, `percent` or `duration`.
+
+An application can replace a built-in type's card in the UI, through
+`vector.widgets` in its `app.config` or `window.Vector.defineWidget()`
+in a runtime extension ({doc}`customizing-the-ui`); the data keeps that
+type's shape.
+
+### Extension widget types
+
+`type()` may also return an extension type: a lower-case kebab-case name
+that is none of the six above, such as `sparkline`. Any other type is
+refused when the registry compiles. Vector ships no card for an
+extension type. The application registers the card for it in its UI,
+either in its runtime extension with
+`window.Vector.defineWidget(type, component)` or in its `app.config`
+under `vector.widgets` ({doc}`customizing-the-ui`). A card whose type
+has no renderer says that none is registered for the type, instead of
+guessing at a shape.
+
+`calculate()` answers such a widget with `WidgetResult::extension()`:
+
+```php
+public function type(): string { return 'sparkline'; }
+
+public function calculate(WidgetRequest $request): WidgetResult
+{
+    return WidgetResult::extension('sparkline', ['samples' => [3, 1, 4]]);
+}
+```
+
+The card is a runtime extension, listed in `VECTOR_UI_EXTENSIONS`
+(hosted) or `runtimeConfig.public.vector.extensions` (standalone)
+({doc}`customizing-the-ui`); it receives the answer as `data` and the
+widget's descriptor as `widget`:
+
+```js
+export default function ({ vue, vuetify, defineWidget }) {
+    defineWidget('sparkline', {
+        props: { data: {}, widget: {} },
+        setup: props => () => vue.h(vuetify.VChip, { size: 'small' }, () => props.data.samples.join(', ')),
+    })
+}
+```
+
+Alternatively, map the type to a globally registered component name in
+the app's `app.config`: `vector: { widgets: { sparkline: 'MySparkline' } }`.
+
+The data reaches the card as the widget wrote it, beside the `type`,
+`range` and `cached` that Vector sets on every answer, so it cannot use
+those three keys; a built-in type is refused too, since its card reads
+the shape its own factory builds. None of the built-in shapes applies.
+Ranges, caching, `canView()` and translated labels work as for any
+widget.
 
 ## Shaping a widget
 

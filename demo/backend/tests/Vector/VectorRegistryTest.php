@@ -30,7 +30,7 @@ final class VectorRegistryTest extends TestCase
     {
         $data = VectorRegistry::compile(new DiscoveryContext(dirname(__DIR__, 2)));
 
-        self::assertSame(4, $data['version']);
+        self::assertSame(5, $data['version']);
         self::assertSame(['main'], array_keys($data['dashboards']));
         self::assertSame(['branding', 'jobs', 'languages', 'store'], array_keys($data['settings']));
         self::assertSame(

@@ -43,11 +43,18 @@ const builtIn: Record<string, Component> = {
     partition: defineAsyncComponent(() => import('#vector/app/components/Vx/Widget/Partition.vue')),
     progress: defineAsyncComponent(() => import('#vector/app/components/Vx/Widget/Progress.vue')),
     table: defineAsyncComponent(() => import('#vector/app/components/Vx/Widget/Table.vue')),
+    queues: defineAsyncComponent(() => import('#vector/app/components/Vx/Widget/Queues.vue')),
 }
 
+// null for a type with no built-in card and no registered renderer: an
+// extension type the application registered no card for (defineWidget in
+// its runtime extension, or app.config vector.widgets), or whose runtime
+// extension failed to load. The card says so instead of guessing at a shape.
+// The registries are taken in setup; the computed only reads them.
+const extensions = useVectorExtensions()
 const component = computed(() => {
-    const override = appConfig.vector.widgets[props.widget.type] ?? useVectorExtensions().widgets.get(props.widget.type)
-    if (!override) return builtIn[props.widget.type] ?? builtIn.stat!
+    const override = appConfig.vector.widgets[props.widget.type] ?? extensions.widgets.get(props.widget.type)
+    if (!override) return builtIn[props.widget.type] ?? null
     return typeof override === 'string' ? resolveComponent(override) : override
 })
 </script>
@@ -73,7 +80,8 @@ const component = computed(() => {
             </template>
         </v-card-item>
         <v-card-text class="flex-grow-1 d-flex flex-column justify-center">
-            <v-progress-linear v-if="loading && !data" indeterminate color="primary" :aria-label="t('dashboard.loading')" />
+            <v-alert v-if="!component" type="warning" variant="tonal" density="compact" :text="t('dashboard.noRenderer', { type: widget.type })" />
+            <v-progress-linear v-else-if="loading && !data" indeterminate color="primary" :aria-label="t('dashboard.loading')" />
             <v-alert v-else-if="error" type="error" variant="tonal" density="compact" :text="error" />
             <component :is="component" v-else-if="data" :data="data" :widget="widget" />
         </v-card-text>

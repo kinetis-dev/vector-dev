@@ -23,4 +23,5 @@ return [
     'Background jobs' => 'Tarefas em segundo plano',
     'Stalled after (minutes)' => 'Considerada travada após (minutos)',
     'A running job that reports no progress for this many minutes is shown as stalled, and vector:jobs:reap marks it failed.' => 'Uma tarefa em execução que não informa progresso por esses minutos é exibida como travada; vector:jobs:reap a marca como falha.',
+    'Queues' => 'Filas',
 ];

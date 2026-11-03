@@ -61,17 +61,39 @@ globally registered component names, keyed by field type, by a field's
 A cell receives `value`, `field`, `record`, `resource` and `context`
 (`index` or `show`). An input receives `modelValue`, `field`, `rules`,
 `errorMessages`, `record` and `resource` and emits `update:modelValue`.
-A widget renderer receives `data` and `widget`.
+A widget renderer receives `data` and `widget`. For a widget type, the
+lookup order is the `app.config` override, then a runtime extension's
+`defineWidget`, then the built-in card. A renderer registered for a
+built-in type (`stat`, `trend`, `partition`, `progress`, `table` or
+`queues`) replaces that card. A widget can also declare an extension
+type, a kebab-case name Vector has no card for, such as `sparkline`
+("Extension widget types" in {doc}`dashboards`). The application must
+register its renderer one of those two ways. Without a renderer the
+card says that none is registered for the type, rather than drawing it
+as a `stat`.
 
 ## Runtime extensions
 
 An extension is a plain ES module. List it in `VECTOR_UI_EXTENSIONS`
-(hosted) or `runtimeConfig.public.vector.extensions` (standalone). Its
-default export receives `window.Vector`, which hands it Vue, a curated
-set of Vuetify components (`VAlert`, `VAutocomplete`, `VBtn`, `VCard`,
-`VCheckbox`, `VChip`, `VIcon`, `VProgressLinear`, `VRating`, `VSelect`,
-`VSwitch`, `VTable`, `VTextField`, `VTextarea`) and the registration
-functions. For a table, render `VTable` with your `thead` and `tbody` as
+(hosted) or `runtimeConfig.public.vector.extensions` (standalone). The
+admin imports the modules after boot, fetched at once but run in the
+order listed, so the custom pages they define keep one menu order; a
+module that fails to load is logged and never blocks the admin.
+Its default export receives `window.Vector`, which hands it Vue, a
+curated set of Vuetify components and the registration functions. The
+Vuetify components are the only ones an extension can reach, since the
+bundle keeps no other:
+
+- `VAlert`, `VAutocomplete`, `VBtn`, `VCard`, `VCheckbox`, `VChip`,
+  `VDivider`, `VIcon`, `VProgressLinear`, `VRating`, `VSelect`,
+  `VSkeletonLoader`, `VSwitch`, `VTable`, `VTextField`, `VTextarea`;
+- `VDialog`, `VMenu`, `VTooltip`;
+- `VList`, `VListItem`, `VPagination`;
+- `VTabs`, `VTab`, `VTabsWindow`, `VTabsWindowItem`;
+- `VExpansionPanels`, `VExpansionPanel`, `VExpansionPanelTitle`,
+  `VExpansionPanelText`.
+
+For a table, render `VTable` with your `thead` and `tbody` as
 its content: Vuetify's table styles belong to its wrapper, so the class
 on a bare `<table>` leaves the columns unaligned.
 
@@ -144,7 +166,24 @@ export default function ({ vue, definePage }) {
 ```
 
 `group` places the page under a menu section (a resource group's name,
-or its own); without one it goes under *Pages*. The component receives
+or its own); without one it goes under *Pages*. `title` and `group` may
+also be functions returning the text, which the admin calls each time it
+shows them — so a translated label follows a change of language without
+a reload:
+
+```js
+export default function ({ definePage, defineMessages, t }) {
+    defineMessages('en', { stock: { title: 'Stock overview', group: 'Catalog' } })
+    defineMessages('de', { stock: { title: 'Lagerübersicht', group: 'Katalog' } })
+    definePage('stock-overview', {
+        title: () => t('stock.title'), group: () => t('stock.group'), icon: 'mdi-warehouse',
+        component: { /* … */ },
+    })
+}
+```
+
+A string computed once with `t()` keeps the language of the moment the
+module loaded. The component receives
 one prop, `vector`, with `api` (the admin's API client, carrying the
 bearer token or the session cookie and CSRF token),
 `notify.success/error` and `navigate(path)`. An application extending

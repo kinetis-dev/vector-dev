@@ -17,6 +17,11 @@ parameters:
             paths:
                 - tests/Vector/LoopLivenessTest.php
                 - tests/Fixtures/hold-products-lock.php
+        # The test bootstrap owns its process: it gives each parallel worker its
+        # own stores through the environment, $_SERVER included, before boot.
+        -
+            identifier: kinetis.superglobal
+            path: tests/bootstrap.php
 
 services:
     -
@@ -25,5 +30,9 @@ services:
             - phpstan.rules.rule
     -
         class: Kinetis\Linting\NoBlockingIoRule
+        tags:
+            - phpstan.rules.rule
+    -
+        class: Kinetis\Linting\NoProcessGlobalsRule
         tags:
             - phpstan.rules.rule

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c7956f2b16e85a654688d0431ed2fd86",
+    "content-hash": "2df519f80277eac812911aa227e91c1c",
     "packages": [
         {
             "name": "amphp/amp",
@@ -89,16 +89,16 @@
         },
         {
             "name": "amphp/byte-stream",
-            "version": "v2.1.2",
+            "version": "v2.1.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/amphp/byte-stream.git",
-                "reference": "55a6bd071aec26fa2a3e002618c20c35e3df1b46"
+                "reference": "1511cdfdf868a706307358bd48f155c3df2c490f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/amphp/byte-stream/zipball/55a6bd071aec26fa2a3e002618c20c35e3df1b46",
-                "reference": "55a6bd071aec26fa2a3e002618c20c35e3df1b46",
+                "url": "https://api.github.com/repos/amphp/byte-stream/zipball/1511cdfdf868a706307358bd48f155c3df2c490f",
+                "reference": "1511cdfdf868a706307358bd48f155c3df2c490f",
                 "shasum": ""
             },
             "require": {
@@ -114,7 +114,7 @@
                 "amphp/php-cs-fixer-config": "^2",
                 "amphp/phpunit-util": "^3",
                 "phpunit/phpunit": "^9",
-                "psalm/phar": "5.22.1"
+                "psalm/phar": "6.16.1"
             },
             "type": "library",
             "autoload": {
@@ -152,7 +152,7 @@
             ],
             "support": {
                 "issues": "https://github.com/amphp/byte-stream/issues",
-                "source": "https://github.com/amphp/byte-stream/tree/v2.1.2"
+                "source": "https://github.com/amphp/byte-stream/tree/v2.1.3"
             },
             "funding": [
                 {
@@ -160,7 +160,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2025-03-16T17:10:27+00:00"
+            "time": "2026-10-31T19:10:04+00:00"
         },
         {
             "name": "amphp/cache",
@@ -229,16 +229,16 @@
         },
         {
             "name": "amphp/dns",
-            "version": "v2.4.1",
+            "version": "v2.4.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/amphp/dns.git",
-                "reference": "ec5948bfafac808f410406e18bc7b52a2d4629b7"
+                "reference": "2e2b4daa214a18b1528919d6781988ea65a9a47d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/amphp/dns/zipball/ec5948bfafac808f410406e18bc7b52a2d4629b7",
-                "reference": "ec5948bfafac808f410406e18bc7b52a2d4629b7",
+                "url": "https://api.github.com/repos/amphp/dns/zipball/2e2b4daa214a18b1528919d6781988ea65a9a47d",
+                "reference": "2e2b4daa214a18b1528919d6781988ea65a9a47d",
                 "shasum": ""
             },
             "require": {
@@ -306,7 +306,7 @@
             ],
             "support": {
                 "issues": "https://github.com/amphp/dns/issues",
-                "source": "https://github.com/amphp/dns/tree/v2.4.1"
+                "source": "https://github.com/amphp/dns/tree/v2.4.2"
             },
             "funding": [
                 {
@@ -314,7 +314,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-07-26T17:53:54+00:00"
+            "time": "2026-10-31T19:53:43+00:00"
         },
         {
             "name": "amphp/file",
@@ -617,16 +617,16 @@
         },
         {
             "name": "amphp/process",
-            "version": "v2.1.0",
+            "version": "v2.1.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/amphp/process.git",
-                "reference": "583959df17d00304ad7b0b32285373f985935643"
+                "reference": "6ee0d11112a9b1338b7dc270d51f254e872c90b5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/amphp/process/zipball/583959df17d00304ad7b0b32285373f985935643",
-                "reference": "583959df17d00304ad7b0b32285373f985935643",
+                "url": "https://api.github.com/repos/amphp/process/zipball/6ee0d11112a9b1338b7dc270d51f254e872c90b5",
+                "reference": "6ee0d11112a9b1338b7dc270d51f254e872c90b5",
                 "shasum": ""
             },
             "require": {
@@ -673,7 +673,7 @@
             "homepage": "https://amphp.org/process",
             "support": {
                 "issues": "https://github.com/amphp/process/issues",
-                "source": "https://github.com/amphp/process/tree/v2.1.0"
+                "source": "https://github.com/amphp/process/tree/v2.1.1"
             },
             "funding": [
                 {
@@ -681,7 +681,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-05-31T15:11:55+00:00"
+            "time": "2026-11-01T22:46:42+00:00"
         },
         {
             "name": "amphp/redis",
@@ -917,16 +917,16 @@
         },
         {
             "name": "amphp/sync",
-            "version": "v2.3.0",
+            "version": "v2.3.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/amphp/sync.git",
-                "reference": "217097b785130d77cfcc58ff583cf26cd1770bf1"
+                "reference": "2f711b6651270449d59c770ffb518698655022f7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/amphp/sync/zipball/217097b785130d77cfcc58ff583cf26cd1770bf1",
-                "reference": "217097b785130d77cfcc58ff583cf26cd1770bf1",
+                "url": "https://api.github.com/repos/amphp/sync/zipball/2f711b6651270449d59c770ffb518698655022f7",
+                "reference": "2f711b6651270449d59c770ffb518698655022f7",
                 "shasum": ""
             },
             "require": {
@@ -940,7 +940,7 @@
                 "amphp/php-cs-fixer-config": "^2",
                 "amphp/phpunit-util": "^3",
                 "phpunit/phpunit": "^9",
-                "psalm/phar": "5.23"
+                "psalm/phar": "6.16.1"
             },
             "type": "library",
             "autoload": {
@@ -980,7 +980,7 @@
             ],
             "support": {
                 "issues": "https://github.com/amphp/sync/issues",
-                "source": "https://github.com/amphp/sync/tree/v2.3.0"
+                "source": "https://github.com/amphp/sync/tree/v2.3.1"
             },
             "funding": [
                 {
@@ -988,7 +988,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2024-08-03T19:31:26+00:00"
+            "time": "2026-06-14T17:37:39+00:00"
         },
         {
             "name": "daverandom/libdns",
@@ -1230,22 +1230,22 @@
         },
         {
             "name": "kinetis/auth-jwt",
-            "version": "v1.5.2",
+            "version": "v1.5.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/auth-jwt.git",
-                "reference": "f4b1384a8dd6b27705460c392f8ae52cf82c933c"
+                "reference": "7e0e8a80df551ad4d2cea846590913931798cb74"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/auth-jwt/zipball/f4b1384a8dd6b27705460c392f8ae52cf82c933c",
-                "reference": "f4b1384a8dd6b27705460c392f8ae52cf82c933c",
+                "url": "https://api.github.com/repos/kinetis-dev/auth-jwt/zipball/7e0e8a80df551ad4d2cea846590913931798cb74",
+                "reference": "7e0e8a80df551ad4d2cea846590913931798cb74",
                 "shasum": ""
             },
             "require": {
                 "ext-openssl": "*",
                 "firebase/php-jwt": "^7.1.0",
-                "kinetis/framework": "^1.24.1",
+                "kinetis/framework": "^1.24.3",
                 "nyholm/psr7": "^1.8.2",
                 "php": "^8.4",
                 "psr/http-message": "^2.0",
@@ -1256,7 +1256,7 @@
                 "infection/infection": "^0.35.0",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "type": "library",
             "extra": {
@@ -1279,33 +1279,33 @@
             "description": "Stateless JWT authentication middleware for Kinetis (HS256/RS256, optional per-token revocation), verifying signed tokens via firebase/php-jwt. See kinetis/auth instead for opaque Bearer-token validation against your own storage.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/auth-jwt/issues",
-                "source": "https://github.com/kinetis-dev/auth-jwt/tree/v1.5.2"
+                "source": "https://github.com/kinetis-dev/auth-jwt/tree/v1.5.3"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "kinetis/authorization",
-            "version": "v1.0.6",
+            "version": "v1.0.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/authorization.git",
-                "reference": "a562478c133bde6a675734ab650ea3621daa03ef"
+                "reference": "48d65c98c5d00bc6b80440b7798191c5b2a1e46b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/authorization/zipball/a562478c133bde6a675734ab650ea3621daa03ef",
-                "reference": "a562478c133bde6a675734ab650ea3621daa03ef",
+                "url": "https://api.github.com/repos/kinetis-dev/authorization/zipball/48d65c98c5d00bc6b80440b7798191c5b2a1e46b",
+                "reference": "48d65c98c5d00bc6b80440b7798191c5b2a1e46b",
                 "shasum": ""
             },
             "require": {
-                "kinetis/framework": "^1.24.1",
+                "kinetis/framework": "^1.24.3",
                 "php": "^8.4"
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "type": "library",
             "extra": {
@@ -1328,22 +1328,22 @@
             "description": "Ability-based authorization for Kinetis — Gate wraps a callable Policy check, normalizing a bool/AuthorizationResponse result into an allow/deny decision and raising a denial as an exception that declares its own 403.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/authorization/issues",
-                "source": "https://github.com/kinetis-dev/authorization/tree/v1.0.6"
+                "source": "https://github.com/kinetis-dev/authorization/tree/v1.0.7"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "kinetis/cache-redis",
-            "version": "v1.3.2",
+            "version": "v1.3.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/cache-redis.git",
-                "reference": "1fe97210170c1d812dea0d2a2c4bdcb0319c44f9"
+                "reference": "b0c008d2e0ac4e32097da08389e1c2b644664fcc"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/cache-redis/zipball/1fe97210170c1d812dea0d2a2c4bdcb0319c44f9",
-                "reference": "1fe97210170c1d812dea0d2a2c4bdcb0319c44f9",
+                "url": "https://api.github.com/repos/kinetis-dev/cache-redis/zipball/b0c008d2e0ac4e32097da08389e1c2b644664fcc",
+                "reference": "b0c008d2e0ac4e32097da08389e1c2b644664fcc",
                 "shasum": ""
             },
             "require": {
@@ -1351,15 +1351,15 @@
                 "amphp/redis": "^2.0.4",
                 "amphp/serialization": "^1.1.0",
                 "amphp/socket": "^2.4.0",
-                "kinetis/framework": "^1.24.1",
-                "kinetis/redis": "^1.0.3",
+                "kinetis/framework": "^1.24.3",
+                "kinetis/redis": "^1.0.4",
                 "php": "^8.4"
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "type": "library",
             "extra": {
@@ -1382,27 +1382,27 @@
             "description": "PSR-16 SimpleCache for Kinetis, backed by Redis (single-node or Cluster) over kinetis/redis — non-blocking, Revolt-native, with TLS support.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/cache-redis/issues",
-                "source": "https://github.com/kinetis-dev/cache-redis/tree/v1.3.2"
+                "source": "https://github.com/kinetis-dev/cache-redis/tree/v1.3.3"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "kinetis/database-bridge",
-            "version": "v1.4.2",
+            "version": "v1.4.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/database-bridge.git",
-                "reference": "628c9f24ff92907a168c0e07b3790ba88c127cd5"
+                "reference": "8c105c8f357376d4036b9b0ffc5a77ed7a0c9a91"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/database-bridge/zipball/628c9f24ff92907a168c0e07b3790ba88c127cd5",
-                "reference": "628c9f24ff92907a168c0e07b3790ba88c127cd5",
+                "url": "https://api.github.com/repos/kinetis-dev/database-bridge/zipball/8c105c8f357376d4036b9b0ffc5a77ed7a0c9a91",
+                "reference": "8c105c8f357376d4036b9b0ffc5a77ed7a0c9a91",
                 "shasum": ""
             },
             "require": {
-                "kinetis/framework": "^1.24.1",
-                "kinetis/persistence": "^1.4.5",
+                "kinetis/framework": "^1.24.3",
+                "kinetis/persistence": "^1.4.6",
                 "php": "^8.4",
                 "psr/log": "^3.0.2"
             },
@@ -1411,15 +1411,15 @@
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
-                "kinetis/mcp": "^1.8.2",
-                "kinetis/mcp-protocol": "^1.1.1",
-                "kinetis/orm": "^1.13.1",
-                "kinetis/query-builder": "^1.8.2",
-                "kinetis/queue": "^1.7.2",
+                "kinetis/mcp": "^1.8.3",
+                "kinetis/mcp-protocol": "^1.1.2",
+                "kinetis/orm": "^1.13.2",
+                "kinetis/query-builder": "^1.8.3",
+                "kinetis/queue": "^1.9.1",
                 "nyholm/psr7": "^1.8.2",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "suggest": {
                 "kinetis/migrations": "Migration runner and migrate commands, connecting through this package's connection policy.",
@@ -1450,22 +1450,22 @@
             "description": "Kinetis wiring for kinetis/persistence and kinetis/orm: DB_* connection configuration and the default link binding, closed with the application scope, SQL spans through Kinetis telemetry, a lazy request-scoped TransactionGuard whose cleanup is registered once a scope resolves it, and, with kinetis/orm installed, AOT-compiled entity metadata, an ORM factory for every connection an entity names and a lazy request-scoped registry of entity managers.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/database-bridge/issues",
-                "source": "https://github.com/kinetis-dev/database-bridge/tree/v1.4.2"
+                "source": "https://github.com/kinetis-dev/database-bridge/tree/v1.4.3"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "kinetis/framework",
-            "version": "v1.24.1",
+            "version": "v1.24.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/framework.git",
-                "reference": "8d902cd5e04093a80c83f2996e44a74fda4b9ec8"
+                "reference": "13c41c6d678c8aaff515596a2a525da83d0d5484"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/framework/zipball/8d902cd5e04093a80c83f2996e44a74fda4b9ec8",
-                "reference": "8d902cd5e04093a80c83f2996e44a74fda4b9ec8",
+                "url": "https://api.github.com/repos/kinetis-dev/framework/zipball/13c41c6d678c8aaff515596a2a525da83d0d5484",
+                "reference": "13c41c6d678c8aaff515596a2a525da83d0d5484",
                 "shasum": ""
             },
             "require": {
@@ -1486,7 +1486,7 @@
                 "nikic/php-parser": "^5.8.0",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "suggest": {
                 "ext-event": "An OS-native Revolt event-loop backend (epoll), removing select()'s 1024 fd-number ceiling. Needed when the loop watches real sockets (native Postgres driver, Redis, HTTP client) in a FrankenPHP worker process; a MySQL-only deployment does not need it. ext-uv/ext-ev work equally."
@@ -1518,27 +1518,27 @@
             "description": "The Runtime-Aware PHP Framework",
             "support": {
                 "issues": "https://github.com/kinetis-dev/framework/issues",
-                "source": "https://github.com/kinetis-dev/framework/tree/v1.24.1"
+                "source": "https://github.com/kinetis-dev/framework/tree/v1.24.3"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "kinetis/mcp",
-            "version": "v1.8.2",
+            "version": "v1.8.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/mcp.git",
-                "reference": "cfecf6f6424bfefe4533a7386a0765ed55141874"
+                "reference": "11ef04c97817c76dcf48ed26359bcbe7be321171"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/mcp/zipball/cfecf6f6424bfefe4533a7386a0765ed55141874",
-                "reference": "cfecf6f6424bfefe4533a7386a0765ed55141874",
+                "url": "https://api.github.com/repos/kinetis-dev/mcp/zipball/11ef04c97817c76dcf48ed26359bcbe7be321171",
+                "reference": "11ef04c97817c76dcf48ed26359bcbe7be321171",
                 "shasum": ""
             },
             "require": {
-                "kinetis/framework": "^1.24.1",
-                "kinetis/mcp-protocol": "^1.1.1",
+                "kinetis/framework": "^1.24.3",
+                "kinetis/mcp-protocol": "^1.1.2",
                 "nyholm/psr7": "^1.8.2",
                 "php": "^8.4",
                 "psr/container": "^2.0.2",
@@ -1548,10 +1548,10 @@
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
-                "kinetis/auth": "^1.3.2",
+                "kinetis/auth": "^1.3.3",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "type": "library",
             "extra": {
@@ -1578,22 +1578,22 @@
             "description": "The Model Context Protocol server for Kinetis — tools and resources declared with attributes and validated like HTTP routes, served over stdio and as an ordinary /mcp route.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/mcp/issues",
-                "source": "https://github.com/kinetis-dev/mcp/tree/v1.8.2"
+                "source": "https://github.com/kinetis-dev/mcp/tree/v1.8.3"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "kinetis/mcp-protocol",
-            "version": "v1.1.1",
+            "version": "v1.1.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/mcp-protocol.git",
-                "reference": "b5ca319d63a6d8d8b4f69a87b8252de487c3a465"
+                "reference": "afd4fd314679f0bcb674104122ea22d3f708729e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/mcp-protocol/zipball/b5ca319d63a6d8d8b4f69a87b8252de487c3a465",
-                "reference": "b5ca319d63a6d8d8b4f69a87b8252de487c3a465",
+                "url": "https://api.github.com/repos/kinetis-dev/mcp-protocol/zipball/afd4fd314679f0bcb674104122ea22d3f708729e",
+                "reference": "afd4fd314679f0bcb674104122ea22d3f708729e",
                 "shasum": ""
             },
             "require": {
@@ -1603,7 +1603,7 @@
                 "infection/infection": "^0.35.0",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "type": "library",
             "autoload": {
@@ -1623,35 +1623,35 @@
             "description": "Model Context Protocol 2025-06-18 over JSON-RPC 2.0 — envelope validation, typed tool and resource contracts, progress notifications, and checked newline-delimited stdio framing. Requires PHP only.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/mcp-protocol/issues",
-                "source": "https://github.com/kinetis-dev/mcp-protocol/tree/v1.1.1"
+                "source": "https://github.com/kinetis-dev/mcp-protocol/tree/v1.1.2"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "kinetis/migrations",
-            "version": "v1.4.2",
+            "version": "v1.4.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/migrations.git",
-                "reference": "03008d84a2d8f71a0d83882d33f9e8c8b2544da9"
+                "reference": "509d822d3345d2495d191cffe39cc8ac8a789ed3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/migrations/zipball/03008d84a2d8f71a0d83882d33f9e8c8b2544da9",
-                "reference": "03008d84a2d8f71a0d83882d33f9e8c8b2544da9",
+                "url": "https://api.github.com/repos/kinetis-dev/migrations/zipball/509d822d3345d2495d191cffe39cc8ac8a789ed3",
+                "reference": "509d822d3345d2495d191cffe39cc8ac8a789ed3",
                 "shasum": ""
             },
             "require": {
-                "kinetis/database-bridge": "^1.4.2",
-                "kinetis/framework": "^1.24.1",
-                "kinetis/persistence": "^1.4.5",
+                "kinetis/database-bridge": "^1.4.3",
+                "kinetis/framework": "^1.24.3",
+                "kinetis/persistence": "^1.4.6",
                 "php": "^8.4"
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "suggest": {
                 "ext-pdo_mysql": "Required by the migrate* commands when DB_CONNECTION=mysql; migrations always hold one PDO session, whatever DB_DRIVER says.",
@@ -1680,38 +1680,38 @@
             "description": "A thin database migration runner and migrate commands for Kinetis — raw SQL up()/down() migrations for the default connection and named ones, no fluent DDL builder, no schema-diffing.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/migrations/issues",
-                "source": "https://github.com/kinetis-dev/migrations/tree/v1.4.2"
+                "source": "https://github.com/kinetis-dev/migrations/tree/v1.4.3"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "kinetis/orm",
-            "version": "v1.13.1",
+            "version": "v1.13.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/orm.git",
-                "reference": "9afe5115619b3ee9db2234317d3cfe589b5e15fa"
+                "reference": "697781b12285fde794fafdeea0a0a72ce592fefa"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/orm/zipball/9afe5115619b3ee9db2234317d3cfe589b5e15fa",
-                "reference": "9afe5115619b3ee9db2234317d3cfe589b5e15fa",
+                "url": "https://api.github.com/repos/kinetis-dev/orm/zipball/697781b12285fde794fafdeea0a0a72ce592fefa",
+                "reference": "697781b12285fde794fafdeea0a0a72ce592fefa",
                 "shasum": ""
             },
             "require": {
-                "kinetis/persistence": "^1.4.5",
-                "kinetis/query-builder": "^1.8.2",
+                "kinetis/persistence": "^1.4.6",
+                "kinetis/query-builder": "^1.8.3",
                 "php": "^8.4"
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
-                "kinetis/database-bridge": "^1.4.2",
-                "kinetis/framework": "^1.24.1",
-                "kinetis/queue": "^1.7.2",
-                "kinetis/queue-sql": "^1.6.6",
+                "kinetis/database-bridge": "^1.4.3",
+                "kinetis/framework": "^1.24.3",
+                "kinetis/queue": "^1.9.1",
+                "kinetis/queue-sql": "^1.6.8",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "type": "library",
             "extra": {
@@ -1734,22 +1734,22 @@
             "description": "A data mapper over kinetis/query-builder: attributed plain PHP entities compiled into portable metadata, typed repositories and entity queries, constructor-free hydration, explicit belongs-to, has-one, has-many and many-to-many relationships loaded eagerly through batched secondary queries, owned relationships that persist, reorder and remove a whole aggregate as one graph, owning join collections that write their join table as part of it, a unit of work with an identity map, snapshot change tracking and a dependency-ordered transactional flush, factory-owned transaction sessions with locking entity reads, and per-entity connection affinity with one factory and one manager per connection. Usable standalone; kinetis/database-bridge wires it into Kinetis.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/orm/issues",
-                "source": "https://github.com/kinetis-dev/orm/tree/v1.13.1"
+                "source": "https://github.com/kinetis-dev/orm/tree/v1.13.2"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "kinetis/persistence",
-            "version": "v1.4.5",
+            "version": "v1.4.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/persistence.git",
-                "reference": "7e5eb3fc0fc0c690077e8a39b6b6cf3dc023d7f5"
+                "reference": "0be5663c4e9e9d37e09ef2ec587dd3887c35025a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/persistence/zipball/7e5eb3fc0fc0c690077e8a39b6b6cf3dc023d7f5",
-                "reference": "7e5eb3fc0fc0c690077e8a39b6b6cf3dc023d7f5",
+                "url": "https://api.github.com/repos/kinetis-dev/persistence/zipball/0be5663c4e9e9d37e09ef2ec587dd3887c35025a",
+                "reference": "0be5663c4e9e9d37e09ef2ec587dd3887c35025a",
                 "shasum": ""
             },
             "require": {
@@ -1759,10 +1759,10 @@
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
-                "kinetis/framework": "^1.24.1",
+                "kinetis/framework": "^1.24.3",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "suggest": {
                 "ext-mysqli": "Needed by the native MySQL driver (Kinetis\\Persistence\\Driver\\MysqliAsyncClient) — the auto driver's choice under FrankenPHP worker mode and RoadRunner.",
@@ -1789,34 +1789,34 @@
             "description": "Runtime-matched MySQL and Postgres clients (mysqli async, ext-pgsql async, PDO) built from a neutral connection definition, with a transaction safety net and injectable SQL instrumentation. Usable standalone; kinetis/database-bridge wires it into Kinetis.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/persistence/issues",
-                "source": "https://github.com/kinetis-dev/persistence/tree/v1.4.5"
+                "source": "https://github.com/kinetis-dev/persistence/tree/v1.4.6"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "kinetis/query-builder",
-            "version": "v1.8.2",
+            "version": "v1.8.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/query-builder.git",
-                "reference": "9011f5274520eb3ce0700c2bf53730d080ed6651"
+                "reference": "4f15eaa1eb395e2e40e2522ee83138d12f665381"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/query-builder/zipball/9011f5274520eb3ce0700c2bf53730d080ed6651",
-                "reference": "9011f5274520eb3ce0700c2bf53730d080ed6651",
+                "url": "https://api.github.com/repos/kinetis-dev/query-builder/zipball/4f15eaa1eb395e2e40e2522ee83138d12f665381",
+                "reference": "4f15eaa1eb395e2e40e2522ee83138d12f665381",
                 "shasum": ""
             },
             "require": {
-                "kinetis/persistence": "^1.4.5",
+                "kinetis/persistence": "^1.4.6",
                 "php": "^8.4"
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
-                "kinetis/framework": "^1.24.1",
+                "kinetis/framework": "^1.24.3",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "type": "library",
             "extra": {
@@ -1839,26 +1839,26 @@
             "description": "A thin, parameterized SQL query builder over kinetis/persistence's MySQL and Postgres drivers, with portable row-to-DTO mapping and pagination envelopes. Usable standalone. Not an ORM: no relationships, no migrations, no change-tracking.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/query-builder/issues",
-                "source": "https://github.com/kinetis-dev/query-builder/tree/v1.8.2"
+                "source": "https://github.com/kinetis-dev/query-builder/tree/v1.8.3"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "kinetis/queue",
-            "version": "v1.7.2",
+            "version": "v1.9.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/queue.git",
-                "reference": "b3c5cf9b0139e13e593ca8e3de9916613851daee"
+                "reference": "97f3a40b6eb8be45c3c5e16d5c24c998e6ca80be"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/queue/zipball/b3c5cf9b0139e13e593ca8e3de9916613851daee",
-                "reference": "b3c5cf9b0139e13e593ca8e3de9916613851daee",
+                "url": "https://api.github.com/repos/kinetis-dev/queue/zipball/97f3a40b6eb8be45c3c5e16d5c24c998e6ca80be",
+                "reference": "97f3a40b6eb8be45c3c5e16d5c24c998e6ca80be",
                 "shasum": ""
             },
             "require": {
-                "kinetis/framework": "^1.24.1",
+                "kinetis/framework": "^1.24.3",
                 "php": "^8.4",
                 "psr/container": "^2.0.2",
                 "psr/log": "^3.0.2",
@@ -1868,10 +1868,11 @@
                 "infection/infection": "^0.35.0",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "suggest": {
-                "ext-pcntl": "Lets `kinetis queue:work` stop gracefully on SIGTERM, finishing the job in flight instead of being killed mid-job. Not loaded by default in the official PHP Docker images."
+                "ext-pcntl": "Lets `kinetis queue:work` stop gracefully on SIGTERM, finishing the job in flight instead of being killed mid-job. Not loaded by default in the official PHP Docker images.",
+                "kinetis/queue-failed-jobs": "Records every job the worker gives up on in a MySQL/Postgres table before the backend deletes it, with queue:failed, queue:retry, queue:forget and queue:prune."
             },
             "type": "library",
             "extra": {
@@ -1897,37 +1898,95 @@
             "description": "A backend-agnostic background job queue for Kinetis — no fluent job-scheduling DSL. Redis, SQL, SQS, and RabbitMQ backends each live in their own separate package.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/queue/issues",
-                "source": "https://github.com/kinetis-dev/queue/tree/v1.7.2"
+                "source": "https://github.com/kinetis-dev/queue/tree/v1.9.1"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
-            "name": "kinetis/queue-redis",
-            "version": "v1.8.3",
+            "name": "kinetis/queue-failed-jobs",
+            "version": "v1.1.1",
             "source": {
                 "type": "git",
-                "url": "https://github.com/kinetis-dev/queue-redis.git",
-                "reference": "87b45b9f41048a35215c40cc95dcd0c0c9e1039a"
+                "url": "https://github.com/kinetis-dev/queue-failed-jobs.git",
+                "reference": "616249a6c5e8c7fd1088238340bb0615e3dec82e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/queue-redis/zipball/87b45b9f41048a35215c40cc95dcd0c0c9e1039a",
-                "reference": "87b45b9f41048a35215c40cc95dcd0c0c9e1039a",
+                "url": "https://api.github.com/repos/kinetis-dev/queue-failed-jobs/zipball/616249a6c5e8c7fd1088238340bb0615e3dec82e",
+                "reference": "616249a6c5e8c7fd1088238340bb0615e3dec82e",
+                "shasum": ""
+            },
+            "require": {
+                "kinetis/database-bridge": "^1.4.3",
+                "kinetis/framework": "^1.24.3",
+                "kinetis/persistence": "^1.4.6",
+                "kinetis/queue": "^1.9.1",
+                "php": "^8.4",
+                "psr/container": "^2.0.2"
+            },
+            "require-dev": {
+                "infection/infection": "^0.35.0",
+                "kinetis/migrations": "^1.4.3",
+                "kinetis/queue-sql": "^1.6.8",
+                "phpstan/phpstan": "^2.2.8",
+                "phpunit/phpunit": "^13.3.3",
+                "vimeo/psalm": "^7.0"
+            },
+            "type": "library",
+            "extra": {
+                "kinetis": {
+                    "scan": "Kinetis\\QueueFailedJobs\\Console\\",
+                    "bootstrap": "Kinetis\\QueueFailedJobs\\PackageBootstrap"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Kinetis\\QueueFailedJobs\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Alon Noy"
+                }
+            ],
+            "description": "Retained failed jobs for kinetis/queue — every job the worker gives up on is recorded in a MySQL/Postgres table before the backend deletes it, with commands to list, retry, forget and prune the records.",
+            "support": {
+                "issues": "https://github.com/kinetis-dev/queue-failed-jobs/issues",
+                "source": "https://github.com/kinetis-dev/queue-failed-jobs/tree/v1.1.1"
+            },
+            "time": "2026-11-02T22:37:56+00:00"
+        },
+        {
+            "name": "kinetis/queue-redis",
+            "version": "v1.8.4",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/kinetis-dev/queue-redis.git",
+                "reference": "90c0930c0d1c6baefccea61df86a79c8d819e4c7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/kinetis-dev/queue-redis/zipball/90c0930c0d1c6baefccea61df86a79c8d819e4c7",
+                "reference": "90c0930c0d1c6baefccea61df86a79c8d819e4c7",
                 "shasum": ""
             },
             "require": {
                 "amphp/redis": "^2.0.4",
                 "amphp/socket": "^2.4.0",
-                "kinetis/framework": "^1.24.1",
-                "kinetis/queue": "^1.7.2",
-                "kinetis/redis": "^1.0.3",
+                "kinetis/framework": "^1.24.3",
+                "kinetis/queue": "^1.9.1",
+                "kinetis/redis": "^1.0.4",
                 "php": "^8.4"
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "type": "library",
             "extra": {
@@ -1950,36 +2009,36 @@
             "description": "A Redis-backed queue implementation for kinetis/queue's QueueInterface — finite leases over pending/leased/delayed keys, so a crashed worker's job is redelivered rather than stranded.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/queue-redis/issues",
-                "source": "https://github.com/kinetis-dev/queue-redis/tree/v1.8.3"
+                "source": "https://github.com/kinetis-dev/queue-redis/tree/v1.8.4"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "kinetis/queue-sql",
-            "version": "v1.6.6",
+            "version": "v1.6.8",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/queue-sql.git",
-                "reference": "3e72319491b1de6c8f0b25f4009e0f56bf41ff32"
+                "reference": "ce8271e145c7312257f3548edec7fb5d649e5653"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/queue-sql/zipball/3e72319491b1de6c8f0b25f4009e0f56bf41ff32",
-                "reference": "3e72319491b1de6c8f0b25f4009e0f56bf41ff32",
+                "url": "https://api.github.com/repos/kinetis-dev/queue-sql/zipball/ce8271e145c7312257f3548edec7fb5d649e5653",
+                "reference": "ce8271e145c7312257f3548edec7fb5d649e5653",
                 "shasum": ""
             },
             "require": {
-                "kinetis/database-bridge": "^1.4.2",
-                "kinetis/framework": "^1.24.1",
-                "kinetis/persistence": "^1.4.5",
-                "kinetis/queue": "^1.7.2",
+                "kinetis/database-bridge": "^1.4.3",
+                "kinetis/framework": "^1.24.3",
+                "kinetis/persistence": "^1.4.6",
+                "kinetis/queue": "^1.9.1",
                 "php": "^8.4"
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "type": "library",
             "extra": {
@@ -2002,22 +2061,22 @@
             "description": "A SQL-backed (MySQL/Postgres) queue implementation for kinetis/queue's QueueInterface — SELECT ... FOR UPDATE SKIP LOCKED for atomic reservation, token-fenced settlement, and a finite visibility timeout that redelivers a crashed worker's job.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/queue-sql/issues",
-                "source": "https://github.com/kinetis-dev/queue-sql/tree/v1.6.6"
+                "source": "https://github.com/kinetis-dev/queue-sql/tree/v1.6.8"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "kinetis/redis",
-            "version": "v1.0.3",
+            "version": "v1.0.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/redis.git",
-                "reference": "da9666151f4d85c71ff244d4dc0afb65036ef1c0"
+                "reference": "295970f264592a251008a595e03b2af749fd6099"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/redis/zipball/da9666151f4d85c71ff244d4dc0afb65036ef1c0",
-                "reference": "da9666151f4d85c71ff244d4dc0afb65036ef1c0",
+                "url": "https://api.github.com/repos/kinetis-dev/redis/zipball/295970f264592a251008a595e03b2af749fd6099",
+                "reference": "295970f264592a251008a595e03b2af749fd6099",
                 "shasum": ""
             },
             "require": {
@@ -2029,10 +2088,10 @@
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
-                "kinetis/framework": "^1.24.1",
+                "kinetis/framework": "^1.24.3",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "type": "library",
             "extra": {
@@ -2055,26 +2114,26 @@
             "description": "A non-replaying, deadline-bounded Redis transport for amphp/redis, with TLS, authentication, and Redis Cluster slot routing. Usable standalone, not only with Kinetis.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/redis/issues",
-                "source": "https://github.com/kinetis-dev/redis/tree/v1.0.3"
+                "source": "https://github.com/kinetis-dev/redis/tree/v1.0.4"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "kinetis/session",
-            "version": "v1.3.3",
+            "version": "v1.3.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/session.git",
-                "reference": "73385ae91ae3d96d427f4d67523952894badbb4b"
+                "reference": "852f6987d8b35b029446c99659fff32caf87053e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/session/zipball/73385ae91ae3d96d427f4d67523952894badbb4b",
-                "reference": "73385ae91ae3d96d427f4d67523952894badbb4b",
+                "url": "https://api.github.com/repos/kinetis-dev/session/zipball/852f6987d8b35b029446c99659fff32caf87053e",
+                "reference": "852f6987d8b35b029446c99659fff32caf87053e",
                 "shasum": ""
             },
             "require": {
-                "kinetis/framework": "^1.24.1",
+                "kinetis/framework": "^1.24.3",
                 "php": "^8.4",
                 "psr/http-message": "^2.0",
                 "psr/http-server-middleware": "^1.0.2",
@@ -2082,12 +2141,12 @@
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
-                "kinetis/cache-redis": "^1.3.2",
-                "kinetis/persistence": "^1.4.5",
-                "kinetis/redis": "^1.0.3",
+                "kinetis/cache-redis": "^1.3.3",
+                "kinetis/persistence": "^1.4.6",
+                "kinetis/redis": "^1.0.4",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "suggest": {
                 "kinetis/cache-redis": "Enables RedisSessionStore, the SESSION_DRIVER=redis backend, cluster and TLS included.",
@@ -2118,28 +2177,28 @@
             "description": "Cookie-backed sessions and CSRF protection for Kinetis — file, Redis, and SQL storage behind one store interface.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/session/issues",
-                "source": "https://github.com/kinetis-dev/session/tree/v1.3.3"
+                "source": "https://github.com/kinetis-dev/session/tree/v1.3.4"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "kinetis/storage",
-            "version": "v1.2.6",
+            "version": "v1.2.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/storage.git",
-                "reference": "3597fc3c68993f10ba1822b372d093e577563170"
+                "reference": "2cff8d52ca0850c74a20a8f0c138b7bbca170bee"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/storage/zipball/3597fc3c68993f10ba1822b372d093e577563170",
-                "reference": "3597fc3c68993f10ba1822b372d093e577563170",
+                "url": "https://api.github.com/repos/kinetis-dev/storage/zipball/2cff8d52ca0850c74a20a8f0c138b7bbca170bee",
+                "reference": "2cff8d52ca0850c74a20a8f0c138b7bbca170bee",
                 "shasum": ""
             },
             "require": {
                 "amphp/byte-stream": "^2.1.2",
                 "amphp/file": "^4.0.0",
-                "kinetis/framework": "^1.24.1",
+                "kinetis/framework": "^1.24.3",
                 "league/flysystem": "^3.35.3",
                 "league/mime-type-detection": "^1.17.0",
                 "php": "^8.4"
@@ -2148,7 +2207,7 @@
                 "infection/infection": "^0.35.0",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "suggest": {
                 "ext-eio": "The same, through libeio. Either extension removes the worker-process pool.",
@@ -2177,9 +2236,9 @@
             "description": "File storage for Kinetis, built on League\\Flysystem — local storage through an Amp\\File-backed adapter whose driver calls suspend the Fiber; remote backends (S3, etc.) live in kinetis/storage-s3.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/storage/issues",
-                "source": "https://github.com/kinetis-dev/storage/tree/v1.2.6"
+                "source": "https://github.com/kinetis-dev/storage/tree/v1.2.7"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "kinetis/vector",
@@ -2187,22 +2246,22 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector",
-                "reference": "6a22b8ec4a6de302127bee852fd3f7d3f4ba9e42"
+                "reference": "fff1938a2feb48754548097af38b9c547463fa10"
             },
             "require": {
                 "composer-runtime-api": "^2.0",
                 "ext-openssl": "*",
                 "ext-zlib": "*",
-                "kinetis/authorization": "^1.0.5",
-                "kinetis/database-bridge": "^1.4.1",
-                "kinetis/framework": "^1.24.0",
-                "kinetis/mcp": "^1.8.1",
-                "kinetis/mcp-protocol": "^1.1.0",
-                "kinetis/migrations": "^1.4.1",
-                "kinetis/orm": "^1.13.0",
-                "kinetis/persistence": "^1.4.4",
-                "kinetis/query-builder": "^1.8.1",
-                "kinetis/queue": "^1.7.1",
+                "kinetis/authorization": "^1.0.7",
+                "kinetis/database-bridge": "^1.4.3",
+                "kinetis/framework": "^1.24.3",
+                "kinetis/mcp": "^1.8.3",
+                "kinetis/mcp-protocol": "^1.1.2",
+                "kinetis/migrations": "^1.4.3",
+                "kinetis/orm": "^1.13.2",
+                "kinetis/persistence": "^1.4.6",
+                "kinetis/query-builder": "^1.8.3",
+                "kinetis/queue": "^1.9.1",
                 "php": "^8.4",
                 "psr/http-message": "^2.0",
                 "psr/http-server-handler": "^1.0.2",
@@ -2210,6 +2269,7 @@
                 "ueberdosis/tiptap-php": "^2.2.1"
             },
             "suggest": {
+                "kinetis/queue-failed-jobs": "Failed jobs on the queue dashboard: browse, retry, forget and prune them (^1.1.1)",
                 "kinetis/storage": "Uploads for file and image fields (FILESYSTEM_DRIVER, or VECTOR_STORAGE_CONNECTION)",
                 "league/flysystem": "The filesystem contract those uploads are written through; kinetis/storage brings it",
                 "openspout/openspout": "XLSX exports (MIT; needs ext-zip), written in the queue worker"
@@ -5050,20 +5110,20 @@
         },
         {
             "name": "kinetis/mcp-docs",
-            "version": "v1.9.1",
+            "version": "v1.9.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/mcp-docs.git",
-                "reference": "668580c27c55d0f993d631a15f451357e1f9f35d"
+                "reference": "68c68fe5a7dd0a9603d43064df0b1e0ff997fb05"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/mcp-docs/zipball/668580c27c55d0f993d631a15f451357e1f9f35d",
-                "reference": "668580c27c55d0f993d631a15f451357e1f9f35d",
+                "url": "https://api.github.com/repos/kinetis-dev/mcp-docs/zipball/68c68fe5a7dd0a9603d43064df0b1e0ff997fb05",
+                "reference": "68c68fe5a7dd0a9603d43064df0b1e0ff997fb05",
                 "shasum": ""
             },
             "require": {
-                "kinetis/mcp-protocol": "^1.1.1",
+                "kinetis/mcp-protocol": "^1.1.2",
                 "php": "^8.4",
                 "symfony/http-client": "^8.1.4",
                 "symfony/http-client-contracts": "^3.7.1"
@@ -5072,7 +5132,7 @@
                 "infection/infection": "^0.35.0",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "bin": [
                 "bin/kinetis-mcp-docs"
@@ -5095,36 +5155,36 @@
             "description": "A standalone Model Context Protocol server exposing the Kinetis documentation over stdio: a tool that returns a bounded line window of a page, which is how a page is read, a tool that reports the lines of one page containing a literal string, and the same pages whole as MCP resources. Framework-agnostic: it depends on kinetis/mcp-protocol alone and contributes no application bootstrap.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/mcp-docs/issues",
-                "source": "https://github.com/kinetis-dev/mcp-docs/tree/v1.9.1"
+                "source": "https://github.com/kinetis-dev/mcp-docs/tree/v1.9.3"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "kinetis/orbitron",
-            "version": "v1.11.4",
+            "version": "v1.11.5",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/orbitron.git",
-                "reference": "ce82d1137c8b5fee650dbbf2af99a139944565ea"
+                "reference": "c5e7698df393b179d2fd56e5535c6a5945d4f743"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/orbitron/zipball/ce82d1137c8b5fee650dbbf2af99a139944565ea",
-                "reference": "ce82d1137c8b5fee650dbbf2af99a139944565ea",
+                "url": "https://api.github.com/repos/kinetis-dev/orbitron/zipball/c5e7698df393b179d2fd56e5535c6a5945d4f743",
+                "reference": "c5e7698df393b179d2fd56e5535c6a5945d4f743",
                 "shasum": ""
             },
             "require": {
                 "composer-runtime-api": "^2.0",
-                "kinetis/framework": "^1.24.1",
-                "kinetis/mcp-docs": "^1.9.1",
-                "kinetis/mcp-protocol": "^1.1.1",
+                "kinetis/framework": "^1.24.3",
+                "kinetis/mcp-docs": "^1.9.3",
+                "kinetis/mcp-protocol": "^1.1.2",
                 "php": "^8.4"
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
-                "vimeo/psalm": "^6.17"
+                "vimeo/psalm": "^7.0"
             },
             "bin": [
                 "bin/kinetis-orbitron-mcp"
@@ -5152,9 +5212,9 @@
             "description": "A development-only application construction harness for Kinetis: a CLI and a standalone MCP server that hand any coding agent a portable Kinetis context document, the Kinetis documentation pages as MCP resources, as bounded line windows and through a literal search of one page, the installed kinetis/* package inventory, a bounded live read of one installed package's own source, a literal search inside one such file or across a bounded directory tree of such a package, and a listing of one directory of such a package (MCP only), a deterministic verification of the project's Composer layout, and one previewable health-endpoint scaffold, with no model of its own.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/orbitron/issues",
-                "source": "https://github.com/kinetis-dev/orbitron/tree/v1.11.4"
+                "source": "https://github.com/kinetis-dev/orbitron/tree/v1.11.5"
             },
-            "time": "2026-10-30T21:30:44+00:00"
+            "time": "2026-11-02T22:37:56+00:00"
         },
         {
             "name": "marc-mabe/php-enum",
@@ -6459,16 +6519,16 @@
         },
         {
             "name": "phpunit/phpunit",
-            "version": "13.4.5",
+            "version": "13.4.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/sebastianbergmann/phpunit.git",
-                "reference": "941457a4f147a60fe2074d40e1fce0d08ea8d930"
+                "reference": "4821376960d0e1e5a7b7b700955ebcab33ecd71b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/941457a4f147a60fe2074d40e1fce0d08ea8d930",
-                "reference": "941457a4f147a60fe2074d40e1fce0d08ea8d930",
+                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/4821376960d0e1e5a7b7b700955ebcab33ecd71b",
+                "reference": "4821376960d0e1e5a7b7b700955ebcab33ecd71b",
                 "shasum": ""
             },
             "require": {
@@ -6482,7 +6542,7 @@
                 "phar-io/manifest": "^2.0.4",
                 "phar-io/version": "^3.2.1",
                 "php": ">=8.4.1",
-                "phpunit/php-code-coverage": "^14.4.1",
+                "phpunit/php-code-coverage": "^14.5.0",
                 "phpunit/php-file-iterator": "^7.0.2",
                 "phpunit/php-invoker": "^7.0.0",
                 "phpunit/php-text-template": "^6.0.1",
@@ -6539,7 +6599,7 @@
             "support": {
                 "issues": "https://github.com/sebastianbergmann/phpunit/issues",
                 "security": "https://github.com/sebastianbergmann/phpunit/security/policy",
-                "source": "https://github.com/sebastianbergmann/phpunit/tree/13.4.5"
+                "source": "https://github.com/sebastianbergmann/phpunit/tree/13.4.6"
             },
             "funding": [
                 {
@@ -6547,7 +6607,379 @@
                     "type": "other"
                 }
             ],
-            "time": "2026-10-27T04:16:22+00:00"
+            "time": "2026-11-02T07:12:28+00:00"
+        },
+        {
+            "name": "psalm/plugin-laravel",
+            "version": "v4.18.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/psalm/psalm-plugin-laravel.git",
+                "reference": "374a5f2875683403afef74fbb316991705075573"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/psalm/psalm-plugin-laravel/zipball/374a5f2875683403afef74fbb316991705075573",
+                "reference": "374a5f2875683403afef74fbb316991705075573",
+                "shasum": ""
+            },
+            "require": {
+                "ext-simplexml": "*",
+                "nikic/php-parser": "^5.0",
+                "php": "^8.2",
+                "psalm/psalm-plugin-api": "^0.4.1",
+                "sebastian/diff": "^4.0 || ^5.0 || ^6.0 || ^7.0 || ^8.0 || ^9.0",
+                "symfony/console": "^7.2 || ^8.0",
+                "vimeo/psalm": "^7.0"
+            },
+            "conflict": {
+                "laravel/framework": "<12.27 || 13.0.0 || >=13.1 <13.20",
+                "orchestra/testbench-core": "<10.0"
+            },
+            "require-dev": {
+                "alies-dev/psalm-tester": "^0.4",
+                "brianium/paratest": "^7.7",
+                "friendsofphp/php-cs-fixer": "^3.94",
+                "laravel/framework": "^12.27 || ^13.20",
+                "orchestra/testbench-core": "^10.0 || ^11.0",
+                "phpunit/phpunit": "^11.5 || ^12.5 || ^13.0",
+                "ramsey/collection": "^1.3",
+                "rector/rector": "^2.8.3",
+                "symfony/http-foundation": "^7.1 || ^8.0",
+                "symfony/process": "^7.1 || ^8.0"
+            },
+            "bin": [
+                "bin/psalm-laravel"
+            ],
+            "type": "psalm-plugin",
+            "extra": {
+                "psalm": {
+                    "pluginClass": "Psalm\\LaravelPlugin\\Plugin"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psalm\\LaravelPlugin\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Matthew Brown",
+                    "email": "github@muglug.com",
+                    "role": "Original Author"
+                },
+                {
+                    "name": "Alies Lapatsin",
+                    "email": "github@alies.dev",
+                    "role": "Maintainer"
+                }
+            ],
+            "description": "Psalm plugin for Laravel",
+            "homepage": "https://github.com/psalm/psalm-plugin-laravel",
+            "keywords": [
+                "dev",
+                "laravel",
+                "psalm",
+                "psalm-plugin"
+            ],
+            "support": {
+                "issues": "https://github.com/psalm/psalm-plugin-laravel/issues",
+                "source": "https://github.com/psalm/psalm-plugin-laravel/tree/v4.18.1"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/alies-dev",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-11-02T22:38:32+00:00"
+        },
+        {
+            "name": "psalm/plugin-mockery",
+            "version": "1.3.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/psalm/psalm-plugin-mockery.git",
+                "reference": "ddff47dd095dc3c47224a3f6bf137e28570ef022"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/psalm/psalm-plugin-mockery/zipball/ddff47dd095dc3c47224a3f6bf137e28570ef022",
+                "reference": "ddff47dd095dc3c47224a3f6bf137e28570ef022",
+                "shasum": ""
+            },
+            "require": {
+                "composer-runtime-api": "^2.0",
+                "composer/semver": "^1.4 || ^2.0 || ^3.0",
+                "php": ">=8.1",
+                "psalm/psalm-plugin-api": "^0.4",
+                "vimeo/psalm": "^7|dev-master"
+            },
+            "conflict": {
+                "mockery/mockery": "<1.0"
+            },
+            "require-dev": {
+                "codeception/codeception": "^5.0",
+                "mockery/mockery": "^1.0",
+                "phpunit/phpunit": "^10.5 || ^11.5 || ^12.0 || ^13.0",
+                "squizlabs/php_codesniffer": "^3.3.1",
+                "weirdan/codeception-psalm-module": "^0.14.1"
+            },
+            "type": "psalm-plugin",
+            "extra": {
+                "psalm": {
+                    "pluginClass": "Psalm\\MockeryPlugin\\Plugin"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psalm\\MockeryPlugin\\": [
+                        "."
+                    ]
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Matt Brown",
+                    "email": "github@muglug.com"
+                }
+            ],
+            "description": "Psalm plugin for Mockery",
+            "support": {
+                "issues": "https://github.com/psalm/psalm-plugin-mockery/issues",
+                "source": "https://github.com/psalm/psalm-plugin-mockery/tree/1.3.2"
+            },
+            "time": "2026-10-28T12:21:43+00:00"
+        },
+        {
+            "name": "psalm/plugin-phpunit",
+            "version": "0.21.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/psalm/psalm-plugin-phpunit.git",
+                "reference": "01a0871ba04710331779a3a80c3caabc5427339c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/psalm/psalm-plugin-phpunit/zipball/01a0871ba04710331779a3a80c3caabc5427339c",
+                "reference": "01a0871ba04710331779a3a80c3caabc5427339c",
+                "shasum": ""
+            },
+            "require": {
+                "ext-simplexml": "*",
+                "php": ">=8.1",
+                "psalm/psalm-plugin-api": "^0.4"
+            },
+            "conflict": {
+                "phpspec/prophecy": "<1.20.0",
+                "phpspec/prophecy-phpunit": "<2.3.0",
+                "phpunit/phpunit": "<8.5.1"
+            },
+            "require-dev": {
+                "php": "^7.3 || ^8.0",
+                "phpunit/phpunit": "^10.0 || ^11.0 || ^12.0",
+                "squizlabs/php_codesniffer": "^3.3.1",
+                "vimeo/psalm": "^7|dev-master",
+                "weirdan/prophecy-shim": "^1.0 || ^2.0"
+            },
+            "type": "psalm-plugin",
+            "extra": {
+                "psalm": {
+                    "pluginClass": "Psalm\\PhpUnitPlugin\\Plugin"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psalm\\PhpUnitPlugin\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Matt Brown",
+                    "email": "github@muglug.com"
+                }
+            ],
+            "description": "Psalm plugin for PHPUnit",
+            "support": {
+                "issues": "https://github.com/psalm/psalm-plugin-phpunit/issues",
+                "source": "https://github.com/psalm/psalm-plugin-phpunit/tree/0.21.1"
+            },
+            "time": "2026-10-20T11:28:19+00:00"
+        },
+        {
+            "name": "psalm/plugin-sabre-event",
+            "version": "0.2.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/psalm/psalm-plugin-sabre-event.git",
+                "reference": "49eaea05b492526ab4d5f9baeb085f2a7129366a"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/psalm/psalm-plugin-sabre-event/zipball/49eaea05b492526ab4d5f9baeb085f2a7129366a",
+                "reference": "49eaea05b492526ab4d5f9baeb085f2a7129366a",
+                "shasum": ""
+            },
+            "require": {
+                "psalm/psalm-plugin-api": "^0.4",
+                "vimeo/psalm": "^7|dev-master"
+            },
+            "conflict": {
+                "sabre/event": "<5.0"
+            },
+            "require-dev": {
+                "sabre/event": "^5",
+                "squizlabs/php_codesniffer": "^3.3"
+            },
+            "type": "psalm-plugin",
+            "extra": {
+                "psalm": {
+                    "pluginClass": "Psalm\\SabreEventPlugin\\Plugin"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psalm\\SabreEventPlugin\\": [
+                        "."
+                    ]
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Matt Brown",
+                    "email": "github@muglug.com"
+                }
+            ],
+            "description": "Psalm plugin for sabre/event",
+            "support": {
+                "issues": "https://github.com/psalm/psalm-plugin-sabre-event/issues",
+                "source": "https://github.com/psalm/psalm-plugin-sabre-event/tree/0.2.1"
+            },
+            "time": "2026-10-28T12:24:48+00:00"
+        },
+        {
+            "name": "psalm/plugin-symfony",
+            "version": "v5.9.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/psalm/psalm-plugin-symfony.git",
+                "reference": "ab172147e8d942a007e484e7f1dbc40e244e50a5"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/psalm/psalm-plugin-symfony/zipball/ab172147e8d942a007e484e7f1dbc40e244e50a5",
+                "reference": "ab172147e8d942a007e484e7f1dbc40e244e50a5",
+                "shasum": ""
+            },
+            "require": {
+                "ext-simplexml": "*",
+                "php": ">=8.1",
+                "psalm/psalm-plugin-api": "^0.4",
+                "vimeo/psalm": "^7.0.0-rc13|dev-master"
+            },
+            "conflict": {
+                "fidry/cpu-core-counter": "<1.2",
+                "symfony/expression-language": "<5.0",
+                "symfony/framework-bundle": "<5.0"
+            },
+            "require-dev": {
+                "doctrine/annotations": "^1.8|^2",
+                "doctrine/orm": "^2.9 || ^3.6",
+                "phpunit/phpunit": "~7.5 || ~9.5",
+                "symfony/cache-contracts": "^1.0 || ^2.0 || ^3.0",
+                "symfony/console": "*",
+                "symfony/expression-language": "^5.0 || ^6.0 || ^7.0 || ^8.0",
+                "symfony/form": "^5.0 || ^6.0 || ^7.0 || ^8.0",
+                "symfony/framework-bundle": "^5.0 || ^6.0 || ^7.0 || ^8.0",
+                "symfony/messenger": "^5.0 || ^6.0 || ^7.0 || ^8.0",
+                "symfony/mime": "^5.0 || ^6.0 || ^7.0 || ^8.0",
+                "symfony/security-core": "*",
+                "symfony/serializer": "^5.0 || ^6.0 || ^7.0 || ^8.0",
+                "symfony/validator": "*",
+                "twig/twig": "^2.10 || ^3.0",
+                "weirdan/codeception-psalm-module": "dev-master"
+            },
+            "suggest": {
+                "weirdan/doctrine-psalm-plugin": "If Doctrine is used, it is recommended install this plugin"
+            },
+            "type": "psalm-plugin",
+            "extra": {
+                "psalm": {
+                    "pluginClass": "Psalm\\SymfonyPsalmPlugin\\Plugin"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psalm\\SymfonyPsalmPlugin\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Farhad Safarov",
+                    "email": "farhad.safarov@gmail.com"
+                }
+            ],
+            "description": "Psalm Plugin for Symfony",
+            "support": {
+                "issues": "https://github.com/psalm/psalm-plugin-symfony/issues",
+                "source": "https://github.com/psalm/psalm-plugin-symfony/tree/v5.9.1"
+            },
+            "time": "2026-10-28T12:34:55+00:00"
+        },
+        {
+            "name": "psalm/psalm-plugin-api",
+            "version": "0.4.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/psalm/psalm-plugin-api.git",
+                "reference": "e52bdf2825750f2e1bc93f1a516d7e5eb87afad7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/psalm/psalm-plugin-api/zipball/e52bdf2825750f2e1bc93f1a516d7e5eb87afad7",
+                "reference": "e52bdf2825750f2e1bc93f1a516d7e5eb87afad7",
+                "shasum": ""
+            },
+            "conflict": {
+                "vimeo/psalm": "<7.0.0-rc3"
+            },
+            "type": "metapackage",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Daniil Gentili",
+                    "email": "daniil@daniil.it"
+                }
+            ],
+            "description": "Stable, semantically versioned API for Psalm plugins",
+            "support": {
+                "issues": "https://github.com/psalm/psalm-plugin-api/issues",
+                "source": "https://github.com/psalm/psalm-plugin-api/tree/0.4.1"
+            },
+            "time": "2026-10-20T09:28:00+00:00"
         },
         {
             "name": "psr/clock",
@@ -9234,22 +9666,22 @@
         },
         {
             "name": "vimeo/psalm",
-            "version": "6.20.4",
+            "version": "7.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/vimeo/psalm.git",
-                "reference": "e53db692e6600cf729c88190b892bcf96e1c550e"
+                "reference": "618ca49c75d3fd828e58ee76f166329bb56794e7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/vimeo/psalm/zipball/e53db692e6600cf729c88190b892bcf96e1c550e",
-                "reference": "e53db692e6600cf729c88190b892bcf96e1c550e",
+                "url": "https://api.github.com/repos/vimeo/psalm/zipball/618ca49c75d3fd828e58ee76f166329bb56794e7",
+                "reference": "618ca49c75d3fd828e58ee76f166329bb56794e7",
                 "shasum": ""
             },
             "require": {
                 "amphp/amp": "^3",
                 "amphp/byte-stream": "^2",
-                "amphp/parallel": "^2.3",
+                "amphp/parallel": "^2.4.0",
                 "composer-runtime-api": "^2",
                 "composer/semver": "^1.4 || ^2.0 || ^3.0",
                 "composer/xdebug-handler": "^2.0 || ^3.0",
@@ -9263,10 +9695,16 @@
                 "ext-simplexml": "*",
                 "ext-tokenizer": "*",
                 "felixfbecker/language-server-protocol": "^1.5.3",
-                "fidry/cpu-core-counter": "^0.4.1 || ^0.5.1 || ^1.0.0",
+                "fidry/cpu-core-counter": "^1.2",
                 "netresearch/jsonmapper": "^5.0",
-                "nikic/php-parser": "^5.2.0",
-                "php": "~8.1.31 || ~8.2.27 || ~8.3.16 || ~8.4.3 || ~8.5.0",
+                "nikic/php-parser": "^5.9",
+                "php-64bit": "~8.2.27 || ~8.3.16 || ~8.4.3 || ~8.5.0 || ~8.6.0",
+                "psalm/plugin-laravel": "^4.17.4",
+                "psalm/plugin-mockery": "^1.3.2",
+                "psalm/plugin-phpunit": "^0.21",
+                "psalm/plugin-sabre-event": "^0.2.1",
+                "psalm/plugin-symfony": "^5.9.1",
+                "psalm/psalm-plugin-api": "0.4.1",
                 "sebastian/diff": "^4.0 || ^5.0 || ^6.0 || ^7.0 || ^8.0 || ^9.0",
                 "spatie/array-to-xml": "^2.17.0 || ^3.0",
                 "symfony/console": "^6.0 || ^7.0 || ^8.0",
@@ -9277,9 +9715,8 @@
                 "psalm/psalm": "self.version"
             },
             "require-dev": {
-                "amphp/phpunit-util": "^3",
                 "bamarni/composer-bin-plugin": "^1.4",
-                "brianium/paratest": "^6.9",
+                "brianium/paratest": "^7.3",
                 "danog/class-finder": "^0.4.8",
                 "dg/bypass-finals": "^1.5",
                 "ext-curl": "*",
@@ -9287,9 +9724,7 @@
                 "nunomaduro/mock-final-classes": "^1.1",
                 "php-parallel-lint/php-parallel-lint": "^1.2",
                 "phpstan/phpdoc-parser": "^1.6",
-                "phpunit/phpunit": "^9.6",
-                "psalm/plugin-mockery": "^1.1",
-                "psalm/plugin-phpunit": "^0.19",
+                "phpunit/phpunit": "^10.5 || ^11.5 || ^12.5 || ^13.0",
                 "slevomat/coding-standard": "^8.4",
                 "squizlabs/php_codesniffer": "^3.6",
                 "symfony/process": "^6.0 || ^7.0 || ^8.0"
@@ -9348,7 +9783,7 @@
                 "issues": "https://github.com/vimeo/psalm/issues",
                 "source": "https://github.com/vimeo/psalm"
             },
-            "time": "2026-10-29T10:26:19+00:00"
+            "time": "2026-11-02T16:56:48+00:00"
         },
         {
             "name": "webmozart/assert",

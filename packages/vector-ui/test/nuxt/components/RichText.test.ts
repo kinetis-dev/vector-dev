@@ -121,6 +121,18 @@ describe('the rich-text input', () => {
         expect(emitted(wrapper)).toBeNull()
     })
 
+    it('keeps the focus in the editor when a toolbar button is pressed', async () => {
+        const { wrapper } = await mountRichText()
+        const bold = wrapper.find('[role="toolbar"] button[aria-label="Bold"]')
+        expect(bold.exists()).toBe(true)
+
+        // a press the toolbar let through would move the focus to the button, and
+        // keys typed before the editor took it back would be lost (or toggle Bold again)
+        const press = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+        bold.element.dispatchEvent(press)
+        expect(press.defaultPrevented).toBe(true)
+    })
+
     it('drops pasted content outside the schema', async () => {
         const { wrapper, editor } = await mountRichText()
 
@@ -252,5 +264,15 @@ describe('the Markdown input', () => {
         await wrapper.find('textarea').setValue('**now bold**')
 
         expect(emitted(wrapper)).toBe('**now bold**')
+    })
+
+    it('keeps the focus in the editor when a toolbar button is pressed', async () => {
+        const reply = field({ name: 'body', type: 'markdown', markdown: { toolbar: ['bold'] } })
+        const wrapper = await mountSuspended(VxInputMarkdown, { props: { field: reply, rules: [], errorMessages: [], modelValue: 'plain' } })
+        await flushPromises()
+
+        const press = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+        wrapper.find('[role="toolbar"] button[aria-label="Bold"]').element.dispatchEvent(press)
+        expect(press.defaultPrevented).toBe(true)
     })
 })

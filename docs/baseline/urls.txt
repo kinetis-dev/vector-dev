@@ -23,6 +23,7 @@ limits.html
 lists.html
 mcp.html
 objects.inv
+queues.html
 records.html
 releasing.html
 resources.html

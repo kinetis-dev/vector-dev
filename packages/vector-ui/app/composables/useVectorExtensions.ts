@@ -1,13 +1,27 @@
 import type { Component } from 'vue'
 import type { AnyExtension } from '@tiptap/core'
 
+/**
+ * A custom page's title or menu section: a string, or a function returning
+ * one — `() => t('stock.title')` — called each time it is shown, so it
+ * follows a change of language.
+ */
+export type VectorPageLabel = string | (() => string)
+
 /** A custom page: a menu entry and a route, `/p/{name}`, rendering the component. */
 export interface VectorPageDefinition {
-    title: string
+    title: VectorPageLabel
     icon?: string
     /** The menu section it appears under; the "Pages" section when omitted. */
-    group?: string
+    group?: VectorPageLabel
     component: Component | string
+}
+
+/** The text of a page's title or group: a function is called now, inside whatever computed or render reads it. */
+export function pageLabel(label: VectorPageLabel): string
+export function pageLabel(label: VectorPageLabel | undefined): string | undefined
+export function pageLabel(label: VectorPageLabel | undefined): string | undefined {
+    return typeof label === 'function' ? label() : label
 }
 
 /**

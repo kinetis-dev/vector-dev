@@ -9,7 +9,9 @@ namespace Kinetis\Vector\Translation;
  * key => message, nested arrays flattened with dots. Vector's own labels
  * (its built-in settings groups) come from the package's `translations/`,
  * and the application's directory — VECTOR_TRANSLATIONS_DIR — is layered
- * over them. The files are read once, when the worker boots; what they
+ * over them, so it always has the last word. Every directory given must
+ * exist: a missing application directory fails the boot. The files are
+ * read once, when the worker boots; what they
  * hold is request-neutral. A regional tag falls back to its language
  * (`pt-BR` to `pt`).
  */

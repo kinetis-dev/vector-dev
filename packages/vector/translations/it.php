@@ -23,4 +23,5 @@ return [
     'Background jobs' => 'Attività in background',
     'Stalled after (minutes)' => 'Considerata bloccata dopo (minuti)',
     'A running job that reports no progress for this many minutes is shown as stalled, and vector:jobs:reap marks it failed.' => 'Un’attività in corso che non segnala progressi per questi minuti viene mostrata come bloccata; vector:jobs:reap la segna come non riuscita.',
+    'Queues' => 'Code',
 ];

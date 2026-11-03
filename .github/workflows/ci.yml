@@ -192,17 +192,12 @@ jobs:
         run: .github/scripts/php vendor/bin/phpunit
 
       - name: PHPStan
-        run: .github/scripts/php vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+        run: .github/scripts/php composer phpstan
 
-      # Two Psalm passes, deliberately: --taint-analysis reports taint
-      # issues only, suppressing every ordinary issue type — a plain run
-      # is what catches those.
+      # One run reports both ordinary and taint issues (Psalm 7).
       - name: Psalm
-        run: .github/scripts/php composer psalm
-
-      - name: Psalm (taint analysis)
         # writes demo/backend/psalm.sarif
-        run: .github/scripts/php composer psalm:taint
+        run: .github/scripts/php composer psalm
 
       - name: Upload Psalm SARIF to code scanning
         # Soft-fails rather than reddening the run over a dashboard step
@@ -213,6 +208,105 @@ jobs:
         with:
           sarif_file: demo/backend/psalm.sarif
           category: psalm-php${{ matrix.php-version }}
+
+  php-without-failed-jobs:
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.php == 'true'
+    # kinetis/vector only suggests kinetis/queue-failed-jobs, but the demo
+    # requires it, so the php job never boots Vector without it. This job
+    # removes it from the demo, in this run's checkout only, and boots the
+    # application the way the suite does: any hard reference to one of its
+    # classes on the boot or request path fails here.
+    name: PHP 8.4 without kinetis/queue-failed-jobs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # The php job's services, images and credentials (see there).
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: vector
+          MYSQL_USER: vector
+          MYSQL_PASSWORD: vector
+          MYSQL_ROOT_PASSWORD: vector
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pvector"
+          --health-interval=5s --health-timeout=3s --health-retries=20
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: vector_admin
+          POSTGRES_USER: vector
+          POSTGRES_PASSWORD: vector
+        options: >-
+          --health-cmd="pg_isready -U vector -d vector_admin"
+          --health-interval=5s --health-timeout=3s --health-retries=20
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=3s --health-retries=20
+    env:
+      VECTOR_PHP_IMAGE: vector-php:8.4
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Join the service network
+        run: echo "VECTOR_CI_NETWORK=${{ job.services.mysql.network }}" >> "$GITHUB_ENV"
+
+      - name: Restore Composer downloads
+        # Restore only: this job's install lacks one package, and must not
+        # save that cache under the key the php job shares.
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ runner.temp }}/composer-cache
+          key: composer-${{ hashFiles('demo/backend/composer.lock') }}
+          restore-keys: composer-
+
+      - name: Build the demo's PHP image
+        # As the php job builds it; PHP_VERSION is that job's 8.4 php-image.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: docker build --progress=plain --secret id=github_token,env=GITHUB_TOKEN --build-arg PHP_VERSION=8.4.27 --target fpm -t "$VECTOR_PHP_IMAGE" -f demo/docker/Dockerfile demo
+
+      - name: Install dependencies without kinetis/queue-failed-jobs
+        # Drops the requirement from this run's composer.json, then a
+        # partial update removes the package and leaves every other locked
+        # version, kinetis/vector's path repository included, as it is.
+        # Nothing else in the lock requires it. The test below skips
+        # wherever the package is still there, so the check makes sure it
+        # is not.
+        run: |
+          .github/scripts/php composer remove kinetis/queue-failed-jobs --no-update --no-interaction
+          .github/scripts/php composer update kinetis/queue-failed-jobs --no-interaction --prefer-dist --no-progress
+          .github/scripts/php sh -c 'test ! -e vendor/kinetis/queue-failed-jobs'
+
+      - name: Prepare the demo databases
+        # As the php job prepares them.
+        run: |
+          cp demo/backend/.env.example demo/backend/.env
+          secret="$(openssl rand -hex 32)"
+          echo "::add-mask::$secret"
+          echo "JWT_SECRET=$secret" >> "$GITHUB_ENV"
+          docker exec "${{ job.services.postgres.id }}" psql -U vector -d vector_admin -c 'CREATE DATABASE vector_support OWNER vector'
+
+      - name: Migrate and seed
+        # Every migration runs, kinetis_failed_jobs' included: it is plain
+        # SQL and names none of the package's classes.
+        run: |
+          .github/scripts/php vendor/bin/kinetis migrate
+          .github/scripts/php vendor/bin/kinetis demo:seed
+
+      - name: PHPUnit (Vector's queue tests that need nothing of the package)
+        # FailedJobsNotInstalledTest is the point of this job; the other
+        # three never touch kinetis/queue-failed-jobs. The rest of
+        # tests/Vector/Queues builds its store in setUp(), so it is left
+        # out. --fail-on-skipped: a skip here means the package was there.
+        run: >-
+          .github/scripts/php vendor/bin/phpunit --fail-on-skipped
+          --filter 'FailedJobsNotInstalledTest|QueuesUnconfiguredTest|QueuesWidgetTest|DemoQueueDashboardPolicyTest'
+          tests/Vector/Queues
 
   node:
     needs: changes
@@ -227,8 +321,8 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          # package.json's engines floor, and the demo's node:22 service
-          node-version: '22'
+          # package.json's engines floor, and the demo's node:26 service
+          node-version: '26'
           cache: pnpm
 
       - name: Install dependencies

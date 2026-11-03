@@ -424,3 +424,35 @@ test('history on a real history: a test-tooling devDependency bump needs no rele
         done()
     }
 })
+
+test('a third, Composer-only product is held to its own CHANGELOG, composer.json and history', () => {
+    const three = (vector, ui, addon) => ({
+        packages: {
+            ...manifest(vector, ui).packages,
+            'vector-addon': { name: 'kinetis/vector-addon', path: 'packages/vector-addon', version: addon },
+        },
+    })
+    const files = {
+        ...tree('0.9.0', '0.9.0'),
+        'packages/vector-addon/composer.json': JSON.stringify({ name: 'kinetis/vector-addon' }),
+        'packages/vector-addon/CHANGELOG.md': changelog('0.1.0'),
+    }
+    assert.deepEqual(checkConsistency(three('0.9.0', '0.9.0', '0.1.0'), reader(files)), [])
+
+    // the manifest moved without the CHANGELOG
+    assert.deepEqual(checkConsistency(three('0.9.0', '0.9.0', '0.1.1'), reader(files)), ['vector-addon: packages/vector-addon/CHANGELOG.md has no "## [0.1.1]" section'])
+
+    files['packages/vector-addon/composer.json'] = JSON.stringify({ name: 'kinetis/vector-addons', version: '0.1.0' })
+    assert.deepEqual(checkConsistency(three('0.9.0', '0.9.0', '0.1.0'), reader(files)), [
+        'vector-addon: packages/vector-addon/composer.json is named "kinetis/vector-addons", the manifest says "kinetis/vector-addon"',
+        "vector-addon: packages/vector-addon/composer.json has a \"version\"; Packagist reads it from the mirror's tag, so it must not",
+    ])
+
+    // its changes ask for its own bump, not kinetis/vector's
+    const old = three('0.9.0', '0.9.0', '0.1.0')
+    assert.deepEqual(checkHistory(old, three('0.9.0', '0.9.0', '0.1.0'), { 'vector-addon': ['packages/vector-addon/src/Q.php'] }), [
+        'vector-addon: files under packages/vector-addon changed but its version is still 0.1.0 (packages/vector-addon/src/Q.php); run node scripts/bump.mjs vector-addon <patch|minor>',
+    ])
+    assert.deepEqual(checkHistory(old, three('0.9.0', '0.9.0', '0.2.0'), { 'vector-addon': ['packages/vector-addon/src/Q.php'] }), [])
+    assert.match(checkHistory(old, three('0.9.0', '0.9.0', '0.3.0'), { 'vector-addon': ['packages/vector-addon/src/Q.php'] }).join('\n'), /vector-addon: version jumped from 0\.1\.0 to 0\.3\.0/)
+})

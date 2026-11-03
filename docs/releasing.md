@@ -7,12 +7,17 @@ Vector ships two products, each at its own version:
   Packagist serves as `kinetis/vector`;
 - `packages/vector-ui`, published to npm as `@kinetis/vector-ui`.
 
+Each Composer product has a mirror of its own, listed in `MIRRORS` in
+`scripts/release.mjs`. The release plan refuses a product the manifest
+lists with neither a mirror there nor npm, so adding a Composer product
+means adding its mirror to `MIRRORS` in the same pull request.
+
 `packages.manifest.json` at the repository root holds each product's
 version and is the one place it is decided. A product is bumped in the
 pull request that changes it, and merging that pull request to `main`
 releases it: `.github/workflows/release.yml` publishes every version the
 manifest names that is not out yet. The `vector-dev` repository itself is
-never tagged; the only tag a release makes is `vX.Y.Z` on the mirror.
+never tagged; the only tag a release makes is `vX.Y.Z` on a mirror.
 Every rule is in `scripts/version-policy.mjs`,
 `scripts/validate-versions.mjs`, `scripts/bump.mjs` and
 `scripts/release.mjs`, tested by `pnpm test:scripts`.
@@ -20,7 +25,7 @@ Every rule is in `scripts/version-policy.mjs`,
 ## Versions
 
 A version is `X.Y.Z` with no prerelease or build suffix, and no
-component has a leading zero. Both products stay on the `0.x` line: the
+component has a leading zero. Every product stays on the `0.x` line: the
 major version is pinned to 0 by `PINNED_MAJOR` in
 `scripts/version-policy.mjs`, and moving to 1.0.0 is a deliberate change
 of that constant. Within the line a product moves exactly one step at a
@@ -80,9 +85,9 @@ release it.
 `bump.mjs` moves the product's version in `packages.manifest.json` one
 step. For `vector-ui` it also writes the version into
 `packages/vector-ui/package.json` and into the pin,
-`packages/vector/resources/ui.json`. `packages/vector/composer.json` has
-no version, and must not get one: Packagist reads it from the mirror's
-tag. It turns the product's `## [Unreleased]` CHANGELOG section into
+`packages/vector/resources/ui.json`. A Composer product's
+`composer.json` has no version, and must not get one: Packagist reads it
+from the mirror's tag. It turns the product's `## [Unreleased]` CHANGELOG section into
 `## [X.Y.Z] - <today>` under a fresh, empty `## [Unreleased]`. It
 refuses an empty `Unreleased` section, since that section becomes the
 release's notes. Write the CHANGELOG entry first, then bump.
@@ -102,8 +107,8 @@ when that is set, and `HEAD^` otherwise.
 
 - **Consistency**, on the tree: every manifest version parses and is on
   the `0.x` line; `packages/vector-ui/package.json` carries the
-  manifest's name and version; `packages/vector/composer.json` carries
-  its name and no version; each product's CHANGELOG has a
+  manifest's name and version; each Composer product's `composer.json`
+  carries its name and no version; each product's CHANGELOG has a
   `## [<version>]` section; each directory an `includes` lists exists;
   and `packages/vector/resources/ui.json` is exactly
   `{"package":"@kinetis/vector-ui","version":"X.Y.Z"}`, at the version
@@ -131,19 +136,19 @@ Each push to `main` runs the release:
 
 | Job | Does |
 |---|---|
-| Decide what this round publishes | Reads the manifest, `package.json`, both CHANGELOGs and the UI pin at the pushed commit and checks them again. Asks the mirror whether tag `v<version>` exists for `kinetis/vector`, and npm whether `@kinetis/vector-ui@<version>` exists. Puts each release's notes, its CHANGELOG section, on the run's summary page. |
+| Decide what this round publishes | Reads the manifest, `package.json`, every CHANGELOG and the UI pin at the pushed commit and checks them again. Asks each Composer product's mirror whether tag `v<version>` exists, and npm whether `@kinetis/vector-ui@<version>` exists. Puts each release's notes, its CHANGELOG section, on the run's summary page. |
 | Publish @kinetis/vector-ui | Only when `@kinetis/vector-ui`'s version is not on npm yet. Builds the hosted bundle into `packages/vector-ui/dist/static` with `scripts/build-hosted-bundle.mjs --version=X.Y.Z`, the package's version, then runs `npm publish --provenance --tag latest` from `packages/vector-ui`, in the `npm-release` environment. The package's `prepack` refuses a missing bundle or one built for another version. |
-| Split and push the mirror | Only when `kinetis/vector`'s version is not on the mirror yet, and only after the npm job succeeded or had nothing to do. Splits `packages/vector` and pushes the mirror's `main` and its `vX.Y.Z` tag. |
+| Split and push the mirror | One job per Composer product whose version is not on its mirror yet, one at a time in the manifest's order (`kinetis/vector` first, which any other Composer product would require), and only after the npm job succeeded or had nothing to do. Splits the product's path and writes its mirror's `main` and its `vX.Y.Z` tag. One mirror's failure does not stop the next; re-run the failed job. |
 
 A push that changes no version publishes nothing and succeeds. npm goes
 first, so a `kinetis/vector` tag never names a UI that cannot be
-installed: a failed npm publish holds the mirror back. The mirror job
+installed: a failed npm publish holds every mirror back. The mirror job
 does not ask npm for the pinned release again, because the registry can
 take minutes to serve a version it has accepted; a successful publish is
 enough. A round with no UI release goes straight to the mirror.
 
 The plan itself is all or nothing. Any refusal fails the whole round
-before anything is published, even when the other product would have
+before anything is published, even when another product would have
 been releasable on its own: a refusal is an anomaly for a person to
 look at. The plan refuses to publish:
 
@@ -153,6 +158,8 @@ look at. The plan refuses to publish:
   `package.json` disagrees with the manifest;
 - a UI pin that is malformed or names another `@kinetis/vector-ui`
   version than `packages/vector-ui/package.json`;
+- a product with neither a mirror in `MIRRORS` nor npm, or a mirror
+  that cannot be read (one not created yet, say);
 - a version whose predecessor is not published. The version must be one
   step above the highest version already out. The exception is a
   product's very first release, when nothing is out yet.
@@ -172,8 +179,8 @@ request can be rehearsed before it merges. The rehearsal:
 - makes the same plan, reading the mirror anonymously;
 - builds the bundle and runs `npm pack --dry-run` and `npm publish
   --dry-run`;
-- then splits the package, reads the mirror, and says what it would
-  push.
+- then splits each package it would publish, reads its mirror, and says
+  what it would write there.
 
 It writes nothing. Two refusals of a real run are reported instead of
 failing the rehearsal, so a branch can be rehearsed before it merges:
@@ -190,8 +197,8 @@ dispatch with dry run off publishes like a push, but only when run from
 
 ### The mirror's history
 
-The mirror's `main` is the pure split, S: `git subtree split
---prefix=packages/vector` of the released commit. A split is derived
+A mirror's `main` is the pure split, S, of its product's path:
+`git subtree split --prefix=packages/vector` of the released commit. A split is derived
 from the monorepo's own commits, metadata included, so the same source
 always gives the same S. Each release's S descends from the last one's,
 so `main` only ever fast-forwards. The tag `vX.Y.Z` points at that same
@@ -202,12 +209,17 @@ S. The hosted bundle is not in the mirror: it ships in
 
 **GitHub (`kinetis-dev/vector-dev`).**
 
-- The repository secret `RELEASE_DEPLOY_TOKEN` is a fine-grained
-  personal access token with *Contents: read and write* on
-  `kinetis-dev/vector` only. The workflow hands it, through a credential
-  helper that is removed afterwards, as the password for the username
-  `x-access-token`. Only two operations get it: the plan's read of the
-  mirror's tags, and the mirror push.
+- Each mirror exists before the first release that names its product:
+  `kinetis-dev/vector`, public, created
+  empty (no README, licence or `.gitignore`, so the first split lands as
+  a fast-forward). The plan reads every mirror, so a missing one fails
+  the whole round, not only its own product.
+- The repository secret `RELEASE_DEPLOY_TOKEN` is one fine-grained
+  personal access token with *Contents: read and write* on the mirrors,
+  `kinetis-dev/vector`, and nothing else. The workflow hands it, through a credential helper that is
+  removed afterwards, as the password for the username `x-access-token`.
+  Only two operations get it: the plan's read of the mirrors' tags, and
+  the writes to the mirrors.
 - An environment named `npm-release`, under *Settings → Environments*,
   with *Deployment branches and tags* limited to the branch `main`.
 
@@ -233,8 +245,8 @@ or the environment breaks publishing until the publisher on npm is
 updated to match. A new or changed publisher stays pending until a
 publish validates it, and lapses if none does by the date npm shows.
 
-**Packagist (`kinetis/vector`).** Do this after the first mirror push,
-so the repository has a `composer.json` to read:
+**Packagist (`kinetis/vector`).** For each Composer package, after its
+mirror's first release, so the repository has a `composer.json` to read:
 
 1. Submit `https://github.com/kinetis-dev/vector` on packagist.org.
 2. On the mirror, add the GitHub webhook that Packagist's *Your profile
@@ -251,7 +263,7 @@ before writing.
 
 - **The plan** asks again what is published, so a re-run skips whatever
   an earlier attempt already got out.
-- **The mirror** is written in one atomic push of `main` and the tag. A
+- **A mirror** is written in one atomic push of `main` and the tag. A
   rerun reads it first: a `main` already at S and a tag already at S are
   left alone; a tag at any other commit fails the run, since two
   contents cannot both be one version and which one stands is for a
@@ -261,8 +273,11 @@ before writing.
   if the manifest at that commit does not state the version being
   pushed. A `main` that has moved on to a newer version does not stop
   the push: the newer version needs this one published first.
+- **A failed mirror** does not stop another product's mirror after it:
+  the mirror jobs run one at a time but do not fail fast. Re-run the
+  failed mirror job; the others need nothing redone.
 - **npm** is skipped when the version is already published. If the
-  npm job failed, the mirror job did not run; re-run the failed jobs.
+  npm job failed, the mirror jobs did not run; re-run the failed jobs.
 - **A release shown as cancelled while pending** was replaced by a newer
   queued run before it started. Nothing is lost while the manifest
   still states that version, because the next run publishes it. If a

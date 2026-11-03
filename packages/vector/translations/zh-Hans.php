@@ -23,4 +23,5 @@ return [
     'Background jobs' => '后台任务',
     'Stalled after (minutes)' => '视为停滞的时长（分钟）',
     'A running job that reports no progress for this many minutes is shown as stalled, and vector:jobs:reap marks it failed.' => '运行中的任务在这么多分钟内未报告进度时会显示为停滞；vector:jobs:reap 会将其标记为失败。',
+    'Queues' => '队列',
 ];

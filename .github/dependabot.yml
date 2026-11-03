@@ -34,7 +34,7 @@ updates:
         patterns:
           - "*"
     ignore:
-      # The types follow the Node every workflow runs (22), not the
+      # The types follow the Node every workflow runs (26), not the
       # newest Node.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]

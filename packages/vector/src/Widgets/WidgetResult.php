@@ -53,6 +53,40 @@ final readonly class WidgetResult
         return new self(VectorWidget::TABLE, ['columns' => $columns, 'rows' => $rows, 'link' => $link]);
     }
 
+    /**
+     * The queue dashboard's card. It carries no data: the card reads
+     * GET /vector/queues itself, so that endpoint's gate and policy
+     * decide what it shows, and computing this opens no connection.
+     */
+    public static function queues(): self
+    {
+        return new self(VectorWidget::QUEUES, []);
+    }
+
+    /**
+     * The answer of a widget whose type() is an extension type: `$data`
+     * reaches the card the application registered for `$type` as it is,
+     * with none of a built-in card's shape. A built-in type is refused,
+     * since its card reads the shape its own factory builds; so are the
+     * keys Vector writes into every answer, `type`, `range` and `cached`.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function extension(string $type, array $data = []): self
+    {
+        if (!VectorWidget::isExtensionType($type)) {
+            throw new \InvalidArgumentException("\"{$type}\" is no extension widget type: one is lower-case kebab-case and none of " . implode(', ', VectorWidget::BUILT_IN_TYPES) . ', which have factories of their own.');
+        }
+
+        foreach (['type', 'range', 'cached'] as $reserved) {
+            if (array_key_exists($reserved, $data)) {
+                throw new \InvalidArgumentException("An extension widget's data cannot carry \"{$reserved}\", which Vector sets on every answer.");
+            }
+        }
+
+        return new self($type, $data);
+    }
+
     /** @return array<string, mixed> */
     public function toArray(): array
     {

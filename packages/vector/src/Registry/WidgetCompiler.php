@@ -28,7 +28,7 @@ final class WidgetCompiler
             $widget = (new \ReflectionClass($class))->newInstanceWithoutConstructor();
             $name = $widget->name();
 
-            if (preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $name) !== 1) {
+            if (preg_match(VectorWidget::KEBAB_CASE, $name) !== 1) {
                 throw ResourceCompileException::resource($owner, "widget {$class} has the name \"{$name}\"; a widget name is lower-case kebab-case");
             }
 
@@ -36,8 +36,9 @@ final class WidgetCompiler
                 throw ResourceCompileException::resource($owner, "two widgets are named \"{$name}\"");
             }
 
-            if (!in_array($widget->type(), [VectorWidget::STAT, VectorWidget::TREND, VectorWidget::PARTITION, VectorWidget::PROGRESS, VectorWidget::TABLE], true)) {
-                throw ResourceCompileException::resource($owner, "widget {$class} has the type \"{$widget->type()}\"");
+            // a built-in type, or an extension type whose card the application registers (VectorWidget::type())
+            if (!in_array($widget->type(), VectorWidget::BUILT_IN_TYPES, true) && !VectorWidget::isExtensionType($widget->type())) {
+                throw ResourceCompileException::resource($owner, "widget {$class} has the type \"{$widget->type()}\"; a widget type is " . implode(', ', VectorWidget::BUILT_IN_TYPES) . ', or an extension type in lower-case kebab-case');
             }
 
             self::checkRanges($widget, $class, $owner);

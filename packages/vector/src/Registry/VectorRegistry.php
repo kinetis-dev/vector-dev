@@ -23,10 +23,13 @@ use ReflectionClass;
  * build` from every #[Resource] class and the ORM's own metadata, and
  * bound on AppScope before any package bootstrap runs. Immutable and
  * request-neutral; the per-user permission overlay is computed elsewhere.
+ *
+ * {@see VERSION} is the descriptor's version: the UI refuses a descriptor
+ * of another, and a cache compiled for another is rebuilt.
  */
 final readonly class VectorRegistry implements CacheableDiscoveryInterface
 {
-    public const int VERSION = 4;
+    public const int VERSION = 5;
 
     /** @var array<string, ResourceDescriptor> */
     private array $descriptors;
@@ -57,7 +60,7 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
 
     /**
      * Resource, settings and dashboard classes come from the operation's
-     * shared class scan, and entity metadata from the ORM's own discovery
+     * shared class scan, entity metadata from the ORM's own discovery
      * section, which the context compiles once for every consumer.
      */
     #[\Override]

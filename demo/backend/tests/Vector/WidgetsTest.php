@@ -13,7 +13,7 @@ final class WidgetsTest extends VectorTestCase
 
         $page = $this->client->get('/vector/dashboards/main', headers: $this->adminHeaders())->assertOk()->json();
         self::assertIsArray($page);
-        self::assertSame(['revenue-stat', 'orders-by-status', 'open-tickets-stat', 'orders-trend', 'low-stock-table'], array_column($page['data']['widgets'], 'name'));
+        self::assertSame(['revenue-stat', 'orders-by-status', 'open-tickets-stat', 'orders-trend', 'low-stock-table', 'queues'], array_column($page['data']['widgets'], 'name'));
         self::assertArrayNotHasKey('class', $page['data']['widgets'][0]);
         self::assertSame('7d', array_key_first($page['data']['widgets'][0]['ranges']));
 

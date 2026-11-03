@@ -145,4 +145,6 @@ it. To retry, fix and import the failed-rows file, not the original.
 ## See also
 
 - {doc}`actions` — declaring a queued action.
+- {doc}`queues` — the queue dashboard, there wherever a queue is
+  configured: queue sizes, the jobs the worker gave up on, and job metrics.
 - {doc}`limits` — every bound.

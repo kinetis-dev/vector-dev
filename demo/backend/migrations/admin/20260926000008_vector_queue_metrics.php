@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+use Kinetis\Migrations\Migration;
+use Kinetis\Persistence\Contract\MysqlLink;
+use Kinetis\Persistence\Contract\PostgresLink;
+
+// Published by `kinetis vector:install` for a PostgreSQL connection.
+// The queue dashboard's job metrics, on Vector's own connection beside
+// vector_jobs; written by Kinetis\Vector\Queues\Metrics\JobMetricsStore.
+//
+// Postgres has no UNSIGNED integer type and no inline INDEX clause inside
+// CREATE TABLE, and its default (deterministic) collation already compares
+// `queue` and `job_class` byte-exactly, which the .mysql. sibling stub has
+// to ask for. Both are VARCHAR, as `queue` and `class` are in
+// kinetis/queue-failed-jobs' stub, so a class name must be valid in the
+// database's encoding — PHP admits non-UTF-8 bytes in a name, and a write
+// for such a class is refused (and logged, never failing the job). bytea
+// is not a way round it: the drivers bind parameters as text, and bytea's
+// text input reads the backslashes of every namespaced class name as
+// escapes. `bucket` and `last_processed_at` are unix seconds, `bucket`
+// floored to its minute.
+//
+// The unique constraint is what every write's ON CONFLICT names, and
+// serves the reads narrowed to a queue or a class; the bucket index
+// serves the unfiltered window reads and the prune.
+return new class implements Migration
+{
+    #[\Override]
+    public function up(MysqlLink|PostgresLink $db): void
+    {
+        $db->execute(<<<'SQL'
+            CREATE TABLE vector_queue_metrics (
+                bucket BIGINT NOT NULL,
+                queue VARCHAR(255) NOT NULL,
+                job_class VARCHAR(255) NOT NULL,
+                succeeded INT NOT NULL DEFAULT 0,
+                released INT NOT NULL DEFAULT 0,
+                failed INT NOT NULL DEFAULT 0,
+                total_duration_ms DOUBLE PRECISION NOT NULL DEFAULT 0,
+                max_duration_ms DOUBLE PRECISION NOT NULL DEFAULT 0,
+                last_processed_at BIGINT NOT NULL,
+                CONSTRAINT vector_queue_metrics_queue_class_bucket_unique UNIQUE (queue, job_class, bucket)
+            )
+            SQL);
+
+        $db->execute('CREATE INDEX vector_queue_metrics_bucket_index ON vector_queue_metrics (bucket)');
+    }
+
+    #[\Override]
+    public function down(MysqlLink|PostgresLink $db): void
+    {
+        $db->execute('DROP TABLE vector_queue_metrics');
+    }
+};

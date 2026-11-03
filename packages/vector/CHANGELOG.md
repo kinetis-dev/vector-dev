@@ -5,7 +5,77 @@ All notable changes to `kinetis/vector` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.14.0] - 2026-11-03
+
+### Added
+
+- A queue dashboard, built in (`Kinetis\Vector\Queues\`, under
+  `/vector/queues`): queue sizes and clears on the application's
+  `QueueInterface`, the failed jobs `kinetis/queue-failed-jobs` keeps —
+  browsed, retried, forgotten and pruned — and per-minute job metrics,
+  behind `QueueDashboardPolicyInterface` (view-only by default, an
+  application's own binding wins) and watching `VECTOR_QUEUES`. It is the
+  code of the separate queue-dashboard package, never released, whose
+  classes keep their names. The descriptor reports `capabilities.queues` (a queue
+  bound and the policy letting this user view) and
+  `capabilities.failedJobs` (that, and `kinetis/queue-failed-jobs`
+  installed and wired). Without the first every `/vector/queues`
+  endpoint answers the Kernel's own `404` and the queues card is not
+  viewable; without the second the `/vector/queues/failed` endpoints do,
+  the overview's `failed` is `null` and the permissions name no
+  failed-job action. `kinetis/queue-failed-jobs` is a suggestion, not a
+  requirement. The audit trail records the dashboard's actions under the
+  resource `vector-queues`, prefixed to keep it apart from the application's own resources.
+- `VECTOR_QUEUE_METRICS` turns the queue dashboard's job metrics off.
+  Unset or blank, they are on, as before. `false`, `0`, `off` or `no`
+  turns them off, and a value `Config::bool()` cannot read stops the boot.
+  Each worker reads it once, at boot. Off, the listener records nothing,
+  builds neither the metrics store nor its link and logs no warning, even
+  without `vector_queue_metrics`. `GET /vector/queues/metrics` then
+  answers the Kernel's own `404`, after the dashboard's own `404` and
+  before any `422`, and the descriptor's new `capabilities.queueMetrics`
+  (the dashboard there and the metrics on) is `false`.
+  `vector:queues:prune-metrics` and the migration stay as they are.
+- `vector_queue_metrics`, the job metrics, is one of Vector's own tables,
+  on Vector's own connection (`VECTOR_DB_CONNECTION`): `vector:install`
+  publishes its migration, `20260926000008_vector_queue_metrics`, for
+  MySQL 8.0.19 or later and PostgreSQL. Run `vector:install` and
+  `migrate` after upgrading. Every `queue:work` process records metrics;
+  until the table exists, each worker logs one warning a minute and the
+  jobs run as before. `vector:queues:prune-metrics --days=<n>` prunes it.
+- The built-in widget type `queues` (`VectorWidget::QUEUES`,
+  `WidgetResult::queues()`), the queue dashboard's card, which
+  `QueuesWidget` uses. It joins `VectorWidget::BUILT_IN_TYPES`. The
+  label `Queues` is in Vector's translations for every locale.
+- Extension widget types: an application's widget may return its own
+  lower-case kebab-case `type()` that is none of the six built-in types,
+  such as `sparkline`, and answer it with
+  `WidgetResult::extension($type, $data)`, whose data is served as it
+  is. The UI renders it with the card the application registers, through
+  `defineWidget` in a runtime extension or `app.config`
+  `vector.widgets`. `WidgetResult::extension()` refuses a built-in type
+  and the keys `type`, `range` and `cached`. Any other type is still
+  refused at compile time, now with a message that says what a type may
+  be. The descriptor schema's widget `type` is the kebab-case pattern
+  instead of the built-in enum, and `VectorWidget::BUILT_IN_TYPES`,
+  `KEBAB_CASE` and `isExtensionType()` are new.
+
+### Changed
+
+- Requires the Kinetis releases built with Psalm 7:
+  `kinetis/framework` `^1.24.3`, `kinetis/authorization` `^1.0.7`,
+  `kinetis/database-bridge` `^1.4.3`, `kinetis/mcp` `^1.8.3`,
+  `kinetis/mcp-protocol` `^1.1.2`, `kinetis/migrations` `^1.4.3`,
+  `kinetis/orm` `^1.13.2`, `kinetis/persistence` `^1.4.6`,
+  `kinetis/query-builder` `^1.8.3` and `kinetis/queue` `^1.9.1`.
+- **Breaking:** the descriptor is version 5 (`VectorRegistry::VERSION`,
+  and the descriptor schema's `version`), so it pairs with an
+  `@kinetis/vector-ui` that reads version 5, and a hosted bundle must be
+  rebuilt for it. A registry cached by an earlier version is compiled
+  again. The descriptor's `ui` carries `expected` alone.
+- `vector:install-ui` installs `@kinetis/vector-ui` 0.12.0 by default,
+  the release that hands extensions a wider set of Vuetify components
+  and requires Node 26.
 
 ## [0.13.4] - 2026-10-30
 

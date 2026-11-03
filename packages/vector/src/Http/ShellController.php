@@ -35,7 +35,8 @@ use Psr\Http\Message\ServerRequestInterface;
  * head fragment. Every inline script tag
  * in the document — the bundle's, this one, the deployer's — receives
  * the response's nonce, so a strict Content-Security-Policy admits
- * exactly them.
+ * exactly them. The extension URLs it lists are the deployment's
+ * `VECTOR_UI_EXTENSIONS`.
  *
  * The nonce is the application's when its `SECURITY_CSP` carries
  * `{nonce}`: the framework's security headers put one on the request,
@@ -100,6 +101,7 @@ final readonly class ShellController
             'cspNonce' => $nonce,
             'user' => $user instanceof CurrentUserInterface ? ['id' => $user->id(), 'name' => $name] : null,
             'branding' => $branding,
+            // the deployment's VECTOR_UI_EXTENSIONS
             'extensions' => $this->ui->extensions,
             // the language the shell starts in, before the descriptor confirms it
             'locale' => $this->locales->resolve($user instanceof CurrentUserInterface ? (string) $user->id() : null)['locale'],

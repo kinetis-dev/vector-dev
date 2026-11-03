@@ -5,7 +5,7 @@ import type { VectorResource, VectorSchema } from '#vector/app/types/vector'
 let latestLoad = 0
 
 /** The descriptor contract this UI reads: the `version` kinetis/vector publishes (VectorRegistry::VERSION). */
-export const DESCRIPTOR_VERSION = 4
+export const DESCRIPTOR_VERSION = 5
 
 /**
  * The descriptor, loaded once per session and shared by every page. The

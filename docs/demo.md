@@ -1,7 +1,7 @@
 # The demo application
 
 The Vector repository ships a complete Kinetis application administered
-by Vector, the one both packages are developed and tested against. It
+by Vector, the one the packages are developed and tested against. It
 has two business domains on two databases, so every field type and
 relation shape Vector administers is exercised:
 
@@ -9,8 +9,8 @@ relation shape Vector administers is exercised:
 - a support desk on PostgreSQL — teams, agents, tickets, replies and
   labels.
 
-It runs both admin modes, background jobs on a real queue, and a seeded
-catalog.
+It runs both admin modes, background jobs on a real queue, the queue
+dashboard ({doc}`queues`), and a seeded catalog.
 
 ## Run it
 
@@ -211,7 +211,34 @@ error, and signs in from there.
 The hosted admin is same-origin on either port. It signs in with the
 session cookie, so it needs no CORS. `VECTOR_UI_ORIGIN` names the
 standalone admin's origin (`localhost:3000`), which calls the API on
-`:8080` with a bearer token.
+`:8080` with a bearer token. The demo's global `CorsMiddleware` covers
+it.
+
+## The queue dashboard
+
+Vector's **Queues** page (`/queues`), in the hosted and the standalone
+admin alike, watches `default` and
+`vector`, the two queues the `worker` serves; the demo installs
+`kinetis/queue-failed-jobs`, so it shows failed jobs too. The **Overview**
+dashboard also places Vector's `QueuesWidget`, a card with the waiting and
+failed totals that links to the page. Both start empty. To give it
+failed jobs and metrics to show, queue the demo's flaky job:
+
+```console
+docker compose exec app vendor/bin/kinetis demo:queue-flaky --count=20 --failure=40
+```
+
+Each job goes on `default` with up to three attempts and fails
+`--failure` percent of them (`--count` 1 to 1000, 20 by default;
+`--failure` 0 to 100, 40 by default), so the worker records retries and
+failures, and a job out of attempts lands in **Failed jobs** with its
+`#[Sensitive]` API key shown as `[redacted]`. `--delay=<seconds>` (0 to
+900, 0 by default) holds every job back that long first, so the page
+shows them waiting before the worker takes them. Admins may retry, forget,
+prune and clear there; `editor@vector.local` is refused by the admin
+altogether. Nothing prunes the metrics in the demo; run
+`vendor/bin/kinetis vector:queues:prune-metrics` by hand when you want
+them gone.
 
 ## Seed data
 
@@ -244,6 +271,7 @@ The test suite expects the stock data set. Put it back with
 | Rich text rendered outside the admin | `GET /shop/products/{id}` (`src/Http/ProductPageController.php`) renders a product description with `Document::toHtml()`. |
 | Runtime UI extensions | `public/vector-extensions/`: a stock-level cell, and a "Stock overview" page reading `GET /vector-demo/stock-overview` ({doc}`customizing-the-ui`). |
 | The queue wiring | `.env.example`: the named connection `jobs` on Redis, with Vector's jobs on the queue `vector` ({doc}`jobs`). |
+| The queue dashboard | Vector's own, at `/queues` in either admin: `VECTOR_QUEUES=default,vector` in `.env.example`, the queues the `worker` serves; `src/Auth/DemoQueueDashboardPolicy.php`, bound in `bootstrap.php`, which lets admins retry, forget, prune and clear; and `demo:queue-flaky` (`src/Console/DemoFlakyJobsCommand.php`), which queues `src/Jobs/SyncWarehouseStockJob.php` ({doc}`queues`). |
 | One Content Security Policy for the whole application | `SECURITY_CSP` in `.env.example` ({doc}`deployment`). |
 | Translated labels | `translations/` (`VECTOR_TRANSLATIONS_DIR`, {doc}`languages`). |
 

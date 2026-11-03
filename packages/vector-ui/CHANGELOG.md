@@ -5,7 +5,67 @@ All notable changes to `@kinetis/vector-ui` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.12.0] - 2026-11-03
+
+### Added
+
+- The queue dashboard, as the layer's own page at `/queues`: an overview
+  of each watched queue polled every five seconds while shown, with
+  Clear, confirmed by typing the queue's name; the failed jobs with their filters, cursor paging, detail,
+  Retry (up to 50 at once), Forget and Prune; and the job metrics over a
+  window of 15 minutes to 7 days, with a sparkline of attempts per
+  minute, summed into at most 240 points on longer windows. The menu
+  entry sits beside Jobs and shows only with the descriptor's
+  `capabilities.queues`; the failed-jobs tab, column and figures only
+  with `capabilities.failedJobs`. Actions follow
+  `GET /vector/queues/permissions`, and server text is rendered as text.
+  The dashboard card is the built-in widget type `queues`
+  (`VxWidgetQueues`), and the calls go through `useVectorQueues()`. Its
+  strings are the `queues` messages, in every shipped locale. It replaces
+  the UI the separate queue-dashboard package shipped, which is gone.
+- The Queues page's Metrics tab shows only with the descriptor's
+  `capabilities.queueMetrics`, and nothing calls
+  `GET /vector/queues/metrics` without it. When the metrics turn off
+  while the tab is open, the page goes back to the overview. The schema
+  type's `capabilities` carries `queueMetrics`, and absent means false.
+  A `kinetis/vector` that does not report it therefore shows no Metrics
+  tab. The two packages release together, so pair this layer with the
+  matching `kinetis/vector`.
+- The schema type's `capabilities` carries `queues` and `failedJobs`.
+- `window.Vector.definePage()` accepts a function for `title` and
+  `group`, `() => t('stock.title')`, which the menu, the command palette
+  and the page's heading and tab title call each time they show it, so a
+  translated label follows a change of language without a reload.
+  Strings work as before; `window.Vector.version` stays 1.
+- `window.Vector.vuetify` also hands extensions `VDialog`, `VTabs`,
+  `VTab`, `VTabsWindow`, `VTabsWindowItem`, `VTooltip`, `VMenu`,
+  `VList`, `VListItem`, `VExpansionPanels`, `VExpansionPanel`,
+  `VExpansionPanelTitle`, `VExpansionPanelText`, `VPagination`,
+  `VDivider` and `VSkeletonLoader`. The API is still `version: 1`.
+- An application's own dashboard card types. `VectorWidgetType` admits
+  any extension type beside the six built-in ones, which
+  `VectorBuiltInWidgetType` names (`queues` among them). The card for
+  such a type is the one the application registers through
+  `window.Vector.defineWidget()` or `app.config` `vector.widgets`; a
+  type with neither says that no renderer is registered for it
+  (`dashboard.noRenderer`, in every shipped language) instead of
+  drawing it as a `stat`.
+
+### Changed
+
+- **Breaking:** the layer reads descriptor version 5
+  (`DESCRIPTOR_VERSION`), the one `kinetis/vector` 0.14.0 publishes, and
+  refuses version 4.
+- **Breaking:** Node 22 and 24 are no longer supported. `engines.node`
+  is now `>=26.0.0`.
+- `vue-i18n` is now required at `^11.4.17`.
+
+### Fixed
+
+- In the rich-text and Markdown editors, text typed right after pressing
+  a toolbar button (Bold, for instance) no longer goes to the button: it
+  was lost, or a Space toggled the format off again. The editor keeps
+  the focus.
 
 ## [0.11.4] - 2026-10-30
 

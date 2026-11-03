@@ -43,6 +43,8 @@ jobs:
     # The mutants are split by source file over parallel jobs, each with
     # four threads over the PHPUnit tests that exercise its files and
     # each worker on databases of its own (see infection.vector.json5).
+    # The queue dashboard (packages/vector/src/Queues) is a shard of its
+    # own, on its own config (infection.queues.json5) and composer script.
     # A runner has four CPUs, so more threads in one job would only
     # queue; a shard of its own is what makes the run shorter.
     timeout-minutes: 30
@@ -54,16 +56,21 @@ jobs:
         # every file infection.vector.json5 mutates; a file added there
         # needs a shard here. mutators is all, split (only
         # SPLIT_MUTATORS) or rest (all but SPLIT_MUTATORS). Each floor
-        # applies to its own shard.
+        # applies to its own shard. script is the composer script a shard
+        # runs, infection:vector unless it names another; an empty files
+        # mutates the whole of that script's config.
         # Each floor sits about two points under its shard's covered MSI
         # as measured 2026-10-20 (run 39374383118, matching a local run):
-        # 99.3%, 97.7%, 85.2% and 97.4%. Mutation coverage is 100%, so
+        # 99.3%, 97.7%, 85.2% and 97.4%; the queue dashboard's as measured
+        # locally 2026-11-03, 78.9%. Mutation coverage is 100%, so
         # MSI and covered MSI coincide.
         shard:
           - { name: ResourceCompiler logic and identity, files: ResourceCompiler.php, mutators: split, minMsi: 97, minCoveredMsi: 97 }
           - { name: ResourceCompiler other mutators, files: ResourceCompiler.php, mutators: rest, minMsi: 95, minCoveredMsi: 95 }
           - { name: ResourceService, files: ResourceService.php, mutators: all, minMsi: 83, minCoveredMsi: 83 }
           - { name: ListRequest and the other compilers, files: 'ListRequest.php,XlsxWriter.php,LayoutCompiler.php,SettingsCompiler.php,WidgetCompiler.php', mutators: all, minMsi: 95, minCoveredMsi: 95 }
+          # every file of packages/vector/src/Queues; 78.9% measured 2026-11-03 (infection.queues.json5)
+          - { name: queues, script: 'infection:queues', files: '', mutators: all, minMsi: 77, minCoveredMsi: 77 }
     # The same services as ci.yml's PHP job: the mutated tests boot the
     # demo against them, the initial run on the base databases and each
     # Infection worker on its own (demo/backend/tests/worker-stores.php).
@@ -113,9 +120,10 @@ jobs:
           if [ -n "$BASE_REF" ]; then
             git fetch --no-tags --depth=1 origin "$BASE_REF"
             if ! git diff --diff-filter=AM --name-only "origin/$BASE_REF" -- \
-                packages/vector/src/Registry packages/vector/src/Query \
-                demo/backend/infection.vector.json5 .github/workflows/infection.yml | grep -q .; then
-              echo "Registry, Query and the mutation setup are unchanged; skipping."
+                packages/vector/src/Registry packages/vector/src/Query packages/vector/src/Queues \
+                demo/backend/infection.vector.json5 demo/backend/infection.queues.json5 \
+                .github/workflows/infection.yml | grep -q .; then
+              echo "Registry, Query, Queues and the mutation setup are unchanged; skipping."
               echo "run=false" >> "$GITHUB_OUTPUT"
               exit 0
             fi
@@ -174,23 +182,29 @@ jobs:
 
       - name: Infection
         if: steps.scope.outputs.run == 'true'
-        # The shard's files and floors override infection.vector.json5's
-        # minMsi and minCoveredMsi, which stay the floors of a whole run.
-        # This step does not set pcov.directory, unlike
+        # The shard's files and floors override its config's minMsi and
+        # minCoveredMsi (infection.vector.json5's or
+        # infection.queues.json5's), which stay the floors of a
+        # whole run. This step does not set pcov.directory, unlike
         # sonarqube.yml: the image leaves that ini setting empty, and
         # Infection then sets it for its initial run to the common base
-        # of the config's source directories, packages/vector/src.
+        # of the config's source directories, packages/vector/src or
+        # packages/vector/src/Queues.
         # --mutators replaces the config's mutators rather than narrowing
         # them, so the rest shard runs a copy of the config with
         # SPLIT_MUTATORS switched off: a mutator in neither list still
         # runs there. A later --configuration overrides the script's.
+        # split and rest exist for infection.vector.json5 only; the
+        # queues shard runs all of its config's mutators.
         env:
+          SHARD_SCRIPT: ${{ matrix.shard.script || 'infection:vector' }}
           SHARD_FILES: ${{ matrix.shard.files }}
           SHARD_MUTATORS: ${{ matrix.shard.mutators }}
           MIN_MSI: ${{ matrix.shard.minMsi }}
           MIN_COVERED_MSI: ${{ matrix.shard.minCoveredMsi }}
         run: |
-          args=("--filter=$SHARD_FILES" "--min-msi=$MIN_MSI" "--min-covered-msi=$MIN_COVERED_MSI")
+          args=("--min-msi=$MIN_MSI" "--min-covered-msi=$MIN_COVERED_MSI")
+          if [ -n "$SHARD_FILES" ]; then args+=("--filter=$SHARD_FILES"); fi
           case "$SHARD_MUTATORS" in
             all) ;;
             split) args+=("--mutators=$SPLIT_MUTATORS") ;;
@@ -204,11 +218,11 @@ jobs:
               ;;
             *) echo "Unknown mutators: $SHARD_MUTATORS"; exit 1 ;;
           esac
-          .github/scripts/php composer infection:vector -- "${args[@]}"
+          .github/scripts/php composer "$SHARD_SCRIPT" -- "${args[@]}"
 
       - name: Infection report
         if: always() && steps.scope.outputs.run == 'true'
-        run: cat demo/backend/infection.vector.summary.log 2>/dev/null || true
+        run: cat demo/backend/infection.*.summary.log 2>/dev/null || true
 
       # The full log lists every escaped mutant, so two runs of a shard can
       # be diffed for mutants whose kill depends on the run.
@@ -217,5 +231,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: infection-log-${{ strategy.job-index }}
-          path: demo/backend/infection.vector*.log
+          path: demo/backend/infection.*.log
           if-no-files-found: ignore

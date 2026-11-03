@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Auth\DemoActorResolver;
 use App\Auth\DemoPasswordHasher;
+use App\Auth\DemoQueueDashboardPolicy;
 use App\Auth\DemoVectorAccess;
 use App\Http\Diagnostics\RuntimeProbe;
 use Kinetis\AuthJwt\JwtAuthenticator;
@@ -16,6 +17,7 @@ use Kinetis\Http\Middleware\CorsMiddleware;
 use Kinetis\Vector\Auth\ActorResolverInterface;
 use Kinetis\Vector\Auth\PasswordHasherInterface;
 use Kinetis\Vector\Auth\VectorAccessInterface;
+use Kinetis\Vector\Queues\Auth\QueueDashboardPolicyInterface;
 
 return static function (AppScope $app, Config $config): void {
     $secret = $config->required('JWT_SECRET');
@@ -33,6 +35,9 @@ return static function (AppScope $app, Config $config): void {
     ));
 
     $app->instance(VectorAccessInterface::class, new DemoVectorAccess());
+
+    // Vector's queue dashboard is view-only by default: here an admin may also retry, forget, prune and clear.
+    $app->instance(QueueDashboardPolicyInterface::class, new DemoQueueDashboardPolicy());
 
     // The users resource lets an admin set a password: hashed here, the way the login verifies it.
     $app->instance(PasswordHasherInterface::class, new DemoPasswordHasher());

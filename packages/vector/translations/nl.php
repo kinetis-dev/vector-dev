@@ -23,4 +23,5 @@ return [
     'Background jobs' => 'Achtergrondtaken',
     'Stalled after (minutes)' => 'Geldt als vastgelopen na (minuten)',
     'A running job that reports no progress for this many minutes is shown as stalled, and vector:jobs:reap marks it failed.' => 'Een lopende taak die zo veel minuten geen voortgang meldt, wordt als vastgelopen getoond; vector:jobs:reap markeert haar als mislukt.',
+    'Queues' => 'Wachtrijen',
 ];
