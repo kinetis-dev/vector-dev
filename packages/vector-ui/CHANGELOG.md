@@ -5,7 +5,7 @@ All notable changes to `@kinetis/vector-ui` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.12.0] - 2026-11-03
 
 ### Added
 
@@ -30,54 +30,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   A `kinetis/vector` that does not report it therefore shows no Metrics
   tab. The two packages release together, so pair this layer with the
   matching `kinetis/vector`.
-- The schema type's `capabilities` carries `queues` and `failedJobs`, and
-  `VectorWidgetType` names `queues`.
+- The schema type's `capabilities` carries `queues` and `failedJobs`.
 - `window.Vector.definePage()` accepts a function for `title` and
   `group`, `() => t('stock.title')`, which the menu, the command palette
   and the page's heading and tab title call each time they show it, so a
   translated label follows a change of language without a reload.
   Strings work as before; `window.Vector.version` stays 1.
-
-### Changed
-
-- **Breaking:** the layer reads descriptor version 5
-  (`DESCRIPTOR_VERSION`), the one `kinetis/vector` publishes from its
-  next release, and refuses version 4.
-
-### Removed
-
-- Extension widget types, which 0.12.0 added. `VectorWidgetType` is the
-  six built-in types again, and `VectorBuiltInWidgetType` and the
-  `dashboard.noRenderer` message are gone. An application still
-  replaces a built-in card through `app.config` `vector.widgets` or
-  `window.Vector.defineWidget()`.
-- Loading UI modules of Composer packages: the standalone admin no
-  longer reads a module list from the descriptor, since
-  `kinetis/vector` no longer serves one. The runtime extensions the
-  application lists, `VECTOR_UI_EXTENSIONS` in hosted mode and
-  `runtimeConfig.public.vector.extensions` in standalone mode, load as
-  before.
-
-## [0.12.0] - 2026-11-02
-
-### Added
-
 - `window.Vector.vuetify` also hands extensions `VDialog`, `VTabs`,
   `VTab`, `VTabsWindow`, `VTabsWindowItem`, `VTooltip`, `VMenu`,
   `VList`, `VListItem`, `VExpansionPanels`, `VExpansionPanel`,
   `VExpansionPanelTitle`, `VExpansionPanelText`, `VPagination`,
   `VDivider` and `VSkeletonLoader`. The API is still `version: 1`.
+- An application's own dashboard card types. `VectorWidgetType` admits
+  any extension type beside the six built-in ones, which
+  `VectorBuiltInWidgetType` names (`queues` among them). The card for
+  such a type is the one the application registers through
+  `window.Vector.defineWidget()` or `app.config` `vector.widgets`; a
+  type with neither says that no renderer is registered for it
+  (`dashboard.noRenderer`, in every shipped language) instead of
+  drawing it as a `stat`.
 
 ### Changed
 
+- **Breaking:** the layer reads descriptor version 5
+  (`DESCRIPTOR_VERSION`), the one `kinetis/vector` 0.14.0 publishes, and
+  refuses version 4.
 - **Breaking:** Node 22 and 24 are no longer supported. `engines.node`
   is now `>=26.0.0`.
 - `vue-i18n` is now required at `^11.4.17`.
-- A dashboard card whose type has no built-in card and no registered
-  renderer now says that no renderer is registered for the type
-  (`dashboard.noRenderer`, in every shipped language) instead of
-  drawing it as a `stat`. `VectorWidgetType` now also admits extension
-  types, and `VectorBuiltInWidgetType` names the five built-in ones.
+
+### Fixed
+
+- In the rich-text and Markdown editors, text typed right after pressing
+  a toolbar button (Bold, for instance) no longer goes to the button: it
+  was lost, or a Space toggled the format off again. The editor keeps
+  the focus.
 
 ## [0.11.4] - 2026-10-30
 

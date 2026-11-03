@@ -5,7 +5,7 @@ All notable changes to `kinetis/vector` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.14.0] - 2026-11-03
 
 ### Added
 
@@ -47,10 +47,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `WidgetResult::queues()`), the queue dashboard's card, which
   `QueuesWidget` uses. It joins `VectorWidget::BUILT_IN_TYPES`. The
   label `Queues` is in Vector's translations for every locale.
+- Extension widget types: an application's widget may return its own
+  lower-case kebab-case `type()` that is none of the six built-in types,
+  such as `sparkline`, and answer it with
+  `WidgetResult::extension($type, $data)`, whose data is served as it
+  is. The UI renders it with the card the application registers, through
+  `defineWidget` in a runtime extension or `app.config`
+  `vector.widgets`. `WidgetResult::extension()` refuses a built-in type
+  and the keys `type`, `range` and `cached`. Any other type is still
+  refused at compile time, now with a message that says what a type may
+  be. The descriptor schema's widget `type` is the kebab-case pattern
+  instead of the built-in enum, and `VectorWidget::BUILT_IN_TYPES`,
+  `KEBAB_CASE` and `isExtensionType()` are new.
 
 ### Changed
 
-- Requires the Kinetis patch releases built with Psalm 7:
+- Requires the Kinetis releases built with Psalm 7:
   `kinetis/framework` `^1.24.3`, `kinetis/authorization` `^1.0.7`,
   `kinetis/database-bridge` `^1.4.3`, `kinetis/mcp` `^1.8.3`,
   `kinetis/mcp-protocol` `^1.1.2`, `kinetis/migrations` `^1.4.3`,
@@ -61,57 +73,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `@kinetis/vector-ui` that reads version 5, and a hosted bundle must be
   rebuilt for it. A registry cached by an earlier version is compiled
   again. The descriptor's `ui` carries `expected` alone.
-
-### Removed
-
-- UI modules shipped by Composer packages, which 0.14.0 added: Vector no
-  longer reads `extra.kinetis.vector.extensions`, and
-  `GET /vector/extensions/{vendor}/{package}/{hash}/{file}` is gone with
-  `PackageExtensions`, `ExtensionModules` and
-  `ExtensionModuleController`. The hosted shell's `extensions` is
-  `VECTOR_UI_EXTENSIONS` alone, as before 0.14.0. A standalone
-  deployment's CORS no longer has to cover `/vector/extensions/*`.
-- Extension widget types, which 0.14.0 added: a widget's `type()` is one
-  of `VectorWidget::BUILT_IN_TYPES` again, and any other is refused when
-  the registry compiles. `WidgetResult::extension()` and
-  `VectorWidget::isExtensionType()` are gone; the descriptor schema's
-  widget `type` is the enum of the six built-in types.
-  `VectorWidget::KEBAB_CASE` stays, the grammar of a widget's name.
-
-## [0.14.0] - 2026-11-02
-
-### Added
-
-- A Composer package can ship its own runtime UI extensions: it lists
-  ES modules, relative to its root, under
-  `extra.kinetis.vector.extensions` in its `composer.json`. Vector
-  compiles the declarations from Composer's `installed.json` into its
-  registry, so the order packages boot in does not matter. Each worker
-  reads them into memory once and serves them at
-  `GET /vector/extensions/{vendor}/{package}/{hash}/{file}`, with a
-  content hash in the URL, as `text/javascript; charset=utf-8` with
-  `Cache-Control: public, max-age=31536000, immutable`. The route is
-  public, like the hosted bundle's own scripts. Only declared `.js` and
-  `.mjs` files inside the package are served; any other path answers
-  `404`, and a declaration Vector refuses is written to the error log
-  and skipped.
-- The hosted shell's `extensions` lists those modules first, in
-  package-name order, then the `VECTOR_UI_EXTENSIONS` entries.
-- Extension widget types: `VectorWidget::type()` may return a
-  lower-case kebab-case name that is none of the five built-in types,
-  such as `sparkline`. The UI renders it with the renderer a runtime
-  extension registers (`defineWidget`) or `app.config` `vector.widgets`
-  maps. `WidgetResult::extension($type, $data)` answers such a widget,
-  and its data is served as it is, without a built-in card's shape. Any
-  other type is still refused at compile time, now with a message that
-  says what a type may be. The descriptor schema's widget `type` is the
-  kebab-case pattern instead of the five-name enum, and
-  `VectorWidget::BUILT_IN_TYPES`, `KEBAB_CASE` and `isExtensionType()`
-  are new.
-
-### Changed
-
-- Requires `kinetis/framework` `^1.24.2` and `kinetis/queue` `^1.9.0`.
 - `vector:install-ui` installs `@kinetis/vector-ui` 0.12.0 by default,
   the release that hands extensions a wider set of Vuetify components
   and requires Node 26.
