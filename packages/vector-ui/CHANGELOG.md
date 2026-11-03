@@ -21,8 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The dashboard card is the built-in widget type `queues`
   (`VxWidgetQueues`), and the calls go through `useVectorQueues()`. Its
   strings are the `queues` messages, in every shipped locale. It replaces
-  the runtime extension the separate queue-dashboard package shipped,
-  which is gone.
+  the UI the separate queue-dashboard package shipped, which is gone.
 - The Queues page's Metrics tab shows only with the descriptor's
   `capabilities.queueMetrics`, and nothing calls
   `GET /vector/queues/metrics` without it. When the metrics turn off
@@ -32,25 +31,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tab. The two packages release together, so pair this layer with the
   matching `kinetis/vector`.
 - The schema type's `capabilities` carries `queues` and `failedJobs`, and
-  `VectorBuiltInWidgetType` names `queues`.
-- The standalone admin imports the UI modules installed Composer
-  packages declare, which the descriptor lists as `ui.extensions`, from
-  the API's origin (`runtimeConfig.public.vector.apiBase`) once signed
-  in. Before, only the hosted shell loaded them. The hosted admin
-  ignores the descriptor's copy, since its shell already lists the same
-  modules. Each module is imported once per page load, so signing out
-  and in again imports nothing more. A module that fails, or a
-  descriptor that fails to load, is logged without holding the admin
-  back. An entry that resolves anywhere but the API's origin under
-  `/vector/extensions/` is logged and never imported. In standalone mode the extension
-  registries become `ready` only after these modules have settled, so a
-  link straight to a package's custom page shows its loading bar until
-  then, not "unknown page".
+  `VectorWidgetType` names `queues`.
 - `window.Vector.definePage()` accepts a function for `title` and
   `group`, `() => t('stock.title')`, which the menu, the command palette
   and the page's heading and tab title call each time they show it, so a
   translated label follows a change of language without a reload.
   Strings work as before; `window.Vector.version` stays 1.
+
+### Changed
+
+- **Breaking:** the layer reads descriptor version 5
+  (`DESCRIPTOR_VERSION`), the one `kinetis/vector` publishes from its
+  next release, and refuses version 4.
+
+### Removed
+
+- Extension widget types, which 0.12.0 added. `VectorWidgetType` is the
+  six built-in types again, and `VectorBuiltInWidgetType` and the
+  `dashboard.noRenderer` message are gone. An application still
+  replaces a built-in card through `app.config` `vector.widgets` or
+  `window.Vector.defineWidget()`.
+- Loading UI modules of Composer packages: the standalone admin no
+  longer reads a module list from the descriptor, since
+  `kinetis/vector` no longer serves one. The runtime extensions the
+  application lists, `VECTOR_UI_EXTENSIONS` in hosted mode and
+  `runtimeConfig.public.vector.extensions` in standalone mode, load as
+  before.
 
 ## [0.12.0] - 2026-11-02
 

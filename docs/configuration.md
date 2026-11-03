@@ -15,7 +15,7 @@
 | `VECTOR_UI_REGISTRY_TOKEN` | A bearer token for that registry, sent to its own host only and never printed. |
 | `VECTOR_LOGIN_URL`, `VECTOR_LOGOUT_URL` | The application's pages the hosted admin redirects to and posts to; `/login` and `/logout` by default. |
 | `VECTOR_TRANSLATIONS_DIR` | A directory of `{locale}.php` files translating your labels, relative to the project root; read once at boot. See {doc}`languages`. |
-| `VECTOR_UI_EXTENSIONS` | Comma-separated ES-module URLs the hosted admin imports after boot, after the modules installed Composer packages declare (see {doc}`customizing-the-ui`). Deployment configuration only. |
+| `VECTOR_UI_EXTENSIONS` | Comma-separated ES-module URLs the hosted admin imports after boot (see {doc}`customizing-the-ui`). Deployment configuration only. |
 | `VECTOR_SHELL_HEAD` | A raw fragment added before `</head>` of the hosted page; `{nonce}` is replaced. Deployment configuration only. |
 | `VECTOR_SHELL_CSP` | A Content Security Policy for the hosted page alone, sent instead of `SECURITY_CSP`; `{nonce}` is replaced per response. Unset, the application's policy applies, and the shell uses the nonce it put on the request. See {doc}`deployment`. |
 

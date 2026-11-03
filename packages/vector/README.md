@@ -65,9 +65,7 @@ Installing this package auto-registers, via `extra.kinetis`:
 - **Routes**: the REST admin API under `/vector`, in the `vector`
   middleware group, with its OpenAPI 3.1 document at
   `GET /vector/openapi.json`, and the hosted admin shell at
-  `GET /vector/ui`, in the `vector-shell` group. Outside both groups,
-  `GET /vector/extensions/{vendor}/{package}/{hash}/{file}` serves the
-  UI extension modules installed packages declare.
+  `GET /vector/ui`, in the `vector-shell` group.
 - **A global middleware**, `OpenApiGate`, which answers
   `/vector/openapi.json` with the unmatched-path `404` wherever
   `OPENAPI_ENVIRONMENTS` closes the framework's own `/openapi.json`.
@@ -75,11 +73,6 @@ Installing this package auto-registers, via `extra.kinetis`:
   which asks the application's `VectorAccessInterface`, and
   `VectorShellAccessMiddleware`, which redirects a request without a
   user to `VECTOR_LOGIN_URL`.
-- **UI extensions from other packages**: a package that lists ES modules
-  under `extra.kinetis.vector.extensions` in its `composer.json` has
-  them read at boot, served with content-hashed, immutable URLs and
-  listed by the hosted shell before `VECTOR_UI_EXTENSIONS`; see
-  [Runtime extensions](https://kinetis.dev/vector/docs/customizing-the-ui.html).
 - **Commands** on `vendor/bin/kinetis`: `vector:install`,
   `vector:install-ui`, `vector:list`, `vector:jobs:reap` and
   `vector:files:prune`.
@@ -91,7 +84,7 @@ Installing this package auto-registers, via `extra.kinetis`:
   class, compiled into the descriptor, with the built-in **Branding**,
   **Languages** and **Background jobs** settings groups.
 - **Bindings**, once per worker, from `PackageBootstrap`: the hosted UI
-  document, the packages' UI extension modules, Vector's database, queue and storage connections, its widget
+  document, Vector's database, queue and storage connections, its widget
   cache, its OpenAPI schema cache and, unless the application binds its own, its label translator.
 
 Nothing else. Authentication stays the application's: its middleware in

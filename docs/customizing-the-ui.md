@@ -63,18 +63,18 @@ A cell receives `value`, `field`, `record`, `resource` and `context`
 `errorMessages`, `record` and `resource` and emits `update:modelValue`.
 A widget renderer receives `data` and `widget`. For a widget type, the
 lookup order is the `app.config` override, then a runtime extension's
-`defineWidget`, then the built-in card. A widget can also declare an
-extension type, a kebab-case name Vector has no card for, such as
-`stock-gauge` ("Extension widget types" in {doc}`dashboards`). Its renderer must be registered one of those two
-ways. Without a renderer the card says that none is registered for the
-type, rather than drawing it as a `stat`.
+`defineWidget`, then the built-in card. A dashboard declares only
+Vector's built-in widget types (`stat`, `trend`, `partition`,
+`progress`, `table` and `queues`), so a renderer replaces one of those
+cards; one registered for any other type is never reached.
 
 ## Runtime extensions
 
 An extension is a plain ES module. List it in `VECTOR_UI_EXTENSIONS`
-(hosted) or `runtimeConfig.public.vector.extensions` (standalone), or
-ship it in a Composer package (see "Extensions in a Composer package"
-below).
+(hosted) or `runtimeConfig.public.vector.extensions` (standalone). The
+admin imports the modules after boot, fetched at once but run in the
+order listed, so the custom pages they define keep one menu order; a
+module that fails to load is logged and never blocks the admin.
 Its default export receives `window.Vector`, which hands it Vue, a
 curated set of Vuetify components and the registration functions. The
 Vuetify components are the only ones an extension can reach, since the
@@ -108,76 +108,6 @@ Number::make('stock')->component('stock-level'),
 
 An extension is served under `public/`, same-origin or CORS-enabled. The
 demo's `public/vector-extensions/stock-level.js` is this one.
-
-### Extensions in a Composer package
-
-A Composer package can ship its own extensions, so installing it is the
-whole step: list the modules in its `composer.json`, relative to the
-package's root.
-
-```json
-{
-    "extra": {
-        "kinetis": {
-            "vector": { "extensions": ["resources/ui/stock-panel.js"] }
-        }
-    }
-}
-```
-
-Vector reads these declarations from Composer's `installed.json` when
-it compiles its registry (`kinetis build`, or every boot in
-development), never from a bootstrap, so it does not matter whether the
-package boots before or after Vector. Each worker reads the modules
-into memory once, at boot, and serves them itself at
-`/vector/extensions/{vendor}/{package}/{hash}/{file}`, where `hash` is a
-digest of the file's bytes. The hosted shell lists them first, in
-package-name order, then the `VECTOR_UI_EXTENSIONS` entries.
-Beside `extensions`, the same `vector` object takes `translations`:
-one directory, relative to the package's root, with the translations of
-the labels the package emits on the server ("Translations in a Composer
-package" in {doc}`languages`).
-
-- **What is served:** an entry must be a `.js` or `.mjs` file inside the
-  package: a relative path with no `.`, `..` or hidden segment, no
-  symlink out of the package, and a file name unique within it. Vector
-  skips any other entry and writes the reason to the PHP error log.
-  Only declared files are served; every other path under
-  `/vector/extensions` answers `404`.
-- **Caching:** a module answers as `text/javascript; charset=utf-8`
-  with `Cache-Control: public, max-age=31536000, immutable`. When a
-  package upgrade changes a module, its hash and its URL change with
-  it, so a browser never runs a stale copy. A request naming an old hash
-  gets a `404`, not the new bytes. Restart workers after an upgrade, as
-  after any deploy; in production, rebuild with `kinetis build` too.
-- **Access:** the modules are public, like the hosted bundle's own
-  scripts, which the web server serves from `public/vector/ui` to anyone.
-  A module is code from a package, not data. Keep secrets out of it, and
-  fetch data through `api`, which is behind the `vector` group.
-- **CSP:** the modules are same-origin scripts, and the shell imports
-  them with `import()`. The `SECURITY_CSP` in {doc}`deployment` has
-  `script-src 'self' 'nonce-{nonce}'`, and its `'self'` admits them, as
-  it admits the bundle's own scripts. A policy whose `script-src` holds
-  only a nonce blocks them; a `VECTOR_SHELL_CSP` like that must add
-  `'self'`. No documented policy uses `'strict-dynamic'`: the shell
-  nonces its inline scripts only, not the bundle's own `src` scripts.
-- **Standalone mode:** the descriptor (`GET /vector/schema`) lists the
-  same modules under `ui.extensions`, as same-origin paths of the API.
-  The standalone UI imports them once signed in, as soon as the
-  descriptor arrives, each resolved against its `apiBase`. An entry that
-  resolves anywhere but the API's own origin under `/vector/extensions/`
-  is logged and skipped. A module that fails to load, or a descriptor
-  that fails, is logged and never blocks the admin. Each module loads
-  from the API's origin as a cross-origin module script, so the API's CORS
-  must also cover `/vector/extensions/*` for the UI's origin
-  ({doc}`deployment`), and a `script-src` on the UI's own pages must
-  admit the API's origin. The hosted admin ignores the descriptor's list,
-  because its shell already lists the same modules. Either way each
-  module is imported once per page load: signing out and in again loads
-  nothing more. A custom page a package declares, opened straight from
-  a link, shows a loading bar until the modules have settled, and only
-  then reads "unknown page". The deployment's `VECTOR_UI_EXTENSIONS`
-  stay the hosted shell's alone.
 
 `window.Vector` also offers `defineInput`, `defineWidget`, `definePage`,
 `defineMessages`, `defineRichTextExtension`, `api` (the admin's API

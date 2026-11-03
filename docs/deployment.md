@@ -23,12 +23,7 @@ pnpm nuxt generate    # .output/public, for any web server
 ```
 
 The API registers `CorsMiddleware` for the UI's origin; see
-{doc}`authentication`. Its CORS must cover every path the UI calls,
-`/vector/extensions/*` included. The UI imports the UI modules that
-installed packages declare from the API's origin, as module scripts in
-CORS mode, so a module answered without `Access-Control-Allow-Origin`
-for the UI's origin does not load. Registered globally, as the demo's
-`bootstrap.php` does, the middleware covers them.
+{doc}`authentication`.
 
 ## Hosted
 

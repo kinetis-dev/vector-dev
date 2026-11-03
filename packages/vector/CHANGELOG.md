@@ -45,29 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   jobs run as before. `vector:queues:prune-metrics --days=<n>` prunes it.
 - The built-in widget type `queues` (`VectorWidget::QUEUES`,
   `WidgetResult::queues()`), the queue dashboard's card, which
-  `QueuesWidget` uses. It joins `VectorWidget::BUILT_IN_TYPES`, so
-  `queues` is no longer an extension type. The label `Queues` is in
-  Vector's translations for every locale.
-- The descriptor (`GET /vector/schema`) lists the UI extension modules
-  installed packages declare under `ui.extensions`: their same-origin
-  paths under `/vector/extensions/`, in declared order, for a standalone
-  admin to import from the API's origin. The deployment's
-  `VECTOR_UI_EXTENSIONS` are not among them; they stay the hosted
-  shell's. The descriptor schema requires the field. A standalone
-  deployment's CORS must cover `/vector/extensions/*` for the UI's
-  origin, as a globally registered `CorsMiddleware` does.
-- A Composer package can ship the translations of the labels it emits
-  on the server: it names one directory of `{locale}.php` files,
-  relative to its root, under `extra.kinetis.vector.translations` in
-  its `composer.json`. Vector compiles the declarations from Composer's
-  `installed.json` into its registry, beside the UI extensions, and
-  each worker layers them at boot, in package-name order, over Vector's
-  own translations and under `VECTOR_TRANSLATIONS_DIR`, so the
-  application's wording always wins. A declaration that is not a
-  relative path to a directory inside the package, or a directory gone
-  by the time a worker boots, is written to the PHP error log and
-  skipped, never fatal. A registry cached by an earlier version loads
-  with none.
+  `QueuesWidget` uses. It joins `VectorWidget::BUILT_IN_TYPES`. The
+  label `Queues` is in Vector's translations for every locale.
 
 ### Changed
 
@@ -77,6 +56,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `kinetis/mcp-protocol` `^1.1.2`, `kinetis/migrations` `^1.4.3`,
   `kinetis/orm` `^1.13.2`, `kinetis/persistence` `^1.4.6`,
   `kinetis/query-builder` `^1.8.3` and `kinetis/queue` `^1.9.1`.
+- **Breaking:** the descriptor is version 5 (`VectorRegistry::VERSION`,
+  and the descriptor schema's `version`), so it pairs with an
+  `@kinetis/vector-ui` that reads version 5, and a hosted bundle must be
+  rebuilt for it. A registry cached by an earlier version is compiled
+  again. The descriptor's `ui` carries `expected` alone.
+
+### Removed
+
+- UI modules shipped by Composer packages, which 0.14.0 added: Vector no
+  longer reads `extra.kinetis.vector.extensions`, and
+  `GET /vector/extensions/{vendor}/{package}/{hash}/{file}` is gone with
+  `PackageExtensions`, `ExtensionModules` and
+  `ExtensionModuleController`. The hosted shell's `extensions` is
+  `VECTOR_UI_EXTENSIONS` alone, as before 0.14.0. A standalone
+  deployment's CORS no longer has to cover `/vector/extensions/*`.
+- Extension widget types, which 0.14.0 added: a widget's `type()` is one
+  of `VectorWidget::BUILT_IN_TYPES` again, and any other is refused when
+  the registry compiles. `WidgetResult::extension()` and
+  `VectorWidget::isExtensionType()` are gone; the descriptor schema's
+  widget `type` is the enum of the six built-in types.
+  `VectorWidget::KEBAB_CASE` stays, the grammar of a widget's name.
 
 ## [0.14.0] - 2026-11-02
 

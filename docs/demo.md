@@ -211,10 +211,8 @@ error, and signs in from there.
 The hosted admin is same-origin on either port. It signs in with the
 session cookie, so it needs no CORS. `VECTOR_UI_ORIGIN` names the
 standalone admin's origin (`localhost:3000`), which calls the API on
-`:8080` with a bearer token and would import any UI module an installed
-package declares from `:8080/vector/extensions/…`, which the descriptor
-lists (the demo installs none). The demo's global `CorsMiddleware`
-covers both.
+`:8080` with a bearer token. The demo's global `CorsMiddleware` covers
+it.
 
 ## The queue dashboard
 
