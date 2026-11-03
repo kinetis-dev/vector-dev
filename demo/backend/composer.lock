@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0c3d0ddca7778637131a0def97291588",
+    "content-hash": "2df519f80277eac812911aa227e91c1c",
     "packages": [
         {
             "name": "amphp/amp",
@@ -2246,7 +2246,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector",
-                "reference": "d033937e1370757f394bf3fddb734abfd43c5e92"
+                "reference": "fff1938a2feb48754548097af38b9c547463fa10"
             },
             "require": {
                 "composer-runtime-api": "^2.0",
@@ -2269,6 +2269,7 @@
                 "ueberdosis/tiptap-php": "^2.2.1"
             },
             "suggest": {
+                "kinetis/queue-failed-jobs": "Failed jobs on the queue dashboard: browse, retry, forget and prune them (^1.1.1)",
                 "kinetis/storage": "Uploads for file and image fields (FILESYSTEM_DRIVER, or VECTOR_STORAGE_CONNECTION)",
                 "league/flysystem": "The filesystem contract those uploads are written through; kinetis/storage brings it",
                 "openspout/openspout": "XLSX exports (MIT; needs ext-zip), written in the queue worker"
@@ -2303,68 +2304,6 @@
                 "kinetis",
                 "mcp",
                 "orm"
-            ],
-            "support": {
-                "docs": "https://kinetis.dev/vector/docs/",
-                "issues": "https://github.com/kinetis-dev/vector-dev/issues",
-                "source": "https://github.com/kinetis-dev/vector-dev"
-            },
-            "transport-options": {
-                "relative": true
-            }
-        },
-        {
-            "name": "kinetis/vector-queues",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "../../packages/vector-queues",
-                "reference": "9af44eb64c0d0485b5553281ad6bd701cb251f8a"
-            },
-            "require": {
-                "kinetis/database-bridge": "^1.4.3",
-                "kinetis/framework": "^1.24.3",
-                "kinetis/persistence": "^1.4.6",
-                "kinetis/queue": "^1.9.1",
-                "kinetis/queue-failed-jobs": "^1.1.1",
-                "kinetis/vector": "^0.14 || dev-main",
-                "php": "^8.4",
-                "psr/http-message": "^2.0"
-            },
-            "type": "library",
-            "extra": {
-                "kinetis": {
-                    "scan": "Kinetis\\Vector\\Queues\\",
-                    "bootstrap": "Kinetis\\Vector\\Queues\\PackageBootstrap",
-                    "vector": {
-                        "extensions": [
-                            "resources/ui/queues.js"
-                        ],
-                        "translations": "resources/translations"
-                    }
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Kinetis\\Vector\\Queues\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Alon Noy"
-                }
-            ],
-            "description": "A queue dashboard for kinetis/vector: queue sizes, failed jobs to browse, retry, forget and prune, and queues to clear, over kinetis/queue and kinetis/queue-failed-jobs.",
-            "homepage": "https://kinetis.dev/vector/docs/",
-            "keywords": [
-                "dashboard",
-                "failed-jobs",
-                "kinetis",
-                "queue",
-                "vector"
             ],
             "support": {
                 "docs": "https://kinetis.dev/vector/docs/",
@@ -9916,8 +9855,7 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
-        "kinetis/vector": 20,
-        "kinetis/vector-queues": 20
+        "kinetis/vector": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,
