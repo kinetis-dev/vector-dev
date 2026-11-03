@@ -14,7 +14,6 @@ use Kinetis\Http\Responses\HtmlResponse;
 use Kinetis\Http\Responses\PlainTextResponse;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Store\SettingsStore;
-use Kinetis\Vector\Ui\ExtensionModules;
 use Kinetis\Vector\Ui\VectorUi;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -36,9 +35,8 @@ use Psr\Http\Message\ServerRequestInterface;
  * head fragment. Every inline script tag
  * in the document — the bundle's, this one, the deployer's — receives
  * the response's nonce, so a strict Content-Security-Policy admits
- * exactly them. The extension URLs it lists are the installed packages'
- * modules ({@see ExtensionModules}, same-origin) and then the
- * deployment's `VECTOR_UI_EXTENSIONS`.
+ * exactly them. The extension URLs it lists are the deployment's
+ * `VECTOR_UI_EXTENSIONS`.
  *
  * The nonce is the application's when its `SECURITY_CSP` carries
  * `{nonce}`: the framework's security headers put one on the request,
@@ -57,7 +55,6 @@ final readonly class ShellController
         private VectorRegistry $registry,
         private SettingsStore $settings,
         private \Kinetis\Vector\Translation\LocaleResolver $locales,
-        private ExtensionModules $modules,
     ) {}
 
     #[Get('/vector/ui')]
@@ -104,8 +101,8 @@ final readonly class ShellController
             'cspNonce' => $nonce,
             'user' => $user instanceof CurrentUserInterface ? ['id' => $user->id(), 'name' => $name] : null,
             'branding' => $branding,
-            // the installed packages' own modules first, then the deployment's VECTOR_UI_EXTENSIONS
-            'extensions' => [...$this->modules->urls(), ...$this->ui->extensions],
+            // the deployment's VECTOR_UI_EXTENSIONS
+            'extensions' => $this->ui->extensions,
             // the language the shell starts in, before the descriptor confirms it
             'locale' => $this->locales->resolve($user instanceof CurrentUserInterface ? (string) $user->id() : null)['locale'],
         ], JSON_THROW_ON_ERROR | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES);

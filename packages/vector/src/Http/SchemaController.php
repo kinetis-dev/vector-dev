@@ -23,7 +23,6 @@ use Kinetis\Vector\Auth\ImpersonationInterface;
 use Kinetis\Vector\Auth\ActorContext;
 use Kinetis\Vector\Queues\Auth\QueueDashboardPolicyInterface;
 use Kinetis\Vector\Queues\QueueDashboard;
-use Kinetis\Vector\Ui\ExtensionModules;
 use Kinetis\Vector\Ui\VectorUi;
 use Kinetis\Vector\Widgets\VectorDashboard;
 use Psr\Http\Message\ResponseInterface;
@@ -51,7 +50,6 @@ final readonly class SchemaController
         private Labels $labels,
         private VisibleResources $visible,
         private VectorUi $ui,
-        private ExtensionModules $modules,
     ) {}
 
     #[Get('/schema')]
@@ -115,11 +113,8 @@ final readonly class SchemaController
             'i18n' => $i18n = $this->locales->resolve((string) $this->user->id()),
             // a money value is in its currency's minor units: these codes are not hundredths
             'minorUnits' => \Kinetis\Vector\Fields\Currency::MINOR_UNITS,
-            // the @kinetis/vector-ui release this kinetis/vector pins: the dashboard warns when it runs another;
-            // and the UI modules installed packages declare, as same-origin paths a standalone admin resolves
-            // against its API origin (the hosted shell lists them itself, beside VECTOR_UI_EXTENSIONS, which
-            // stay the shell's alone)
-            'ui' => ['expected' => $this->ui->expectedUiVersion, 'extensions' => $this->modules->urls()],
+            // the @kinetis/vector-ui release this kinetis/vector pins: the dashboard warns when it runs another
+            'ui' => ['expected' => $this->ui->expectedUiVersion],
         ];
 
         return $this->cached($request, $this->labels->document($document, $i18n['locale']), $i18n['locale']);

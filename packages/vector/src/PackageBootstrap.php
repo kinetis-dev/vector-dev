@@ -18,17 +18,15 @@ use Kinetis\Vector\Jobs\VectorQueue;
 use Kinetis\Vector\OpenApi\OpenApiCache;
 use Kinetis\Vector\Queues\QueueDashboard;
 use Kinetis\Vector\Translation\MessagesTranslator;
-use Kinetis\Vector\Translation\PackageTranslations;
 use Kinetis\Vector\Translation\TranslatorInterface;
-use Kinetis\Vector\Ui\ExtensionModules;
 use Kinetis\Vector\Ui\VectorUi;
 use Kinetis\Vector\Widgets\WidgetCache;
 
 /**
  * Wiring only: binds the hosted UI document, the application's login
- * and logout URLs, the deployment's shell additions, the packages'
- * UI extension modules, the queue dashboard and the labels' translations once per worker. Everything else Vector registers is discovered from
- * attributes.
+ * and logout URLs, the deployment's shell additions, the queue dashboard
+ * and the labels' translations once per worker. Everything else Vector
+ * registers is discovered from attributes.
  */
 final readonly class PackageBootstrap implements PackageBootstrapInterface
 {
@@ -43,9 +41,6 @@ final readonly class PackageBootstrap implements PackageBootstrapInterface
 
         $app->instance(VectorUi::class, VectorUi::fromConfig($config, $root->path));
         $registry = $app->get(VectorRegistry::class);
-        // The UI extensions installed packages declare, read into memory once: the registry compiled their
-        // declarations from Composer's record and is bound before any bootstrap, so boot order plays no part.
-        $app->instance(ExtensionModules::class, ExtensionModules::load($registry instanceof VectorRegistry ? $registry->uiExtensions() : [], $root->path));
         $app->instance(VectorDefaults::class, VectorDefaults::fromConfig($config));
         $app->instance(WidgetCache::class, new WidgetCache());
         // The schemas every GET /vector/openapi.json shares, whoever asks: a request-neutral memo.
@@ -72,14 +67,10 @@ final readonly class PackageBootstrap implements PackageBootstrapInterface
             });
         }
 
-        // The labels' translations: read once, request-neutral. Vector's own, then each package's in package-name
-        // order — a directory gone since the build is reported and skipped — then the application's, which wins.
+        // The labels' translations: read once, request-neutral. Vector's own, then the application's, which wins.
         if (!$app->has(TranslatorInterface::class)) {
             $directory = trim($config->string('VECTOR_TRANSLATIONS_DIR', ''));
-            $directories = [
-                dirname(__DIR__) . '/translations',
-                ...PackageTranslations::directories($registry instanceof VectorRegistry ? $registry->packageTranslations() : [], $root->path),
-            ];
+            $directories = [dirname(__DIR__) . '/translations'];
 
             if ($directory !== '') {
                 $directories[] = str_starts_with($directory, '/') ? $directory : $root->path . '/' . $directory;

@@ -15,7 +15,7 @@
     "properties": {
         "version": {
             "type": "integer",
-            "const": 4
+            "const": 5
         },
         "resources": {
             "type": "object",
@@ -151,11 +151,10 @@
             }
         },
         "ui": {
-            "description": "What the UI is told about itself: the @kinetis/vector-ui version this kinetis/vector pins in resources/ui.json, and the UI extension modules installed packages declare.",
+            "description": "What the UI is told about itself: the @kinetis/vector-ui version this kinetis/vector pins in resources/ui.json.",
             "type": "object",
             "required": [
-                "expected",
-                "extensions"
+                "expected"
             ],
             "properties": {
                 "expected": {
@@ -164,14 +163,6 @@
                         "string",
                         "null"
                     ]
-                },
-                "extensions": {
-                    "description": "The UI extension modules installed Composer packages declare (extra.kinetis.vector.extensions), as same-origin paths under /vector/extensions/, in declared order. A standalone admin resolves them against its API origin and imports them; the hosted shell already lists them. The deployment's VECTOR_UI_EXTENSIONS are never here.",
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "pattern": "^/vector/extensions/[^/]+/[^/]+/[0-9a-f]{16}/[^/]+$"
-                    }
                 }
             }
         }
@@ -722,8 +713,14 @@
                     "type": "string"
                 },
                 "type": {
-                    "description": "stat, trend, partition, progress, table or queues, the built-in cards, or an extension type: lower-case kebab-case, rendered by the card a UI extension registers for it (defineWidget).",
-                    "$ref": "#/$defs/slug"
+                    "enum": [
+                        "stat",
+                        "trend",
+                        "partition",
+                        "progress",
+                        "table",
+                        "queues"
+                    ]
                 },
                 "icon": {
                     "type": [
