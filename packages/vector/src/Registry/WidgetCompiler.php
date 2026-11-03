@@ -36,8 +36,9 @@ final class WidgetCompiler
                 throw ResourceCompileException::resource($owner, "two widgets are named \"{$name}\"");
             }
 
-            if (!in_array($widget->type(), VectorWidget::BUILT_IN_TYPES, true)) {
-                throw ResourceCompileException::resource($owner, "widget {$class} has the type \"{$widget->type()}\"; a widget type is one of " . implode(', ', VectorWidget::BUILT_IN_TYPES));
+            // a built-in type, or an extension type whose card the application registers (VectorWidget::type())
+            if (!in_array($widget->type(), VectorWidget::BUILT_IN_TYPES, true) && !VectorWidget::isExtensionType($widget->type())) {
+                throw ResourceCompileException::resource($owner, "widget {$class} has the type \"{$widget->type()}\"; a widget type is " . implode(', ', VectorWidget::BUILT_IN_TYPES) . ', or an extension type in lower-case kebab-case');
             }
 
             self::checkRanges($widget, $class, $owner);

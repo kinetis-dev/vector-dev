@@ -713,14 +713,8 @@
                     "type": "string"
                 },
                 "type": {
-                    "enum": [
-                        "stat",
-                        "trend",
-                        "partition",
-                        "progress",
-                        "table",
-                        "queues"
-                    ]
+                    "description": "stat, trend, partition, progress, table or queues, the built-in cards, or an extension type: lower-case kebab-case, rendered by the card the application registers for it (window.Vector.defineWidget in its runtime extension, or vector.widgets in its app.config).",
+                    "$ref": "#/$defs/slug"
                 },
                 "icon": {
                     "type": [
