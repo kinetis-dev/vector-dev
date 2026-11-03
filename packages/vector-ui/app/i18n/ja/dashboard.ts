@@ -3,7 +3,6 @@ export default {
     title: 'ダッシュボード',
     range: '期間',
     loading: '読み込み中',
-    noRenderer: 'ウィジェットタイプ {type} のレンダラーが登録されていません。',
     percent: '{value}%',
     duration: {
         minutes: '{value} 分',

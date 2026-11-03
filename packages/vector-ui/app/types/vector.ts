@@ -128,16 +128,8 @@ export interface VectorActionResponse {
     jobId?: number | null
 }
 
-/** The built-in cards' types; `queues` is the queue dashboard's card, which loads its own figures. */
-export type VectorBuiltInWidgetType = 'stat' | 'trend' | 'partition' | 'progress' | 'table' | 'queues'
-
-/**
- * A built-in type, or an extension type: a kebab-case name whose card a
- * runtime extension registers (defineWidget) or app.config.vector.widgets
- * maps. Its data is whatever the widget answered, beside `type`, `range`
- * and `cached`.
- */
-export type VectorWidgetType = VectorBuiltInWidgetType | (string & {})
+/** The cards' types; `queues` is the queue dashboard's card, which loads its own figures. */
+export type VectorWidgetType = 'stat' | 'trend' | 'partition' | 'progress' | 'table' | 'queues'
 
 export interface VectorWidget {
     name: string
@@ -489,8 +481,7 @@ export interface VectorSchema {
     /** ISO 4217 exponents of the currencies whose minor unit is not a hundredth */
     minorUnits?: Record<string, number>
     /** The @kinetis/vector-ui release kinetis/vector pins; null when it pins none. */
-    /** `expected`: the pinned @kinetis/vector-ui release; `extensions`: the installed packages' UI modules, same-origin paths. */
-    ui: { expected: string | null, extensions?: string[] }
+    ui: { expected: string | null }
 }
 
 export interface VectorMe {

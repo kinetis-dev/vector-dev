@@ -10,10 +10,8 @@ import type { VectorPageLabel } from '../composables/useVectorExtensions'
 /**
  * Runtime UI extensions (§4.15 tier 2). `window.Vector` is the
  * registration API an extension module calls; the URLs come from the
- * hosted shell (the modules installed Composer packages declare, then
- * `VECTOR_UI_EXTENSIONS`), or in standalone mode from runtime config and,
- * once signed in, the descriptor's `ui.extensions` (the packages' modules,
- * on the API origin), and are imported after the app is created. Vue and a
+ * hosted shell (`VECTOR_UI_EXTENSIONS`) or, in standalone mode, from
+ * runtime config, and are imported after the app is created. Vue and a
  * curated set of Vuetify components are handed over so an extension
  * needs no bundler and no copy of either library.
  */
@@ -69,15 +67,11 @@ export default defineNuxtPlugin(() => {
 
     window.Vector = api
 
-    const vectorConfig = config.public.vector as { extensions?: string[], apiBase?: string }
+    const vectorConfig = config.public.vector as { extensions?: string[] }
 
-    // see loadVectorExtensions: the hosted shell's list, or runtime config's, at once; in standalone
-    // mode also the packages' modules the descriptor lists, from the API origin, once signed in
+    // see loadVectorExtensions: the hosted shell's list, or runtime config's, at once
     void loadVectorExtensions({
-        hosted: window.__VECTOR__ !== undefined,
         initial: [...(window.__VECTOR__?.extensions ?? []), ...(vectorConfig.extensions ?? [])],
-        apiBase: vectorConfig.apiBase ?? '',
-        ...descriptorSignals(),
         ready: registries.ready,
         importModule: url => import(/* @vite-ignore */ url),
         run: module => (typeof (module as { default?: unknown }).default === 'function' ? (module as { default: (vector: typeof api) => unknown }).default(api) : undefined),

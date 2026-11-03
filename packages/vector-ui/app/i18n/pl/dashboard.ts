@@ -3,7 +3,6 @@ export default {
     title: 'Pulpit',
     range: 'Zakres',
     loading: 'Ładowanie',
-    noRenderer: 'Brak zarejestrowanego renderera dla typu widżetu {type}.',
     percent: '{value}%',
     duration: {
         minutes: '{value} min',

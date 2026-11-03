@@ -6,11 +6,11 @@ import CustomPage from '#vector/app/pages/p/[name].vue'
 import { endpoint, standaloneApi } from '../endpoints'
 import { schema } from '../fixtures'
 
-// A link straight to a page a package's module declares: until the
-// modules settle (in standalone mode, the ones the descriptor lists) the
-// page is loading, never "unknown"; the module's page then shows.
+// A link straight to a custom page: one the application's own app.config
+// declares shows at once; one a runtime extension module defines is
+// loading, never "unknown", until the modules settle, and then shows.
 
-const Panel = defineComponent({ setup: () => () => h('p', { class: 'panel' }, 'Package panel') })
+const Panel = defineComponent({ setup: () => () => h('p', { class: 'panel' }, 'Stock panel') })
 
 describe('a custom page opened from a link', () => {
     let unregister = () => {}
@@ -28,6 +28,21 @@ describe('a custom page opened from a link', () => {
         useVectorAuthStore().clear()
         useVectorExtensions().pages.delete('late-panel')
         useVectorExtensions().ready.value = true
+        delete (useAppConfig().vector.pages as Record<string, unknown>)['app-panel']
+    })
+
+    it('shows a page the application declares in app.config, whatever the modules are doing', async () => {
+        useVectorExtensions().ready.value = false
+        // a component rather than a registered name, as useVectorPages accepts either
+        const declared = useAppConfig().vector.pages as Record<string, unknown>
+        declared['app-panel'] = { title: 'App panel', component: Panel }
+        const wrapper = await mountSuspended(CustomPage, { route: '/p/app-panel' })
+        await flushPromises()
+
+        expect(wrapper.find('.panel').text()).toBe('Stock panel')
+        expect(wrapper.text()).toContain('App panel')
+        expect(wrapper.find('[aria-label="Loading the page"]').exists()).toBe(false)
+        wrapper.unmount()
     })
 
     it('waits for the extension modules instead of calling the page unknown', async () => {
@@ -43,7 +58,7 @@ describe('a custom page opened from a link', () => {
         registries.ready.value = true
         await nextTick()
 
-        expect(wrapper.find('.panel').text()).toBe('Package panel')
+        expect(wrapper.find('.panel').text()).toBe('Stock panel')
         expect(wrapper.text()).toContain('Late panel')
         wrapper.unmount()
     })

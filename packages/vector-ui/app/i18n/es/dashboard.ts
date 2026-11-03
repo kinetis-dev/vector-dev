@@ -3,7 +3,6 @@ export default {
     title: 'Panel',
     range: 'Periodo',
     loading: 'Cargando',
-    noRenderer: 'No hay ningún renderizador registrado para el tipo de widget {type}.',
     percent: '{value} %',
     duration: {
         minutes: '{value} min',

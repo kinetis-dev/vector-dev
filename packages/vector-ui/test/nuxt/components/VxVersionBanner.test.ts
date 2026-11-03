@@ -130,7 +130,7 @@ describe('an unsupported descriptor', () => {
         cleanup = endpoint('/vector/schema', { body: other() }).unregister
 
         await expect(useVectorSchema().load()).rejects.toThrow(
-            'The API publishes descriptor version 999; this admin reads version 4. Upgrade @kinetis/vector-ui to 99.0.0 and rebuild.',
+            'The API publishes descriptor version 999; this admin reads version 5. Upgrade @kinetis/vector-ui to 99.0.0 and rebuild.',
         )
     })
 
@@ -156,7 +156,7 @@ describe('an unsupported descriptor', () => {
         cleanup = endpoint('/vector/schema', { body: other() }).unregister
 
         await expect(useVectorSchema().load()).rejects.toThrow(
-            'The API publishes descriptor version 999; this admin reads version 4. Run vendor/bin/kinetis vector:install-ui on the server, then restart the workers.',
+            'The API publishes descriptor version 999; this admin reads version 5. Run vendor/bin/kinetis vector:install-ui on the server, then restart the workers.',
         )
     })
 })

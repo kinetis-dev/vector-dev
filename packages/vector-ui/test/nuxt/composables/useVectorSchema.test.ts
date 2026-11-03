@@ -90,10 +90,10 @@ describe('useVectorSchema', () => {
     })
 
     it('refuses a descriptor of another contract version, and keeps none', async () => {
-        cleanup = endpoint('/vector/schema', { body: { ...descriptor, version: 5 } }).unregister
+        cleanup = endpoint('/vector/schema', { body: { ...descriptor, version: 6 } }).unregister
         const { load, loading, schema: loaded } = useVectorSchema()
 
-        await expect(load()).rejects.toThrow('The API publishes descriptor version 5; this admin reads version 4.')
+        await expect(load()).rejects.toThrow('The API publishes descriptor version 6; this admin reads version 5.')
 
         expect(loaded.value).toBeNull()
         expect(loading.value).toBe(false)
@@ -101,7 +101,7 @@ describe('useVectorSchema', () => {
 
     it('reads the contract version the server publishes', () => {
         // packages/vector's VectorRegistry::VERSION, as descriptor.schema.json pins it
-        expect(DESCRIPTOR_VERSION).toBe(4)
+        expect(DESCRIPTOR_VERSION).toBe(5)
         expect(descriptor.version).toBe(DESCRIPTOR_VERSION)
     })
 
