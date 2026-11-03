@@ -3,8 +3,7 @@ name: Release
 # Every push to main releases what packages.manifest.json says is not out
 # yet: each Composer product to its own mirror, tagged v<version> there
 # (packages/vector to kinetis-dev/vector, Packagist's kinetis/vector;
-# packages/vector-queues to kinetis-dev/vector-queues, Packagist's
-# kinetis/vector-queues; MIRRORS in scripts/release.mjs), and
+# MIRRORS in scripts/release.mjs), and
 # packages/vector-ui to npm (@kinetis/vector-ui). Each versions
 # independently, bumped in its pull request with scripts/bump.mjs and
 # held to the policy by versions.yml; a push that publishes nothing is a
@@ -222,7 +221,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       # One mirror at a time, in the manifest's order (kinetis/vector
-      # first, which kinetis/vector-queues requires), and one mirror's
+      # first, which any other Composer product would require), and one mirror's
       # failure does not stop another's: each push is its own atomic
       # write, and a re-run finishes whatever is left.
       max-parallel: 1

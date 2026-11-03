@@ -211,16 +211,18 @@ error, and signs in from there.
 The hosted admin is same-origin on either port. It signs in with the
 session cookie, so it needs no CORS. `VECTOR_UI_ORIGIN` names the
 standalone admin's origin (`localhost:3000`), which calls the API on
-`:8080` with a bearer token and imports the installed packages' UI
-modules from `:8080/vector/extensions/…`, which the descriptor lists.
-The demo's global `CorsMiddleware` covers both.
+`:8080` with a bearer token and would import any UI module an installed
+package declares from `:8080/vector/extensions/…`, which the descriptor
+lists (the demo installs none). The demo's global `CorsMiddleware`
+covers both.
 
 ## The queue dashboard
 
-The **Queues** page (`/p/queues`), in the hosted and the standalone
+Vector's **Queues** page (`/queues`), in the hosted and the standalone
 admin alike, watches `default` and
-`vector`, the two queues the `worker` serves. The **Overview** dashboard
-also places the package's `QueuesWidget`, a card with the waiting and
+`vector`, the two queues the `worker` serves; the demo installs
+`kinetis/queue-failed-jobs`, so it shows failed jobs too. The **Overview**
+dashboard also places Vector's `QueuesWidget`, a card with the waiting and
 failed totals that links to the page. Both start empty. To give it
 failed jobs and metrics to show, queue the demo's flaky job:
 
@@ -271,7 +273,7 @@ The test suite expects the stock data set. Put it back with
 | Rich text rendered outside the admin | `GET /shop/products/{id}` (`src/Http/ProductPageController.php`) renders a product description with `Document::toHtml()`. |
 | Runtime UI extensions | `public/vector-extensions/`: a stock-level cell, and a "Stock overview" page reading `GET /vector-demo/stock-overview` ({doc}`customizing-the-ui`). |
 | The queue wiring | `.env.example`: the named connection `jobs` on Redis, with Vector's jobs on the queue `vector` ({doc}`jobs`). |
-| The queue dashboard | `kinetis/vector-queues`, at `/p/queues` in either admin: `VECTOR_QUEUES=default,vector` in `.env.example`, the queues the `worker` serves; `src/Auth/DemoQueueDashboardPolicy.php`, bound in `bootstrap.php`, which lets admins retry, forget, prune and clear; and `demo:queue-flaky` (`src/Console/DemoFlakyJobsCommand.php`), which queues `src/Jobs/SyncWarehouseStockJob.php` ({doc}`queues`). |
+| The queue dashboard | Vector's own, at `/queues` in either admin: `VECTOR_QUEUES=default,vector` in `.env.example`, the queues the `worker` serves; `src/Auth/DemoQueueDashboardPolicy.php`, bound in `bootstrap.php`, which lets admins retry, forget, prune and clear; and `demo:queue-flaky` (`src/Console/DemoFlakyJobsCommand.php`), which queues `src/Jobs/SyncWarehouseStockJob.php` ({doc}`queues`). |
 | One Content Security Policy for the whole application | `SECURITY_CSP` in `.env.example` ({doc}`deployment`). |
 | Translated labels | `translations/` (`VECTOR_TRANSLATIONS_DIR`, {doc}`languages`). |
 

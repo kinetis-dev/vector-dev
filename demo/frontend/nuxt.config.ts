@@ -20,8 +20,8 @@ export default defineNuxtConfig({
             vector: {
                 apiBase: 'http://localhost:8080',
                 // The demo's runtime extensions, served same-origin from public/vector-extensions.
-                // The installed packages' modules (kinetis/vector-queues') are not listed here:
-                // the descriptor names them, and the layer imports them from apiBase.
+                // An installed package's modules are not listed here: the descriptor names them,
+                // and the layer imports them from apiBase.
                 extensions: ['/vector-extensions/stock-level.js', '/vector-extensions/stock-overview.js'],
             },
         },

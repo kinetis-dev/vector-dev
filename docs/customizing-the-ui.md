@@ -65,8 +65,7 @@ A widget renderer receives `data` and `widget`. For a widget type, the
 lookup order is the `app.config` override, then a runtime extension's
 `defineWidget`, then the built-in card. A widget can also declare an
 extension type, a kebab-case name Vector has no card for, such as
-`kinetis/vector-queues`' `vector-queues` ("Extension widget types" in
-{doc}`dashboards`). Its renderer must be registered one of those two
+`stock-gauge` ("Extension widget types" in {doc}`dashboards`). Its renderer must be registered one of those two
 ways. Without a renderer the card says that none is registered for the
 type, rather than drawing it as a `stat`.
 
@@ -120,7 +119,7 @@ package's root.
 {
     "extra": {
         "kinetis": {
-            "vector": { "extensions": ["resources/ui/queues.js"] }
+            "vector": { "extensions": ["resources/ui/stock-panel.js"] }
         }
     }
 }
@@ -134,7 +133,6 @@ into memory once, at boot, and serves them itself at
 `/vector/extensions/{vendor}/{package}/{hash}/{file}`, where `hash` is a
 digest of the file's bytes. The hosted shell lists them first, in
 package-name order, then the `VECTOR_UI_EXTENSIONS` entries.
-`kinetis/vector-queues` ships its admin page this way ({doc}`queues`).
 Beside `extensions`, the same `vector` object takes `translations`:
 one directory, relative to the package's root, with the translations of
 the labels the package emits on the server ("Translations in a Composer

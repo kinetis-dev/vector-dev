@@ -1,71 +1,69 @@
 # Queue dashboard
 
-`kinetis/vector-queues` adds a queue dashboard to the admin, in the
-spirit of Laravel Horizon. It shows the size of each queue and the jobs
+Vector has a queue dashboard, in the spirit of Laravel Horizon. It shows
+the size of each queue and, with `kinetis/queue-failed-jobs`, the jobs
 the worker gave up on, which can be browsed, retried, forgotten and
 pruned. It can clear queues, and it records per-minute throughput,
-failure and duration metrics. It is a separate Composer package, built on
-[`kinetis/queue`](https://github.com/kinetis-dev/queue) and
-[`kinetis/queue-failed-jobs`](https://github.com/kinetis-dev/queue-failed-jobs),
-and it is unrelated to Vector's own background work ({doc}`jobs`): it
-reads the application's queues, whatever pushes to them.
+failure and duration metrics. It is part of `kinetis/vector` and
+`@kinetis/vector-ui`, built on
+[`kinetis/queue`](https://github.com/kinetis-dev/queue), and it is
+unrelated to Vector's own background work ({doc}`jobs`): it reads the
+application's queues, whatever pushes to them.
 
 ## Install
 
-```console
-composer require kinetis/vector-queues
-```
+There is nothing to install for the dashboard itself. It appears on its
+own, per user:
 
-The package needs PHP 8.4, `kinetis/vector` 0.14, `kinetis/queue` 1.9 or
-later and `kinetis/queue-failed-jobs` 1.1 or later. Installing it is
-the whole wiring:
+- **Queues** is in the menu, beside **Jobs**, when the application's
+  queue is configured — a `QueueInterface` bound, which `kinetis/queue`
+  does when `QUEUE_CONNECTION` (or the connection
+  `QUEUE_CONNECTION_NAME` names) is set, or your `bootstrap.php` binds
+  one — and the dashboard's policy lets the user view (see below). The
+  descriptor reports it as `capabilities.queues`. Otherwise the entry
+  and the dashboard card are left out, and every `/vector/queues`
+  endpoint answers `404`, as a path no route matches does.
+- **Failed jobs** are part of it when, on top of that,
+  [`kinetis/queue-failed-jobs`](https://github.com/kinetis-dev/queue-failed-jobs)
+  1.1 or later is installed, which binds its store and retrier:
 
-- its `extra.kinetis` registers its bootstrap, its endpoints, its
-  metrics listener and its console command, all discovered from their
-  attributes;
-- its `extra.kinetis.vector.extensions` declares its admin UI module,
-  `resources/ui/queues.js`. Vector reads the declaration from
-  Composer's `installed.json` and serves the module itself, and the
-  admin loads it, hosted or standalone ("Extensions in a Composer
-  package" in {doc}`customizing-the-ui`).
-  Run `composer install` (or `composer update kinetis/vector-queues`)
-  after any change to the package's `composer.json`, so `installed.json`
-  carries it, and rebuild with `kinetis build` in production. The
-  standalone UI imports the module from the API's origin, once it is
-  signed in, so the API's CORS must cover `/vector/extensions/*` for the
-  UI's origin ({doc}`deployment`);
-- its `extra.kinetis.vector.translations` declares the translations of
-  the labels it emits on the server, `resources/translations/`, which
-  Vector layers under your own ({doc}`languages`).
+  ```console
+  composer require kinetis/queue-failed-jobs
+  ```
 
-Installing the package also turns on recording metrics, in every process
-that runs `queue:work`.
+  The descriptor reports it as `capabilities.failedJobs`. Without it the
+  **Failed jobs** tab, the overview's **Failed** column and the card's
+  failed figure are left out, the overview's `failed` is `null`, the
+  permissions name no failed-job action, and the `/vector/queues/failed`
+  endpoints answer `404`. Vector only suggests the package: it boots and
+  serves the rest of the dashboard without it.
+
+Recording metrics is on in every process that runs `queue:work`, failed
+jobs or not.
 
 ## Migrations
 
-The dashboard needs two tables, on the same database connection:
+The metrics live in `vector_queue_metrics`, one of Vector's own tables,
+on Vector's own connection (`VECTOR_DB_CONNECTION`, the default
+connection when unset) beside `vector_jobs` and the rest.
+`vendor/bin/kinetis vector:install` publishes its migration with the
+others ({doc}`getting-started`); run it again after upgrading, then
+`vendor/bin/kinetis migrate`. On MySQL it needs **8.0.19 or later**:
+every write is one `INSERT … AS incoming ON DUPLICATE KEY UPDATE`, and
+the row alias arrived in 8.0.19. Postgres uses
+`INSERT … ON CONFLICT … DO UPDATE`.
 
-- `kinetis_failed_jobs`, where `kinetis/queue-failed-jobs` keeps the
-  jobs the worker gave up on. Copy the stub for your database from
-  `vendor/kinetis/queue-failed-jobs/resources/migrations/`
-  (`create_kinetis_failed_jobs_table.mysql.php.stub` or
-  `….pgsql.php.stub`), as that package's README describes.
-- `vector_queue_metrics`, the job metrics. Copy
-  `vendor/kinetis/vector-queues/resources/migrations/create_vector_queue_metrics_table.mysql.php.stub`
-  or `create_vector_queue_metrics_table.pgsql.php.stub`. On MySQL it
-  needs **8.0.19 or later**: every write is one
-  `INSERT … AS incoming ON DUPLICATE KEY UPDATE`, and the row alias
-  arrived in 8.0.19. Postgres uses `INSERT … ON CONFLICT … DO UPDATE`.
-
-Put each in your `migrations/` directory with a timestamp prefix, for
-example `20261103000001_create_vector_queue_metrics_table.php`, and run
-`vendor/bin/kinetis migrate`. When `FAILED_JOBS_DB_CONNECTION_NAME`
-names a connection, both go in `migrations/<name>/` instead.
-
-Both tables are read through one link the package opens on the
-connection `FAILED_JOBS_DB_CONNECTION_NAME` names, `default` when it is
-unset or blank, the same connection `kinetis/queue-failed-jobs` records
-on. The metrics table always lives beside the failed jobs.
+Failed jobs live in `kinetis_failed_jobs`, where
+`kinetis/queue-failed-jobs` keeps the jobs the worker gave up on. Copy
+the stub for your database from
+`vendor/kinetis/queue-failed-jobs/resources/migrations/`
+(`create_kinetis_failed_jobs_table.mysql.php.stub` or
+`….pgsql.php.stub`), as that package's README describes, into
+`migrations/`, or `migrations/<name>/` when
+`FAILED_JOBS_DB_CONNECTION_NAME` names a connection. The dashboard reads
+them through a link of its own on that same connection, `default` when
+the name is unset or blank, the one `kinetis/queue-failed-jobs` records
+on.
 
 `kinetis_failed_jobs` holds each job's arguments in full, `#[Sensitive]`
 values included, because a retry rebuilds the job from them. Give it the
@@ -98,7 +96,9 @@ Every endpoint is in Vector's `vector` middleware group, so the
 application's authentication and `VectorAccessInterface` run first. An
 unauthenticated call gets what that group answers, a `401`. Then
 `Kinetis\Vector\Queues\Auth\QueueDashboardPolicyInterface` decides each
-call, and a refusal is a `403`:
+call. A refused `view` hides the whole dashboard from that user: the
+descriptor's `capabilities.queues` is false and every endpoint answers
+`404`. Any other refusal is a `403`:
 
 | Method | Decides |
 |---|---|
@@ -113,7 +113,7 @@ validated and before any database or queue connection is opened. A
 refused caller learns nothing about which queues exist. The policy runs
 for an unwatched queue's clear too, ahead of its `404`.
 
-The package binds `ViewOnlyQueueDashboardPolicy`: anyone Vector admits
+Vector binds `ViewOnlyQueueDashboardPolicy`: anyone Vector admits
 may look, and nobody may retry, forget, prune or clear. Every viewer
 sees a failed job's exception class and message. The store keeps no
 stack trace, so the detail's `exception.trace` is always `null`. Job
@@ -122,7 +122,7 @@ constructor parameter shows as `[redacted]`, and so does every argument
 when the job class no longer loads.
 
 To let someone change things, bind your own policy in `bootstrap.php`.
-It runs after the package's bootstrap, so its binding wins:
+It runs after Vector's bootstrap, so its binding wins:
 
 ```php
 use Kinetis\Vector\Auth\ActorContext;
@@ -156,47 +156,45 @@ no request state. The demo's `App\Auth\DemoQueueDashboardPolicy` lets
 admins mutate ({doc}`demo`).
 
 Every retry, forget, prune and clear writes to Vector's audit trail
-({doc}`audit`) under the resource `vector-queues`, with the actor and
-any impersonator. No entry carries a job argument.
+({doc}`audit`) under the resource `queues`, with the actor and any
+impersonator. No entry carries a job argument.
 
 ## The admin page
 
-The UI module registers the page `/p/queues`, **Queues** in the menu's
-**Operations** section, with three tabs:
+The admin's **Queues** page, at `/queues`, sits beside **Jobs** in the
+menu, with up to three tabs:
 
-- **Overview**: each watched queue's waiting jobs and failed count,
-  refreshed every five seconds while the page is visible, with
-  **Clear** where the policy allows it.
-- **Failed jobs**: the list with its filters, a **Load more** that
-  follows the server's cursor, and each job's detail. **Retry** works on
-  one job or a selection of up to 50; **Forget** and **Prune** (by age in
-  days) are offered where the policy allows them.
+- **Overview**: each watched queue's waiting jobs and, with failed jobs,
+  its failed count, refreshed every five seconds while the page is
+  visible, with **Clear** where the policy allows it.
+- **Failed jobs**, with failed jobs only: the list with its filters, a
+  **Load more** that follows the server's cursor, and each job's detail.
+  **Retry** works on one job or a selection of up to 50; **Forget** and
+  **Prune** (by age in days) are offered where the policy allows them.
 - **Metrics**: a queue and a window from 15 minutes to 7 days, the
   totals, a per-minute sparkline, and tables per queue and per job
   class.
 
 The page reads `GET /vector/queues/permissions` and leaves out every
 action the policy refuses. That only shapes the page: every endpoint
-asks the policy again. Each action asks for confirmation first. All the
-page's text goes through the admin's translator (`defineMessages`) and
-ships in every language Vector's UI ships, as machine translations; override
-any of it with `defineMessages` under `vectorQueues`. English is the fallback.
-Server text such as exception messages is rendered as text, never as
-HTML.
+asks the policy again. Each action asks for confirmation first. The
+page's text ships in every language Vector's UI ships, as machine
+translations, in the layer's `queues` messages; override any of it in
+app config `vector.messages` or with `defineMessages` under `queues`
+({doc}`languages`). English is the fallback. Server text such as
+exception messages is rendered as text, never as HTML.
 
-The labels the package declares on the server, the dashboard card's
-**Queues**, are translated in the same languages by the package's own
-`resources/translations/`, which its `extra.kinetis.vector.translations`
-declares ("Translations in a Composer package" in {doc}`languages`).
-Your `VECTOR_TRANSLATIONS_DIR` overrides them: give the key `Queues` a
-wording of your own there.
+The label the dashboard declares on the server, the card's **Queues**,
+is translated in the same languages by Vector's own translations. Your
+`VECTOR_TRANSLATIONS_DIR` overrides it: give the key `Queues` a wording
+of your own there.
 
 ## The dashboard card
 
-The package's `Kinetis\Vector\Queues\Widgets\QueuesWidget` is a
-dashboard card: the jobs waiting and failed across the watched queues,
-with a link to the page. The package places it on no dashboard. List it
-in one of your own:
+`Kinetis\Vector\Queues\Widgets\QueuesWidget` is a dashboard card: the
+jobs waiting and, with failed jobs, failed across the watched queues,
+with a link to the page. Vector places it on no dashboard. List it in
+one of your own:
 
 ```php
 use Kinetis\Vector\Queues\Widgets\QueuesWidget;
@@ -208,25 +206,26 @@ final class MainDashboard extends VectorDashboard
 }
 ```
 
-Its name is `queues` and its type `vector-queues`, an extension widget
-type ({doc}`dashboards`) whose renderer the UI module registers. The
-card reads `GET /vector/queues` itself, so the policy's `view` decides
-what it shows: a viewer the policy refuses gets the card's "no access"
-notice, not the figures. The widget's own answer, `GET
+Its name is `queues` and so is its type, a built-in widget type
+({doc}`dashboards`) whose card the admin UI ships. It is viewable
+exactly where the dashboard is: where `capabilities.queues` is false the
+dashboard leaves it out. The card reads `GET /vector/queues` itself, so
+the policy decides what it shows. The widget's own answer, `GET
 /vector/dashboards/{name}/widgets/queues`, carries no queue data and
 opens no database or queue connection. It offers no range and caches
-nothing. Like the page, the card needs the package's UI module, which
-the hosted and the standalone admin both load. Without the module it
-says that no renderer is registered for `vector-queues`.
+nothing.
 
 ## Endpoints
 
-All answers are JSON, under `/vector/queues`:
+All answers are JSON, under `/vector/queues`. Each is a `404` when the
+dashboard is not there for the caller (`capabilities.queues` false), and
+each `/failed` one is a `404` without failed jobs
+(`capabilities.failedJobs` false):
 
 | Method and path | What it does |
 |---|---|
-| `GET /vector/queues` | `{data: [{name, size, clearable, failed}]}` per watched queue. `size` is `null` when the backend cannot report it. |
-| `GET /vector/queues/permissions` | What the policy lets the caller do: `{view, retry, forget, prune, clear: {<queue>: bool}}`, `clear` for each watched queue. It reads nothing but the policy. A `403` when `view` is refused. |
+| `GET /vector/queues` | `{data: [{name, size, clearable, failed}]}` per watched queue. `size` is `null` when the backend cannot report it, `failed` without failed jobs. |
+| `GET /vector/queues/permissions` | What the policy lets the caller do: `{view, retry, forget, prune, clear: {<queue>: bool}}`, `clear` for each watched queue. It reads nothing but the policy. Without failed jobs `retry`, `forget` and `prune` are `false`. |
 | `GET /vector/queues/failed` | Failed jobs, newest first: `{data, nextCursor, hasMore, limit}`. Query: `queue`, `class`, `failedFrom`, `failedTo` (RFC 3339, whole seconds, inclusive), `limit` (default 25, at most 100), `cursor` (the previous page's opaque `nextCursor`). An unknown parameter or a bad value is a `422`. Rows carry no job arguments. |
 | `GET /vector/queues/failed/{id}` | One failed job, its arguments redacted as above. |
 | `POST /vector/queues/failed/retry` | `{"ids": [...]}`, **1 to 50 ids**, through `FailedJobRetrier`: `{data: [{id, status, class, queue, reason}]}`, one per id in order, `status` being `retried`, `not_found` or `failed`. A record on an unwatched queue is `not_found`. |
@@ -235,8 +234,8 @@ All answers are JSON, under `/vector/queues`:
 | `POST /vector/queues/{queue}/clear` | `{"confirm": "<queue>"}`, the queue's name exactly, or a `422`. A backend without `ClearableQueueInterface` (SQS) is refused with a `409`. `{data: {queue, cleared}}`. |
 | `GET /vector/queues/metrics` | Job metrics over a window; see below. |
 
-A clear answers in a fixed order: `403` when the policy refuses, `404`
-for an unwatched queue, `422` for a wrong confirmation, `409` for a
+A clear answers in a fixed order: `404` when the dashboard is not there,
+`403` when the policy refuses, `404` for an unwatched queue, `422` for a wrong confirmation, `409` for a
 backend that cannot clear.
 
 **Pruning failed jobs spans every queue.** It goes through the store's
@@ -245,7 +244,8 @@ including records on queues the dashboard does not watch.
 
 ## Metrics
 
-A listener records every attempt the worker settles: `kinetis/queue`'s
+A listener records every attempt the worker settles, into
+`vector_queue_metrics` on Vector's own connection: `kinetis/queue`'s
 `JobSucceeded`, `JobReleased` and `JobFailedPermanently` events. Each
 attempt is one atomic upsert into a row per minute, queue and job class,
 so concurrent workers never lose an increment. A row holds the
@@ -284,9 +284,10 @@ day is enough. The metrics for a window older than that are then gone.
 
 ## In the demo
 
-The demo installs the package, binds `DemoQueueDashboardPolicy` and
-watches `VECTOR_QUEUES=default,vector`, the two queues its worker serves.
-To put real rows in the Failed and Metrics tabs, queue its flaky job:
+The demo installs `kinetis/queue-failed-jobs`, binds
+`DemoQueueDashboardPolicy` and watches `VECTOR_QUEUES=default,vector`,
+the two queues its worker serves. To put real rows in the Failed and
+Metrics tabs, queue its flaky job:
 
 ```console
 docker compose exec app vendor/bin/kinetis demo:queue-flaky --count=20 --failure=40
@@ -303,7 +304,6 @@ back first and watch them wait. See {doc}`demo`.
 
 - {doc}`jobs`: Vector's own background jobs, on a queue this dashboard
   can watch too.
-- {doc}`customizing-the-ui`: runtime extensions, which this page is
-  built as.
+- {doc}`dashboards`: placing the card, and the other widget types.
 - {doc}`authorization`: Vector's own access checks, which run before the
   dashboard's policy.

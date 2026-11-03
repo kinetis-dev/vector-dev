@@ -111,8 +111,8 @@ the package: a relative path with no `.`, `..` or hidden segment and no
 symlink out of it. Vector skips any other declaration, and a directory
 gone by the time a worker boots, and writes the reason to the PHP error
 log; neither stops the application. A missing `VECTOR_TRANSLATIONS_DIR`
-still does. `kinetis/vector-queues` ships its card's label this way
-({doc}`queues`).
+still does. A package that ships widgets, actions or settings of its
+own translates their labels this way.
 
 Translation happens at response time — the descriptor, settings groups,
 dashboards and widget results — so the compiled registry stays in your

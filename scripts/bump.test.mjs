@@ -168,25 +168,25 @@ test('bumping an included product names the product that includes it, and leaves
     }
 })
 
-test('bump a Composer product of its own, kinetis/vector-queues: its manifest entry and CHANGELOG only', () => {
+test('bump a Composer product of its own, kinetis/vector-addon: its manifest entry and CHANGELOG only', () => {
     const manifest = `${JSON.stringify({
         packages: {
             ...JSON.parse(manifestJson).packages,
-            'vector-queues': { name: 'kinetis/vector-queues', path: 'packages/vector-queues', version: '0.1.0' },
+            'vector-addon': { name: 'kinetis/vector-addon', path: 'packages/vector-addon', version: '0.1.0' },
         },
     }, null, 4)}\n`
     const { repo, read, done } = scratch(manifest, {
-        'packages/vector-queues/composer.json': '{\n    "name": "kinetis/vector-queues"\n}\n',
-        'packages/vector-queues/CHANGELOG.md': changelog('kinetis/vector-queues'),
+        'packages/vector-addon/composer.json': '{\n    "name": "kinetis/vector-addon"\n}\n',
+        'packages/vector-addon/CHANGELOG.md': changelog('kinetis/vector-addon'),
     })
 
     try {
-        const result = bump(repo, 'vector-queues', 'patch', { date: '2026-11-02' })
-        assert.deepEqual(result, { from: '0.1.0', to: '0.1.1', files: ['packages.manifest.json', 'packages/vector-queues/CHANGELOG.md'], alsoBump: [] })
+        const result = bump(repo, 'vector-addon', 'patch', { date: '2026-11-02' })
+        assert.deepEqual(result, { from: '0.1.0', to: '0.1.1', files: ['packages.manifest.json', 'packages/vector-addon/CHANGELOG.md'], alsoBump: [] })
         const after = parseManifest(read('packages.manifest.json'))
-        assert.deepEqual(Object.fromEntries(Object.entries(after.packages).map(([key, entry]) => [key, entry.version])), { 'vector': '0.9.0', 'vector-ui': '0.9.0', 'vector-queues': '0.1.1' })
+        assert.deepEqual(Object.fromEntries(Object.entries(after.packages).map(([key, entry]) => [key, entry.version])), { 'vector': '0.9.0', 'vector-ui': '0.9.0', 'vector-addon': '0.1.1' })
         assert.equal(read('packages/vector/resources/ui.json'), pinJson, 'only a vector-ui bump moves the pin')
-        assert.match(read('packages/vector-queues/CHANGELOG.md'), /## \[Unreleased\]\n\n## \[0\.1\.1\] - 2026-11-02\n/)
+        assert.match(read('packages/vector-addon/CHANGELOG.md'), /## \[Unreleased\]\n\n## \[0\.1\.1\] - 2026-11-02\n/)
         assert.deepEqual(checkConsistency(after, treeReader(repo)), [])
     } finally {
         done()

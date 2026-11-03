@@ -3,8 +3,7 @@
 // main: each product whose version in packages.manifest.json is not yet
 // published goes out. A Composer product goes to a mirror of its own,
 // which Packagist serves under its name — packages/vector to
-// kinetis-dev/vector (kinetis/vector), packages/vector-queues to
-// kinetis-dev/vector-queues (kinetis/vector-queues); MIRRORS lists them.
+// kinetis-dev/vector (kinetis/vector); MIRRORS lists them.
 // packages/vector-ui goes to npm (@kinetis/vector-ui). Every product
 // versions independently; the vector-dev monorepo itself carries no tags.
 //
@@ -66,7 +65,6 @@ import { highestVersion, parseVersion, transitionProblem } from './version-polic
  */
 export const MIRRORS = Object.freeze({
     'vector': 'https://github.com/kinetis-dev/vector.git',
-    'vector-queues': 'https://github.com/kinetis-dev/vector-queues.git',
 })
 
 export const MIRROR = MIRRORS.vector

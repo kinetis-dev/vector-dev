@@ -10,7 +10,7 @@ use Kinetis\Queue\Job;
 /**
  * The demo's flaky job: it "syncs" a warehouse's stock and fails
  * $failurePercent percent of its attempts, so the queue dashboard
- * (/p/queues) has real retries, failures and durations to show. Pushed
+ * (/queues) has real retries, failures and durations to show. Pushed
  * by `demo:queue-flaky`.
  *
  * $apiKey is #[Sensitive]: the worker's logs, and the dashboard's

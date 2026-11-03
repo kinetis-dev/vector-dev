@@ -1,6 +1,6 @@
 # Working on Vector
 
-Vector is developed in one repository: the three packages, and the demo
+Vector is developed in one repository: the two packages, and the demo
 application ({doc}`demo`) that consumes them the way an adopter would.
 Every command on this page runs from `demo/`, with the stack up and
 seeded.
@@ -8,21 +8,20 @@ seeded.
 ## Layout
 
 ```text
-packages/vector/            kinetis/vector: registry, REST API, jobs, MCP tools, migration stubs
-packages/vector-queues/     kinetis/vector-queues: the queue dashboard, its API, job metrics and admin UI module (resources/ui/)
+packages/vector/            kinetis/vector: registry, REST API, jobs, the queue dashboard (src/Queues/), MCP tools, migration stubs
 packages/vector-ui/         @kinetis/vector-ui, the Nuxt layer; its Vitest suite in test/nuxt/
   hosted/                   the hosted bundle's build entry: the layer alone, built into dist/static
 demo/docker-compose.yml     the stack: app, worker, nginx, frankenphp, mysql, postgres, redis, node; e2e and oha on demand
 demo/docker/                the PHP images (PHP-FPM and FrankenPHP) and their shared extension recipe, nginx, the Caddyfile, php.ini
 demo/bin/                   check-frankenphp and benchmark, for the FrankenPHP worker service
-demo/backend/               the demo application, kinetis/vector and kinetis/vector-queues installed from ../../packages
+demo/backend/               the demo application, kinetis/vector installed from ../../packages
   src/Auth/                 both sign-ins, their throttling, the vector and mcp group middleware, impersonation
   src/Console/              demo:seed, and demo:queue-flaky, which queues the flaky job below
   src/Jobs/                 SyncWarehouseStockJob, a job that fails on purpose, for the queue dashboard
   src/Http/Diagnostics/     GET /_demo/runtime, the development-only runtime report bin/check-frankenphp reads
   src/Domain/               the shop's entities, on MySQL; Support/ the support desk's, on PostgreSQL
   src/Vector/               the demo's resources, actions, widgets, dashboards and settings groups
-  migrations/               the shop, the queue, failed-jobs and queue-metrics tables and Vector's tables for MySQL
+  migrations/               the shop, the queue and failed-jobs tables and Vector's tables (queue metrics included) for MySQL
   migrations/admin/         Vector's tables for PostgreSQL, on the connection admin
   migrations/support/       the support desk, on the connection support
   bootstrap.php             JWT keys, CORS for the standalone UI, the Vector bindings
@@ -39,15 +38,13 @@ Controllers, commands, entities and resources anywhere under `App\` or
 `Kinetis\Vector\` are discovered; there is no registry to edit. Nothing
 under `packages/` may reference `App\`.
 
-The demo installs `kinetis/vector` and `kinetis/vector-queues` as
-Composer `path` repositories, so `vendor/composer/installed.json` keeps
-each package's `composer.json` as it was at the last install. After
-changing one, its `extra.kinetis` keys especially, reinstall that
-package so discovery sees the change:
+The demo installs `kinetis/vector` as a Composer `path` repository, so
+`vendor/composer/installed.json` keeps the package's `composer.json` as
+it was at the last install. After changing it, its `extra.kinetis` keys
+especially, reinstall the package so discovery sees the change:
 
 ```console
 docker compose exec app composer update kinetis/vector
-docker compose exec app composer update kinetis/vector-queues
 ```
 
 ## Tests
@@ -103,8 +100,7 @@ docker compose exec node pnpm lint
 docker compose exec node pnpm --filter frontend generate
 ```
 
-PHPStan runs at level 8 over the demo, `packages/vector/src` and
-`packages/vector-queues/src`, with
+PHPStan runs at level 8 over the demo and `packages/vector/src`, with
 three Kinetis rules. `NoStaticPropertiesRule` flags a `static` property,
 which outlives every request a worker handles; `NoBlockingIoRule` flags
 a call that blocks the event loop instead of yielding;
@@ -119,8 +115,8 @@ is correct on a persistent worker.
 docker compose exec app composer psalm          # Psalm, types and taints; writes backend/psalm.sarif
 ```
 
-Psalm covers the demo's `src/` and `migrations/`,
-`packages/vector/src` and `packages/vector-queues/src`, at its level 7 (Psalm's 1 is its strictest).
+Psalm covers the demo's `src/` and `migrations/` and
+`packages/vector/src`, at its level 7 (Psalm's 1 is its strictest).
 Psalm 7 checks types and taints in one run. Request input reaches this
 code through PSR-7 and the framework's hydration, and SQL runs through
 Kinetis's own links. Psalm knows neither as a taint source or sink, so a
@@ -134,13 +130,13 @@ Psalm enforces it.
 docker compose exec app composer infection:workers  # the workers' databases, first
 docker compose exec app composer infection          # the demo's src/, about 70 minutes
 docker compose exec app composer infection:vector   # Vector's Registry and Query
-docker compose exec app composer infection:vector-queues  # kinetis/vector-queues' src/
+docker compose exec app composer infection:queues   # Vector's queue dashboard, src/Queues/
 ```
 
 Infection runs the PHPUnit suite against each mutant and fails below the
 `minMsi` and `minCoveredMsi` floors in `backend/infection.json5`,
 `backend/infection.vector.json5` and
-`backend/infection.vector-queues.json5`. The last runs only the queue
+`backend/infection.queues.json5`. The last runs only the queue
 dashboard's tests (`tests/Vector/Queues`).
 
 The mutated tests write to the databases, so each Infection worker runs
@@ -155,7 +151,7 @@ on MySQL; run it before each mutation-testing run. Without
 `TEST_TOKEN` (PHPUnit on its own, and Infection's initial run of the
 suite) the tests use the base databases.
 
-`infection:vector` and `infection:vector-queues` run four workers.
+`infection:vector` and `infection:queues` run four workers.
 `infection` runs one, on worker 1's stores: its whole suite includes
 tests that share state outside them. None of these runs touches the base
 databases beyond what PHPUnit itself does, but all of them still need them
@@ -167,7 +163,7 @@ and, in Vector's own tables, a store `lowStockThreshold` of 0 and saved
 product views; `composer infection:workers` starts them over.
 
 The reports go to `backend/infection.log`, `backend/infection.vector.log`
-and `backend/infection.vector-queues.log`, each with a `.summary.log`
+and `backend/infection.queues.log`, each with a `.summary.log`
 beside it.
 
 Infection stops its initial run of the suite at the first line the suite
@@ -175,7 +171,7 @@ writes to STDERR, and reports PHPUnit's exit code as 143, the SIGTERM it
 sent. The queue dashboard's worker tests fail jobs on purpose, and the
 framework's development logger writes each failure through
 `error_log()`, which the CLI sends to STDERR. So
-`infection.vector-queues.json5` sets `initialTestsPhpOptions` to
+`infection.queues.json5` sets `initialTestsPhpOptions` to
 `-d error_log=/dev/null` for that run. Do the same for any config whose
 tests log.
 
@@ -205,20 +201,19 @@ pull requests, each for the paths it covers:
   `App\` reference under `packages/`.
 - `versions.yml` — `node scripts/validate-versions.mjs`: a pull request
   that changes files under `packages/vector` bumps `vector` in
-  `packages.manifest.json` by one step, with `node scripts/bump.mjs`, and
-  one under `packages/vector-queues` bumps `vector-queues`. One
+  `packages.manifest.json` by one step, with `node scripts/bump.mjs`. One
   that changes files under `packages/vector-ui` bumps both `vector-ui`
   and `vector`, since `kinetis/vector` pins the UI release
   (`packages/vector/resources/ui.json`, which `bump.mjs vector-ui`
   moves); see {doc}`releasing`.
 - `infection.yml` — `composer infection:workers`, then
-  `composer infection:vector` or `composer infection:vector-queues`,
-  when Vector's Registry or Query, `packages/vector-queues/src` or the
-  mutation setup changes; the mutated files are split over parallel
-  jobs, each passing floors of its own and, for Vector's, `--filter`.
-  `kinetis/vector-queues` is one job of its own.
+  `composer infection:vector` or `composer infection:queues`,
+  when Vector's Registry, Query or Queues or the mutation setup
+  changes; the mutated files are split over parallel jobs, each passing
+  floors of its own and, for Registry and Query, `--filter`. The queue
+  dashboard is one job of its own.
 - `sonarqube.yml` — the PHPUnit suite under pcov, its coverage of
-  `packages/vector/src` and `packages/vector-queues/src` reported to
+  `packages/vector/src` reported to
   SonarQube Cloud with its quality gate.
 - `semgrep.yml` — Semgrep SAST; `.semgrepignore` lists the reviewed
   false positives.

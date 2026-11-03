@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The queue dashboard, as the layer's own page at `/queues`: an overview
+  of each watched queue polled every five seconds while shown, with
+  Clear; the failed jobs with their filters, cursor paging, detail,
+  Retry (up to 50 at once), Forget and Prune; and the job metrics over a
+  window of 15 minutes to 7 days, with a per-minute sparkline. The menu
+  entry sits beside Jobs and shows only with the descriptor's
+  `capabilities.queues`; the failed-jobs tab, column and figures only
+  with `capabilities.failedJobs`. Actions follow
+  `GET /vector/queues/permissions`, and server text is rendered as text.
+  The dashboard card is the built-in widget type `queues`
+  (`VxWidgetQueues`), and the calls go through `useVectorQueues()`. Its
+  strings are the `queues` messages, in every shipped locale. It replaces
+  the runtime extension the separate queue-dashboard package shipped,
+  which is gone.
+- The schema type's `capabilities` carries `queues` and `failedJobs`, and
+  `VectorBuiltInWidgetType` names `queues`.
 - The standalone admin imports the UI modules installed Composer
   packages declare, which the descriptor lists as `ui.extensions`, from
   the API's origin (`runtimeConfig.public.vector.apiBase`) once signed

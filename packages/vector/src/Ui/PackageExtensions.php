@@ -11,7 +11,7 @@ namespace Kinetis\Vector\Ui;
  *
  *     "extra": {
  *         "kinetis": {
- *             "vector": { "extensions": ["resources/ui/queues.js"] }
+ *             "vector": { "extensions": ["resources/ui/stock-panel.js"] }
  *         }
  *     }
  *

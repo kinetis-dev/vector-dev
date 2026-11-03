@@ -76,9 +76,12 @@ test("npm: every published version, none before the first publish", () => {
 
 test('every Composer product has a mirror of its own', () => {
     assert.equal(mirrorOf('vector'), 'https://github.com/kinetis-dev/vector.git')
-    assert.equal(mirrorOf('vector-queues'), 'https://github.com/kinetis-dev/vector-queues.git')
-    assert.throws(() => mirrorOf('vector-ui'), /"vector-ui" is not a product released to a mirror; the mirror products are vector, vector-queues\./)
-    assert.deepEqual(Object.keys(MIRRORS), ['vector', 'vector-queues'])
+    assert.throws(() => mirrorOf('vector-ui'), /"vector-ui" is not a product released to a mirror; the mirror products are vector\./)
+    assert.deepEqual(Object.keys(MIRRORS), ['vector'])
+    // another Composer product would have a mirror of its own beside it
+    const two = { vector: MIRRORS.vector, 'vector-addon': 'https://github.com/kinetis-dev/vector-addon.git' }
+    assert.equal(mirrorOf('vector-addon', two), 'https://github.com/kinetis-dev/vector-addon.git')
+    assert.throws(() => mirrorOf('vector-ui', two), /the mirror products are vector, vector-addon\./)
 })
 
 test("every product in this repository's manifest has a way out: a mirror, or npm", () => {
@@ -97,18 +100,18 @@ test("the plan's outputs: the mirror matrix in manifest order, and each product'
     const product = (version, publish) => ({ version, publish, notes: publish ? 'notes' : null })
     const outputs = planOutputs({
         source: 'f'.repeat(40),
-        mirrors: { 'vector': product('0.14.0', true), 'vector-queues': product('0.1.0', true) },
+        mirrors: { 'vector': product('0.14.0', true), 'vector-addon': product('0.1.0', true) },
         ui: product('0.12.0', false),
     })
 
     assert.deepEqual(outputs, {
         source: 'f'.repeat(40),
-        mirrors: '[{"product":"vector","version":"0.14.0"},{"product":"vector-queues","version":"0.1.0"}]',
+        mirrors: '[{"product":"vector","version":"0.14.0"},{"product":"vector-addon","version":"0.1.0"}]',
         mirrors_publish: true,
         vector_version: '0.14.0',
         vector_publish: true,
-        vector_queues_version: '0.1.0',
-        vector_queues_publish: true,
+        vector_addon_version: '0.1.0',
+        vector_addon_publish: true,
         ui_version: '0.12.0',
         ui_publish: false,
     })
@@ -152,10 +155,10 @@ const manifest = (vector, ui = '0.9.0') => `${JSON.stringify({
     },
 }, null, 4)}\n`
 
-const manifestWithQueues = (vector, ui, queues) => `${JSON.stringify({
+const manifestWithAddon = (vector, ui, addon) => `${JSON.stringify({
     packages: {
         'vector': { name: 'kinetis/vector', path: 'packages/vector', version: vector },
-        'vector-queues': { name: 'kinetis/vector-queues', path: 'packages/vector-queues', version: queues },
+        'vector-addon': { name: 'kinetis/vector-addon', path: 'packages/vector-addon', version: addon },
         'vector-ui': { name: '@kinetis/vector-ui', path: 'packages/vector-ui', version: ui },
     },
 }, null, 4)}\n`
@@ -245,19 +248,19 @@ test('the mirror push, end to end on scratch repositories', { skip: !hasGit && '
         assert.equal(run(mirror, 'rev-parse', 'refs/heads/main'), s2)
 
         // Another product: the split of its own path, onto its own mirror, guarded by its own version.
-        const queuesMirror = path.join(scratch, 'queues-mirror.git')
-        run(scratch, 'init', '--quiet', '--bare', queuesMirror)
-        mkdirSync(path.join(repo, 'packages/vector-queues/src'), { recursive: true })
-        writeFileSync(path.join(repo, 'packages/vector-queues/src/Q.php'), '<?php\n')
-        writeFileSync(path.join(repo, 'packages.manifest.json'), manifestWithQueues('0.9.1', '0.9.1', '0.1.0'))
+        const addonMirror = path.join(scratch, 'addon-mirror.git')
+        run(scratch, 'init', '--quiet', '--bare', addonMirror)
+        mkdirSync(path.join(repo, 'packages/vector-addon/src'), { recursive: true })
+        writeFileSync(path.join(repo, 'packages/vector-addon/src/Q.php'), '<?php\n')
+        writeFileSync(path.join(repo, 'packages.manifest.json'), manifestWithAddon('0.9.1', '0.9.1', '0.1.0'))
         run(repo, 'add', '.')
-        run(repo, 'commit', '--quiet', '-m', 'Queues')
+        run(repo, 'commit', '--quiet', '-m', 'Addon')
         const third = run(repo, 'rev-parse', 'HEAD')
-        const q = split(repo, third, 'packages/vector-queues')
+        const q = split(repo, third, 'packages/vector-addon')
         assert.equal(run(repo, 'ls-tree', '-r', '--name-only', q), 'src/Q.php', 'only its own path is in its split')
-        assert.throws(() => publishMirror(repo, { version: '0.2.0', source: third, split: q, product: 'vector-queues', mirror: queuesMirror, log }), /states kinetis\/vector-queues 0\.1\.0, not 0\.2\.0; refusing to write the mirror/)
-        publishMirror(repo, { version: '0.1.0', source: third, split: q, product: 'vector-queues', mirror: queuesMirror, log })
-        assert.equal(run(queuesMirror, 'rev-parse', 'refs/tags/v0.1.0'), q)
+        assert.throws(() => publishMirror(repo, { version: '0.2.0', source: third, split: q, product: 'vector-addon', mirror: addonMirror, log }), /states kinetis\/vector-addon 0\.1\.0, not 0\.2\.0; refusing to write the mirror/)
+        publishMirror(repo, { version: '0.1.0', source: third, split: q, product: 'vector-addon', mirror: addonMirror, log })
+        assert.equal(run(addonMirror, 'rev-parse', 'refs/tags/v0.1.0'), q)
         assert.equal(run(mirror, 'rev-parse', 'refs/heads/main'), s2, "vector's mirror is untouched")
     } finally {
         rmSync(scratch, { recursive: true, force: true })
@@ -347,26 +350,26 @@ test('plan reads the source commit, the mirror and npm, and a real release only 
         assert.throws(() => plan(repo, { source: skipped, ref: 'refs/heads/main', dryRun: false, mirrors: { vector: mirror }, log, ...npmAt(['0.8.0']) }), /@kinetis\/vector-ui 0\.9\.1 does not follow what is published \(highest 0\.8\.0\)/)
 
         // A second mirror product is decided from its own mirror, after vector and before npm.
-        const queuesMirror = path.join(scratch, 'queues-mirror.git')
-        run(scratch, 'init', '--quiet', '--bare', queuesMirror)
-        const withQueues = commit({
+        const addonMirror = path.join(scratch, 'addon-mirror.git')
+        run(scratch, 'init', '--quiet', '--bare', addonMirror)
+        const withAddon = commit({
             ...at('0.9.2', '0.9.1'),
-            'packages.manifest.json': manifestWithQueues('0.9.2', '0.9.1', '0.1.0'),
-            'packages/vector-queues/composer.json': JSON.stringify({ name: 'kinetis/vector-queues' }),
-            'packages/vector-queues/CHANGELOG.md': changelog.replace('[0.9.0]', '[0.1.0]'),
-        }, 'vector-queues 0.1.0')
+            'packages.manifest.json': manifestWithAddon('0.9.2', '0.9.1', '0.1.0'),
+            'packages/vector-addon/composer.json': JSON.stringify({ name: 'kinetis/vector-addon' }),
+            'packages/vector-addon/CHANGELOG.md': changelog.replace('[0.9.0]', '[0.1.0]'),
+        }, 'vector-addon 0.1.0')
         sync()
-        const both = { vector: mirror, 'vector-queues': queuesMirror }
+        const both = { vector: mirror, 'vector-addon': addonMirror }
         const uiOut = { npmView: () => ({ status: 0, stdout: '0.9.1\n' }), npmVersionsView: () => ({ status: 0, stdout: '["0.9.0","0.9.1"]' }) }
-        const queuesFirst = plan(repo, { source: withQueues, ref: 'refs/heads/main', dryRun: false, mirrors: both, log, ...uiOut })
-        assert.deepEqual(Object.keys(queuesFirst.mirrors), ['vector', 'vector-queues'])
-        assert.equal(queuesFirst.mirrors.vector.publish, true, 'vector 0.9.2 follows the 0.9.1 on its own mirror')
-        assert.deepEqual(queuesFirst.mirrors['vector-queues'], { version: '0.1.0', publish: true, notes: '### Added\n\n- Everything.' }, 'its first release')
-        assert.equal(queuesFirst.ui.publish, false)
-        run(repo, 'push', '--quiet', queuesMirror, `${withQueues}:refs/tags/v0.1.0`)
-        assert.equal(plan(repo, { source: withQueues, ref: 'refs/heads/main', dryRun: false, mirrors: both, log, ...uiOut }).mirrors['vector-queues'].publish, false, "vector's tags do not answer for it")
+        const addonFirst = plan(repo, { source: withAddon, ref: 'refs/heads/main', dryRun: false, mirrors: both, log, ...uiOut })
+        assert.deepEqual(Object.keys(addonFirst.mirrors), ['vector', 'vector-addon'])
+        assert.equal(addonFirst.mirrors.vector.publish, true, 'vector 0.9.2 follows the 0.9.1 on its own mirror')
+        assert.deepEqual(addonFirst.mirrors['vector-addon'], { version: '0.1.0', publish: true, notes: '### Added\n\n- Everything.' }, 'its first release')
+        assert.equal(addonFirst.ui.publish, false)
+        run(repo, 'push', '--quiet', addonMirror, `${withAddon}:refs/tags/v0.1.0`)
+        assert.equal(plan(repo, { source: withAddon, ref: 'refs/heads/main', dryRun: false, mirrors: both, log, ...uiOut }).mirrors['vector-addon'].publish, false, "vector's tags do not answer for it")
         // a manifest product that neither a mirror nor npm publishes stops the round
-        assert.throws(() => plan(repo, { source: withQueues, ref: 'refs/heads/main', dryRun: false, mirrors: { vector: mirror }, log, ...uiOut }), /lists vector-queues, which neither a mirror nor npm publishes; add each to MIRRORS/)
+        assert.throws(() => plan(repo, { source: withAddon, ref: 'refs/heads/main', dryRun: false, mirrors: { vector: mirror }, log, ...uiOut }), /lists vector-addon, which neither a mirror nor npm publishes; add each to MIRRORS/)
         run(repo, 'reset', '--quiet', '--hard', skipped)
         sync()
 

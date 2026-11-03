@@ -13,8 +13,8 @@ html[data-theme="dark"] .bd-article section > p > strong:only-child { color: #F5
 - A REST admin API that enforces your policies on every request.
 - A Nuxt and Vuetify admin UI that renders whatever the API describes.
 - Background jobs for large exports, imports and bulk actions.
-- An optional queue dashboard: queue sizes, failed jobs to retry, and
-  job metrics.
+- A queue dashboard wherever a queue is configured: queue sizes, failed
+  jobs to retry, and job metrics.
 - The same services as Model Context Protocol tools for AI agents.
 
 ## What you get

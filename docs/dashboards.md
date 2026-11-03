@@ -28,13 +28,14 @@ final class RevenueStat extends VectorWidget
 | `partition` | A breakdown into slices, such as orders by status. |
 | `progress` | A figure against a target. |
 | `table` | A few rows, optionally linking to the full list. |
+| `queues` | The queue dashboard's card: jobs waiting and failed, linking to the Queues page. Only `QueuesWidget` uses it ({doc}`queues`). |
 
 A value's format is a number, `money:EUR`, `percent` or `duration`.
 
 ### Extension widget types
 
 `type()` may also return an extension type: a lower-case kebab-case name
-that is none of the five above, such as `vector-queues`. Any other type
+that is none of the six above, such as `stock-gauge`. Any other type
 is refused when the registry compiles. Vector ships no card for an
 extension type. The UI must register a renderer for it, either in a
 runtime extension with `window.Vector.defineWidget(type, component)` or

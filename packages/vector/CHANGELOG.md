@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A queue dashboard, built in (`Kinetis\Vector\Queues\`, under
+  `/vector/queues`): queue sizes and clears on the application's
+  `QueueInterface`, the failed jobs `kinetis/queue-failed-jobs` keeps —
+  browsed, retried, forgotten and pruned — and per-minute job metrics,
+  behind `QueueDashboardPolicyInterface` (view-only by default, an
+  application's own binding wins) and watching `VECTOR_QUEUES`. It is the
+  code of the separate queue-dashboard package, never released, whose
+  classes keep their names. The descriptor reports `capabilities.queues` (a queue
+  bound and the policy letting this user view) and
+  `capabilities.failedJobs` (that, and `kinetis/queue-failed-jobs`
+  installed and wired). Without the first every `/vector/queues`
+  endpoint answers the Kernel's own `404` and the queues card is not
+  viewable; without the second the `/vector/queues/failed` endpoints do,
+  the overview's `failed` is `null` and the permissions name no
+  failed-job action. `kinetis/queue-failed-jobs` is a suggestion, not a
+  requirement. The audit trail records the dashboard's actions under the
+  resource `queues`.
+- `vector_queue_metrics`, the job metrics, is one of Vector's own tables,
+  on Vector's own connection (`VECTOR_DB_CONNECTION`): `vector:install`
+  publishes its migration, `20260926000008_vector_queue_metrics`, for
+  MySQL 8.0.19 or later and PostgreSQL. Run `vector:install` and
+  `migrate` after upgrading. Every `queue:work` process records metrics;
+  until the table exists, each worker logs one warning a minute and the
+  jobs run as before. `vector:queues:prune-metrics --days=<n>` prunes it.
+- The built-in widget type `queues` (`VectorWidget::QUEUES`,
+  `WidgetResult::queues()`), the queue dashboard's card, which
+  `QueuesWidget` uses. It joins `VectorWidget::BUILT_IN_TYPES`, so
+  `queues` is no longer an extension type. The label `Queues` is in
+  Vector's translations for every locale.
 - The descriptor (`GET /vector/schema`) lists the UI extension modules
   installed packages declare under `ui.extensions`: their same-origin
   paths under `/vector/extensions/`, in declared order, for a standalone

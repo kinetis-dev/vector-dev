@@ -3,8 +3,7 @@
 //
 //     node scripts/bump.mjs <product> <patch|minor> [--date=YYYY-MM-DD]
 //
-// <product> is a key of packages.manifest.json: vector, vector-queues or
-// vector-ui.
+// <product> is a key of packages.manifest.json: vector or vector-ui.
 //
 // It moves the product's version in packages.manifest.json one step under
 // scripts/version-policy.mjs; writes it to the product's package.json when

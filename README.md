@@ -23,8 +23,7 @@ user manual.
 
 | Path | What it is |
 |---|---|
-| [`packages/vector`](packages/vector) | `kinetis/vector`, the PHP package: the compiled resource registry, the REST admin API, background jobs and MCP tools. |
-| [`packages/vector-queues`](packages/vector-queues) | `kinetis/vector-queues`, a queue dashboard for Vector: queue sizes, failed jobs to retry, forget and prune, queues to clear and job metrics, with its admin page ([Queue dashboard](docs/queues.md)). |
+| [`packages/vector`](packages/vector) | `kinetis/vector`, the PHP package: the compiled resource registry, the REST admin API, background jobs, the queue dashboard ([Queue dashboard](docs/queues.md)) and MCP tools. |
 | [`packages/vector-ui`](packages/vector-ui) | `@kinetis/vector-ui`, the admin UI as a Nuxt 4 layer on Vuetify 4. |
 | [`demo/`](demo) | A Kinetis application administered by Vector — a shop on MySQL and a support desk on PostgreSQL — with the Docker stack that runs it and the end-to-end suite. |
 | [`docs/`](docs) | The user manual. |
@@ -43,7 +42,7 @@ docker compose exec --user www-data app vendor/bin/kinetis demo:seed
 Open [http://localhost:3000](http://localhost:3000) and sign in as
 `admin@vector.local` with the password `password`.
 
-The queue dashboard is at `/vector/ui/p/queues` in the hosted admin. Run
+The queue dashboard is at `/vector/ui/queues` in the hosted admin. Run
 `docker compose exec app vendor/bin/kinetis demo:queue-flaky` to give it
 failed jobs and metrics to show.
 
