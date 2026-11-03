@@ -105,11 +105,15 @@ docker compose exec node pnpm --filter frontend generate
 
 PHPStan runs at level 8 over the demo, `packages/vector/src` and
 `packages/vector-queues/src`, with
-two Kinetis rules. `NoStaticPropertiesRule` flags a `static` property,
+three Kinetis rules. `NoStaticPropertiesRule` flags a `static` property,
 which outlives every request a worker handles; `NoBlockingIoRule` flags
-a call that blocks the event loop instead of yielding. They catch two
-specific mistakes; they do not prove a change is correct on a persistent
-worker.
+a call that blocks the event loop instead of yielding;
+`NoProcessGlobalsRule` flags `exit` and `die`, the request superglobals,
+and the SAPI header, cookie and session functions, all of which bypass
+the PSR-7 request and response. `tests/bootstrap.php` is exempt from the
+superglobal check, because it sets each test worker's environment before
+boot. The rules catch three specific mistakes; they do not prove a change
+is correct on a persistent worker.
 
 ```console
 docker compose exec app composer psalm          # Psalm, types and taints; writes backend/psalm.sarif
