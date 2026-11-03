@@ -19,6 +19,16 @@ An account that the admin does not admit is told so on the sign-in
 page. When your session expires, the next page you open asks you to
 sign in again.
 
+```{image} _static/screenshots/sign-in-light.png
+:alt: The standalone admin's sign-in page, asking for an e-mail address and a password
+:class: only-light
+```
+
+```{image} _static/screenshots/sign-in-dark.png
+:alt: The standalone admin's sign-in page, asking for an e-mail address and a password
+:class: only-dark
+```
+
 ## The shell
 
 - **Navigation drawer** — the dashboard, then every resource you may
@@ -38,6 +48,16 @@ one: cards of figures, trends, breakdowns and short tables. A card with
 several ranges (7 days, 30 days, 90 days, a year) has a range selector;
 a table card may link to the full list with **See all**.
 
+```{image} _static/screenshots/dashboard-light.png
+:alt: The shell: the navigation drawer with its resource groups and badges, the app bar, and the Overview dashboard's cards
+:class: only-light
+```
+
+```{image} _static/screenshots/dashboard-dark.png
+:alt: The shell: the navigation drawer with its resource groups and badges, the app bar, and the Overview dashboard's cards
+:class: only-dark
+```
+
 ## Search
 
 Press <kbd>Ctrl</kbd>+<kbd>K</kbd> (<kbd>⌘</kbd>+<kbd>K</kbd> on a Mac),
@@ -46,12 +66,32 @@ or **Search** in the app bar, and type. Matching records appear under
 record has an image — followed by the resources and custom pages whose
 names match. Choose one to open it.
 
+```{image} _static/screenshots/command-palette-light.png
+:alt: The search palette over the dashboard: a category and products matching “lighting” under Records, each product with its SKU
+:class: only-light
+```
+
+```{image} _static/screenshots/command-palette-dark.png
+:alt: The search palette over the dashboard: a category and products matching “lighting” under Records, each product with its SKU
+:class: only-dark
+```
+
 ## Notifications
 
 The bell in the app bar is your inbox. Background jobs and actions leave
 a notification there when they finish — an export ready to download, an
 import with its failed rows. Open one to go where it points, or
 **Mark all read**.
+
+```{image} _static/screenshots/notifications-light.png
+:alt: The notifications inbox open from the bell in the app bar: finished imports and exports, with Mark all read
+:class: only-light
+```
+
+```{image} _static/screenshots/notifications-dark.png
+:alt: The notifications inbox open from the bell in the app bar: finished imports and exports, with Mark all read
+:class: only-dark
+```
 
 ## Jobs
 
@@ -61,11 +101,31 @@ that run in the background. Each shows its kind, resource, status
 job to follow its progress; a finished export or an import with failed
 rows offers **Download**.
 
+```{image} _static/screenshots/jobs-light.png
+:alt: The Jobs page: exports and imports with their status, progress and start time
+:class: only-light
+```
+
+```{image} _static/screenshots/jobs-dark.png
+:alt: The Jobs page: exports and imports with their status, progress and start time
+:class: only-dark
+```
+
 ## Settings
 
 **Settings** holds the groups of values your account may manage, such
 as *Branding*: the admin's title, logo, colours, default theme and
 footer line. Save a group and it applies at once.
+
+```{image} _static/screenshots/settings-light.png
+:alt: The Settings page on its Branding tab: the application title, logo, primary colours, default theme and footer text
+:class: only-light
+```
+
+```{image} _static/screenshots/settings-dark.png
+:alt: The Settings page on its Branding tab: the application title, logo, primary colours, default theme and footer text
+:class: only-dark
+```
 
 ## Acting as another user
 

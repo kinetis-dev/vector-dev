@@ -17,6 +17,16 @@ html[data-theme="dark"] .bd-article section > p > strong:only-child { color: #F5
   jobs to retry, and job metrics.
 - The same services as Model Context Protocol tools for AI agents.
 
+```{image} _static/screenshots/dashboard-light.png
+:alt: The admin's Overview dashboard: revenue, orders by status, new tickets, orders per day, low stock and queues cards, beside the navigation drawer
+:class: only-light
+```
+
+```{image} _static/screenshots/dashboard-dark.png
+:alt: The admin's Overview dashboard: revenue, orders by status, new tickets, orders per day, low stock and queues cards, beside the navigation drawer
+:class: only-dark
+```
+
 ## What you get
 
 **Lists that do the work**

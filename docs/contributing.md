@@ -91,6 +91,32 @@ and clears that account's saved preferences before each test, so it and
 a person using the demo do not disturb each other. See
 `demo/e2e/README.md`.
 
+### Documentation screenshots
+
+The screenshots in `docs/_static/screenshots/` come from the end-to-end
+spec `demo/e2e/tests/screenshots.standalone.spec.ts`, one pair per
+screen: `<name>-light.png` and `<name>-dark.png`. A page embeds both,
+with pydata's `only-light` and `only-dark` classes, so the docs show the
+one matching their own theme. The spec is skipped unless
+`VECTOR_SCREENSHOTS=1`, so the normal run captures nothing.
+
+To regenerate them, start with the stack up and seeded with
+`demo:seed --fresh`. Run the end-to-end suite once first, because the
+*Jobs* and notification screens show the exports and imports the suite's
+admin ran. Then capture:
+
+```console
+docker compose run --rm -e VECTOR_SCREENSHOTS=1 e2e test tests/screenshots.standalone.spec.ts
+```
+
+It drives the standalone admin at 1440×900, in English, as
+`e2e@vector.local`. Both images of a pair come from one prepared page:
+the spec switches the emulated `prefers-color-scheme` in place. This
+relies on **Settings → Branding → Default theme** staying *System*. The
+spec saves nothing: it cancels every dialog and form, and aborts and
+fails on any request from the page that is not a read. Review the
+changed images before committing them.
+
 ## Static analysis and builds
 
 ```console
