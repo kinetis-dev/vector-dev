@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
 import { h } from 'vue'
@@ -61,7 +61,9 @@ describe('the Queues menu entry', () => {
         const entry = wrapper.find('[data-nav="queues"]')
         expect(entry.exists()).toBe(true)
         expect(entry.text()).toContain('Queues')
-        expect(entry.attributes('href')).toMatch(/\/queues$/)
+        // Vuetify renders no href here (no client-side router link in this environment), so the item's own target is what is checked
+        const item = wrapper.findAllComponents({ name: 'VListItem' }).find(candidate => candidate.attributes('data-nav') === 'queues')
+        expect(String(item?.props('to'))).toMatch(/\/queues$/)
         wrapper.unmount()
     })
 })
@@ -88,6 +90,8 @@ describe('the Queues page', () => {
         const failed = endpoint('/vector/queues/failed', { body: { data: [], nextCursor: null, hasMore: false, limit: 25 } })
         cleanups.push(endpoint('/vector/queues/permissions', { body: failedJobs ? granted : { ...granted, retry: false, forget: false, prune: false } }).unregister, overview.unregister, failed.unregister)
         const wrapper = await mountSuspended(QueuesPage, { route: '/queues' })
+        // the permissions load on mount, through the environment's endpoint registry: wait for the tabs they gate
+        await vi.waitFor(() => expect(wrapper.find('[data-tab="overview"]').exists()).toBe(true))
         await flushPromises()
         return { wrapper, overview, failed }
     }
@@ -119,9 +123,8 @@ describe('the Queues page', () => {
         const { wrapper } = await page(true, permissions({ retry: false, forget: false, prune: false }))
 
         await wrapper.find('[data-tab="failed"]').trigger('click')
-        await flushPromises()
+        await vi.waitFor(() => expect(wrapper.text()).toContain('No failed jobs match.'))
 
-        expect(wrapper.text()).toContain('No failed jobs match.')
         expect(wrapper.find('[data-action="retry-selected"]').exists()).toBe(false)
         expect(wrapper.find('[data-action="prune"]').exists()).toBe(false)
         wrapper.unmount()
@@ -141,11 +144,10 @@ describe('the Queues page', () => {
         expect(useConfirm().pending.value?.title).toBe('Clear "mail"?')
         expect(clear.requests).toHaveLength(0)
         useConfirm().settle(true)
-        await flushPromises()
+        await vi.waitFor(() => expect(overview.requests.length).toBeGreaterThan(before))
 
         expect(clear.requests.map(r => [r.method, r.body])).toEqual([['POST', { confirm: 'mail' }]])
         expect(useVectorNotifications().queue.value.map(n => [n.text, n.color])).toEqual([['Cleared 3 job(s) from "mail".', 'success']])
-        expect(overview.requests.length).toBeGreaterThan(before)
         wrapper.unmount()
     })
 
