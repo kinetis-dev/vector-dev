@@ -192,7 +192,10 @@ pull requests, each for the paths it covers:
   MySQL, PostgreSQL and Redis as services: `composer validate --strict`
   for the package's and the demo's `composer.json` files, `composer audit`, the PHPUnit suite
   (both placements of Vector's tables, as above), PHPStan and Psalm (one run, ordinary and
-  taint issues together); `pnpm lint`, `pnpm typecheck`, `pnpm test`,
+  taint issues together), and one more job on PHP 8.4 that removes
+  `kinetis/queue-failed-jobs` from the demo, boots Vector without it and
+  runs `FailedJobsNotInstalledTest`, along with the queue tests that need
+  nothing of that package; `pnpm lint`, `pnpm typecheck`, `pnpm test`,
   `pnpm test:scripts`, and `pnpm generate:hosted` followed by
   `node scripts/check-vector-ui-pack.mjs --packed`, which fails unless
   npm would pack `vector-bundle.json` and every file it lists; and the
