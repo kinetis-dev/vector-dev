@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
 import { defineComponent, h, nextTick } from 'vue'
@@ -37,9 +37,8 @@ describe('VxWidgetCard', () => {
 
     it('draws a built-in type with its own card', async () => {
         const wrapper = await mountSuspended(VxWidgetCard, { props: { widget: widget('stat'), load: load('stat', { value: 1234, previous: null, format: 'number', caption: null }) } })
-        await settle()
-
-        expect(wrapper.text()).toContain('1,234')
+        // the built-in card is an async component: its first import can outlast settle() on a cold runner
+        await vi.waitFor(() => expect(wrapper.text()).toContain('1,234'))
         expect(wrapper.find('.gauge').exists()).toBe(false)
         wrapper.unmount()
     })
