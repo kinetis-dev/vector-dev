@@ -192,7 +192,8 @@ menu, with up to three tabs:
 
 The page reads `GET /vector/queues/permissions` and leaves out every
 action the policy refuses. That only shapes the page: every endpoint
-asks the policy again. Each action asks for confirmation first. The
+asks the policy again. Each action asks for confirmation first, and
+Clear only once the queue's name is typed into it. The
 page's text ships in every language Vector's UI ships, as machine
 translations, in the layer's `queues` messages; override any of it in
 app config `vector.messages` or with `defineMessages` under `queues`

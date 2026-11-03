@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The queue dashboard, as the layer's own page at `/queues`: an overview
   of each watched queue polled every five seconds while shown, with
-  Clear; the failed jobs with their filters, cursor paging, detail,
+  Clear, confirmed by typing the queue's name; the failed jobs with their filters, cursor paging, detail,
   Retry (up to 50 at once), Forget and Prune; and the job metrics over a
   window of 15 minutes to 7 days, with a sparkline of attempts per
   minute, summed into at most 240 points on longer windows. The menu
