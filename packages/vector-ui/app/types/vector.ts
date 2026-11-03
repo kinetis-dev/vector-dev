@@ -128,8 +128,16 @@ export interface VectorActionResponse {
     jobId?: number | null
 }
 
-/** The cards' types; `queues` is the queue dashboard's card, which loads its own figures. */
-export type VectorWidgetType = 'stat' | 'trend' | 'partition' | 'progress' | 'table' | 'queues'
+/** The built-in cards' types; `queues` is the queue dashboard's card, which loads its own figures. */
+export type VectorBuiltInWidgetType = 'stat' | 'trend' | 'partition' | 'progress' | 'table' | 'queues'
+
+/**
+ * A built-in type, or an extension type: a kebab-case name whose card the
+ * application registers, through defineWidget in its runtime extension or
+ * vector.widgets in its app.config. Its data is whatever the widget
+ * answered, beside `type`, `range` and `cached`.
+ */
+export type VectorWidgetType = VectorBuiltInWidgetType | (string & {})
 
 export interface VectorWidget {
     name: string

@@ -3,6 +3,7 @@ export default {
     title: 'Панель управления',
     range: 'Период',
     loading: 'Загрузка',
+    noRenderer: 'Для типа виджета {type} не зарегистрирован отрисовщик.',
     percent: '{value}%',
     duration: {
         minutes: '{value} мин',

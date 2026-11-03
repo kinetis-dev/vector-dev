@@ -3,6 +3,7 @@ export default {
     title: 'Панель керування',
     range: 'Період',
     loading: 'Завантаження',
+    noRenderer: 'Для типу віджета {type} не зареєстровано рендерер.',
     percent: '{value}%',
     duration: {
         minutes: '{value} хв',

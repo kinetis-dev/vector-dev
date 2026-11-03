@@ -14,6 +14,12 @@ const Gauge = defineComponent({
     setup: props => () => h('p', { class: 'gauge' }, `gauge ${String(props.data.value)} for ${props.widget.name}`),
 })
 
+// the application's card for its own extension type, as defineWidget or app.config vector.widgets registers it
+const Sparkline = defineComponent({
+    props: { data: { type: Object, required: true }, widget: { type: Object, required: true } },
+    setup: props => () => h('p', { class: 'sparkline' }, `samples ${(props.data.samples as number[]).join(',')} for ${props.widget.name}`),
+})
+
 const settle = async () => {
     await flushPromises()
     await new Promise(resolve => setTimeout(resolve, 20))
@@ -24,6 +30,9 @@ describe('VxWidgetCard', () => {
     afterEach(() => {
         useVectorExtensions().widgets.delete('stat')
         useVectorExtensions().widgets.delete('progress')
+        useVectorExtensions().widgets.delete('sparkline-chart')
+        useVectorExtensions().widgets.delete('sparkline-late')
+        delete (useAppConfig().vector.widgets as Record<string, unknown>)['sparkline-chart']
     })
 
     it('draws a built-in type with its own card', async () => {
@@ -35,26 +44,52 @@ describe('VxWidgetCard', () => {
         wrapper.unmount()
     })
 
-    // a type this UI has no card for (a newer server's, say) and a payload with none of the stat fields:
-    // drawn as a stat, which shows "—" rather than crashing, and never renders a server string as markup
-    it('draws a type it has no card for as a stat, without crashing on a payload of another shape', async () => {
-        const type = 'sparkline-chart' as VectorWidgetType
-        const wrapper = await mountSuspended(VxWidgetCard, { props: { widget: widget(type), load: load(type, { samples: [3, 1, 4], label: '<img src=x onerror=alert(1)>' }) } })
+    // an extension type the application registered no card for: the card says so rather than
+    // guessing at a shape — no stat figure, and none of the payload, markup or not, is drawn
+    it('says no renderer is registered for an extension type with no card, instead of drawing a stat', async () => {
+        const wrapper = await mountSuspended(VxWidgetCard, { props: { widget: widget('sparkline-chart'), load: load('sparkline-chart', { value: 7, caption: '<img src=x onerror=alert(1)>' }) } })
         await settle()
 
-        expect(wrapper.find('.text-h4').exists()).toBe(true) // the stat card's figure
-        expect(wrapper.find('.text-h4').text()).toBe('—')
+        expect(wrapper.text()).toContain('No renderer is registered for the widget type sparkline-chart.')
+        expect(wrapper.find('.v-alert').exists()).toBe(true)
+        expect(wrapper.find('.text-h4').exists()).toBe(false) // the stat card's figure
+        expect(wrapper.text()).not.toContain('7')
         expect(wrapper.find('img').exists()).toBe(false)
         wrapper.unmount()
     })
 
-    it('shows a server string in the fallback stat card as text, never as markup', async () => {
-        const type = 'sparkline-chart' as VectorWidgetType
-        const wrapper = await mountSuspended(VxWidgetCard, { props: { widget: widget(type), load: load(type, { caption: '<img src=x onerror=alert(1)>' }) } })
+    it('renders an extension type with the card a runtime extension registered through defineWidget, handing it the data as the server answered', async () => {
+        useVectorExtensions().widgets.set('sparkline-chart', Sparkline)
+        const wrapper = await mountSuspended(VxWidgetCard, { props: { widget: widget('sparkline-chart'), load: load('sparkline-chart', { samples: [3, 1, 4] }) } })
         await settle()
 
-        expect(wrapper.text()).toContain('<img src=x onerror=alert(1)>')
-        expect(wrapper.find('img').exists()).toBe(false)
+        expect(wrapper.find('.sparkline').text()).toBe('samples 3,1,4 for card')
+        expect(wrapper.text()).not.toContain('No renderer')
+        wrapper.unmount()
+    })
+
+    it('renders an extension type with the card app.config vector.widgets maps it to', async () => {
+        // a component rather than a registered name, as the card accepts either
+        const declared = useAppConfig().vector.widgets as Record<string, unknown>
+        declared['sparkline-chart'] = Sparkline
+        const wrapper = await mountSuspended(VxWidgetCard, { props: { widget: widget('sparkline-chart'), load: load('sparkline-chart', { samples: [2, 7] }) } })
+        await settle()
+
+        expect(wrapper.find('.sparkline').text()).toBe('samples 2,7 for card')
+        expect(wrapper.text()).not.toContain('No renderer')
+        wrapper.unmount()
+    })
+
+    it('swaps the notice for a card registered after it mounted, as a slow runtime extension does', async () => {
+        const wrapper = await mountSuspended(VxWidgetCard, { props: { widget: widget('sparkline-late'), load: load('sparkline-late', { samples: [2, 7] }) } })
+        await settle()
+        expect(wrapper.text()).toContain('No renderer is registered for the widget type sparkline-late.')
+
+        useVectorExtensions().widgets.set('sparkline-late', Sparkline)
+        await nextTick()
+
+        expect(wrapper.find('.sparkline').text()).toBe('samples 2,7 for card')
+        expect(wrapper.text()).not.toContain('No renderer')
         wrapper.unmount()
     })
 
