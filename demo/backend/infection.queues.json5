@@ -12,13 +12,11 @@
     // CI runs it as one shard of .github/workflows/infection.yml, with
     // that shard's floors, which are this config's.
     //
-    // Measured 2026-11-02 (four threads, local, this config's 60 s
-    // timeout), over the same classes before they moved into
-    // packages/vector/src/Queues: 686 mutants, 546 killed, 140
-    // escaped, 0 errored, 0 timed out, 0 not covered — MSI and covered MSI
-    // 79.6% (mutation coverage 100%). The floors sit about two points
-    // under it. Not yet measured since the move and QueueDashboard's
-    // gates.
+    // Measured 2026-11-03 (four threads, local, this config's 60 s
+    // timeout), over packages/vector/src/Queues after the move and
+    // QueueDashboard's gates: 759 mutants, 599 killed, 160 escaped,
+    // 0 errored, 0 timed out, 0 not covered — MSI and covered MSI 78.9%
+    // (mutation coverage 100%). The floors sit about two points under it.
     "$schema": "vendor/infection/infection/resources/schema.json",
     "source": {
         "directories": ["../../packages/vector/src/Queues"]

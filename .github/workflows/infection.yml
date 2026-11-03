@@ -62,14 +62,14 @@ jobs:
         # Each floor sits about two points under its shard's covered MSI
         # as measured 2026-10-20 (run 39374383118, matching a local run):
         # 99.3%, 97.7%, 85.2% and 97.4%; the queue dashboard's as measured
-        # locally 2026-11-02, 79.6%. Mutation coverage is 100%, so
+        # locally 2026-11-03, 78.9%. Mutation coverage is 100%, so
         # MSI and covered MSI coincide.
         shard:
           - { name: ResourceCompiler logic and identity, files: ResourceCompiler.php, mutators: split, minMsi: 97, minCoveredMsi: 97 }
           - { name: ResourceCompiler other mutators, files: ResourceCompiler.php, mutators: rest, minMsi: 95, minCoveredMsi: 95 }
           - { name: ResourceService, files: ResourceService.php, mutators: all, minMsi: 83, minCoveredMsi: 83 }
           - { name: ListRequest and the other compilers, files: 'ListRequest.php,XlsxWriter.php,LayoutCompiler.php,SettingsCompiler.php,WidgetCompiler.php', mutators: all, minMsi: 95, minCoveredMsi: 95 }
-          # every file of packages/vector/src/Queues; 79.6% measured 2026-11-02 (infection.queues.json5)
+          # every file of packages/vector/src/Queues; 78.9% measured 2026-11-03 (infection.queues.json5)
           - { name: queues, script: 'infection:queues', files: '', mutators: all, minMsi: 77, minCoveredMsi: 77 }
     # The same services as ci.yml's PHP job: the mutated tests boot the
     # demo against them, the initial run on the base databases and each
