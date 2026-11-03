@@ -44,7 +44,7 @@
   },
   "contributing.html": {
    "canonical": "https://kinetis.dev/vector/docs/contributing.html",
-   "description": "Vector is developed in one repository: the three packages, and the demo application ( The demo application) that consumes them the way an adopter would. Every command on this page runs from demo/, ...",
+   "description": "Vector is developed in one repository: the two packages, and the demo application ( The demo application) that consumes them the way an adopter would. Every command on this page runs from demo/, wi...",
    "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
    "og:url": "https://kinetis.dev/vector/docs/contributing.html",
    "title": "Working on Vector - Kinetis Vector"
@@ -170,7 +170,7 @@
   },
   "queues.html": {
    "canonical": "https://kinetis.dev/vector/docs/queues.html",
-   "description": "kinetis/vector-queues adds a queue dashboard to the admin, in the spirit of Laravel Horizon. It shows the size of each queue and the jobs the worker gave up on, which can be browsed, retried, forgo...",
+   "description": "Vector has a queue dashboard, in the spirit of Laravel Horizon. It shows the size of each queue and, with kinetis/queue-failed-jobs, the jobs the worker gave up on, which can be browsed, retried, f...",
    "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
    "og:url": "https://kinetis.dev/vector/docs/queues.html",
    "title": "Queue dashboard - Kinetis Vector"
@@ -184,7 +184,7 @@
   },
   "releasing.html": {
    "canonical": "https://kinetis.dev/vector/docs/releasing.html",
-   "description": "Vector ships three products, each at its own version: packages/vector, published to the mirror kinetis-dev/vector, which Packagist serves as kinetis/vector;, packages/vector-queues, the queue dashb...",
+   "description": "Vector ships two products, each at its own version: packages/vector, published to the mirror kinetis-dev/vector, which Packagist serves as kinetis/vector;, packages/vector-ui, published to npm as@k...",
    "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
    "og:url": "https://kinetis.dev/vector/docs/releasing.html",
    "title": "Releasing - Kinetis Vector"
@@ -198,7 +198,7 @@
   },
   "rest-api.html": {
    "canonical": "https://kinetis.dev/vector/docs/rest-api.html",
-   "description": "Every route is under/vector, in the vector middleware group, except hosted mode’s page under/vector/ui, which is in the vector-shell group ( Authentication), and the packages’ UI modules under/vect...",
+   "description": "Every route is under/vector, in the vector middleware group, except hosted mode’s page under/vector/ui, which is in the vector-shell group ( Authentication). The API is the authority: the UI and th...",
    "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
    "og:url": "https://kinetis.dev/vector/docs/rest-api.html",
    "title": "REST API - Kinetis Vector"
