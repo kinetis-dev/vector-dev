@@ -192,7 +192,7 @@ Once Orbitron is ready, every task runs the same way:
 
    ```sh
    docker compose exec app vendor/bin/phpunit --filter SomeTest
-   docker compose exec app vendor/bin/phpstan analyse
+   docker compose exec app composer phpstan
    docker compose exec app composer psalm
    ```
 

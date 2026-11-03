@@ -55,6 +55,7 @@
         }
     },
     "scripts": {
+        "phpstan": "phpstan analyse --no-progress --memory-limit=1G",
         "psalm": "psalm --taint-analysis --no-progress --report=psalm.sarif --report-show-info=false",
         "infection": [
             "Composer\\Config::disableProcessTimeout",
@@ -74,6 +75,7 @@
         ]
     },
     "scripts-descriptions": {
+        "phpstan": "PHPStan at level 8 with the Kinetis rules, over the demo, both packages and the tests, with the 1G memory limit the analysis needs",
         "psalm": "Psalm, types and taints in one run, over the demo, packages/vector/src, packages/vector-queues/src and the migrations; writes psalm.sarif",
         "infection": "Mutation testing over the demo's src/, gated on its measured MSI; on worker 1's stores",
         "infection:vector": "Mutation testing over Vector's Registry and Query on four workers; run infection:workers first",

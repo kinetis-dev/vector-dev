@@ -196,7 +196,7 @@ jobs:
         run: .github/scripts/php vendor/bin/phpunit
 
       - name: PHPStan
-        run: .github/scripts/php vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+        run: .github/scripts/php composer phpstan
 
       # One run reports both ordinary and taint issues (Psalm 7).
       - name: Psalm

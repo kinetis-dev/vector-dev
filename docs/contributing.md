@@ -97,7 +97,7 @@ a person using the demo do not disturb each other. See
 ## Static analysis and builds
 
 ```console
-docker compose exec app vendor/bin/phpstan analyse
+docker compose exec app composer phpstan
 docker compose exec app vendor/bin/kinetis build
 docker compose exec node pnpm lint
 docker compose exec node pnpm --filter frontend generate
