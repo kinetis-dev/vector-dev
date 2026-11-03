@@ -89,9 +89,10 @@ final class WidgetCompilerTest extends TestCase
         );
     }
 
-    public function testAWidgetTypeIsBuiltInOrAKebabCaseExtensionType(): void
+    public function testAWidgetTypeIsOneOfTheBuiltInTypes(): void
     {
-        $extension = new class () extends VectorWidget {
+        // lower-case kebab-case, as a widget name is, and still no type: the UI ships a card for the built-in types alone
+        $sparkline = new class () extends VectorWidget {
             public function name(): string { return 'sparkline'; }
             public function type(): string { return 'sparkline-chart'; }
             public function calculate(WidgetRequest $request): WidgetResult { throw new \LogicException('not computed here'); }
@@ -103,11 +104,12 @@ final class WidgetCompilerTest extends TestCase
         };
 
         // the built-in types compile in testAWidgetCompilesToItsCardAndAnUnsupportedWidthFallsBackToFour
-        self::assertSame(['sparkline-chart'], array_column(WidgetCompiler::widgets([$extension::class], self::OWNER), 'type'));
-        self::assertSame(
-            'Resource ' . self::OWNER . ': widget ' . $snake::class . ' has the type "Bad_Type"; a widget type is stat, trend, partition, progress, table, queues, or an extension type in lower-case kebab-case',
-            $this->refusal(static fn () => WidgetCompiler::widgets([$snake::class], self::OWNER)),
-        );
+        foreach ([$sparkline, $snake] as $widget) {
+            self::assertSame(
+                'Resource ' . self::OWNER . ': widget ' . $widget::class . ' has the type "' . $widget->type() . '"; a widget type is one of stat, trend, partition, progress, table, queues',
+                $this->refusal(static fn () => WidgetCompiler::widgets([$widget::class], self::OWNER)),
+            );
+        }
     }
 
     public function testDashboardsComeMainFirstThenByName(): void
