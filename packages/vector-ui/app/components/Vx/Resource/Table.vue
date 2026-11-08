@@ -160,13 +160,13 @@ function firstPage() {
     restart = true
 }
 
-const debouncedLoad = useDebounceFn(() => { firstPage(); load() }, 300)
+const debouncedLoad = useDebounceFn(() => { firstPage(); void load() }, 300)
 watch(search, () => debouncedLoad())
-watch([filters, groups, advanced, group, trashed, summaries], () => { firstPage(); load() }, { deep: true })
-watch(columns, (c) => { preferences.put({ [`columns.${props.resource.slug}`]: c }).catch(() => undefined); load() })
+watch([filters, groups, advanced, group, trashed, summaries], () => { firstPage(); void load() }, { deep: true })
+watch(columns, (c) => { preferences.put({ [`columns.${props.resource.slug}`]: c }).catch(() => undefined); void load() })
 
 function onOptions() {
-    load()
+    void load()
 }
 
 // The table resets the page it pages itself on a new sort; an uncounted list pages here, so this does, before the table reports the sort
@@ -176,11 +176,11 @@ watch(sortBy, () => { if (!counted.value) firstPage() }, { deep: true, flush: 's
 const onFirstPage = computed(() => byCursor.value ? !cursors.hasPrevious.value : page.value === 1)
 
 function previousPage() {
-    if (!onFirstPage.value) load('back')
+    if (!onFirstPage.value) void load('back')
 }
 
 function nextPage() {
-    if (byCursor.value ? cursors.hasNext.value : hasMore.value) load('forward')
+    if (byCursor.value ? cursors.hasNext.value : hasMore.value) void load('forward')
 }
 
 /** A new page size starts again from the first page; the table reports the change, which loads it. */
@@ -342,7 +342,7 @@ function actionDone() {
     dialogAction.value = null
     selected.value = []
     allMatching.value = false
-    load()
+    void load()
 }
 
 // --- rendering helpers ------------------------------------------------
