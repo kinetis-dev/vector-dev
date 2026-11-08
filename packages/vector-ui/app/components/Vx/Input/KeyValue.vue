@@ -18,7 +18,7 @@ const valueLabel = computed(() => String(fieldProps(props.field).valueLabel ?? t
 let emitted = ''
 watch(model, (value) => {
     if (JSON.stringify(value ?? {}) === emitted) return
-    rows.value = value && typeof value === 'object' ? Object.entries(value).map(([key, v]) => ({ key, value: String(v ?? '') })) : []
+    rows.value = value && typeof value === 'object' ? Object.entries(value).map(([key, v]) => ({ key, value: displayValue(v) })) : []
 }, { immediate: true })
 
 function sync() {

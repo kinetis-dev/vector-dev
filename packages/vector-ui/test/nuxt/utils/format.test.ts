@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { adoptMinorUnits, currencyLabel, currencyOf, formatDate, formatDateTime, formatMoney, formatNumber, minorDigits } from '#vector/app/utils/format'
+import { adoptMinorUnits, currencyLabel, currencyOf, displayValue, formatDate, formatDateTime, formatMoney, formatNumber, minorDigits } from '#vector/app/utils/format'
 
 // The formatters use the runtime's default locale, so each expectation is
 // built with the same Intl call rather than a hard-coded string.
@@ -107,5 +107,20 @@ describe('currencyLabel', () => {
     it('falls back to the bare code', () => {
         expect(currencyLabel('XYZ', 'en')).toBe('XYZ')
         expect(currencyLabel('EUR', 'not a locale!')).toBe('EUR')
+    })
+})
+
+describe('displayValue', () => {
+    it('renders primitives as text and unset as empty', () => {
+        expect(displayValue('a')).toBe('a')
+        expect(displayValue(3)).toBe('3')
+        expect(displayValue(false)).toBe('false')
+        expect(displayValue(null)).toBe('')
+        expect(displayValue(undefined)).toBe('')
+    })
+
+    it('renders a nested object or array as JSON, not [object Object]', () => {
+        expect(displayValue({ a: 1 })).toBe('{"a":1}')
+        expect(displayValue([1, 2])).toBe('[1,2]')
     })
 })

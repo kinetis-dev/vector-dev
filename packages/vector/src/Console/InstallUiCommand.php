@@ -11,6 +11,7 @@ use Kinetis\Runtime\ProjectRoot;
 use Kinetis\Vector\Ui\HostedBundle;
 use Kinetis\Vector\Ui\HttpsTarballSource;
 use Kinetis\Vector\Ui\TarReader;
+use Kinetis\Vector\Ui\UiInstallException;
 use Kinetis\Vector\Ui\UiInstaller;
 use Kinetis\Vector\Ui\UiPin;
 use Kinetis\Vector\Ui\UiTarballSource;
@@ -120,6 +121,14 @@ final readonly class InstallUiCommand
             return 'vector:install-ui takes no positional argument.';
         }
 
+        return self::optionValueProblem($arguments)
+            ?? self::optionCombinationProblem($arguments)
+            ?? self::optionFormatProblem($arguments);
+    }
+
+    /** An option that needs a value given none, or a flag given one. */
+    private static function optionValueProblem(CommandArguments $arguments): ?string
+    {
         foreach (['version', 'from', 'integrity'] as $name) {
             if ($arguments->hasOption($name) && in_array($arguments->option($name), [null, ''], true)) {
                 return "--{$name} needs a value: --{$name}=<value>.";
@@ -132,6 +141,12 @@ final readonly class InstallUiCommand
             }
         }
 
+        return null;
+    }
+
+    /** Options that do not go together. */
+    private static function optionCombinationProblem(CommandArguments $arguments): ?string
+    {
         if ($arguments->hasOption('check') && ($arguments->hasOption('from') || $arguments->hasOption('integrity') || $arguments->hasOption('force'))) {
             return '--check takes no option but --version.';
         }
@@ -144,6 +159,12 @@ final readonly class InstallUiCommand
             return '--integrity checks a --from tarball; --from names a directory.';
         }
 
+        return null;
+    }
+
+    /** A --version or --integrity value of the wrong form. */
+    private static function optionFormatProblem(CommandArguments $arguments): ?string
+    {
         $version = $arguments->option('version');
 
         if ($version !== null && preg_match(self::EXACT_VERSION, $version) !== 1) {
@@ -361,11 +382,11 @@ final readonly class InstallUiCommand
             $dir = dirname("{$stage}/{$path}");
 
             if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
-                throw new \RuntimeException("Could not create {$dir}.");
+                throw new UiInstallException("Could not create {$dir}.");
             }
 
             if (!copy("{$from}/{$path}", "{$stage}/{$path}") || !chmod("{$stage}/{$path}", 0644)) {
-                throw new \RuntimeException("Could not copy {$from}/{$path}.");
+                throw new UiInstallException("Could not copy {$from}/{$path}.");
             }
         }
     }

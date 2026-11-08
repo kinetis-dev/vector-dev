@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.3] - 2026-11-08
+
+### Changed
+
+- `vector:install-ui` installs `@kinetis/vector-ui` 0.12.3 by default,
+  the release whose key-value cell and input show nested values as JSON.
+- Failures while installing the hosted UI throw
+  `Kinetis\Vector\Ui\UiInstallException`, which extends
+  `\RuntimeException`, so existing catches still apply; their messages
+  are unchanged.
+- The tar reader, HTTPS tarball source, `vector:install-ui` usage checks
+  and the queue dashboard's query parsing are restructured to clear
+  SonarQube complexity findings. Their checks, order and messages are
+  unchanged.
+
 ## [0.14.2] - 2026-11-08
 
 ### Changed

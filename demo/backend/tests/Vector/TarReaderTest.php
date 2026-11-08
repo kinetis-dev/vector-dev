@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Vector;
 
 use Kinetis\Vector\Ui\TarReader;
+use Kinetis\Vector\Ui\UiInstallException;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -269,5 +270,19 @@ final class TarReaderTest extends TestCase
     public function testATruncatedArchiveIsRefused(): void
     {
         $this->refuses(substr(UiFixtures::entry('package/dist/static/index.html', str_repeat('x', 600)), 0, 700), 'ends inside');
+    }
+
+    public function testAFileThatCannotBeWrittenIsAnInstallFailureNotARefusal(): void
+    {
+        // a directory the archive needs is a file already, so it cannot be created
+        file_put_contents($this->stage . '/_nuxt', 'in the way');
+
+        try {
+            $this->extract(UiFixtures::entry('package/dist/static/_nuxt/entry.js', 'x') . UiFixtures::end());
+            self::fail('The archive was extracted.');
+        } catch (UiInstallException $e) {
+            self::assertSame("Could not create {$this->stage}/_nuxt.", $e->getMessage());
+            self::assertInstanceOf(\RuntimeException::class, $e);
+        }
     }
 }

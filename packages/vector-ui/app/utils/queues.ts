@@ -42,8 +42,11 @@ export function queueAccessRefused(error: unknown): boolean {
     return status === 403 || status === 404
 }
 
+/** A filter or setting value as it arrives: a string, a number, or unset. */
+export type QueueScalar = string | number | null | undefined
+
 /** Drops the empty filters, so an unset one is absent rather than an empty string the server refuses. */
-export function compactQuery<T extends Record<string, string | number | null | undefined>>(query: T): Record<string, string | number> {
+export function compactQuery<T extends Record<string, QueueScalar>>(query: T): Record<string, string | number> {
     return Object.fromEntries(Object.entries(query).filter(([, value]) => value !== '' && value !== null && value !== undefined)) as Record<string, string | number>
 }
 
@@ -78,7 +81,7 @@ export function queueRate(value: number | null | undefined): string {
 }
 
 /** An RFC 3339 time, or unix seconds, in the UI's language. */
-export function queueTime(value: string | number | null | undefined): string {
+export function queueTime(value: QueueScalar): string {
     if (value === null || value === undefined || value === '') return vt('queues.none')
     return formatDateTime(typeof value === 'number' ? new Date(value * 1000).toISOString() : value)
 }
@@ -98,7 +101,7 @@ export function queueRetrySummary(results: VectorRetryResult[]): { text: string,
 }
 
 /** The days a prune field holds, as a whole number from 1 to the server's limit; null for anything else. */
-export function queuePruneDays(value: string | number | null | undefined): number | null {
+export function queuePruneDays(value: QueueScalar): number | null {
     const text = String(value ?? '').trim()
     if (!/^[1-9]\d*$/.test(text)) return null
     const days = Number(text)

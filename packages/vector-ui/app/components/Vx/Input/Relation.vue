@@ -80,7 +80,7 @@ watch(dependency, (now, before) => {
     if (now === before) return
     if (!multiple.value && model.value !== null && model.value !== undefined) model.value = null
     items.value = []
-    fetchOptions('')
+    void fetchOptions('')
 })
 
 /** The identifiers the input starts with. */

@@ -7,6 +7,7 @@ namespace Kinetis\Vector\Queues\Metrics;
 use Kinetis\Validation\Exception\ValidationException;
 use Kinetis\Validation\Violation;
 use Kinetis\Vector\Queues\FailedJobFilter;
+use Kinetis\Vector\Queues\QueryParameters;
 use Kinetis\Vector\Queues\QueueNames;
 
 /**
@@ -42,49 +43,11 @@ final readonly class MetricsQuery
     public static function fromQueryParams(array $params, QueueNames $queues, int $now): self
     {
         $violations = [];
-
-        foreach (array_keys($params) as $key) {
-            if (!in_array($key, self::PARAMETERS, true)) {
-                $violations[] = new Violation([(string) $key], 'unknown_parameter', 'is not a metrics parameter; the parameters are ' . implode(', ', self::PARAMETERS) . '.');
-            }
-        }
-
-        $string = static function (string $key) use ($params, &$violations): ?string {
-            $value = $params[$key] ?? null;
-
-            if ($value === null || $value === '') {
-                return null;
-            }
-
-            if (!is_string($value)) {
-                $violations[] = new Violation([$key], 'type_mismatch', 'must be a single value.');
-
-                return null;
-            }
-
-            return $value;
-        };
-
-        $queue = $string('queue');
-
-        if ($queue !== null && !$queues->has($queue)) {
-            $violations[] = new Violation(['queue'], 'invalid_choice', 'is not a queue this dashboard watches.', ['choices' => $queues->names]);
-            $queue = null;
-        }
-
-        $class = $string('class');
-
-        if ($class !== null) {
-            $class = ltrim($class, '\\');
-
-            if (strlen($class) > 255 || preg_match(FailedJobFilter::CLASS_NAME, $class) !== 1) {
-                $violations[] = new Violation(['class'], 'invalid_format', 'must be a fully-qualified class name.');
-                $class = null;
-            }
-        }
-
-        $from = self::seconds('from', $string('from'), $violations);
-        $to = self::seconds('to', $string('to'), $violations);
+        QueryParameters::rejectUnknown($params, self::PARAMETERS, 'is not a metrics parameter; the parameters are ', $violations);
+        $queue = QueryParameters::queue($params, $queues, $violations);
+        $class = QueryParameters::className($params, $violations);
+        $from = self::seconds('from', QueryParameters::string($params, 'from', $violations), $violations);
+        $to = self::seconds('to', QueryParameters::string($params, 'to', $violations), $violations);
 
         if ($violations !== []) {
             throw ValidationException::fromViolations($violations);

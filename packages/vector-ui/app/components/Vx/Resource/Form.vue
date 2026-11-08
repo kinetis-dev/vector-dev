@@ -179,7 +179,7 @@ if (import.meta.client) {
     useEventListener(window, 'keydown', (event: KeyboardEvent) => {
         if (props.variants && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
             event.preventDefault()
-            if (!submitting.value) saveAs(chosen.value)
+            if (!submitting.value) saveAs(chosen.value).catch(showFailure)
         }
     })
 }

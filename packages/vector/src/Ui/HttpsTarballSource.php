@@ -89,7 +89,7 @@ final readonly class HttpsTarballSource implements UiTarballSource
         $sink = fopen('php://temp', 'w+b');
 
         if ($sink === false) {
-            throw new \RuntimeException('Could not buffer the registry answer.');
+            throw new UiInstallException('Could not buffer the registry answer.');
         }
 
         try {
@@ -103,7 +103,7 @@ final readonly class HttpsTarballSource implements UiTarballSource
         try {
             $packument = json_decode($body, true, 64, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
-            throw new \RuntimeException("The registry's answer for {$package} is not JSON.");
+            throw new UiInstallException("The registry's answer for {$package} is not JSON.");
         }
 
         $dist = is_array($packument) && is_array($packument['versions'] ?? null) && is_array($packument['versions'][$version] ?? null)
@@ -111,7 +111,7 @@ final readonly class HttpsTarballSource implements UiTarballSource
             : null;
 
         if (!is_array($dist) || !is_string($dist['tarball'] ?? null)) {
-            throw new \RuntimeException("The registry publishes no {$package}@{$version}.");
+            throw new UiInstallException("The registry publishes no {$package}@{$version}.");
         }
 
         return ['tarball' => $dist['tarball'], 'integrity' => is_string($dist['integrity'] ?? null) ? $dist['integrity'] : null];
@@ -123,7 +123,7 @@ final readonly class HttpsTarballSource implements UiTarballSource
         $sink = @fopen($path, 'xb');
 
         if ($sink === false) {
-            throw new \RuntimeException("Could not create {$path}.");
+            throw new UiInstallException("Could not create {$path}.");
         }
 
         try {
@@ -139,50 +139,90 @@ final readonly class HttpsTarballSource implements UiTarballSource
      *
      * @param list<string> $headers
      * @param resource $sink
+     *
+     * @throws UiInstallException when a URL is not https, the redirects run out, or the answer
+     *     is not a whole 200 body within $maxBytes
      */
     private function fetch(string $url, array $headers, $sink, int $maxBytes): void
     {
         for ($redirects = 0; ; $redirects++) {
-            $origin = self::origin($url) ?? throw new \RuntimeException("Refusing {$this->shown($url)}: only https URLs are fetched.");
-            $sent = [...$headers, 'User-Agent: kinetis-vector-install-ui', 'Connection: close'];
-
-            if ($this->token !== null && $this->token !== '' && $origin === $this->registryHost) {
-                $sent[] = 'Authorization: Bearer ' . $this->token;
-            }
-
-            [$status, $responseHeaders, $body] = ($this->open)($url, $sent);
+            $origin = self::origin($url) ?? throw new UiInstallException("Refusing {$this->shown($url)}: only https URLs are fetched.");
+            [$status, $responseHeaders, $body] = ($this->open)($url, $this->requestHeaders($headers, $origin));
 
             try {
-                if (in_array($status, [301, 302, 303, 307, 308], true)) {
-                    if ($redirects >= self::MAX_REDIRECTS) {
-                        throw new \RuntimeException("{$this->shown($url)} redirects more than " . self::MAX_REDIRECTS . ' times.');
-                    }
+                if (!in_array($status, [301, 302, 303, 307, 308], true)) {
+                    $this->receive($url, $status, $body, $sink, $maxBytes);
 
-                    $location = $responseHeaders['location'] ?? throw new \RuntimeException("{$this->shown($url)} redirects without a Location.");
-                    // a path is on the same origin; anything else must name its own, and pass origin() above
-                    $url = str_starts_with($location, '/') && !str_starts_with($location, '//') ? $origin . $location : $location;
-
-                    continue;
+                    return;
                 }
 
-                if ($status !== 200) {
-                    throw new \RuntimeException("{$this->shown($url)} answered HTTP {$status}.");
-                }
-
-                $copied = stream_copy_to_stream($body, $sink, $maxBytes + 1);
-
-                if ($copied === false || !feof($body) && $copied <= $maxBytes) {
-                    throw new \RuntimeException("Could not read {$this->shown($url)} whole.");
-                }
-
-                if ($copied > $maxBytes) {
-                    throw new \RuntimeException("{$this->shown($url)} is larger than {$maxBytes} bytes.");
-                }
-
-                return;
+                $url = $this->redirectTarget($url, $origin, $responseHeaders, $redirects);
             } finally {
                 fclose($body);
             }
+        }
+    }
+
+    /**
+     * The headers sent to $origin: the bearer token among them only when
+     * $origin is the registry's own.
+     *
+     * @param list<string> $headers
+     * @return list<string>
+     */
+    private function requestHeaders(array $headers, string $origin): array
+    {
+        $sent = [...$headers, 'User-Agent: kinetis-vector-install-ui', 'Connection: close'];
+
+        if ($this->token !== null && $this->token !== '' && $origin === $this->registryHost) {
+            $sent[] = 'Authorization: Bearer ' . $this->token;
+        }
+
+        return $sent;
+    }
+
+    /**
+     * Where a redirect from $url leads: a path stays on $origin; anything
+     * else must name its own, and pass origin() on the next request.
+     *
+     * @param array<string, string> $responseHeaders
+     *
+     * @throws UiInstallException when the redirects have run out, or there is no Location
+     */
+    private function redirectTarget(string $url, string $origin, array $responseHeaders, int $redirects): string
+    {
+        if ($redirects >= self::MAX_REDIRECTS) {
+            throw new UiInstallException("{$this->shown($url)} redirects more than " . self::MAX_REDIRECTS . ' times.');
+        }
+
+        $location = $responseHeaders['location'] ?? throw new UiInstallException("{$this->shown($url)} redirects without a Location.");
+
+        return str_starts_with($location, '/') && !str_starts_with($location, '//') ? $origin . $location : $location;
+    }
+
+    /**
+     * Copies a final answer's body into $sink, refusing anything but a
+     * whole 200 body of at most $maxBytes.
+     *
+     * @param resource $body
+     * @param resource $sink
+     *
+     * @throws UiInstallException
+     */
+    private function receive(string $url, int $status, $body, $sink, int $maxBytes): void
+    {
+        if ($status !== 200) {
+            throw new UiInstallException("{$this->shown($url)} answered HTTP {$status}.");
+        }
+
+        $copied = stream_copy_to_stream($body, $sink, $maxBytes + 1);
+
+        if ($copied === false || !feof($body) && $copied <= $maxBytes) {
+            throw new UiInstallException("Could not read {$this->shown($url)} whole.");
+        }
+
+        if ($copied > $maxBytes) {
+            throw new UiInstallException("{$this->shown($url)} is larger than {$maxBytes} bytes.");
         }
     }
 
@@ -190,8 +230,9 @@ final readonly class HttpsTarballSource implements UiTarballSource
     private function shown(string $url): string
     {
         $query = strpos($url, '?');
+        $withoutQuery = $query === false ? $url : substr($url, 0, $query);
 
-        return json_encode($query === false ? $url : substr($url, 0, $query), JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE) ?: '"?"';
+        return json_encode($withoutQuery, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE) ?: '"?"';
     }
 
     /**
@@ -225,7 +266,7 @@ final readonly class HttpsTarballSource implements UiTarballSource
         if ($stream === false) {
             $host = parse_url($url, PHP_URL_HOST);
 
-            throw new \RuntimeException('Could not connect to ' . (is_string($host) ? $host : 'the registry') . ' over verified TLS.');
+            throw new UiInstallException('Could not connect to ' . (is_string($host) ? $host : 'the registry') . ' over verified TLS.');
         }
 
         stream_set_timeout($stream, self::TIMEOUT);

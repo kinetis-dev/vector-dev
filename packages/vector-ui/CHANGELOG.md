@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.3] - 2026-11-08
+
+### Changed
+
+- The key-value cell and input show a nested object or array as JSON
+  instead of `[object Object]`.
+- Clears SonarQube findings: the relation
+  field and relation panel mark their unawaited loads with `void`; a save
+  started with the form's Ctrl/Cmd+S shortcut now reports its failure; the queue
+  overview's clear-failure message and the extension loader are
+  restructured; the queue scalar type has an alias; and the job page uses
+  an optional chain.
+
 ## [0.12.2] - 2026-11-08
 
 ### Changed

@@ -98,3 +98,12 @@ export function currencyLabel(code: string, locale: string | undefined = formatL
     const name = names.of(code)
     return name && name !== code ? `${code} · ${name}` : code
 }
+
+/** A value as text for a cell or an input: '' when unset, JSON for an object or array, `String` for a primitive. */
+export function displayValue(value: unknown): string {
+    if (value === null || value === undefined) return ''
+    if (typeof value === 'object') return JSON.stringify(value)
+    if (typeof value === 'string') return value
+    if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value)
+    return ''
+}

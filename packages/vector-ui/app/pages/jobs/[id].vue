@@ -23,7 +23,7 @@ onMounted(async () => {
 })
 
 useHead({ title: () => (job.value ? t('jobs.detail.pageTitle', { id: job.value.id }) : t('jobs.detail.fallbackTitle')) })
-const percent = computed(() => (job.value && job.value.total ? Math.min(100, (job.value.processed / job.value.total) * 100) : null))
+const percent = computed(() => (job.value?.total ? Math.min(100, (job.value.processed / job.value.total) * 100) : null))
 </script>
 
 <template>

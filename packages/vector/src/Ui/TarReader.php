@@ -44,6 +44,10 @@ final readonly class TarReader
     /** A pax header or a GNU long name is metadata: a few KiB, never a file's worth. */
     private const int MAX_METADATA = 64 * 1024;
 
+    private const string ENTRY = 'The archive entry ';
+
+    private const string ENDS_INSIDE_ENTRY = 'The archive ends inside an entry.';
+
     /**
      * Extracts the bundle in the gzip-compressed tar $archive into $dest,
      * an existing empty directory.
@@ -51,7 +55,7 @@ final readonly class TarReader
      * @return list<string> the files written, relative to $dest
      *
      * @throws \UnexpectedValueException when the archive is refused
-     * @throws \RuntimeException when a file cannot be read or written
+     * @throws UiInstallException when a file cannot be read or written
      */
     public function extract(string $archive, string $dest): array
     {
@@ -77,17 +81,7 @@ final readonly class TarReader
         $paxPath = null;
         $paxSize = null;
 
-        while (true) {
-            $header = $in->read(self::BLOCK);
-
-            if (strlen($header) < self::BLOCK) {
-                throw new \UnexpectedValueException('The archive ends inside a header.');
-            }
-
-            if ($header === str_repeat("\0", self::BLOCK)) {
-                break;
-            }
-
+        while (($header = self::header($in)) !== null) {
             if (++$entries > self::MAX_ENTRIES) {
                 throw new \UnexpectedValueException('The archive has more than ' . self::MAX_ENTRIES . ' entries.');
             }
@@ -97,79 +91,151 @@ final readonly class TarReader
             $size = $paxSize ?? self::octal(substr($header, 124, 12), 'size');
 
             if ($type === 'x' || $type === 'g' || $type === 'L') {
-                if ($longName !== null || $paxPath !== null || $paxSize !== null) {
-                    // one metadata header per entry; a second could override what the first was checked for
-                    throw new \UnexpectedValueException('The archive stacks metadata headers.');
-                }
-
-                if ($size > self::MAX_METADATA) {
-                    throw new \UnexpectedValueException('The archive has an oversized metadata header.');
-                }
-
-                $data = self::data($in, $size);
-
-                if ($type === 'L') {
-                    $longName = rtrim($data, "\0");
-                } elseif ($type === 'x') {
-                    [$paxPath, $paxSize] = self::pax($data);
-                }
+                [$longName, $paxPath, $paxSize] = self::metadata($in, $type, $size, $longName !== null || $paxPath !== null || $paxSize !== null);
 
                 continue;
             }
 
             $name = $longName ?? $paxPath ?? self::headerName($header);
             $longName = $paxPath = $paxSize = null;
+            $path = self::entryPath($name, $type, $size, $seen);
+            $relative = self::bundlePath($path);
 
-            if ($type !== '0' && $type !== "\0" && $type !== '5') {
-                throw new \UnexpectedValueException('The archive entry ' . self::printable($name) . ' is ' . self::typeName($type) . '; only files and directories are accepted.');
-            }
-
-            $path = self::path($name, $type === '5');
-
-            if ($type === '5' && $size !== 0) {
-                throw new \UnexpectedValueException('The archive directory ' . self::printable($path) . ' carries data.');
-            }
-
-            if (isset($seen[$path])) {
-                throw new \UnexpectedValueException('The archive lists ' . self::printable($path) . ' twice.');
-            }
-
-            $seen[$path] = true;
-
-            if (!str_starts_with($path . '/', self::PREFIX) || $path . '/' === self::PREFIX) {
-                if (!str_starts_with($path, 'package/') && $path !== 'package') {
-                    throw new \UnexpectedValueException('The archive entry ' . self::printable($path) . ' is outside package/.');
-                }
-
+            if ($relative === null) {
                 self::skip($in, $size);
-
-                continue;
-            }
-
-            $relative = substr($path, strlen(self::PREFIX));
-
-            if ($type === '5') {
+            } elseif ($type === '5') {
                 self::directory("{$dest}/{$relative}");
-
-                continue;
+            } else {
+                $total = self::extractFile($in, $dest, $relative, $size, $total);
+                $written[] = $relative;
             }
-
-            if ($size > self::MAX_ENTRY) {
-                throw new \UnexpectedValueException("The archive file {$relative} is larger than " . self::MAX_ENTRY . ' bytes.');
-            }
-
-            $total += $size;
-
-            if ($total > self::MAX_TOTAL) {
-                throw new \UnexpectedValueException('The archive extracts to more than ' . self::MAX_TOTAL . ' bytes.');
-            }
-
-            self::directory(dirname("{$dest}/{$relative}"));
-            self::file($in, "{$dest}/{$relative}", $size);
-            $written[] = $relative;
         }
 
         return $written;
+    }
+
+    /**
+     * The next header block, or null at the zero block that ends the archive.
+     *
+     * @throws \UnexpectedValueException when the archive ends inside a header
+     */
+    private static function header(GunzipStream $in): ?string
+    {
+        $header = $in->read(self::BLOCK);
+
+        if (strlen($header) < self::BLOCK) {
+            throw new \UnexpectedValueException('The archive ends inside a header.');
+        }
+
+        return $header === str_repeat("\0", self::BLOCK) ? null : $header;
+    }
+
+    /**
+     * Reads a metadata entry — pax (`x`, `g`) or GNU long name (`L`) — and
+     * answers the long name, pax path and pax size it sets for the next
+     * entry. A `g` header's records are read past.
+     *
+     * @param bool $pending whether an earlier metadata header already set something for the next entry
+     * @return array{?string, ?string, ?int}
+     *
+     * @throws \UnexpectedValueException when metadata headers stack, or one is oversized or malformed
+     */
+    private static function metadata(GunzipStream $in, string $type, int $size, bool $pending): array
+    {
+        if ($pending) {
+            // one metadata header per entry; a second could override what the first was checked for
+            throw new \UnexpectedValueException('The archive stacks metadata headers.');
+        }
+
+        if ($size > self::MAX_METADATA) {
+            throw new \UnexpectedValueException('The archive has an oversized metadata header.');
+        }
+
+        $data = self::data($in, $size);
+
+        if ($type === 'L') {
+            return [rtrim($data, "\0"), null, null];
+        }
+
+        if ($type === 'x') {
+            return [null, ...self::pax($data)];
+        }
+
+        return [null, null, null];
+    }
+
+    /**
+     * The checked path of a file or directory entry, recorded in $seen.
+     *
+     * @param array<string, true> $seen every path seen so far
+     *
+     * @throws \UnexpectedValueException when the entry is neither file nor directory, its path is
+     *     refused, a directory carries data, or the path was seen before
+     */
+    private static function entryPath(string $name, string $type, int $size, array &$seen): string
+    {
+        if ($type !== '0' && $type !== "\0" && $type !== '5') {
+            throw new \UnexpectedValueException(self::ENTRY . self::printable($name) . ' is ' . self::typeName($type) . '; only files and directories are accepted.');
+        }
+
+        $path = self::path($name, $type === '5');
+
+        if ($type === '5' && $size !== 0) {
+            throw new \UnexpectedValueException('The archive directory ' . self::printable($path) . ' carries data.');
+        }
+
+        if (isset($seen[$path])) {
+            throw new \UnexpectedValueException('The archive lists ' . self::printable($path) . ' twice.');
+        }
+
+        $seen[$path] = true;
+
+        return $path;
+    }
+
+    /**
+     * $path relative to PREFIX, or null when it is a `package/*` entry
+     * outside the bundle, to be read past.
+     *
+     * @throws \UnexpectedValueException when $path is outside package/
+     */
+    private static function bundlePath(string $path): ?string
+    {
+        if (str_starts_with($path . '/', self::PREFIX) && $path . '/' !== self::PREFIX) {
+            return substr($path, strlen(self::PREFIX));
+        }
+
+        if (!str_starts_with($path, 'package/') && $path !== 'package') {
+            throw new \UnexpectedValueException(self::ENTRY . self::printable($path) . ' is outside package/.');
+        }
+
+        return null;
+    }
+
+    /**
+     * Writes a bundle file under $dest, held to the per-entry and total limits.
+     *
+     * @return int the bytes written so far, this file's included
+     *
+     * @throws \UnexpectedValueException when a limit is passed or the archive ends inside the file
+     * @throws UiInstallException when the file cannot be written
+     */
+    private static function extractFile(GunzipStream $in, string $dest, string $relative, int $size, int $total): int
+    {
+        if ($size > self::MAX_ENTRY) {
+            throw new \UnexpectedValueException("The archive file {$relative} is larger than " . self::MAX_ENTRY . ' bytes.');
+        }
+
+        $total += $size;
+
+        if ($total > self::MAX_TOTAL) {
+            throw new \UnexpectedValueException('The archive extracts to more than ' . self::MAX_TOTAL . ' bytes.');
+        }
+
+        self::directory(dirname("{$dest}/{$relative}"));
+        self::file($in, "{$dest}/{$relative}", $size);
+
+        return $total;
     }
 
     /**
@@ -284,20 +350,20 @@ final readonly class TarReader
         }
 
         if (str_starts_with($path, '/')) {
-            throw new \UnexpectedValueException('The archive entry ' . self::printable($path) . ' is an absolute path.');
+            throw new \UnexpectedValueException(self::ENTRY . self::printable($path) . ' is an absolute path.');
         }
 
         if (str_contains($path, '\\')) {
-            throw new \UnexpectedValueException('The archive entry ' . self::printable($path) . ' holds a backslash.');
+            throw new \UnexpectedValueException(self::ENTRY . self::printable($path) . ' holds a backslash.');
         }
 
         foreach (explode('/', $path) as $segment) {
             if ($segment === '..') {
-                throw new \UnexpectedValueException('The archive entry ' . self::printable($path) . ' climbs out with "..".');
+                throw new \UnexpectedValueException(self::ENTRY . self::printable($path) . ' climbs out with "..".');
             }
 
             if ($segment === '' || $segment === '.') {
-                throw new \UnexpectedValueException('The archive entry ' . self::printable($path) . ' has an empty or "." segment.');
+                throw new \UnexpectedValueException(self::ENTRY . self::printable($path) . ' has an empty or "." segment.');
             }
         }
 
@@ -328,7 +394,7 @@ final readonly class TarReader
         $data = $in->read($size);
 
         if (strlen($data) < $size) {
-            throw new \UnexpectedValueException('The archive ends inside an entry.');
+            throw new \UnexpectedValueException(self::ENDS_INSIDE_ENTRY);
         }
 
         self::padding($in, $size);
@@ -343,7 +409,7 @@ final readonly class TarReader
             $chunk = min($left, 65536);
 
             if (strlen($in->read($chunk)) < $chunk) {
-                throw new \UnexpectedValueException('The archive ends inside an entry.');
+                throw new \UnexpectedValueException(self::ENDS_INSIDE_ENTRY);
             }
         }
 
@@ -355,7 +421,7 @@ final readonly class TarReader
         $padding = (self::BLOCK - $size % self::BLOCK) % self::BLOCK;
 
         if (strlen($in->read($padding)) < $padding) {
-            throw new \UnexpectedValueException('The archive ends inside an entry.');
+            throw new \UnexpectedValueException(self::ENDS_INSIDE_ENTRY);
         }
     }
 
@@ -367,7 +433,7 @@ final readonly class TarReader
         }
 
         if (!@mkdir($dir, 0755, true) && !is_dir($dir)) {
-            throw new \RuntimeException("Could not create {$dir}.");
+            throw new UiInstallException("Could not create {$dir}.");
         }
 
         chmod($dir, 0755);
@@ -379,7 +445,7 @@ final readonly class TarReader
         $out = @fopen($path, 'x');
 
         if ($out === false) {
-            throw new \RuntimeException("Could not create {$path}.");
+            throw new UiInstallException("Could not create {$path}.");
         }
 
         try {
@@ -388,11 +454,11 @@ final readonly class TarReader
                 $bytes = $in->read($chunk);
 
                 if (strlen($bytes) < $chunk) {
-                    throw new \UnexpectedValueException('The archive ends inside an entry.');
+                    throw new \UnexpectedValueException(self::ENDS_INSIDE_ENTRY);
                 }
 
                 if (fwrite($out, $bytes) !== $chunk) {
-                    throw new \RuntimeException("Could not write {$path}.");
+                    throw new UiInstallException("Could not write {$path}.");
                 }
             }
         } finally {

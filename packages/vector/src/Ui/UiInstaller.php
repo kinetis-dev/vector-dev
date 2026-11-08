@@ -36,7 +36,7 @@ final readonly class UiInstaller
      *
      * @throws \UnexpectedValueException when the stage is refused, or a directory of the
      *     target is a link or leads outside it; nothing was written
-     * @throws \RuntimeException when the target cannot be written
+     * @throws UiInstallException when the target cannot be written
      */
     public function install(string $stage, string $target, ?string $expectedVersion): HostedBundle
     {
@@ -51,7 +51,7 @@ final readonly class UiInstaller
         $root = realpath($target);
 
         if ($root === false) {
-            throw new \RuntimeException("Could not resolve {$target}.");
+            throw new UiInstallException("Could not resolve {$target}.");
         }
 
         $previous = HostedBundle::read("{$root}/" . HostedBundle::MANIFEST);
@@ -101,14 +101,14 @@ final readonly class UiInstaller
     /**
      * A new directory under the system's temporary one, 0700.
      *
-     * @throws \RuntimeException when it cannot be made
+     * @throws UiInstallException when it cannot be made
      */
     public static function tempDir(string $purpose): string
     {
         $dir = sys_get_temp_dir() . "/vector-ui-{$purpose}-" . bin2hex(random_bytes(8));
 
         if (!@mkdir($dir, 0700) || !chmod($dir, 0700)) {
-            throw new \RuntimeException("Could not create a private temporary directory under " . sys_get_temp_dir() . '.');
+            throw new UiInstallException("Could not create a private temporary directory under " . sys_get_temp_dir() . '.');
         }
 
         return $dir;
@@ -206,7 +206,7 @@ final readonly class UiInstaller
         if (!copy($source, $temporary) || !chmod($temporary, 0644)) {
             @unlink($temporary);
 
-            throw new \RuntimeException("Could not write {$destination}.");
+            throw new UiInstallException("Could not write {$destination}.");
         }
 
         self::confine($root, $path);
@@ -214,7 +214,7 @@ final readonly class UiInstaller
         if (!rename($temporary, $destination)) {
             @unlink($temporary);
 
-            throw new \RuntimeException("Could not write {$destination}.");
+            throw new UiInstallException("Could not write {$destination}.");
         }
 
         if ($this->placed !== null) {
@@ -253,7 +253,7 @@ final readonly class UiInstaller
     private static function directory(string $dir): void
     {
         if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
-            throw new \RuntimeException("Could not create {$dir}.");
+            throw new UiInstallException("Could not create {$dir}.");
         }
     }
 }
