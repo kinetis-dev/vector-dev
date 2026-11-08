@@ -10,8 +10,8 @@
 # floating minor tag, so a build cannot fall back to an older patch:
 # at least 8.4.27 on 8.4 and 8.5.12 on 8.5 (the CI matrix builds both).
 ARG PHP_VERSION=8.4.27
-ARG FRANKENPHP_VERSION=1.13.2
-ARG PIE_VERSION=1.5.2
+ARG FRANKENPHP_VERSION=1.13.5
+ARG PIE_VERSION=1.5.5
 
 # PIE's binary-only image (ghcr.io/php/pie:<version>-bin), pinned rather
 # than the floating `bin` tag. php-extensions.sh runs with it bind-mounted
