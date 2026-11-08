@@ -69,7 +69,7 @@ async function load(target: number = page.value) {
     }
 }
 
-watch(() => props.record.id, () => { page.value = 1; load() })
+watch(() => props.record.id, () => { page.value = 1; void load() })
 // the table resets the page it pages itself on a new sort; an uncounted panel pages here
 watch(sortBy, () => { if (total.value === null) page.value = 1 }, { deep: true, flush: 'sync' })
 

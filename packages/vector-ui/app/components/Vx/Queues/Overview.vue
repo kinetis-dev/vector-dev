@@ -100,13 +100,18 @@ async function clear(queue: string) {
         notifications.success(t('queues.overview.cleared', { queue, count: cleared }))
     } catch (caught) {
         const status = queueErrorStatus(caught)
-        notifications.error(status === 409
-            ? t('queues.overview.clearUnsupported', { queue })
-            : status === 422 ? t('queues.overview.clearInvalid', { queue, detail: vectorErrorMessage(caught) }) : describeQueueError(caught))
+        notifications.error(clearFailure(caught, queue, status))
     } finally {
         acting.value = null
     }
     void refresh()
+}
+
+/** The message for a clear the server refused: 409 and 422 have their own, anything else is described generally. */
+function clearFailure(caught: unknown, queue: string, status: number | null): string {
+    if (status === 409) return t('queues.overview.clearUnsupported', { queue })
+    if (status === 422) return t('queues.overview.clearInvalid', { queue, detail: vectorErrorMessage(caught) })
+    return describeQueueError(caught)
 }
 </script>
 

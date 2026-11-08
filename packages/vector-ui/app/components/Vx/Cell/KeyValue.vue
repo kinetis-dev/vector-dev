@@ -3,7 +3,7 @@
 // as a two-column table on a record.
 const props = defineProps<{ value: unknown, context: 'index' | 'show' }>()
 const entries = computed(() => (props.value && typeof props.value === 'object' && !Array.isArray(props.value)
-    ? Object.entries(props.value as Record<string, unknown>).map(([key, value]) => [key, String(value ?? '')] as const)
+    ? Object.entries(props.value as Record<string, unknown>).map(([key, value]) => [key, displayValue(value)] as const)
     : []))
 const { t } = useVectorT()
 </script>

@@ -29,8 +29,15 @@ export function loadVectorExtensions(options: ExtensionLoaderOptions): Promise<v
     const imports = options.initial.map(url => options.importModule(url))
 
     return options.initial
-        .reduce<Promise<void>>((previous, url, index) => previous.then(() => imports[index]!
-            .then(module => options.run(module, url))
-            .catch(error => console.error(`Vector extension ${url} failed to load`, error))), Promise.resolve())
+        .reduce<Promise<void>>((previous, url, index) => previous.then(() => runExtension(options, url, imports[index]!)), Promise.resolve())
         .then(() => { options.ready.value = true })
+}
+
+/** Runs one extension once its import has settled; a failure is logged, never thrown. */
+async function runExtension(options: ExtensionLoaderOptions, url: string, imported: Promise<unknown>): Promise<void> {
+    try {
+        options.run(await imported, url)
+    } catch (error) {
+        console.error(`Vector extension ${url} failed to load`, error)
+    }
 }
