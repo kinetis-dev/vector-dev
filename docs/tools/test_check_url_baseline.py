@@ -158,7 +158,7 @@ def parse(html):
     return parser
 
 
-# pydata 0.23.0's shape, as the theme renders it.
+# pydata 0.24.0's shape, as the theme renders it.
 PYDATA_PAGE = """<!DOCTYPE html>
 <html><head><title>Guide - Kinetis</title></head>
 <body>
