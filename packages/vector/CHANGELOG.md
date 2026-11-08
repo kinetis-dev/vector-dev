@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The check that a repeater row is an object of field values is split in
   two, so Psalm 7.1 no longer reads the row as an empty array after it.
   The rows it accepts and the `type_mismatch` it reports are unchanged.
+- `vector:install-ui` installs `@kinetis/vector-ui` 0.12.1 by default,
+  the release that requires Tiptap `^3.33.0`.
 
 ## [0.14.0] - 2026-11-03
 
