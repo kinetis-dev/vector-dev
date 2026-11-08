@@ -34,7 +34,7 @@
         "psr/http-message": "^2.0"
     },
     "require-dev": {
-        "infection/infection": "^0.35.9",
+        "infection/infection": "^0.35.10",
         "kinetis/mcp-docs": "^1.9.4",
         "kinetis/mcp-protocol": "^1.1.2",
         "kinetis/orbitron": "^1.11.5",
