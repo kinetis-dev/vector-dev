@@ -46,6 +46,23 @@ on the private `storage` volume, shared by `app`, `worker` and
 volume too, so one browser session holds on both ports. Request bodies
 may be up to 12 MB (`MAX_BODY_SIZE` and nginx's `client_max_body_size`).
 
+The databases are PostgreSQL 18, MySQL 9.7 and Redis 8, each on its own
+named volume. A stack created on PostgreSQL 17 or MySQL 8.4 holds data
+the new servers cannot take over: PostgreSQL 18 does not open a 17 data
+directory and keeps its data under `/var/lib/postgresql` rather than
+`/var/lib/postgresql/data`, and once MySQL 9.7 has upgraded a data
+directory in place, 8.4 cannot open it again. Redis 8 reads Redis 7's
+data as it is. The demo's data is seeded, so recreate the two database
+volumes and seed again:
+
+```console
+docker compose rm --stop --force postgres mysql
+docker volume rm vector_postgres vector_mysql
+docker compose up --build -d
+docker compose exec app vendor/bin/kinetis migrate
+docker compose exec --user www-data app vendor/bin/kinetis demo:seed
+```
+
 A PHP change applies on the next request on `:8080`, and the admin UI
 hot-reloads. `:8081` keeps the code each worker thread booted with, so
 restart it after editing PHP, and after `vector:install-ui`:

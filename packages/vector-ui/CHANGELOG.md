@@ -5,6 +5,15 @@ All notable changes to `@kinetis/vector-ui` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.1] - 2026-11-08
+
+### Changed
+
+- The Tiptap dependencies (`@tiptap/core`, `@tiptap/pm`, `@tiptap/vue-3`,
+  `@tiptap/starter-kit`, `@tiptap/markdown`, `@tiptap/suggestion` and the
+  image, link, mention, placeholder and table extensions) now require
+  `^3.33.0`, and `vue-i18n` `^11.4.18`.
+
 ## [0.12.0] - 2026-11-03
 
 ### Added

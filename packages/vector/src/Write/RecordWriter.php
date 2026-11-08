@@ -353,8 +353,14 @@ final readonly class RecordWriter
      */
     private function planRow(ResourceDescriptor $form, string $name, int $index, mixed $row, array $existing, array $currentOf, array &$kept): array
     {
-        if (!is_array($row) || ($row !== [] && array_is_list($row))) {
-            return [null, [new Violation([$name, $index], 'type_mismatch', 'must be an object of field values.')]];
+        $notAnObject = [null, [new Violation([$name, $index], 'type_mismatch', 'must be an object of field values.')]];
+
+        if (!is_array($row)) {
+            return $notAnObject;
+        }
+
+        if ($row !== [] && array_is_list($row)) {
+            return $notAnObject;
         }
 
         $id = is_int($row['id'] ?? null) || (is_string($row['id'] ?? null) && $row['id'] !== '') ? (string) $row['id'] : null;
