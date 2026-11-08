@@ -45,75 +45,18 @@ final readonly class FailedJobFilter
     public static function fromQueryParams(array $params, QueueNames $queues): self
     {
         $violations = [];
-
-        foreach (array_keys($params) as $key) {
-            if (!in_array($key, self::PARAMETERS, true)) {
-                $violations[] = new Violation([(string) $key], 'unknown_parameter', 'is not a filter; the filters are ' . implode(', ', self::PARAMETERS) . '.');
-            }
-        }
-
-        $string = static function (string $key) use ($params, &$violations): ?string {
-            $value = $params[$key] ?? null;
-
-            if ($value === null || $value === '') {
-                return null;
-            }
-
-            if (!is_string($value)) {
-                $violations[] = new Violation([$key], 'type_mismatch', 'must be a single value.');
-
-                return null;
-            }
-
-            return $value;
-        };
-
-        $queue = $string('queue');
-
-        if ($queue !== null && !$queues->has($queue)) {
-            $violations[] = new Violation(['queue'], 'invalid_choice', 'is not a queue this dashboard watches.', ['choices' => $queues->names]);
-            $queue = null;
-        }
-
-        $class = $string('class');
-
-        if ($class !== null) {
-            $class = ltrim($class, '\\');
-
-            if (strlen($class) > 255 || preg_match(self::CLASS_NAME, $class) !== 1) {
-                $violations[] = new Violation(['class'], 'invalid_format', 'must be a fully-qualified class name.');
-                $class = null;
-            }
-        }
-
-        $from = self::timestamp('failedFrom', $string('failedFrom'), $violations);
-        $to = self::timestamp('failedTo', $string('failedTo'), $violations);
+        QueryParameters::rejectUnknown($params, self::PARAMETERS, 'is not a filter; the filters are ', $violations);
+        $queue = QueryParameters::queue($params, $queues, $violations);
+        $class = QueryParameters::className($params, $violations);
+        $from = self::timestamp('failedFrom', QueryParameters::string($params, 'failedFrom', $violations), $violations);
+        $to = self::timestamp('failedTo', QueryParameters::string($params, 'failedTo', $violations), $violations);
 
         if ($from !== null && $to !== null && $from > $to) {
             $violations[] = new Violation(['failedTo'], 'out_of_range', 'must not be before failedFrom.');
         }
 
-        $limit = self::DEFAULT_LIMIT;
-        $rawLimit = $string('limit');
-
-        if ($rawLimit !== null) {
-            if (preg_match('/^[1-9]\d{0,5}$/D', $rawLimit) !== 1 || (int) $rawLimit > self::MAX_LIMIT) {
-                $violations[] = new Violation(['limit'], 'out_of_range', 'must be a whole number from 1 to ' . self::MAX_LIMIT . '.');
-            } else {
-                $limit = (int) $rawLimit;
-            }
-        }
-
-        $after = null;
-        $cursor = $string('cursor');
-
-        if ($cursor !== null) {
-            $after = self::decodeCursor($cursor);
-
-            if ($after === null) {
-                $violations[] = new Violation(['cursor'], 'invalid_format', 'is not a cursor this endpoint returned.');
-            }
-        }
+        $limit = self::limit(QueryParameters::string($params, 'limit', $violations), $violations);
+        $after = self::cursor(QueryParameters::string($params, 'cursor', $violations), $violations);
 
         if ($violations !== []) {
             throw ValidationException::fromViolations($violations);
@@ -126,6 +69,47 @@ final readonly class FailedJobFilter
     public static function encodeCursor(int $failedAt, string $id): string
     {
         return rtrim(strtr(base64_encode(json_encode([$failedAt, $id], JSON_THROW_ON_ERROR)), '+/', '-_'), '=');
+    }
+
+    /**
+     * The page size: DEFAULT_LIMIT when $value is absent.
+     *
+     * @param list<Violation> $violations
+     */
+    private static function limit(?string $value, array &$violations): int
+    {
+        if ($value === null) {
+            return self::DEFAULT_LIMIT;
+        }
+
+        if (preg_match('/^[1-9]\d{0,5}$/D', $value) === 1 && (int) $value <= self::MAX_LIMIT) {
+            return (int) $value;
+        }
+
+        $violations[] = new Violation(['limit'], 'out_of_range', 'must be a whole number from 1 to ' . self::MAX_LIMIT . '.');
+
+        return self::DEFAULT_LIMIT;
+    }
+
+    /**
+     * The record a cursor continues after, or null when there is none.
+     *
+     * @param list<Violation> $violations
+     * @return array{failedAt: int, id: string}|null
+     */
+    private static function cursor(?string $value, array &$violations): ?array
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $after = self::decodeCursor($value);
+
+        if ($after === null) {
+            $violations[] = new Violation(['cursor'], 'invalid_format', 'is not a cursor this endpoint returned.');
+        }
+
+        return $after;
     }
 
     /** @return array{failedAt: int, id: string}|null */

@@ -28,7 +28,7 @@ final class GunzipStream
     private bool $ended = false;
 
     /**
-     * @throws \RuntimeException when the file cannot be opened
+     * @throws UiInstallException when the file cannot be opened
      */
     public function __construct(string $path, private readonly int $maxBytes)
     {
@@ -36,7 +36,7 @@ final class GunzipStream
         $inflate = inflate_init(ZLIB_ENCODING_GZIP);
 
         if ($file === false || $inflate === false) {
-            throw new \RuntimeException("Could not open {$path}.");
+            throw new UiInstallException("Could not open {$path}.");
         }
 
         $this->file = $file;
