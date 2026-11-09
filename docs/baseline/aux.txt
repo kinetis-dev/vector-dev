@@ -3,3 +3,4 @@
 llms.txt keep
 robots.txt remove
 404.html remove
+_sources remove

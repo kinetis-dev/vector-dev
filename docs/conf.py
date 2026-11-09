@@ -60,6 +60,16 @@ def setup(app):
 
     lexers["php"] = PhpLexer(startinline=True)
 
+    # html_copy_source = False still leaves an empty _sources/ behind;
+    # remove it so the build output matches what is published.
+    def remove_empty_sources(app, exception):
+        if exception is None:
+            sources = os.path.join(app.outdir, "_sources")
+            if os.path.isdir(sources) and not os.listdir(sources):
+                os.rmdir(sources)
+
+    app.connect("build-finished", remove_empty_sources)
+
 # -- HTML output -------------------------------------------------------------
 
 html_theme = "kinetis_website_theme"
@@ -73,6 +83,12 @@ html_extra_path = ["_extra"]
 # No html_logo or html_favicon: the theme supplies the navbar logo and
 # the links to kinetis-website's own /assets/favicon.* files.
 html_title = "Kinetis Vector"
+# No _sources/: Sphinx's plain-text page copies were being indexed by
+# search engines, and nothing links to them (search is Pagefind). The
+# deploy's `s3 sync --delete` then removes the published copies, and
+# aux.txt marks _sources as remove so they cannot come back.
+html_copy_source = False
+html_show_sourcelink = False
 
 # The deployed URL, used for sitemap.xml, canonical links and Open Graph
 # URLs. VECTOR_DOCS_BASEURL overrides it for another host or prefix.
