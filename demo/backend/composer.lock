@@ -1230,22 +1230,22 @@
         },
         {
             "name": "kinetis/auth-jwt",
-            "version": "v1.5.3",
+            "version": "v1.5.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/auth-jwt.git",
-                "reference": "7e0e8a80df551ad4d2cea846590913931798cb74"
+                "reference": "ba48384c3bc17293ad7ca6902500cb4fb504329b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/auth-jwt/zipball/7e0e8a80df551ad4d2cea846590913931798cb74",
-                "reference": "7e0e8a80df551ad4d2cea846590913931798cb74",
+                "url": "https://api.github.com/repos/kinetis-dev/auth-jwt/zipball/ba48384c3bc17293ad7ca6902500cb4fb504329b",
+                "reference": "ba48384c3bc17293ad7ca6902500cb4fb504329b",
                 "shasum": ""
             },
             "require": {
                 "ext-openssl": "*",
                 "firebase/php-jwt": "^7.1.0",
-                "kinetis/framework": "^1.24.3",
+                "kinetis/framework": "^1.25.0",
                 "nyholm/psr7": "^1.8.2",
                 "php": "^8.4",
                 "psr/http-message": "^2.0",
@@ -1279,9 +1279,9 @@
             "description": "Stateless JWT authentication middleware for Kinetis (HS256/RS256, optional per-token revocation), verifying signed tokens via firebase/php-jwt. See kinetis/auth instead for opaque Bearer-token validation against your own storage.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/auth-jwt/issues",
-                "source": "https://github.com/kinetis-dev/auth-jwt/tree/v1.5.3"
+                "source": "https://github.com/kinetis-dev/auth-jwt/tree/v1.5.4"
             },
-            "time": "2026-11-02T22:37:56+00:00"
+            "time": "2026-11-09T20:29:43+00:00"
         },
         {
             "name": "kinetis/authorization",
@@ -1456,16 +1456,16 @@
         },
         {
             "name": "kinetis/framework",
-            "version": "v1.24.3",
+            "version": "v1.28.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/framework.git",
-                "reference": "13c41c6d678c8aaff515596a2a525da83d0d5484"
+                "reference": "d98baecad7c5dc361ff122c8775062f91f12faa3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/framework/zipball/13c41c6d678c8aaff515596a2a525da83d0d5484",
-                "reference": "13c41c6d678c8aaff515596a2a525da83d0d5484",
+                "url": "https://api.github.com/repos/kinetis-dev/framework/zipball/d98baecad7c5dc361ff122c8775062f91f12faa3",
+                "reference": "d98baecad7c5dc361ff122c8775062f91f12faa3",
                 "shasum": ""
             },
             "require": {
@@ -1518,9 +1518,9 @@
             "description": "The Runtime-Aware PHP Framework",
             "support": {
                 "issues": "https://github.com/kinetis-dev/framework/issues",
-                "source": "https://github.com/kinetis-dev/framework/tree/v1.24.3"
+                "source": "https://github.com/kinetis-dev/framework/tree/v1.28.0"
             },
-            "time": "2026-11-02T22:37:56+00:00"
+            "time": "2026-11-15T01:03:50+00:00"
         },
         {
             "name": "kinetis/mcp",
