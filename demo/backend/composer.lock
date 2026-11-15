@@ -1686,29 +1686,29 @@
         },
         {
             "name": "kinetis/orm",
-            "version": "v1.13.2",
+            "version": "v1.13.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/orm.git",
-                "reference": "697781b12285fde794fafdeea0a0a72ce592fefa"
+                "reference": "2d1666d0546277190e2066e4b06490490e8f08f4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/orm/zipball/697781b12285fde794fafdeea0a0a72ce592fefa",
-                "reference": "697781b12285fde794fafdeea0a0a72ce592fefa",
+                "url": "https://api.github.com/repos/kinetis-dev/orm/zipball/2d1666d0546277190e2066e4b06490490e8f08f4",
+                "reference": "2d1666d0546277190e2066e4b06490490e8f08f4",
                 "shasum": ""
             },
             "require": {
                 "kinetis/persistence": "^1.4.6",
-                "kinetis/query-builder": "^1.8.3",
+                "kinetis/query-builder": "^1.8.4",
                 "php": "^8.4"
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
-                "kinetis/database-bridge": "^1.4.3",
-                "kinetis/framework": "^1.24.3",
-                "kinetis/queue": "^1.9.1",
-                "kinetis/queue-sql": "^1.6.8",
+                "kinetis/database-bridge": "^1.4.4",
+                "kinetis/framework": "^1.25.0",
+                "kinetis/queue": "^1.9.2",
+                "kinetis/queue-sql": "^1.6.9",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
                 "vimeo/psalm": "^7.0"
@@ -1734,22 +1734,22 @@
             "description": "A data mapper over kinetis/query-builder: attributed plain PHP entities compiled into portable metadata, typed repositories and entity queries, constructor-free hydration, explicit belongs-to, has-one, has-many and many-to-many relationships loaded eagerly through batched secondary queries, owned relationships that persist, reorder and remove a whole aggregate as one graph, owning join collections that write their join table as part of it, a unit of work with an identity map, snapshot change tracking and a dependency-ordered transactional flush, factory-owned transaction sessions with locking entity reads, and per-entity connection affinity with one factory and one manager per connection. Usable standalone; kinetis/database-bridge wires it into Kinetis.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/orm/issues",
-                "source": "https://github.com/kinetis-dev/orm/tree/v1.13.2"
+                "source": "https://github.com/kinetis-dev/orm/tree/v1.13.3"
             },
-            "time": "2026-11-02T22:37:56+00:00"
+            "time": "2026-11-09T20:29:43+00:00"
         },
         {
             "name": "kinetis/persistence",
-            "version": "v1.4.6",
+            "version": "v1.4.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/persistence.git",
-                "reference": "0be5663c4e9e9d37e09ef2ec587dd3887c35025a"
+                "reference": "b938b9ab38345c28deea6c987e4e44f65bb9e1cf"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/persistence/zipball/0be5663c4e9e9d37e09ef2ec587dd3887c35025a",
-                "reference": "0be5663c4e9e9d37e09ef2ec587dd3887c35025a",
+                "url": "https://api.github.com/repos/kinetis-dev/persistence/zipball/b938b9ab38345c28deea6c987e4e44f65bb9e1cf",
+                "reference": "b938b9ab38345c28deea6c987e4e44f65bb9e1cf",
                 "shasum": ""
             },
             "require": {
@@ -1759,7 +1759,7 @@
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
-                "kinetis/framework": "^1.24.3",
+                "kinetis/framework": "^1.27.1",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
                 "vimeo/psalm": "^7.0"
@@ -1789,22 +1789,22 @@
             "description": "Runtime-matched MySQL and Postgres clients (mysqli async, ext-pgsql async, PDO) built from a neutral connection definition, with a transaction safety net and injectable SQL instrumentation. Usable standalone; kinetis/database-bridge wires it into Kinetis.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/persistence/issues",
-                "source": "https://github.com/kinetis-dev/persistence/tree/v1.4.6"
+                "source": "https://github.com/kinetis-dev/persistence/tree/v1.4.7"
             },
-            "time": "2026-11-02T22:37:56+00:00"
+            "time": "2026-11-11T19:18:15+00:00"
         },
         {
             "name": "kinetis/query-builder",
-            "version": "v1.8.3",
+            "version": "v1.8.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/query-builder.git",
-                "reference": "4f15eaa1eb395e2e40e2522ee83138d12f665381"
+                "reference": "72cac331f4867c552647577d818a519585323e9c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/query-builder/zipball/4f15eaa1eb395e2e40e2522ee83138d12f665381",
-                "reference": "4f15eaa1eb395e2e40e2522ee83138d12f665381",
+                "url": "https://api.github.com/repos/kinetis-dev/query-builder/zipball/72cac331f4867c552647577d818a519585323e9c",
+                "reference": "72cac331f4867c552647577d818a519585323e9c",
                 "shasum": ""
             },
             "require": {
@@ -1813,7 +1813,7 @@
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
-                "kinetis/framework": "^1.24.3",
+                "kinetis/framework": "^1.25.0",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
                 "vimeo/psalm": "^7.0"
@@ -1839,9 +1839,9 @@
             "description": "A thin, parameterized SQL query builder over kinetis/persistence's MySQL and Postgres drivers, with portable row-to-DTO mapping and pagination envelopes. Usable standalone. Not an ORM: no relationships, no migrations, no change-tracking.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/query-builder/issues",
-                "source": "https://github.com/kinetis-dev/query-builder/tree/v1.8.3"
+                "source": "https://github.com/kinetis-dev/query-builder/tree/v1.8.4"
             },
-            "time": "2026-11-02T22:37:56+00:00"
+            "time": "2026-11-09T20:29:43+00:00"
         },
         {
             "name": "kinetis/queue",
