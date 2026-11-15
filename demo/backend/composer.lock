@@ -833,16 +833,16 @@
         },
         {
             "name": "amphp/socket",
-            "version": "v2.4.1",
+            "version": "v2.4.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/amphp/socket.git",
-                "reference": "b347be5aff6b2cc025208bb4d896607eb470c018"
+                "reference": "6e881835c73b75a0a4251a7f58441bc90b9f6c8a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/amphp/socket/zipball/b347be5aff6b2cc025208bb4d896607eb470c018",
-                "reference": "b347be5aff6b2cc025208bb4d896607eb470c018",
+                "url": "https://api.github.com/repos/amphp/socket/zipball/6e881835c73b75a0a4251a7f58441bc90b9f6c8a",
+                "reference": "6e881835c73b75a0a4251a7f58441bc90b9f6c8a",
                 "shasum": ""
             },
             "require": {
@@ -905,7 +905,7 @@
             ],
             "support": {
                 "issues": "https://github.com/amphp/socket/issues",
-                "source": "https://github.com/amphp/socket/tree/v2.4.1"
+                "source": "https://github.com/amphp/socket/tree/v2.4.2"
             },
             "funding": [
                 {
@@ -913,7 +913,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-08-22T18:13:20+00:00"
+            "time": "2026-11-11T03:42:20+00:00"
         },
         {
             "name": "amphp/sync",
@@ -1456,16 +1456,16 @@
         },
         {
             "name": "kinetis/framework",
-            "version": "v1.24.3",
+            "version": "v1.28.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/framework.git",
-                "reference": "13c41c6d678c8aaff515596a2a525da83d0d5484"
+                "reference": "d98baecad7c5dc361ff122c8775062f91f12faa3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/framework/zipball/13c41c6d678c8aaff515596a2a525da83d0d5484",
-                "reference": "13c41c6d678c8aaff515596a2a525da83d0d5484",
+                "url": "https://api.github.com/repos/kinetis-dev/framework/zipball/d98baecad7c5dc361ff122c8775062f91f12faa3",
+                "reference": "d98baecad7c5dc361ff122c8775062f91f12faa3",
                 "shasum": ""
             },
             "require": {
@@ -1518,9 +1518,9 @@
             "description": "The Runtime-Aware PHP Framework",
             "support": {
                 "issues": "https://github.com/kinetis-dev/framework/issues",
-                "source": "https://github.com/kinetis-dev/framework/tree/v1.24.3"
+                "source": "https://github.com/kinetis-dev/framework/tree/v1.28.0"
             },
-            "time": "2026-11-02T22:37:56+00:00"
+            "time": "2026-11-15T01:03:50+00:00"
         },
         {
             "name": "kinetis/mcp",
@@ -1845,20 +1845,20 @@
         },
         {
             "name": "kinetis/queue",
-            "version": "v1.9.1",
+            "version": "v1.10.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/queue.git",
-                "reference": "97f3a40b6eb8be45c3c5e16d5c24c998e6ca80be"
+                "reference": "ce9294487b1af5dc4990846f9cd9a11c6385a43a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/queue/zipball/97f3a40b6eb8be45c3c5e16d5c24c998e6ca80be",
-                "reference": "97f3a40b6eb8be45c3c5e16d5c24c998e6ca80be",
+                "url": "https://api.github.com/repos/kinetis-dev/queue/zipball/ce9294487b1af5dc4990846f9cd9a11c6385a43a",
+                "reference": "ce9294487b1af5dc4990846f9cd9a11c6385a43a",
                 "shasum": ""
             },
             "require": {
-                "kinetis/framework": "^1.24.3",
+                "kinetis/framework": "^1.28.0",
                 "php": "^8.4",
                 "psr/container": "^2.0.2",
                 "psr/log": "^3.0.2",
@@ -1898,9 +1898,9 @@
             "description": "A backend-agnostic background job queue for Kinetis — no fluent job-scheduling DSL. Redis, SQL, SQS, and RabbitMQ backends each live in their own separate package.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/queue/issues",
-                "source": "https://github.com/kinetis-dev/queue/tree/v1.9.1"
+                "source": "https://github.com/kinetis-dev/queue/tree/v1.10.2"
             },
-            "time": "2026-11-02T22:37:56+00:00"
+            "time": "2026-11-15T01:03:50+00:00"
         },
         {
             "name": "kinetis/queue-failed-jobs",
@@ -1962,23 +1962,23 @@
         },
         {
             "name": "kinetis/queue-redis",
-            "version": "v1.8.4",
+            "version": "v1.8.5",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/queue-redis.git",
-                "reference": "90c0930c0d1c6baefccea61df86a79c8d819e4c7"
+                "reference": "9862bcf1e97edeefe5eed91d9e746719e26d2a9e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/queue-redis/zipball/90c0930c0d1c6baefccea61df86a79c8d819e4c7",
-                "reference": "90c0930c0d1c6baefccea61df86a79c8d819e4c7",
+                "url": "https://api.github.com/repos/kinetis-dev/queue-redis/zipball/9862bcf1e97edeefe5eed91d9e746719e26d2a9e",
+                "reference": "9862bcf1e97edeefe5eed91d9e746719e26d2a9e",
                 "shasum": ""
             },
             "require": {
                 "amphp/redis": "^2.0.4",
                 "amphp/socket": "^2.4.0",
-                "kinetis/framework": "^1.24.3",
-                "kinetis/queue": "^1.9.1",
+                "kinetis/framework": "^1.25.0",
+                "kinetis/queue": "^1.9.2",
                 "kinetis/redis": "^1.0.4",
                 "php": "^8.4"
             },
@@ -2009,9 +2009,9 @@
             "description": "A Redis-backed queue implementation for kinetis/queue's QueueInterface — finite leases over pending/leased/delayed keys, so a crashed worker's job is redelivered rather than stranded.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/queue-redis/issues",
-                "source": "https://github.com/kinetis-dev/queue-redis/tree/v1.8.4"
+                "source": "https://github.com/kinetis-dev/queue-redis/tree/v1.8.5"
             },
-            "time": "2026-11-02T22:37:56+00:00"
+            "time": "2026-11-09T20:29:43+00:00"
         },
         {
             "name": "kinetis/queue-sql",
