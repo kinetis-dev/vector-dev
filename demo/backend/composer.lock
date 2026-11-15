@@ -1456,16 +1456,16 @@
         },
         {
             "name": "kinetis/framework",
-            "version": "v1.24.3",
+            "version": "v1.27.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/framework.git",
-                "reference": "13c41c6d678c8aaff515596a2a525da83d0d5484"
+                "reference": "d4217fdca9dc06c97af545caecf740344ae1c766"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/framework/zipball/13c41c6d678c8aaff515596a2a525da83d0d5484",
-                "reference": "13c41c6d678c8aaff515596a2a525da83d0d5484",
+                "url": "https://api.github.com/repos/kinetis-dev/framework/zipball/d4217fdca9dc06c97af545caecf740344ae1c766",
+                "reference": "d4217fdca9dc06c97af545caecf740344ae1c766",
                 "shasum": ""
             },
             "require": {
@@ -1518,9 +1518,9 @@
             "description": "The Runtime-Aware PHP Framework",
             "support": {
                 "issues": "https://github.com/kinetis-dev/framework/issues",
-                "source": "https://github.com/kinetis-dev/framework/tree/v1.24.3"
+                "source": "https://github.com/kinetis-dev/framework/tree/v1.27.1"
             },
-            "time": "2026-11-02T22:37:56+00:00"
+            "time": "2026-11-11T19:18:15+00:00"
         },
         {
             "name": "kinetis/mcp",
