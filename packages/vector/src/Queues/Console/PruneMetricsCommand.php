@@ -6,6 +6,7 @@ namespace Kinetis\Vector\Queues\Console;
 
 use Kinetis\Console\Attributes\Command;
 use Kinetis\Console\CommandArguments;
+use Kinetis\Console\Output;
 use Kinetis\Vector\Queues\Metrics\JobMetricsStore;
 use Kinetis\Vector\Queues\Metrics\MetricsClock;
 
@@ -14,11 +15,8 @@ use Kinetis\Vector\Queues\Metrics\MetricsClock;
  * `--days=<n>` days ago (DEFAULT_DAYS when absent), and prints how many
  * it deleted. Nothing prunes the table on its own: run this from a
  * scheduler. Discovered from its #[Command] attribute under the
- * `extra.kinetis.scan` root, Kinetis\Vector\.
- *
- * $output and $errors are injectable (defaulting to STDOUT and STDERR)
- * for testability: a #[Command] method takes zero parameters or exactly
- * one CommandArguments.
+ * `extra.kinetis.scan` root, Kinetis\Vector\. The count goes to
+ * stdout, a refused --days to stderr.
  */
 final readonly class PruneMetricsCommand
 {
@@ -27,17 +25,10 @@ final readonly class PruneMetricsCommand
     /** A hundred years, as the failed-job prune endpoint caps its age. */
     private const int MAX_DAYS = 36_500;
 
-    /**
-     * Both are typed mixed because PHP has no native resource type.
-     *
-     * @param resource $output
-     * @param resource $errors
-     */
     public function __construct(
         private JobMetricsStore $store,
         private MetricsClock $clock,
-        private mixed $output = STDOUT,
-        private mixed $errors = STDERR,
+        private Output $output,
     ) {}
 
     #[Command('vector:queues:prune-metrics', description: 'Deletes queue metrics older than --days=<n> (7).')]
@@ -46,13 +37,13 @@ final readonly class PruneMetricsCommand
         $days = $arguments->hasOption('days') ? ($arguments->option('days') ?? '') : (string) self::DEFAULT_DAYS;
 
         if (preg_match('/^[1-9]\d{0,4}$/D', $days) !== 1 || (int) $days > self::MAX_DAYS) {
-            fwrite($this->errors, '--days needs a whole number of days from 1 to ' . self::MAX_DAYS . ", e.g. --days=7.\n");
+            $this->output->error('--days needs a whole number of days from 1 to ' . self::MAX_DAYS . ', e.g. --days=7.');
 
             return 1;
         }
 
         $deleted = $this->store->pruneBefore(JobMetricsStore::bucket($this->clock->now() - (int) $days * 86_400));
-        fwrite($this->output, "Deleted {$deleted} queue metric row(s) older than {$days} day(s).\n");
+        $this->output->line("Deleted {$deleted} queue metric row(s) older than {$days} day(s).");
 
         return 0;
     }

@@ -8,6 +8,7 @@ use Composer\InstalledVersions;
 use Kinetis\Config\Config;
 use Kinetis\Console\Attributes\Command;
 use Kinetis\Console\CommandArguments;
+use Kinetis\Console\Output;
 use Kinetis\Runtime\ProjectRoot;
 use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\Vector\Ui\HostedBundle;
@@ -32,11 +33,15 @@ use Kinetis\Vector\Ui\VectorUi;
  * `mysql` or `pgsql`. Nothing is overwritten; run `kinetis migrate`
  * afterwards. A named connection also needs `VECTOR_DB_CONNECTION=<name>`
  * in the application's configuration, which this command prints.
+ * Results go to stdout and refusals to stderr, through the Output the
+ * command runner binds.
  */
 final readonly class InstallCommand
 {
     /** The Composer package; the UI is the npm package UiPin::PACKAGE names. */
     public const string COMPOSER_PACKAGE = 'kinetis/vector';
+
+    public function __construct(private Output $output) {}
 
     #[Command('vector:install', description: "Publishes Vector's migrations. --connection=<name> puts Vector's tables on a named connection.", bootstrap: false)]
     public function install(CommandArguments $arguments): int
@@ -47,7 +52,7 @@ final readonly class InstallCommand
         try {
             $connection = self::connection($arguments);
         } catch (\InvalidArgumentException $e) {
-            fwrite(STDERR, $e->getMessage() . "\n");
+            $this->output->error($e->getMessage());
 
             return 2;
         }
@@ -56,9 +61,9 @@ final readonly class InstallCommand
         $dialect = $config->get($key);
 
         if (!in_array($dialect, ['mysql', 'pgsql'], true)) {
-            fwrite(STDERR, $dialect === null
-                ? "{$key} is not set, so the \"{$connection}\" connection's dialect is unknown. Configure the connection first.\n"
-                : "{$key} is \"{$dialect}\"; Vector supports mysql and pgsql.\n");
+            $this->output->error($dialect === null
+                ? "{$key} is not set, so the \"{$connection}\" connection's dialect is unknown. Configure the connection first."
+                : "{$key} is \"{$dialect}\"; Vector supports mysql and pgsql.");
 
             return 1;
         }
@@ -68,7 +73,7 @@ final readonly class InstallCommand
 
         foreach ([$migrations, $target] as $directory) {
             if (!self::directory($directory)) {
-                fwrite(STDERR, "Could not create {$directory}.\n");
+                $this->output->error("Could not create {$directory}.");
 
                 return 1;
             }
@@ -84,7 +89,7 @@ final readonly class InstallCommand
         $drift = self::uiDrift(VectorUi::directory($config, $root), UiPin::tryFromFile(UiPin::path()), self::devInstall());
 
         if ($drift !== null) {
-            echo $drift . "\n";
+            $this->output->line($drift);
         }
 
         return 0;
@@ -134,12 +139,12 @@ final readonly class InstallCommand
             $contents = file_get_contents($stub);
 
             if ($contents === false || file_put_contents($file, $contents) === false) {
-                fwrite(STDERR, "Could not write {$file}.\n");
+                $this->output->error("Could not write {$file}.");
 
                 return null;
             }
 
-            echo 'Published ' . substr($file, strlen($root) + 1) . "\n";
+            $this->output->line('Published ' . substr($file, strlen($root) + 1));
             $published++;
         }
 
@@ -154,20 +159,20 @@ final readonly class InstallCommand
     {
         $option = $connection === 'default' ? '' : " --connection={$connection}";
 
-        echo $published === 0
-            ? "Nothing to publish: every Vector migration is already present for the \"{$connection}\" connection.\n"
-            : "Run `vendor/bin/kinetis migrate{$option}` to apply.\n";
+        $this->output->line($published === 0
+            ? "Nothing to publish: every Vector migration is already present for the \"{$connection}\" connection."
+            : "Run `vendor/bin/kinetis migrate{$option}` to apply.");
 
         foreach ($this->otherPartitions($migrations, $connection) as $other) {
-            echo "Note: Vector's migrations are also published for the \"{$other}\" connection. Vector uses the one VECTOR_DB_CONNECTION names.\n";
+            $this->output->line("Note: Vector's migrations are also published for the \"{$other}\" connection. Vector uses the one VECTOR_DB_CONNECTION names.");
         }
 
         $configured = trim($config->string('VECTOR_DB_CONNECTION', ''));
 
         if (($configured === '' ? 'default' : $configured) !== $connection) {
-            echo $connection === 'default'
-                ? "Remove VECTOR_DB_CONNECTION (currently \"{$configured}\") so Vector uses the default connection.\n"
-                : "Set VECTOR_DB_CONNECTION={$connection} in the application's configuration so Vector uses these tables.\n";
+            $this->output->line($connection === 'default'
+                ? "Remove VECTOR_DB_CONNECTION (currently \"{$configured}\") so Vector uses the default connection."
+                : "Set VECTOR_DB_CONNECTION={$connection} in the application's configuration so Vector uses these tables.");
         }
     }
 

@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-16
+
+### Changed
+
+- Vector's console commands write through `Kinetis\Console\Output`, the
+  output the command runner binds (framework 1.27), instead of `echo`
+  and `fwrite()` to `STDOUT`/`STDERR`. Their messages, exit codes and
+  the stdout/stderr split are unchanged. This changes public
+  constructors:
+  - `ListCommand(ProjectRoot $projectRoot, Output $output)`: the
+    `$output` stream is now an `Output`.
+  - `PruneFilesCommand(FilePruner, VectorStorage, Output $output)`:
+    the `$output` and `$errors` streams become one `Output`.
+  - `Queues\Console\PruneMetricsCommand(JobMetricsStore, MetricsClock,
+    Output $output)`: the same.
+  - `InstallUiCommand(Output $output, ?UiTarballSource $source = null)`:
+    the same, and `$source` moves to the second position.
+  - `InstallCommand(Output $output)` and
+    `ReapJobsCommand(StalledJobs $stalled, Output $output)` gain an
+    `Output`.
+
+  Code that runs these commands through `vendor/bin/kinetis` is
+  unaffected. Code that constructs one directly passes an `Output`,
+  for instance `new Output($stdout, $stderr, false, false)`. A test can
+  use `TestApplication::command()` instead.
+- An empty `VECTOR_UI_DIR`, `VECTOR_LOGIN_URL` or `VECTOR_LOGOUT_URL`
+  (`KEY=`) falls back to its default, `public/vector/ui`, `/login` or
+  `/logout`, instead of an empty directory or URL. Every `VECTOR_*`
+  setting now treats an empty value as unset. Through framework 1.26's
+  `Config::string()` this also applies to `VECTOR_EXPORT_FORMATS`: an
+  empty value now offers the default `csv,xlsx` rather than CSV alone.
+  Set `VECTOR_EXPORT_FORMATS=csv` to offer only CSV.
+- Requires `kinetis/framework` ^1.28.0, `kinetis/mcp` ^1.9.0,
+  `kinetis/queue` ^1.10.2, `kinetis/migrations` ^1.5.0,
+  `kinetis/authorization` ^1.0.8, `kinetis/database-bridge` ^1.4.5,
+  `kinetis/orm` ^1.13.3, `kinetis/persistence` ^1.4.7 and
+  `kinetis/query-builder` ^1.8.4. The suggested
+  `kinetis/queue-failed-jobs` is ^1.2.0.
+- `vector:install-ui` installs `@kinetis/vector-ui` 0.12.4 by default,
+  the release built against Tiptap 3.33.1, vue-i18n 11.4.19 and
+  Vuetify 4.3.3.
+
 ## [0.14.3] - 2026-11-08
 
 ### Changed

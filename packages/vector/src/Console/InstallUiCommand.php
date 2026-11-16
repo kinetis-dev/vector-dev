@@ -7,6 +7,7 @@ namespace Kinetis\Vector\Console;
 use Kinetis\Config\Config;
 use Kinetis\Console\Attributes\Command;
 use Kinetis\Console\CommandArguments;
+use Kinetis\Console\Output;
 use Kinetis\Runtime\ProjectRoot;
 use Kinetis\Vector\Ui\HostedBundle;
 use Kinetis\Vector\Ui\HttpsTarballSource;
@@ -44,8 +45,9 @@ use Kinetis\Vector\Ui\VectorUi;
  * expected version, with no network: exit 0 in sync, 1 otherwise.
  * Exit codes: 0 done, 1 refused or failed, 2 a usage error.
  *
- * $output and $errors are injectable (defaulting to STDOUT and STDERR),
- * as is the registry source, for testability.
+ * Results go to stdout and refusals to stderr, through the Output the
+ * command runner binds. The registry source is injectable for
+ * testability.
  */
 final readonly class InstallUiCommand
 {
@@ -54,15 +56,11 @@ final readonly class InstallUiCommand
     private const string EXACT_VERSION = '/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/D';
 
     /**
-     * @param resource $output mixed, not resource, since PHP has no native
-     *     "resource" type and a readonly property requires one
-     * @param resource $errors the same, for refusals
      * @param ?UiTarballSource $source the registry; HttpsTarballSource on
      *     VECTOR_UI_REGISTRY unless a test gives another
      */
     public function __construct(
-        private mixed $output = STDOUT,
-        private mixed $errors = STDERR,
+        private Output $output,
         private ?UiTarballSource $source = null,
     ) {}
 
@@ -83,7 +81,8 @@ final readonly class InstallUiCommand
         $usage = self::usageProblem($arguments);
 
         if ($usage !== null) {
-            fwrite($this->errors, $usage . "\n" . self::USAGE . "\n");
+            $this->output->error($usage);
+            $this->output->error(self::USAGE);
 
             return 2;
         }
@@ -92,7 +91,7 @@ final readonly class InstallUiCommand
         $expected = $arguments->option('version') ?? UiPin::tryFromFile($pinFile)?->version;
 
         if ($expected === null) {
-            fwrite($this->errors, "No UI version is pinned: {$pinFile} is missing or malformed. Name one with --version=X.Y.Z.\n");
+            $this->output->error("No UI version is pinned: {$pinFile} is missing or malformed. Name one with --version=X.Y.Z.");
 
             return 1;
         }
@@ -108,7 +107,7 @@ final readonly class InstallUiCommand
                 ? $this->installFrom($from, $arguments->option('integrity'), $target, $expected, $devInstall)
                 : $this->installFromRegistry($config, $target, $expected, $devInstall, $arguments->hasOption('force'));
         } catch (\RuntimeException | \InvalidArgumentException $e) {
-            fwrite($this->errors, $e->getMessage() . "\n");
+            $this->output->error($e->getMessage());
 
             return 1;
         }
@@ -184,7 +183,7 @@ final readonly class InstallUiCommand
     private function check(string $target, string $expected, bool $devInstall): int
     {
         if (!is_file($target . '/' . HostedBundle::MANIFEST)) {
-            fwrite($this->errors, "{$target}: cannot verify: no " . HostedBundle::MANIFEST . ". Run `vendor/bin/kinetis vector:install-ui` to install " . UiPin::PACKAGE . " {$expected}.\n");
+            $this->output->error("{$target}: cannot verify: no " . HostedBundle::MANIFEST . ". Run `vendor/bin/kinetis vector:install-ui` to install " . UiPin::PACKAGE . " {$expected}.");
 
             return 1;
         }
@@ -192,12 +191,12 @@ final readonly class InstallUiCommand
         try {
             $bundle = HostedBundle::verify($target, UiInstaller::expectedFor($target, $expected, $devInstall));
         } catch (\UnexpectedValueException $e) {
-            fwrite($this->errors, $e->getMessage() . "\n");
+            $this->output->error($e->getMessage());
 
             return 1;
         }
 
-        fwrite($this->output, UiPin::PACKAGE . " {$bundle->version} in {$target} verifies against its " . HostedBundle::MANIFEST . " and is in sync.\n");
+        $this->output->line(UiPin::PACKAGE . " {$bundle->version} in {$target} verifies against its " . HostedBundle::MANIFEST . ' and is in sync.');
 
         return 0;
     }
@@ -218,7 +217,7 @@ final readonly class InstallUiCommand
         }
 
         if (!$force && $this->installed($target, $expected)) {
-            fwrite($this->output, UiPin::PACKAGE . " {$expected} is already installed in {$target} and verifies; nothing to do. --force reinstalls it.\n");
+            $this->output->line(UiPin::PACKAGE . " {$expected} is already installed in {$target} and verifies; nothing to do. --force reinstalls it.");
 
             return 0;
         }
@@ -300,7 +299,7 @@ final readonly class InstallUiCommand
     {
         $bundle = new UiInstaller()->install($stage, $target, UiInstaller::expectedFor($stage, $expected, $devInstall));
 
-        fwrite($this->output, 'Installed ' . UiPin::PACKAGE . " {$bundle->version} (" . count($bundle->files) . " files) into {$target}. Restart workers so they serve the new shell.\n");
+        $this->output->line('Installed ' . UiPin::PACKAGE . " {$bundle->version} (" . count($bundle->files) . " files) into {$target}. Restart workers so they serve the new shell.");
 
         return 0;
     }

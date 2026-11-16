@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Vector;
 
+use App\Tests\Fixtures\CommandOutput;
 use Kinetis\Console\CommandArguments;
 use Kinetis\Vector\Console\InstallCommand;
 use Kinetis\Vector\Ui\HostedBundle;
@@ -16,7 +17,8 @@ use PHPUnit\Framework\TestCase;
  * application it creates migrations/ rather than refusing, and it never
  * writes the hosted UI. It notes when the served UI (VECTOR_UI_DIR here)
  * is missing, unversioned or not the pinned release. No database: the
- * command touches files only, in a temporary project root.
+ * command touches files only, in a temporary project root. What it did
+ * goes to stdout, a refusal to stderr.
  */
 final class InstallCommandTest extends TestCase
 {
@@ -28,6 +30,8 @@ final class InstallCommandTest extends TestCase
 
     private string|false $uiDir;
 
+    private string|false $vectorConnection;
+
     protected function setUp(): void
     {
         $this->root = sys_get_temp_dir() . '/vector-install-' . bin2hex(random_bytes(6));
@@ -38,6 +42,8 @@ final class InstallCommandTest extends TestCase
         putenv('DB_CONNECTION=mysql');
         $this->uiDir = getenv('VECTOR_UI_DIR');
         putenv("VECTOR_UI_DIR={$this->root}/ui");
+        $this->vectorConnection = getenv('VECTOR_DB_CONNECTION');
+        putenv('VECTOR_DB_CONNECTION');
     }
 
     protected function tearDown(): void
@@ -45,6 +51,7 @@ final class InstallCommandTest extends TestCase
         $GLOBALS['_composer_bin_dir'] = $this->binDir;
         putenv($this->connection === false ? 'DB_CONNECTION' : 'DB_CONNECTION=' . $this->connection);
         putenv($this->uiDir === false ? 'VECTOR_UI_DIR' : 'VECTOR_UI_DIR=' . $this->uiDir);
+        putenv($this->vectorConnection === false ? 'VECTOR_DB_CONNECTION' : 'VECTOR_DB_CONNECTION=' . $this->vectorConnection);
 
         self::remove($this->root);
     }
@@ -67,14 +74,66 @@ final class InstallCommandTest extends TestCase
     }
 
     /**
-     * @return array{int, string}
+     * @param list<string> $argv
+     * @return array{int, string, string} the exit code, stdout and stderr
      */
-    private function install(): array
+    private function install(array $argv = []): array
     {
-        ob_start();
-        $status = new InstallCommand()->install(CommandArguments::parse([]));
+        $capture = new CommandOutput();
+        $status = new InstallCommand($capture->output)->install(CommandArguments::parse($argv));
 
-        return [$status, (string) ob_get_clean()];
+        return [$status, $capture->stdout(), $capture->stderr()];
+    }
+
+    public function testAFreshInstallSaysWhatItPublishedAndWhatToRunNext(): void
+    {
+        [$status, $output, $errors] = $this->install();
+
+        $expected = '';
+
+        foreach (glob(dirname((string) new \ReflectionClass(InstallCommand::class)->getFileName(), 3) . '/resources/migrations/*.mysql.stub') ?: [] as $stub) {
+            $expected .= 'Published migrations/' . basename($stub, '.mysql.stub') . ".php\n";
+        }
+
+        $pinned = UiPin::fromFile(UiPin::path())->version;
+        $expected .= "Run `vendor/bin/kinetis migrate` to apply.\n"
+            . "Note: no admin UI is installed in {$this->root}/ui. Run `vendor/bin/kinetis vector:install-ui` to install @kinetis/vector-ui {$pinned}, then restart workers.\n";
+
+        self::assertSame(0, $status);
+        self::assertStringStartsWith('Published migrations/', $expected);
+        self::assertSame($expected, $output);
+        self::assertSame('', $errors);
+
+        // a second run publishes nothing, and says so
+        [$status, $output] = $this->install();
+        self::assertSame(0, $status);
+        self::assertStringStartsWith("Nothing to publish: every Vector migration is already present for the \"default\" connection.\n", $output);
+    }
+
+    /**
+     * @return iterable<string, array{list<string>, ?string, int, string}>
+     */
+    public static function refusals(): iterable
+    {
+        yield '--connection without a value' => [['--connection'], 'mysql', 2, "--connection needs a value: --connection=<name>.\n"];
+        yield 'an unsupported dialect' => [[], 'sqlite', 1, "DB_CONNECTION is \"sqlite\"; Vector supports mysql and pgsql.\n"];
+        yield 'no dialect' => [[], null, 1, "DB_CONNECTION is not set, so the \"default\" connection's dialect is unknown. Configure the connection first.\n"];
+    }
+
+    /**
+     * @param list<string> $argv
+     */
+    #[DataProvider('refusals')]
+    public function testARefusalGoesToStderrAndPublishesNothing(array $argv, ?string $dialect, int $code, string $message): void
+    {
+        putenv($dialect === null ? 'DB_CONNECTION' : "DB_CONNECTION={$dialect}");
+
+        [$status, $output, $errors] = $this->install($argv);
+
+        self::assertSame($code, $status);
+        self::assertSame('', $output);
+        self::assertSame($message, $errors);
+        self::assertDirectoryDoesNotExist($this->root . '/migrations');
     }
 
     public function testAFreshApplicationGetsItsMigrationsDirectoryCreated(): void

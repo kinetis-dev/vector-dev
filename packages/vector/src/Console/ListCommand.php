@@ -6,6 +6,7 @@ namespace Kinetis\Vector\Console;
 
 use Kinetis\Cache\DiscoveryContext;
 use Kinetis\Console\Attributes\Command;
+use Kinetis\Console\Output;
 use Kinetis\Runtime\ProjectRoot;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Registry\SettingsDescriptor;
@@ -22,19 +23,14 @@ use Kinetis\Vector\Registry\VectorRegistry;
  * and every resource whatever its policy. What a given user sees is
  * `GET /vector/schema` or the MCP tool `vector_describe`.
  *
- * $output is injectable (defaulting to STDOUT) for testability against
- * php://memory — a #[Command] method must take zero parameters or
- * exactly one CommandArguments, so it can't be a run() parameter.
+ * Everything goes to stdout as exact bytes through Output::write(): its
+ * own table() has no multi-line cells, which an entry here can need.
  */
 final readonly class ListCommand
 {
-    /**
-     * @param resource $output mixed, not resource, since PHP has no native
-     *     "resource" type and a readonly property requires one
-     */
     public function __construct(
         private ProjectRoot $projectRoot,
-        private mixed $output = STDOUT,
+        private Output $output,
     ) {}
 
     #[Command('vector:list', description: 'Displays the resources, settings groups and dashboards Vector compiles', bootstrap: false)]
@@ -216,6 +212,6 @@ final readonly class ListCommand
 
     private function write(string $line): void
     {
-        fwrite($this->output, $line);
+        $this->output->write($line);
     }
 }

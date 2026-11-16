@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Vector;
 
-use Kinetis\Console\CommandArguments;
 use Kinetis\Persistence\Contract\MysqlLink;
 use Kinetis\QueryBuilder\Query;
-use Kinetis\Vector\Console\PruneFilesCommand;
 use Kinetis\Vector\Files\FilePruner;
 use Kinetis\Vector\Files\VectorStorage;
 
@@ -82,11 +80,13 @@ final class FilePruneTest extends VectorTestCase
             'changes' => json_encode(['imageKey' => ['from' => $inTheAudit, 'to' => $onARow]], JSON_THROW_ON_ERROR), 'created_at' => '2026-01-01 00:00:00',
         ]);
 
-        [$code, $output] = $this->prune();
+        [$code, $output, $errors] = $this->prune();
 
         self::assertSame(0, $code);
+        self::assertSame('', $errors);
         self::assertFalse($this->storage()->fileExists($unused), 'unused and past the grace period');
         self::assertStringContainsString("Deleted {$unused}\n", $output);
+        self::assertStringEndsWith(" unused upload(s) deleted.\n", $output);
 
         foreach ([$recent, $onARow, $onATrashedRow, $inADocument, $inTheAudit, $outside, $undeclared, $notIssued] as $kept) {
             self::assertTrue($this->storage()->fileExists($kept), "{$kept} is kept");
@@ -103,11 +103,12 @@ final class FilePruneTest extends VectorTestCase
     {
         $unused = $this->stored('vector/products/imageKey/' . self::hex() . '.png', ageHours: 25);
 
-        [$code, $output] = $this->prune('--dry-run');
+        [$code, $output, $errors] = $this->prune('--dry-run');
 
         self::assertSame(0, $code);
+        self::assertSame('', $errors);
         self::assertStringContainsString("Would delete {$unused}\n", $output);
-        self::assertStringContainsString('nothing was deleted', $output);
+        self::assertMatchesRegularExpression('/^\d+ unused upload\(s\) would be deleted; nothing was deleted \(--dry-run\)\.\n\z/m', $output);
         self::assertTrue($this->storage()->fileExists($unused));
     }
 
@@ -116,9 +117,10 @@ final class FilePruneTest extends VectorTestCase
         $unused = $this->stored('vector/products/imageKey/' . self::hex() . '.png', ageHours: 25);
 
         foreach (['--grace-hours=0', '--grace-hours=1.5', '--grace-hours=', '--grace-hours'] as $option) {
-            [$code, $output] = $this->prune($option);
+            [$code, $output, $errors] = $this->prune($option);
             self::assertSame(1, $code, $option);
-            self::assertStringContainsString('--grace-hours needs a whole number of hours', $output);
+            self::assertSame('', $output, $option);
+            self::assertSame("--grace-hours needs a whole number of hours, 1 or more: --grace-hours=24.\n", $errors, $option);
         }
 
         self::assertTrue($this->storage()->fileExists($unused));
@@ -231,25 +233,13 @@ final class FilePruneTest extends VectorTestCase
         return [$count, $told];
     }
 
-    /** @return array{int, string} the exit code and what the command wrote, refusals last */
+    /** @return array{int, string, string} the exit code, stdout and stderr, as `kinetis vector:files:prune` would give them */
     private function prune(string ...$argv): array
     {
-        $scope = $this->app->createRequestScope();
-        $pruner = $scope->get(FilePruner::class);
-        $storage = $scope->get(VectorStorage::class);
-        self::assertInstanceOf(FilePruner::class, $pruner);
-        self::assertInstanceOf(VectorStorage::class, $storage);
-        $output = fopen('php://memory', 'w+');
-        self::assertIsResource($output);
+        $result = $this->application->command('vector:files:prune', array_values($argv));
+        self::assertNull($result->exception);
 
-        $errors = fopen('php://memory', 'w+');
-        self::assertIsResource($errors);
-
-        $code = (new PruneFilesCommand($pruner, $storage, $output, $errors))->prune(CommandArguments::parse(array_values($argv)));
-        rewind($output);
-        rewind($errors);
-
-        return [$code, (string) stream_get_contents($output) . (string) stream_get_contents($errors)];
+        return [$result->exitCode, $result->output, $result->errorOutput];
     }
 
     private function stored(string $key, int $ageHours): string

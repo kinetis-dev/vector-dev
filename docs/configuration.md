@@ -9,7 +9,7 @@
 | `VECTOR_QUEUE_CONNECTION` | A named queue connection for Vector's jobs; its backend is `QUEUE_<NAME>_CONNECTION`. Unset, the application's queue. |
 | `VECTOR_STORAGE_CONNECTION` | A named storage connection (`FILESYSTEM_<NAME>_*`) for uploads. Unset, the application's `FilesystemOperator` (`FILESYSTEM_DRIVER`). See {doc}`files`. |
 | `VECTOR_CURRENCY` | The ISO 4217 code a `Currency` field starts from when it declares no `default()` (and allows the code). An invalid code stops the boot. |
-| `VECTOR_EXPORT_FORMATS` | The export formats offered, `csv,xlsx` by default. CSV is always offered; XLSX only where `openspout/openspout` and PHP's `zip` extension are installed and a queue runs Vector's jobs. An unknown format stops the boot. |
+| `VECTOR_EXPORT_FORMATS` | The export formats offered, `csv,xlsx` by default. CSV is always offered; XLSX only where `openspout/openspout` and PHP's `zip` extension are installed and a queue runs Vector's jobs. An unknown format stops the boot. An empty value is the default; `csv` offers CSV alone. |
 | `VECTOR_UI_DIR` | Where the hosted bundle lives, and where `vector:install-ui` installs it; `public/vector/ui` by default. |
 | `VECTOR_UI_REGISTRY` | The npm registry `vector:install-ui` downloads `@kinetis/vector-ui` from; `https://registry.npmjs.org` by default, `https://` only. See {doc}`deployment`. |
 | `VECTOR_UI_REGISTRY_TOKEN` | A bearer token for that registry, sent to its own host only and never printed. |
@@ -18,6 +18,10 @@
 | `VECTOR_UI_EXTENSIONS` | Comma-separated ES-module URLs the hosted admin imports after boot (see {doc}`customizing-the-ui`). Deployment configuration only. |
 | `VECTOR_SHELL_HEAD` | A raw fragment added before `</head>` of the hosted page; `{nonce}` is replaced. Deployment configuration only. |
 | `VECTOR_SHELL_CSP` | A Content Security Policy for the hosted page alone, sent instead of `SECURITY_CSP`; `{nonce}` is replaced per response. Unset, the application's policy applies, and the shell uses the nonce it put on the request. See {doc}`deployment`. |
+
+An empty value (`KEY=`, as a Compose passthrough such as
+`${VECTOR_LOGIN_URL:-}` writes it) counts as unset: the key takes its
+default.
 
 ## UI settings
 

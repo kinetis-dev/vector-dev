@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Vector;
 
+use App\Tests\Fixtures\CommandOutput;
 use Kinetis\Config\Config;
 use Kinetis\Console\CommandArguments;
 use Kinetis\Vector\Console\InstallUiCommand;
@@ -233,11 +234,10 @@ final class UiInstallerTest extends TestCase
     {
         $elsewhere = $this->work . '/elsewhere/ui';
         $from = $this->stage('0.11.0');
-        $output = self::memory();
-        $errors = self::memory();
+        $capture = new CommandOutput();
 
         try {
-            $status = new InstallUiCommand($output, $errors)->run(
+            $status = new InstallUiCommand($capture->output)->run(
                 CommandArguments::parse(["--from={$from}"]),
                 new Config(['VECTOR_UI_DIR' => $elsewhere]),
                 $this->work,
@@ -248,8 +248,7 @@ final class UiInstallerTest extends TestCase
             UiFixtures::remove($from);
         }
 
-        rewind($errors);
-        self::assertSame(0, $status, (string) stream_get_contents($errors));
+        self::assertSame(0, $status, $capture->stderr());
         self::assertSame('0.11.0', HostedBundle::verify($elsewhere, '0.11.0')->version);
         self::assertDirectoryDoesNotExist($this->target);
     }
@@ -258,13 +257,13 @@ final class UiInstallerTest extends TestCase
     {
         $this->install('0.11.0');
         $source = new FakeTarballSource();
-        $output = self::memory();
-        $command = new InstallUiCommand($output, self::memory(), $source);
+        $capture = new CommandOutput();
+        $command = new InstallUiCommand($capture->output, $source);
 
         self::assertSame(0, $command->run(CommandArguments::parse([]), new Config([]), $this->work, $this->pin('0.11.0'), false));
         self::assertSame([], $source->calls, 'no network access');
-        rewind($output);
-        self::assertStringContainsString('0.11.0 is already installed', (string) stream_get_contents($output));
+        self::assertStringContainsString('0.11.0 is already installed', $capture->stdout());
+        self::assertSame('', $capture->stderr());
 
         // --force goes to the registry, which here has nothing to give
         self::assertSame(1, $command->run(CommandArguments::parse(['--force']), new Config([]), $this->work, $this->pin('0.11.0'), false));
@@ -277,16 +276,10 @@ final class UiInstallerTest extends TestCase
         file_put_contents($this->target . '/_nuxt/shared.css', 'tampered');
         $source = new FakeTarballSource();
 
-        new InstallUiCommand(self::memory(), self::memory(), $source)
+        new InstallUiCommand(new CommandOutput()->output, $source)
             ->run(CommandArguments::parse([]), new Config([]), $this->work, $this->pin('0.11.0'), false);
 
         self::assertSame(['resolve @kinetis/vector-ui@0.11.0'], $source->calls);
-    }
-
-    /** @return resource */
-    private static function memory()
-    {
-        return fopen('php://memory', 'w+') ?: throw new \RuntimeException('No memory stream.');
     }
 
     private function pin(string $version): string
