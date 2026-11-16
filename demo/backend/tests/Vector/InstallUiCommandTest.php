@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Vector;
 
+use App\Tests\Fixtures\CommandOutput;
 use Kinetis\Config\Config;
 use Kinetis\Console\CommandArguments;
+use Kinetis\Testing\TestApplication;
 use Kinetis\Vector\Console\InstallUiCommand;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Ui\HostedBundle;
@@ -28,18 +30,13 @@ final class InstallUiCommandTest extends TestCase
 
     private string $target;
 
-    /** @var resource */
-    private $output;
-
-    /** @var resource */
-    private $errors;
+    private CommandOutput $capture;
 
     protected function setUp(): void
     {
         $this->work = UiFixtures::tempDir('install-ui');
         $this->target = $this->work . '/public/vector/ui';
-        $this->output = fopen('php://memory', 'w+') ?: throw new \RuntimeException('No memory stream.');
-        $this->errors = fopen('php://memory', 'w+') ?: throw new \RuntimeException('No memory stream.');
+        $this->capture = new CommandOutput();
         file_put_contents($this->work . '/ui.json', '{"package":"@kinetis/vector-ui","version":"0.11.0"}');
     }
 
@@ -54,22 +51,18 @@ final class InstallUiCommandTest extends TestCase
      */
     private function command(array $argv, ?UiTarballSource $source = null, array $config = [], bool $devInstall = false): int
     {
-        return new InstallUiCommand($this->output, $this->errors, $source)
+        return new InstallUiCommand($this->capture->output, $source)
             ->run(CommandArguments::parse($argv), new Config($config), $this->work, $this->work . '/ui.json', $devInstall);
     }
 
     private function stdout(): string
     {
-        rewind($this->output);
-
-        return (string) stream_get_contents($this->output);
+        return $this->capture->stdout();
     }
 
     private function stderr(): string
     {
-        rewind($this->errors);
-
-        return (string) stream_get_contents($this->errors);
+        return $this->capture->stderr();
     }
 
     /**
@@ -402,9 +395,28 @@ final class InstallUiCommandTest extends TestCase
         self::assertSame(2, $this->command($argv, $source));
 
         self::assertStringContainsString($message, $this->stderr());
-        self::assertStringContainsString('Usage: vector:install-ui', $this->stderr());
+        // the problem on one line, the usage on the next, nothing on stdout
+        self::assertMatchesRegularExpression('/\A[^\n]+\nUsage: vector:install-ui [^\n]+\n\z/', $this->stderr());
+        self::assertSame('', $this->stdout());
         self::assertSame([], $source->calls);
         $this->assertNothingInstalled();
+    }
+
+    /** As `kinetis vector:install-ui` runs it: built by the container, the Output the runner binds. */
+    public function testTheDiscoveredCommandWritesAUsageErrorToStderr(): void
+    {
+        $application = TestApplication::boot(dirname(__DIR__, 2));
+
+        try {
+            $result = $application->command('vector:install-ui', ['stray']);
+        } finally {
+            $application->dispose();
+        }
+
+        self::assertNull($result->exception);
+        self::assertSame(2, $result->exitCode);
+        self::assertSame('', $result->output);
+        self::assertStringStartsWith("vector:install-ui takes no positional argument.\nUsage: vector:install-ui ", $result->errorOutput);
     }
 
     /**
