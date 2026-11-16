@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-11-16
+
+### Changed
+
+- `vector:install-ui` installs `@kinetis/vector-ui` 0.12.5 by default,
+  the release built against Tiptap 3.34.0.
+
 ## [0.15.0] - 2026-11-16
 
 ### Changed
