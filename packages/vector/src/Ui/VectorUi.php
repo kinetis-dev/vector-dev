@@ -40,13 +40,13 @@ final readonly class VectorUi
     ) {}
 
     /**
-     * The served directory: `VECTOR_UI_DIR` when set, else
+     * The served directory: `VECTOR_UI_DIR` when set and not empty, else
      * `public/vector/ui` under the project root. `vector:install-ui`
      * installs into it.
      */
     public static function directory(Config $config, string $projectRoot): string
     {
-        return $config->get('VECTOR_UI_DIR') ?? $projectRoot . '/public' . self::PATH;
+        return $config->string('VECTOR_UI_DIR', $projectRoot . '/public' . self::PATH);
     }
 
     /**
@@ -75,8 +75,8 @@ final readonly class VectorUi
 
         return new self(
             $html === false ? null : $html,
-            $config->get('VECTOR_LOGIN_URL') ?? '/login',
-            $config->get('VECTOR_LOGOUT_URL') ?? '/logout',
+            $config->string('VECTOR_LOGIN_URL', '/login'),
+            $config->string('VECTOR_LOGOUT_URL', '/logout'),
             $dir,
             $config->string('VECTOR_SHELL_HEAD', ''),
             $csp === '' ? null : $csp,

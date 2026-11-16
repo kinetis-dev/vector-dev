@@ -8,6 +8,7 @@ use Kinetis\Config\Config;
 use Kinetis\Vector\Ui\HostedBundle;
 use Kinetis\Vector\Ui\UiPin;
 use Kinetis\Vector\Ui\VectorUi;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -86,5 +87,43 @@ final class VectorUiTest extends TestCase
         self::assertSame($dir, $ui->publishedDir);
         self::assertSame('0.9.0', $ui->installedUiVersion);
         self::assertSame(UiPin::fromFile(UiPin::path())->version, $ui->expectedUiVersion, 'the package\'s own pin by default');
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function emptySettings(): iterable
+    {
+        yield 'VECTOR_UI_DIR' => ['VECTOR_UI_DIR'];
+        yield 'VECTOR_LOGIN_URL' => ['VECTOR_LOGIN_URL'];
+        yield 'VECTOR_LOGOUT_URL' => ['VECTOR_LOGOUT_URL'];
+    }
+
+    /**
+     * `KEY=` is unset, as a Compose passthrough such as
+     * `VECTOR_LOGIN_URL: ${VECTOR_LOGIN_URL:-}` writes it: the setting
+     * falls back to its default rather than to an empty URL or directory.
+     */
+    #[DataProvider('emptySettings')]
+    public function testAnEmptySettingFallsBackToItsDefault(string $key): void
+    {
+        UiFixtures::bundle($this->root . '/public/vector/ui', '0.10.0');
+        $config = new Config([$key => '']);
+
+        $ui = VectorUi::fromConfig($config, $this->root, $this->pin('{}'));
+
+        self::assertSame('/login', $ui->loginUrl);
+        self::assertSame('/logout', $ui->logoutUrl);
+        self::assertSame($this->root . '/public/vector/ui', $ui->publishedDir);
+        self::assertSame($this->root . '/public/vector/ui', VectorUi::directory($config, $this->root));
+        self::assertSame('0.10.0', $ui->installedUiVersion, 'read from the default directory');
+    }
+
+    public function testTheLoginAndLogoutUrlsAreTheConfiguredOnes(): void
+    {
+        $ui = VectorUi::fromConfig(new Config(['VECTOR_LOGIN_URL' => '/sso/start', 'VECTOR_LOGOUT_URL' => '/sso/end']), $this->root, $this->pin('{}'));
+
+        self::assertSame('/sso/start', $ui->loginUrl);
+        self::assertSame('/sso/end', $ui->logoutUrl);
     }
 }
