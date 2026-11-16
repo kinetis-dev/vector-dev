@@ -2,10 +2,6 @@
 
 ## Environment keys
 
-An empty value (`KEY=`, as a Compose passthrough such as
-`${VECTOR_LOGIN_URL:-}` writes it) counts as unset: the key takes its
-default.
-
 | Key | Meaning |
 |---|---|
 | `VECTOR_DB_CONNECTION` | The connection Vector's own tables live on; `default` when unset. See {doc}`databases`. |
@@ -22,6 +18,10 @@ default.
 | `VECTOR_UI_EXTENSIONS` | Comma-separated ES-module URLs the hosted admin imports after boot (see {doc}`customizing-the-ui`). Deployment configuration only. |
 | `VECTOR_SHELL_HEAD` | A raw fragment added before `</head>` of the hosted page; `{nonce}` is replaced. Deployment configuration only. |
 | `VECTOR_SHELL_CSP` | A Content Security Policy for the hosted page alone, sent instead of `SECURITY_CSP`; `{nonce}` is replaced per response. Unset, the application's policy applies, and the shell uses the nonce it put on the request. See {doc}`deployment`. |
+
+An empty value (`KEY=`, as a Compose passthrough such as
+`${VECTOR_LOGIN_URL:-}` writes it) counts as unset: the key takes its
+default.
 
 ## UI settings
 

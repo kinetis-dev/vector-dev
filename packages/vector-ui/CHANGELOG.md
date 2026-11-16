@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.4] - 2026-11-16
+
+### Changed
+
+- The Tiptap dependencies (`@tiptap/core`, `@tiptap/pm`, `@tiptap/vue-3`,
+  `@tiptap/starter-kit`, `@tiptap/markdown`, `@tiptap/suggestion` and the
+  image, link, mention, placeholder and table extensions) now require
+  `^3.33.1`, and `vue-i18n` `^11.4.19`. The `vuetify` peer range is
+  unchanged; the package is built and tested against 4.3.3.
+
 ## [0.12.3] - 2026-11-08
 
 ### Changed

@@ -45,6 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `kinetis/orm` ^1.13.3, `kinetis/persistence` ^1.4.7 and
   `kinetis/query-builder` ^1.8.4. The suggested
   `kinetis/queue-failed-jobs` is ^1.2.0.
+- `vector:install-ui` installs `@kinetis/vector-ui` 0.12.4 by default,
+  the release built against Tiptap 3.33.1, vue-i18n 11.4.19 and
+  Vuetify 4.3.3.
 
 ## [0.14.3] - 2026-11-08
 
