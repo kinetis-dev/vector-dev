@@ -94,8 +94,9 @@ background jobs, `ActorResolverInterface`.
 
 ## Configuration
 
-Read from the environment (or `.env`) via `Kinetis\Config`. The
-essential keys:
+Read from the environment (or `.env`) via `Kinetis\Config`; an empty
+value (`KEY=`) counts as unset and takes the default. The essential
+keys:
 
 | Key | Default | Purpose |
 |---|---|---|
@@ -120,7 +121,8 @@ vendor/bin/kinetis vector:install-ui    # the hosted admin UI, then restart the 
 ```
 
 Requires PHP 8.4+ with `ext-zlib` and `ext-openssl`, and
-[`kinetis/framework`](https://github.com/kinetis-dev/framework).
+[`kinetis/framework`](https://github.com/kinetis-dev/framework) 1.28 or
+later.
 `vector:install-ui` downloads the `@kinetis/vector-ui` release this
 package pins (`resources/ui.json`) from the npm registry and checks it
 against the registry's sha512 integrity; `--from=<tgz>
