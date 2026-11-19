@@ -12,6 +12,8 @@ use Kinetis\Orm\Metadata\MetadataRegistry;
 use Kinetis\Vector\Attributes\Resource;
 use Kinetis\Vector\Attributes\Dashboard;
 use Kinetis\Vector\Attributes\Settings;
+use Kinetis\Vector\Attributes\ShellContributor;
+use Kinetis\Vector\Http\ShellContributorInterface;
 use Kinetis\Vector\Exception\ResourceCompileException;
 use Kinetis\Vector\Settings\SettingsGroup;
 use Kinetis\Vector\Widgets\VectorDashboard;
@@ -29,7 +31,8 @@ use ReflectionClass;
  */
 final readonly class VectorRegistry implements CacheableDiscoveryInterface
 {
-    public const int VERSION = 5;
+    public const int VERSION = 6;
+
 
     /** @var array<string, ResourceDescriptor> */
     private array $descriptors;
@@ -38,7 +41,7 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
     private array $settings;
 
     /**
-     * @param array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>} $data
+     * @param array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>, contributors: array<string, class-string<ShellContributorInterface>>} $data
      */
     private function __construct(private array $data)
     {
@@ -69,6 +72,7 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
         $classes = [];
         $groups = [];
         $dashboards = [];
+        $contributors = [];
 
         foreach ([
             ...$context->projectClasses(),
@@ -91,6 +95,11 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
 
                 $dashboards[$class] = true;
             }
+
+            // a contributor may also be something else (a settings group, say): it is looked at on its own
+            if ($reflection->getAttributes(ShellContributor::class) !== []) {
+                $contributors[] = $class;
+            }
         }
 
         $metadata = MetadataRegistry::fromArray($context->compiled(OrmMetadata::class));
@@ -107,6 +116,7 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
             'resources' => $resources,
             'settings' => SettingsCompiler::compile($groupClasses, $resources),
             'dashboards' => WidgetCompiler::dashboards($dashboardClasses),
+            'contributors' => ContributorCompiler::compile($contributors),
         ];
     }
 
@@ -121,14 +131,38 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
             throw InvalidCacheArtifactException::malformedEntry('VectorRegistry', 'no resources, settings or dashboards map');
         }
 
+        // compile() always writes it; a hand-built registry may leave it out
+        $data['contributors'] ??= [];
+
+        if (!is_array($data['contributors'])) {
+            throw InvalidCacheArtifactException::malformedEntry('VectorRegistry', 'a malformed shell contributor map');
+        }
+
+        foreach ($data['contributors'] as $name => $class) {
+            if (!is_string($name) || preg_match(ShellContributor::NAME, $name) !== 1 || !is_string($class)) {
+                throw InvalidCacheArtifactException::malformedEntry('VectorRegistry', 'a malformed shell contributor entry');
+            }
+        }
+
         foreach ($data['resources'] as $slug => $resource) {
             if (!is_string($slug) || !is_array($resource) || ($resource['slug'] ?? null) !== $slug || !is_array($resource['fields'] ?? null)) {
                 throw InvalidCacheArtifactException::malformedEntry('VectorRegistry', 'a malformed resource entry');
             }
         }
 
-        /** @var array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>} $data */
+        /** @var array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>, contributors: array<string, class-string<ShellContributorInterface>>} $data */
         return new self($data);
+    }
+
+    /**
+     * The #[ShellContributor] classes, keyed by the capability name each
+     * publishes under, ordered by name.
+     *
+     * @return array<string, class-string<ShellContributorInterface>>
+     */
+    public function contributors(): array
+    {
+        return $this->data['contributors'];
     }
 
     /** @return array<string, array<string, mixed>> name => compiled dashboard, `main` first */
@@ -158,7 +192,7 @@ final readonly class VectorRegistry implements CacheableDiscoveryInterface
         return $this->settings[$name] ?? throw ResourceNotFoundException::slug("settings/{$name}");
     }
 
-    /** @return array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>} */
+    /** @return array{version: int, resources: array<string, array<string, mixed>>, settings: array<string, array<string, mixed>>, dashboards: array<string, array<string, mixed>>, contributors: array<string, class-string<ShellContributorInterface>>} */
     public function toArray(): array
     {
         return $this->data;

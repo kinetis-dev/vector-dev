@@ -21,6 +21,7 @@
         "kinetis/framework": "^1.28.0",
         "kinetis/mcp": "^1.9.0",
         "kinetis/migrations": "^1.5.0",
+        "kinetis/neuron": "^1.1",
         "kinetis/orm": "^1.13.3",
         "kinetis/query-builder": "^1.8.4",
         "kinetis/queue": "^1.10.2",
@@ -29,7 +30,8 @@
         "kinetis/queue-sql": "^1.6.12",
         "kinetis/session": "^1.4.0",
         "kinetis/storage": "^1.2.8",
-        "kinetis/vector": "dev-main",
+        "kinetis/vector": "dev-main as 0.16.0",
+        "kinetis/vector-ai": "dev-main",
         "openspout/openspout": "^5.13",
         "psr/http-message": "^2.0"
     },
@@ -74,8 +76,8 @@
         ]
     },
     "scripts-descriptions": {
-        "phpstan": "PHPStan at level 8 with the Kinetis rules, over the demo, packages/vector/src and the tests, with the 1G memory limit the analysis needs",
-        "psalm": "Psalm, types and taints in one run, over the demo, packages/vector/src and the migrations; writes psalm.sarif",
+        "phpstan": "PHPStan at level 8 with the Kinetis rules and Neuron's worker rule, over the demo, packages/vector/src, packages/vector-ai/src and the tests, with the 1G memory limit the analysis needs",
+        "psalm": "Psalm, types and taints in one run, over the demo, packages/vector/src, packages/vector-ai/src and the migrations; writes psalm.sarif",
         "infection": "Mutation testing over the demo's src/, gated on its measured MSI; on worker 1's stores",
         "infection:vector": "Mutation testing over Vector's Registry and Query on four workers; run infection:workers first",
         "infection:queues": "Mutation testing over Vector's queue dashboard (packages/vector/src/Queues) on four workers; run infection:workers first",
@@ -97,6 +99,16 @@
             "options": {
                 "versions": {
                     "kinetis/vector": "dev-main"
+                }
+            }
+        },
+        {
+            "name": "vector-ai",
+            "type": "path",
+            "url": "../../packages/vector-ai",
+            "options": {
+                "versions": {
+                    "kinetis/vector-ai": "dev-main"
                 }
             }
         }

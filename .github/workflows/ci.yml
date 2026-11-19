@@ -51,12 +51,14 @@ jobs:
           filters: |
             php:
               - 'packages/vector/**'
+              - 'packages/vector-ai/**'
               - 'demo/backend/**'
               - 'demo/docker/**'
               - '.github/scripts/php'
               - '.github/workflows/ci.yml'
             node:
               - 'packages/vector-ui/**'
+              - 'packages/vector-ai-ui/**'
               - 'demo/frontend/**'
               - 'demo/e2e/**'
               - 'scripts/**'
@@ -156,6 +158,7 @@ jobs:
       - name: Validate composer.json
         run: |
           .github/scripts/php composer validate --strict ../../packages/vector/composer.json
+          .github/scripts/php composer validate --strict ../../packages/vector-ai/composer.json
           .github/scripts/php composer validate --strict
 
       - name: Install dependencies

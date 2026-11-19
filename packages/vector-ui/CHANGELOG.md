@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-19
+
+### Added
+
+- `window.Vector` version 2. Every version 1 function keeps its
+  signature; new registration points, reachable by runtime extensions and
+  by layers through `useVectorExtend()`: `defineShellAction` (the app
+  bar), `defineListToolbarItem` (a list's toolbar, with its filters,
+  groups, advanced conditions and search, two-way),
+  `defineInputAddon` (under form inputs of given field types),
+  `defineEditorToolbarItem` (the rich-text and Markdown toolbars, given
+  the live Tiptap editor), `definePaletteCommand` (the command palette's
+  "Commands") and `defineSettingsAddon` (under a settings group's form).
+- `window.Vector.host` and `useVectorHost()`: the loaded descriptor
+  (read-only), the route context (`path`, `resource`, `recordId`), the
+  locale, and the admin's `markdownHtml` and `sanitizeHtml`. The curated
+  Vuetify set gains `VNavigationDrawer`, `VToolbar`,
+  `VProgressCircular` and `VBadge`.
+- The types carry `meta` on resources and fields.
+
+### Changed
+
+- Reads descriptor version 6 (`DESCRIPTOR_VERSION`), the one
+  `kinetis/vector` 0.16.0 publishes, and refuses version 5.
+
 ## [0.12.5] - 2026-11-16
 
 ### Changed

@@ -27,6 +27,7 @@ const counted = computed(() => !byCursor.value && props.resource.table.withoutCo
 const columns = ref<string[]>(preferences.get<string[]>(`columns.${props.resource.slug}`)?.filter(c => props.resource.table.columns.includes(c)) ?? [...props.resource.table.columns])
 // The filter: conditions that must all hold, "any of" groups of
 // alternatives, and whatever a saved view holds that the bar cannot edit.
+const { listToolbar } = useVectorExtensions()
 const filters = ref<VectorFilters>({})
 const groups = ref<VectorFilterGroup[]>([])
 const advanced = ref<VectorFilterQuery[]>([])
@@ -485,6 +486,22 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
             <VxListViewMenu ref="viewMenu" :resource="resource" :current="state" :active-id="activeView" @apply="applyView" @update:active-id="(id: number | null) => activeView = id" />
             <v-select v-if="resource.table.groupable.length && !byCursor" v-model="group" :items="[{ title: t('list.noGrouping'), value: null }, ...resource.table.groupable.map(g => ({ title: resource.fields.find(f => f.name === g)?.label ?? g, value: g }))]" :label="t('list.groupBy')" density="compact" hide-details style="max-width: 200px" />
             <v-select v-if="resource.softDelete" v-model="trashed" :items="[{ title: t('list.trash.active'), value: 'without' }, { title: t('list.trash.only'), value: 'only' }, { title: t('list.trash.with'), value: 'with' }]" density="compact" hide-details :aria-label="t('list.trash.label')" style="max-width: 180px" prepend-inner-icon="mdi-delete-clock-outline" />
+            <!-- list-toolbar items extensions and layers registered (defineListToolbarItem): the list's own models, two-way -->
+            <component
+                :is="item"
+                v-for="[name, item] in listToolbar"
+                :key="name"
+                :data-list-toolbar-item="name"
+                :resource="resource"
+                :filters="filters"
+                :groups="groups"
+                :advanced="advanced"
+                :search="search"
+                @update:filters="(v: VectorFilters) => filters = v"
+                @update:groups="(v: VectorFilterGroup[]) => groups = v"
+                @update:advanced="(v: VectorFilterQuery[]) => advanced = v"
+                @update:search="(v: string | null) => search = v"
+            />
             <v-spacer />
             <v-btn v-for="action in standaloneActions" :key="action.name" size="small" variant="tonal" :prepend-icon="action.icon ?? undefined" @click="dialogAction = action">{{ action.label }}</v-btn>
             <template v-if="resource.permissions.export">

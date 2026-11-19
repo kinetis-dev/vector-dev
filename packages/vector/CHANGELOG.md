@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-19
+
+### Added
+
+- A metadata bag: `Field::meta(string $key, mixed $value)` and
+  `#[Resource(meta: [...])]`, published verbatim as `meta` on the field
+  and the resource in the descriptor. Vector never reads it; keys are
+  namespaced by convention (`ai.send`). Omitted when empty, so a
+  resource that declares none is published, and described by
+  `vector_describe`, exactly as before.
+- Shell contributors: a class implementing
+  `Http\ShellContributorInterface` and carrying
+  `#[ShellContributor(name: '...')]` is discovered at compile time and
+  answers, per user and per request, `capabilities.<name>` in
+  `GET /vector/schema`. A malformed name, one taken twice or one of the
+  built-in capability keys stops the compile.
+
+### Changed
+
+- The descriptor is version 6 (`VectorRegistry::VERSION`): an AOT cache
+  compiled at version 5 is refused and rebuilt, and the UI must be
+  @kinetis/vector-ui 0.13.0 or later.
+- `vector:install-ui` installs `@kinetis/vector-ui` 0.13.0 by default.
+
 ## [0.15.1] - 2026-11-16
 
 ### Changed

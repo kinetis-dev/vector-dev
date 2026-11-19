@@ -4,13 +4,14 @@
 // published goes out. A Composer product goes to a mirror of its own,
 // which Packagist serves under its name — packages/vector to
 // kinetis-dev/vector (kinetis/vector); MIRRORS lists them.
-// packages/vector-ui goes to npm (@kinetis/vector-ui). Every product
-// versions independently; the vector-dev monorepo itself carries no tags.
+// packages/vector-ui and packages/vector-ai-ui go to npm (@kinetis/vector-ui,
+// @kinetis/vector-ai-ui; NPM_PRODUCTS lists them). Every product versions
+// independently; the vector-dev monorepo itself carries no tags.
 //
 //     node scripts/release.mjs plan --source=<sha> [--ref=refs/heads/main] [--dry-run]
 //     node scripts/release.mjs notes --product=<key> --version=0.9.0
 //     node scripts/release.mjs split --source=<sha> [--product=<mirror key>]
-//     node scripts/release.mjs npm-published --version=0.9.0
+//     node scripts/release.mjs npm-published --version=0.9.0 [--package=<npm key>]
 //     node scripts/release.mjs publish-mirror --version=0.9.0 --source=<sha> --split=<sha> [--product=<mirror key>] [--mirror=<url>] [--dry-run]
 //
 // --product is a key of MIRRORS, `vector` when absent; --mirror overrides
@@ -65,6 +66,19 @@ import { highestVersion, parseVersion, transitionProblem } from './version-polic
  */
 export const MIRRORS = Object.freeze({
     'vector': 'https://github.com/kinetis-dev/vector.git',
+    'vector-ai': 'https://github.com/kinetis-dev/vector-ai.git',
+})
+
+/**
+ * The npm products, by manifest key, and the package each publishes.
+ * @kinetis/vector-ui is the plan's `ui`, built with its hosted bundle in
+ * dist/static, which its prepack holds to its version; any other is a
+ * layer published as it is, under the plan's `npm`, with outputs of its
+ * own (`vector_ai_ui_version`).
+ */
+export const NPM_PRODUCTS = Object.freeze({
+    'vector-ui': '@kinetis/vector-ui',
+    'vector-ai-ui': '@kinetis/vector-ai-ui',
 })
 
 export const MIRROR = MIRRORS.vector
@@ -294,7 +308,7 @@ export function mirrorOf(product, mirrors = MIRRORS) {
  * Returns { source, mirrors: { <key>: product }, ui }, each product
  * { version, publish, notes }.
  */
-export function plan(repo, { source, ref, dryRun, mirrors = MIRRORS, token, npmView, npmVersionsView, log = console.log }) {
+export function plan(repo, { source, ref, dryRun, mirrors = MIRRORS, token, npmView, npmVersionsView, npmViews = {}, log = console.log }) {
     sha(source, 'the source commit')
 
     if (!dryRun && ref !== undefined && ref !== 'refs/heads/main') {
@@ -339,7 +353,7 @@ export function plan(repo, { source, ref, dryRun, mirrors = MIRRORS, token, npmV
         return { version: entry.version, publish: decision.publish, notes }
     }
 
-    const channelless = Object.keys(manifest.packages).filter(key => key !== PRODUCTS.ui && !Object.hasOwn(mirrors, key))
+    const channelless = Object.keys(manifest.packages).filter(key => !Object.hasOwn(NPM_PRODUCTS, key) && !Object.hasOwn(mirrors, key))
 
     if (channelless.length > 0) {
         throw new Error(`${MANIFEST_FILE} at ${source} lists ${channelless.join(', ')}, which neither a mirror nor npm publishes; add each to MIRRORS in scripts/release.mjs.`)
@@ -347,7 +361,7 @@ export function plan(repo, { source, ref, dryRun, mirrors = MIRRORS, token, npmV
 
     const decided = {}
 
-    for (const key of Object.keys(manifest.packages).filter(key => key !== PRODUCTS.ui)) {
+    for (const key of Object.keys(manifest.packages).filter(key => !Object.hasOwn(NPM_PRODUCTS, key))) {
         const tags = mirrorVersions(repo, mirrors[key], token)
         decided[key] = decide(key, version => tags.includes(version), tags)
     }
@@ -355,7 +369,16 @@ export function plan(repo, { source, ref, dryRun, mirrors = MIRRORS, token, npmV
     const npmVersions = npmPublishedVersions(npmVersionsView)
     const ui = decide(PRODUCTS.ui, version => npmPublished(version, npmView), npmVersions)
 
-    return { source, mirrors: decided, ui }
+    // every other npm product the manifest lists, after the UI kinetis/vector pins
+    const npm = {}
+
+    for (const key of Object.keys(manifest.packages).filter(key => key !== PRODUCTS.ui && Object.hasOwn(NPM_PRODUCTS, key))) {
+        const views = npmViews[key] ?? {}
+        const versions = npmPublishedVersions(views.npmVersionsView, NPM_PRODUCTS[key])
+        npm[key] = decide(key, version => npmPublished(version, views.npmView, NPM_PRODUCTS[key]), versions)
+    }
+
+    return { source, mirrors: decided, ui, ...(Object.keys(npm).length > 0 ? { npm } : {}) }
 }
 
 /** S: the pure subtree split of `prefix` (packages/vector by default) at the source commit. */
@@ -517,13 +540,13 @@ function npmView(args) {
 }
 
 /**
- * Whether @kinetis/vector-ui@version is on npm: `npm view` prints the
- * version when it is, nothing when the package exists without it, and
- * fails with E404 before the first publish. Any other failure is not an
- * answer, and fails.
+ * Whether <package>@version is on npm (@kinetis/vector-ui unless named):
+ * `npm view` prints the version when it is, nothing when the package
+ * exists without it, and fails with E404 before the first publish. Any
+ * other failure is not an answer, and fails.
  */
-export function npmPublished(version, view = npmView([`${NPM_PACKAGE}@${version}`, 'version'])) {
-    const result = view()
+export function npmPublished(version, view = undefined, packageName = NPM_PACKAGE) {
+    const result = (view ?? npmView([`${packageName}@${version}`, 'version']))()
 
     if (result.status === 0) {
         return result.stdout.trim().split('\n').map(line => line.trim().replace(/^'|'$/g, '')).includes(version)
@@ -533,16 +556,16 @@ export function npmPublished(version, view = npmView([`${NPM_PACKAGE}@${version}
         return false
     }
 
-    throw new Error(`Could not ask npm whether ${NPM_PACKAGE}@${version} exists: ${(result.stderr ?? '').trim() || `npm exited ${result.status}`}`)
+    throw new Error(`Could not ask npm whether ${packageName}@${version} exists: ${(result.stderr ?? '').trim() || `npm exited ${result.status}`}`)
 }
 
 /**
- * Every version of @kinetis/vector-ui on npm: none before the first
- * publish (E404). `npm view --json` prints a bare string for a package
- * with one version, an array otherwise.
+ * Every version of <package> on npm (@kinetis/vector-ui unless named):
+ * none before the first publish (E404). `npm view --json` prints a bare
+ * string for a package with one version, an array otherwise.
  */
-export function npmPublishedVersions(view = npmView([NPM_PACKAGE, 'versions', '--json'])) {
-    const result = view()
+export function npmPublishedVersions(view = undefined, packageName = NPM_PACKAGE) {
+    const result = (view ?? npmView([packageName, 'versions', '--json']))()
 
     if (result.status === 0) {
         const versions = result.stdout.trim() === '' ? [] : JSON.parse(result.stdout)
@@ -554,7 +577,7 @@ export function npmPublishedVersions(view = npmView([NPM_PACKAGE, 'versions', '-
         return []
     }
 
-    throw new Error(`Could not ask npm which versions of ${NPM_PACKAGE} exist: ${(result.stderr ?? '').trim() || `npm exited ${result.status}`}`)
+    throw new Error(`Could not ask npm which versions of ${packageName} exist: ${(result.stderr ?? '').trim() || `npm exited ${result.status}`}`)
 }
 
 function options(argv) {
@@ -603,6 +626,11 @@ export function planOutputs(result) {
         ...Object.fromEntries(each),
         ui_version: result.ui.version,
         ui_publish: result.ui.publish,
+        ...Object.fromEntries(Object.entries(result.npm ?? {}).flatMap(([key, product]) => {
+            const id = key.replaceAll('-', '_')
+
+            return [[`${id}_version`, product.version], [`${id}_publish`, product.publish]]
+        })),
     }
 }
 
@@ -619,7 +647,11 @@ function output(values) {
 /** What this round publishes, and each release's notes, on the run's summary page when there is one. */
 function summary(result, names) {
     const lines = ['## This round', '']
-    const products = [...Object.entries(result.mirrors).map(([key, product]) => [names[key] ?? key, product]), [NPM_PACKAGE, result.ui]]
+    const products = [
+        ...Object.entries(result.mirrors).map(([key, product]) => [names[key] ?? key, product]),
+        [NPM_PACKAGE, result.ui],
+        ...Object.entries(result.npm ?? {}).map(([key, product]) => [NPM_PRODUCTS[key] ?? key, product]),
+    ]
 
     for (const [name, product] of products) {
         lines.push(`- **${name} ${product.version}**: ${product.publish ? 'publishes' : 'already published'}`)
@@ -686,8 +718,15 @@ export function main(argv) {
         }
         case 'npm-published': {
             const version = required(opts, 'version')
-            const published = npmPublished(version)
-            console.log(published ? `${NPM_PACKAGE}@${version} is already on npm.` : `${NPM_PACKAGE}@${version} is not on npm yet.`)
+            const key = opts.package ?? PRODUCTS.ui
+
+            if (!Object.hasOwn(NPM_PRODUCTS, key)) {
+                throw new Error(`--package=${key} is not an npm product; the npm products are ${Object.keys(NPM_PRODUCTS).join(', ')}.`)
+            }
+
+            const name = NPM_PRODUCTS[key]
+            const published = npmPublished(version, undefined, name)
+            console.log(published ? `${name}@${version} is already on npm.` : `${name}@${version} is not on npm yet.`)
             output({ published })
             break
         }

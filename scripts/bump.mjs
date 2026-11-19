@@ -88,6 +88,24 @@ export function setPinVersion(json, version, file = PIN_FILE) {
     return updated
 }
 
+/** The package.json text with the exact version of one dependency replaced, formatting kept. */
+export function setDependencyVersion(json, name, version, file = 'package.json') {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
+    const pattern = new RegExp(`("${escaped}"\\s*:\\s*)"[^"]*"`)
+
+    if (!pattern.test(json)) {
+        throw new Error(`${file} has no dependency on ${name} to move.`)
+    }
+
+    const updated = json.replace(pattern, `$1"${version}"`)
+
+    if (JSON.parse(updated).dependencies?.[name] !== version) {
+        throw new Error(`${file}'s ${name} dependency could not be moved; fix it by hand.`)
+    }
+
+    return updated
+}
+
 function today() {
     return new Date().toISOString().slice(0, 10)
 }
@@ -139,6 +157,14 @@ export function bump(repo, key, component, { date = today() } = {}) {
     if (key === 'vector-ui' && vector !== undefined) {
         const pin = path.join(repo, vector.path, PIN_FILE)
         writes.push([pin, setPinVersion(readFileSync(pin, 'utf8'), to, `${vector.path}/${PIN_FILE}`)])
+    }
+
+    // @kinetis/vector-ai-ui depends on exactly the @kinetis/vector-ui release kinetis/vector pins
+    const aiUi = manifest.packages['vector-ai-ui']
+
+    if (key === 'vector-ui' && aiUi !== undefined) {
+        const file = path.join(repo, aiUi.path, 'package.json')
+        writes.push([file, setDependencyVersion(readFileSync(file, 'utf8'), entry.name, to, `${aiUi.path}/package.json`)])
     }
 
     for (const [file, contents] of writes) {

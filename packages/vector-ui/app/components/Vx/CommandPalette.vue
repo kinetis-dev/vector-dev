@@ -70,6 +70,16 @@ const pages = useVectorPages()
 const pageItems = computed(() => Object.entries(pages.value)
     .map(([name, p]) => ({ name, title: pageLabel(p.title), icon: p.icon }))
     .filter(p => (query.value ?? '').trim() === '' || p.title.toLowerCase().includes((query.value ?? '').trim().toLowerCase())))
+// commands extensions and layers registered (definePaletteCommand): each takes what was typed
+const { paletteCommands } = useVectorExtensions()
+const commands = computed(() => [...paletteCommands.entries()].map(([name, c]) => ({ name, title: pageLabel(c.title), icon: c.icon, run: c.run })))
+
+function runCommand(command: { run: (query: string) => unknown }) {
+    const typed = (query.value ?? '').trim()
+    open.value = false
+    void Promise.resolve().then(() => command.run(typed)).catch(() => undefined)
+}
+
 const resources = computed(() => menu.value.flatMap(g => g.items).filter(r => (query.value ?? '').trim() === '' || r.label.toLowerCase().includes((query.value ?? '').trim().toLowerCase())))
 
 function go(path: string) {
@@ -106,6 +116,10 @@ defineExpose({ open })
                                 <v-icon v-else icon="mdi-file-document-outline" />
                             </template>
                         </v-list-item>
+                    </template>
+                    <template v-if="commands.length">
+                        <v-list-subheader>{{ t('shell.palette.commands') }}</v-list-subheader>
+                        <v-list-item v-for="c in commands" :key="c.name" :data-palette-command="c.name" :title="c.title" :prepend-icon="c.icon ?? 'mdi-console-line'" @click="runCommand(c)" />
                     </template>
                     <v-list-subheader>{{ t('shell.palette.resources') }}</v-list-subheader>
                     <v-list-item v-for="r in resources" :key="r.slug" :title="r.label" :prepend-icon="r.icon ?? 'mdi-table'" @click="go(`/r/${r.slug}`)" />

@@ -52,10 +52,18 @@ export interface VectorRelation {
 
 export type VectorOperator = 'eq' | 'ne' | 'lt' | 'lte' | 'gt' | 'gte' | 'in' | 'nin' | 'like' | 'nlike' | 'between' | 'null' | 'nnull'
 
+/**
+ * A resource's or field's metadata bag, as `#[Resource(meta: ...)]` and
+ * `Field::meta()` declared it: namespaced keys (`vendor.key`), scalar or
+ * list values. Vector publishes it and never reads it. Absent when empty.
+ */
+export type VectorMeta = Record<string, string | number | boolean | null | (string | number | boolean | null)[]>
+
 export interface VectorField {
     name: string
     type: VectorFieldType
     label: string
+    meta?: VectorMeta
     sortable: boolean
     searchable: boolean
     filterable: boolean
@@ -422,6 +430,7 @@ export interface VectorResource {
     labelSingular: string
     group: string | null
     icon: string | null
+    meta?: VectorMeta
     primaryKey: { field: string, column?: string, type: 'int' | 'string' }
     titleField: string
     version: string | null
@@ -481,8 +490,9 @@ export interface VectorSchema {
      * `queues`: the queue dashboard is there for this user (a queue configured, the policy lets them view);
      * `failedJobs`: it shows failed jobs too (kinetis/queue-failed-jobs installed and wired). Absent is false.
      * `queueMetrics`: it shows the job metrics too (VECTOR_QUEUE_METRICS not turned off). Absent is false.
+     * Any other key is a package's own, published by its #[ShellContributor] under its name: an object.
      */
-    capabilities: { impersonation: boolean, queue: boolean, uploads?: boolean, exportFormats?: VectorExportFormat[], queues?: boolean, failedJobs?: boolean, queueMetrics?: boolean }
+    capabilities: { impersonation: boolean, queue: boolean, uploads?: boolean, exportFormats?: VectorExportFormat[], queues?: boolean, failedJobs?: boolean, queueMetrics?: boolean } & { [contributor: string]: unknown }
     branding: VectorBranding | null
     /** The language this descriptor is in, and the ones this user may switch to. */
     i18n?: VectorSchemaI18n

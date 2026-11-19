@@ -198,11 +198,12 @@ final class ActionsAndSettingsTest extends VectorTestCase
     {
         $this->client->get('/vector/settings', headers: $this->adminHeaders())
             ->assertOk()
-            ->assertJsonPath('data.0.name', 'branding')
-            ->assertJsonPath('data.0.values.title', 'Vector');
+            // ordered by name: kinetis/vector-ai's `ai` group comes first in the demo
+            ->assertJsonPath('data.1.name', 'branding')
+            ->assertJsonPath('data.1.values.title', 'Vector');
         $this->client->get('/vector/schema', headers: $this->adminHeaders())
             ->assertOk()
-            ->assertJsonPath('settings.0.name', 'branding')
+            ->assertJsonPath('settings.1.name', 'branding')
             ->assertJsonPath('branding.primaryColor', '#1F5F8B');
 
         $this->client->request('PUT', '/vector/settings/branding', body: ['title' => '', 'primaryColor' => 'red', 'theme' => 'neon'], headers: $this->adminHeaders())

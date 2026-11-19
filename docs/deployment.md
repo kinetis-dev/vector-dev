@@ -25,6 +25,21 @@ pnpm nuxt generate    # .output/public, for any web server
 The API registers `CorsMiddleware` for the UI's origin; see
 {doc}`authentication`.
 
+With `kinetis/vector-ai` installed, extend `@kinetis/vector-ai-ui`
+instead — it is `@kinetis/vector-ui` with the AI layer on top, at the
+release `kinetis/vector` pins:
+
+```ts
+export default defineNuxtConfig({
+    extends: ['@kinetis/vector-ai-ui'],
+})
+```
+
+Against a backend without `kinetis/vector-ai` it renders the plain
+admin. See {doc}`ai`. This is the one way to deliver the AI layer for
+now: hosted (no-build) delivery of it comes in a later release, and the
+hosted admin below is the plain one.
+
 ## Hosted
 
 The application serves the UI itself, behind its own session. The

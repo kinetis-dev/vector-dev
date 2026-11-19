@@ -12,6 +12,7 @@ const props = defineProps<{ field: VectorField, rules: ((v: unknown) => true | s
 const model = defineModel<string | null>()
 
 const { t } = useVectorT()
+const { editorToolbar } = useVectorExtensions()
 const toolbar = computed(() => props.field.markdown?.toolbar ?? ['bold', 'italic', 'strike', 'code', 'heading', 'list', 'blockquote', 'codeBlock', 'horizontalRule', 'link'])
 const on = (button: string) => toolbar.value.includes(button)
 const source = ref(false)
@@ -107,6 +108,10 @@ function applyLink() {
                             </div>
                         </v-card>
                     </v-menu>
+                </template>
+                <!-- editor-toolbar items extensions and layers registered (defineEditorToolbarItem), given the live editor -->
+                <template v-if="editor">
+                    <component :is="item" v-for="[name, item] in editorToolbar" :key="name" :data-editor-toolbar-item="name" :editor="editor" :field="field" />
                 </template>
                 <v-spacer />
                 <v-btn size="small" variant="text" :prepend-icon="source ? 'mdi-eye-outline' : 'mdi-language-markdown-outline'" :aria-pressed="source" @click="source = !source">

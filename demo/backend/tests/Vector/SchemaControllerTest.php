@@ -10,7 +10,7 @@ final class SchemaControllerTest extends VectorTestCase
     {
         $response = $this->client->get('/vector/schema', headers: $this->adminHeaders())
             ->assertOk()
-            ->assertJsonPath('version', 5)
+            ->assertJsonPath('version', 6)
             ->assertJsonPath('resources.products.slug', 'products')
             ->assertJsonPath('resources.products.titleField', 'name')
             ->assertJsonPath('resources.products.permissions.viewAny', true)
@@ -81,7 +81,10 @@ final class SchemaControllerTest extends VectorTestCase
         };
 
         $check('descriptor', $document, $declared($schema));
-        $check('capabilities', $document['capabilities'], $declared($schema['properties']['capabilities']));
+        // a #[ShellContributor]'s key is declared by additionalProperties, as an object
+        $contributors = array_keys(\Kinetis\Vector\Registry\VectorRegistry::compile(new \Kinetis\Cache\DiscoveryContext(dirname(__DIR__, 2)))['contributors']);
+        self::assertSame(['type' => 'object'], $schema['properties']['capabilities']['additionalProperties']);
+        $check('capabilities', $document['capabilities'], [...$declared($schema['properties']['capabilities']), ...$contributors]);
         $check('i18n', $document['i18n'], $declared($schema['properties']['i18n']));
 
         foreach ($document['resources'] as $slug => $resource) {

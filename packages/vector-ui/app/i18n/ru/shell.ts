@@ -41,6 +41,7 @@ export default {
         records: 'Записи',
         resources: 'Ресурсы',
         noMatch: 'Нет подходящих записей',
+        commands: 'Команды',
     },
     inbox: {
         title: 'Уведомления',

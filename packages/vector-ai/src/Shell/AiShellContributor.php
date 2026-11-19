@@ -1,0 +1,129 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Kinetis\VectorAi\Shell;
+
+use Kinetis\Http\CurrentUserInterface;
+use Kinetis\Logging\SafeLogger;
+use Kinetis\Vector\Attributes\ShellContributor;
+use Kinetis\Vector\Http\ShellContributorInterface;
+use Kinetis\VectorAi\Auth\AiAccessInterface;
+use Kinetis\VectorAi\Config\AiConfig;
+use Kinetis\VectorAi\Failure\AiFailure;
+use Kinetis\VectorAi\Feature;
+use Kinetis\VectorAi\Providers\ProviderResolver;
+use Kinetis\VectorAi\Settings\AiSettingsReader;
+use Kinetis\VectorAi\Usage\UsageLedger;
+use Psr\Log\LoggerInterface;
+use Psr\Log\LogLevel;
+
+/**
+ * `capabilities.ai` in GET /vector/schema: per user, which AI features
+ * the admin offers — `filters`, `assistant`, `assistantWrites`,
+ * `writing` — and `excluded`, what is kept from the model. A feature is
+ * offered when it ships in this release, the operator configured a
+ * provider, the `ai` settings turn it on, the access policy lets this
+ * user use it, their daily token budget has tokens left and the resolver
+ * finds a provider, a model and a key for it. Any failure computing it
+ * leaves every feature off and logs a warning naming the exception's
+ * class — never its message, which could carry a provider's detail. The key is absent altogether where
+ * kinetis/vector-ai is not installed.
+ */
+#[ShellContributor(name: 'ai')]
+final readonly class AiShellContributor implements ShellContributorInterface
+{
+    /**
+     * The features this release implements. Increment 0 ships none: every
+     * flag is false until a later release adds its feature here.
+     *
+     * @return list<Feature>
+     */
+    public static function shipped(): array
+    {
+        return [];
+    }
+
+    public function __construct(
+        private AiConfig $config,
+        private AiAccessInterface $access,
+        private AiSettingsReader $settings,
+        private UsageLedger $usage,
+        private ProviderResolver $resolver,
+        private LoggerInterface $logger,
+    ) {}
+
+    /** @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object} */
+    #[\Override]
+    public function capabilities(CurrentUserInterface $user): array
+    {
+        return $this->offering(self::shipped(), $user);
+    }
+
+    /**
+     * The flags for $user when $features are the ones that ship. Whether a
+     * feature ships is asked first, so an unshipped one costs no settings,
+     * ledger, resolver or key lookup. Any failure on the way — a missing
+     * table, a transport that was not built, a policy that throws — turns
+     * every feature off rather than failing GET /vector/schema.
+     *
+     * @param list<Feature> $features
+     * @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object}
+     */
+    public function offering(array $features, CurrentUserInterface $user): array
+    {
+        $flags = ['filters' => Feature::Filters, 'assistant' => Feature::Assistant, 'assistantWrites' => Feature::AssistantWrites, 'writing' => Feature::Writing];
+        $remaining = null;
+        $offered = [];
+
+        try {
+            foreach ($flags as $key => $feature) {
+                $offered[$key] = in_array($feature, $features, true) && $this->offered($feature, $user, $remaining);
+            }
+        } catch (\Throwable $e) {
+            $offered = array_map(static fn (): bool => false, $flags);
+            // the class only: a message could carry a provider's detail; a throwing logger must not fail the schema either
+            SafeLogger::log($this->logger, LogLevel::WARNING, 'Computing the AI capabilities failed with ' . $e::class . '; every AI feature is off for this request.', ['exception_class' => $e::class]);
+        }
+
+        return [
+            'filters' => $offered['filters'],
+            'assistant' => $offered['assistant'],
+            'assistantWrites' => $offered['assistantWrites'],
+            'writing' => $offered['writing'],
+            // the resources and fields kept from the model, once a feature sends record data
+            'excluded' => new \stdClass(),
+        ];
+    }
+
+    /**
+     * Whether a shipped $feature is on for $user; $remaining caches the
+     * budget's answer across the features of one call.
+     *
+     * @throws \Throwable from any dependency; offering() turns it into "off"
+     */
+    private function offered(Feature $feature, CurrentUserInterface $user, ?int &$remaining): bool
+    {
+        if (!$this->config->configured() || !$this->settings->bool($feature->enabledSetting()) || !$this->access->canUse($user, $feature)) {
+            return false;
+        }
+
+        if ($feature === Feature::AssistantWrites && !$this->settings->bool(Feature::Assistant->enabledSetting())) {
+            return false; // writes are the assistant's
+        }
+
+        $remaining ??= $this->usage->remaining((string) $user->id(), $this->settings->int('dailyTokenBudgetPerUser', 0));
+
+        if ($remaining <= 0) {
+            return false;
+        }
+
+        try {
+            $this->resolver->for($feature, $user);
+        } catch (AiFailure) {
+            return false;
+        }
+
+        return true;
+    }
+}

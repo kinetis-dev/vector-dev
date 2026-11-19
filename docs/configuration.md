@@ -23,6 +23,10 @@ An empty value (`KEY=`, as a Compose passthrough such as
 `${VECTOR_LOGIN_URL:-}` writes it) counts as unset: the key takes its
 default.
 
+With `kinetis/vector-ai` installed, the `VECTOR_AI_*` keys configure its
+providers, the key that seals administrators' provider keys
+(`VECTOR_AI_KEY`) and the limits of every AI call; see {doc}`ai`.
+
 ## UI settings
 
 In a Nuxt application extending `@kinetis/vector-ui`:

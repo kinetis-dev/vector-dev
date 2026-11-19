@@ -10,6 +10,7 @@ definePageMeta({ layout: 'vector', middleware: 'vector-auth' })
 const api = useVectorApi()
 const notifications = useVectorNotifications()
 const { t } = useVectorT()
+const { settingsAddons } = useVectorExtensions()
 const { load: loadSchema } = useVectorSchema()
 
 // fetched again in a new language, whose labels the server translates
@@ -98,6 +99,11 @@ function withLanguageNames(group: VectorSettingsGroup, inLanguage: string): Vect
                             <v-btn type="submit" color="primary" :loading="saving">{{ t('common.save') }}</v-btn>
                         </v-card-actions>
                     </v-form>
+                    <!-- the group's addon an extension or a layer registered (defineSettingsAddon): outside the form, which it does not submit -->
+                    <div v-if="settingsAddons.has(group.name)" class="vx-settings-addon" :data-settings-addon="group.name">
+                        <v-divider />
+                        <component :is="settingsAddons.get(group.name)" :group="group.name" />
+                    </div>
                 </v-tabs-window-item>
             </v-tabs-window>
         </v-card>

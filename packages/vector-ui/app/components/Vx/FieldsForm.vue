@@ -41,6 +41,14 @@ function set(name: string, value: unknown) {
                 :resource="resource ?? ''"
                 @update:model-value="(v: unknown) => set(field.name, v)"
             />
+            <VxInputAddons
+                :field="field"
+                :resource="resource ?? ''"
+                :record="values"
+                :model-value="values[field.name]"
+                :disabled="states[field.name]?.disabled === true"
+                @update:model-value="(v: unknown) => set(field.name, v)"
+            />
         </v-col>
     </v-row>
 </template>

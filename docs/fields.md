@@ -45,6 +45,7 @@ Every field takes:
 | `unique()` | The value is unique (as its column's index enforces; the ORM's metadata does not carry indexes, so the field says so): a duplicated record starts without it, and an import can match rows by it. The descriptor publishes `unique` on every field. |
 | `component('name')` | Rendered by a custom cell or input; see {doc}`customizing-the-ui`. |
 | `props([...])` | Extra settings passed to the UI. |
+| `meta('vendor.key', $value)` | Metadata Vector publishes verbatim and never reads, for a package that builds on it; see {ref}`resource-meta`. |
 
 Conditions (`visibleWhen()`, `requiredWhen()`, `disabledWhen()`),
 dependent choices and repeaters are on {doc}`forms`.

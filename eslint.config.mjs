@@ -1,5 +1,6 @@
 // One flat config for every TypeScript and Vue file in the workspace:
-// the @kinetis/vector-ui layer (and its hosted app), the demo frontend
+// the @kinetis/vector-ui layer (and its hosted app), the
+// @kinetis/vector-ai-ui layer, the demo frontend
 // and the Playwright suite. @nuxt/eslint-config is used standalone, not
 // through the @nuxt/eslint module, so linting needs no `nuxt prepare`
 // and the published layer gains no module.
@@ -11,6 +12,8 @@ export default createConfigForNuxt({
             './packages/vector-ui',
             './packages/vector-ui/app',
             './packages/vector-ui/hosted',
+            './packages/vector-ai-ui',
+            './packages/vector-ai-ui/app',
             './demo/frontend',
             './demo/frontend/app',
         ],
@@ -31,6 +34,7 @@ export default createConfigForNuxt({
         '**/.output/**',
         '**/dist/**',
         'packages/vector/**',
+        'packages/vector-ai/**',
         'demo/backend/**',
         'demo/e2e/test-results/**',
         'demo/e2e/playwright-report/**',

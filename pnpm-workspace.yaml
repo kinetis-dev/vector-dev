@@ -1,4 +1,11 @@
 packages:
   - packages/vector-ui
+  - packages/vector-ai-ui
   - demo/frontend
   - demo/e2e
+
+# @kinetis/vector-ai-ui depends on the exact @kinetis/vector-ui release
+# kinetis/vector pins ("0.13.0", not "workspace:"), so the published
+# package names a real version; inside this workspace that version is the
+# local package, linked. scripts/validate-versions.mjs holds the two equal.
+linkWorkspacePackages: true

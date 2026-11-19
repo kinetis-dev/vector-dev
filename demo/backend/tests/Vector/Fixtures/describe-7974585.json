@@ -1,0 +1,2724 @@
+{
+    "agents": {
+        "resource": "agents",
+        "label": "Agents",
+        "labelSingular": "Agent",
+        "group": "Support",
+        "key": {
+            "field": "id",
+            "type": "int"
+        },
+        "titleField": "name",
+        "softDelete": false,
+        "permissions": {
+            "viewAny": true,
+            "create": true,
+            "update": true,
+            "delete": true,
+            "export": true,
+            "setDefaultView": true
+        },
+        "search": [
+            "name",
+            "email"
+        ],
+        "defaultSort": [
+            {
+                "field": "id",
+                "order": "asc"
+            }
+        ],
+        "fields": [
+            {
+                "name": "id",
+                "label": "ID",
+                "type": "id",
+                "valueType": "int",
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "name",
+                "label": "Name",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(120)"
+                ],
+                "filter": [
+                    "eq",
+                    "ne",
+                    "like",
+                    "nlike",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "email",
+                "label": "Email",
+                "type": "email",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(255)",
+                    "Email"
+                ],
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "team",
+                "label": "Team",
+                "type": "belongsTo",
+                "valueType": "int",
+                "format": "the related record's id",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "relation": {
+                    "kind": "belongsTo",
+                    "resource": "support-teams"
+                },
+                "filter": [
+                    "eq",
+                    "ne",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "role",
+                "label": "Role",
+                "type": "enum",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "filter": [
+                    "eq",
+                    "ne",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true,
+                "options": [
+                    {
+                        "value": "agent",
+                        "label": "Agent"
+                    },
+                    {
+                        "value": "lead",
+                        "label": "Lead"
+                    },
+                    {
+                        "value": "manager",
+                        "label": "Manager"
+                    }
+                ]
+            },
+            {
+                "name": "isActive",
+                "label": "Active",
+                "type": "boolean",
+                "valueType": "bool",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "filter": [
+                    "eq"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "joinedOn",
+                "label": "Joined",
+                "type": "date",
+                "valueType": "date",
+                "format": "YYYY-MM-DD",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between",
+                    "null",
+                    "nnull"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "createdAt",
+                "label": "Created at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "writable": []
+            },
+            {
+                "name": "updatedAt",
+                "label": "Updated at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "writable": []
+            }
+        ],
+        "actions": []
+    },
+    "categories": {
+        "resource": "categories",
+        "label": "Categories",
+        "labelSingular": "Category",
+        "group": "Catalog",
+        "key": {
+            "field": "id",
+            "type": "int"
+        },
+        "titleField": "name",
+        "softDelete": false,
+        "permissions": {
+            "viewAny": true,
+            "create": true,
+            "update": true,
+            "delete": true,
+            "export": true,
+            "setDefaultView": true
+        },
+        "search": [
+            "name",
+            "slug",
+            "description"
+        ],
+        "defaultSort": [
+            {
+                "field": "id",
+                "order": "asc"
+            }
+        ],
+        "fields": [
+            {
+                "name": "id",
+                "label": "ID",
+                "type": "id",
+                "valueType": "int",
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "name",
+                "label": "Name",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "slug",
+                "label": "Slug",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "description",
+                "label": "Description",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "position",
+                "label": "Position",
+                "type": "number",
+                "valueType": "int",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "sortable": true
+            },
+            {
+                "name": "parent",
+                "label": "Parent",
+                "type": "belongsTo",
+                "valueType": "int",
+                "format": "the related record's id",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "relation": {
+                    "kind": "belongsTo",
+                    "resource": "categories"
+                },
+                "sortable": true
+            },
+            {
+                "name": "products",
+                "label": "Products",
+                "type": "hasMany",
+                "relation": {
+                    "kind": "hasMany",
+                    "resource": "products"
+                },
+                "writable": []
+            }
+        ],
+        "actions": []
+    },
+    "customer-profiles": {
+        "resource": "customer-profiles",
+        "label": "Customer profiles",
+        "labelSingular": "Customer profile",
+        "group": "Sales",
+        "key": {
+            "field": "id",
+            "type": "int"
+        },
+        "titleField": "city",
+        "softDelete": false,
+        "permissions": {
+            "viewAny": true,
+            "create": true,
+            "update": true,
+            "delete": true,
+            "export": true,
+            "setDefaultView": true
+        },
+        "search": [
+            "addressLine",
+            "city",
+            "postalCode",
+            "country"
+        ],
+        "defaultSort": [
+            {
+                "field": "id",
+                "order": "asc"
+            }
+        ],
+        "fields": [
+            {
+                "name": "id",
+                "label": "ID",
+                "type": "id",
+                "valueType": "int",
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "customer",
+                "label": "Customer",
+                "type": "belongsTo",
+                "valueType": "int",
+                "format": "the related record's id",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "relation": {
+                    "kind": "belongsTo",
+                    "resource": "customers"
+                },
+                "sortable": true
+            },
+            {
+                "name": "addressLine",
+                "label": "Address line",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "city",
+                "label": "City",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "postalCode",
+                "label": "Postal code",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "country",
+                "label": "Country",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "newsletter",
+                "label": "Newsletter",
+                "type": "boolean",
+                "valueType": "bool",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "filter": [
+                    "eq"
+                ],
+                "sortable": true
+            }
+        ],
+        "actions": []
+    },
+    "customers": {
+        "resource": "customers",
+        "label": "Customers",
+        "labelSingular": "Customer",
+        "group": "Sales",
+        "key": {
+            "field": "id",
+            "type": "int"
+        },
+        "titleField": "name",
+        "softDelete": false,
+        "permissions": {
+            "viewAny": true,
+            "create": true,
+            "update": true,
+            "delete": true,
+            "export": true,
+            "setDefaultView": true
+        },
+        "search": [
+            "email",
+            "name",
+            "phone",
+            "website",
+            "notes"
+        ],
+        "defaultSort": [
+            {
+                "field": "id",
+                "order": "asc"
+            }
+        ],
+        "fields": [
+            {
+                "name": "id",
+                "label": "ID",
+                "type": "id",
+                "valueType": "int",
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "email",
+                "label": "Email",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "name",
+                "label": "Name",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "phone",
+                "label": "Phone",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "website",
+                "label": "Website",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "birthDate",
+                "label": "Birth date",
+                "type": "date",
+                "valueType": "date",
+                "format": "YYYY-MM-DD",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between",
+                    "null",
+                    "nnull"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "notes",
+                "label": "Notes",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "createdAt",
+                "label": "Created at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between"
+                ],
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "profile",
+                "label": "Profile",
+                "type": "hasOne",
+                "relation": {
+                    "kind": "hasOne",
+                    "resource": "customer-profiles"
+                },
+                "writable": []
+            },
+            {
+                "name": "orders",
+                "label": "Orders",
+                "type": "hasMany",
+                "relation": {
+                    "kind": "hasMany",
+                    "resource": "orders"
+                },
+                "writable": []
+            }
+        ],
+        "actions": []
+    },
+    "labels": {
+        "resource": "labels",
+        "label": "Labels",
+        "labelSingular": "Label",
+        "group": "Support",
+        "key": {
+            "field": "id",
+            "type": "int"
+        },
+        "titleField": "name",
+        "softDelete": false,
+        "permissions": {
+            "viewAny": true,
+            "create": true,
+            "update": true,
+            "delete": true,
+            "export": true,
+            "setDefaultView": true
+        },
+        "search": [
+            "name"
+        ],
+        "defaultSort": [
+            {
+                "field": "id",
+                "order": "asc"
+            }
+        ],
+        "fields": [
+            {
+                "name": "id",
+                "label": "ID",
+                "type": "id",
+                "valueType": "int",
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "name",
+                "label": "Name",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(60)"
+                ],
+                "filter": [
+                    "eq",
+                    "ne",
+                    "like",
+                    "nlike",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "color",
+                "label": "Color",
+                "type": "color",
+                "valueType": "string",
+                "format": "#rrggbb",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "Regex(\"/^#[0-9A-Fa-f]{6}$/D\")"
+                ]
+            }
+        ],
+        "actions": []
+    },
+    "order-lines": {
+        "resource": "order-lines",
+        "label": "Order lines",
+        "labelSingular": "Order line",
+        "group": "Sales",
+        "key": {
+            "field": "id",
+            "type": "int"
+        },
+        "titleField": "id",
+        "softDelete": false,
+        "permissions": {
+            "viewAny": true,
+            "create": true,
+            "update": true,
+            "delete": true,
+            "export": true,
+            "setDefaultView": true
+        },
+        "search": [],
+        "defaultSort": [
+            {
+                "field": "id",
+                "order": "asc"
+            }
+        ],
+        "fields": [
+            {
+                "name": "id",
+                "label": "ID",
+                "type": "id",
+                "valueType": "int",
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "order",
+                "label": "Order",
+                "type": "belongsTo",
+                "valueType": "int",
+                "format": "the related record's id",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "relation": {
+                    "kind": "belongsTo",
+                    "resource": "orders"
+                },
+                "filter": [
+                    "eq",
+                    "ne",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "product",
+                "label": "Product",
+                "type": "belongsTo",
+                "valueType": "int",
+                "format": "the related record's id",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "relation": {
+                    "kind": "belongsTo",
+                    "resource": "products"
+                },
+                "filter": [
+                    "eq",
+                    "ne",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "quantity",
+                "label": "Quantity",
+                "type": "number",
+                "valueType": "int",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "GreaterThan(0)"
+                ],
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "unitPriceCents",
+                "label": "Unit price",
+                "type": "money",
+                "valueType": "int",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "GreaterThanOrEqual(0)"
+                ],
+                "money": {
+                    "unit": "minor units (cents)",
+                    "currencyField": "order.currency"
+                },
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "lineTotal",
+                "label": "Total",
+                "type": "computed",
+                "valueType": "int",
+                "computed": {
+                    "as": "money",
+                    "from": [
+                        "quantity",
+                        "unitPriceCents"
+                    ]
+                },
+                "writable": []
+            }
+        ],
+        "actions": []
+    },
+    "orders": {
+        "resource": "orders",
+        "label": "Orders",
+        "labelSingular": "Order",
+        "group": "Sales",
+        "key": {
+            "field": "id",
+            "type": "int"
+        },
+        "titleField": "number",
+        "softDelete": false,
+        "permissions": {
+            "viewAny": true,
+            "create": true,
+            "update": true,
+            "delete": true,
+            "export": true,
+            "setDefaultView": true
+        },
+        "search": [
+            "number"
+        ],
+        "defaultSort": [
+            {
+                "field": "placedAt",
+                "order": "desc"
+            }
+        ],
+        "withoutCount": true,
+        "fields": [
+            {
+                "name": "id",
+                "label": "ID",
+                "type": "id",
+                "valueType": "int",
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "number",
+                "label": "Number",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(30)"
+                ],
+                "filter": [
+                    "eq",
+                    "ne",
+                    "like",
+                    "nlike",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "customer",
+                "label": "Customer",
+                "type": "belongsTo",
+                "valueType": "int",
+                "format": "the related record's id",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "relation": {
+                    "kind": "belongsTo",
+                    "resource": "customers"
+                },
+                "filter": [
+                    "eq",
+                    "ne",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "status",
+                "label": "Status",
+                "type": "enum",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "filter": [
+                    "eq",
+                    "ne",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true,
+                "options": [
+                    {
+                        "value": "pending",
+                        "label": "Pending"
+                    },
+                    {
+                        "value": "paid",
+                        "label": "Paid"
+                    },
+                    {
+                        "value": "shipped",
+                        "label": "Shipped"
+                    },
+                    {
+                        "value": "cancelled",
+                        "label": "Cancelled"
+                    }
+                ]
+            },
+            {
+                "name": "totalCents",
+                "label": "Total",
+                "type": "money",
+                "valueType": "int",
+                "money": {
+                    "unit": "minor units (cents)",
+                    "currencyField": "currency"
+                },
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "currency",
+                "label": "Currency",
+                "type": "currency",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": false,
+                "default": "EUR",
+                "rules": [
+                    "NotBlank"
+                ],
+                "filter": [
+                    "eq",
+                    "ne",
+                    "in",
+                    "nin"
+                ],
+                "options": [
+                    {
+                        "value": "EUR",
+                        "label": "EUR"
+                    },
+                    {
+                        "value": "USD",
+                        "label": "USD"
+                    },
+                    {
+                        "value": "GBP",
+                        "label": "GBP"
+                    }
+                ]
+            },
+            {
+                "name": "placedAt",
+                "label": "Placed at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "NotBlank"
+                ],
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "shippedAt",
+                "label": "Shipped at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between",
+                    "null",
+                    "nnull"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "notes",
+                "label": "Notes",
+                "type": "text",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true
+            },
+            {
+                "name": "lines",
+                "label": "Lines",
+                "type": "hasMany",
+                "relation": {
+                    "kind": "hasMany",
+                    "resource": "order-lines"
+                },
+                "writable": []
+            },
+            {
+                "name": "createdAt",
+                "label": "Created at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "writable": []
+            },
+            {
+                "name": "updatedAt",
+                "label": "Updated at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "writable": []
+            }
+        ],
+        "actions": []
+    },
+    "products": {
+        "resource": "products",
+        "label": "Products",
+        "labelSingular": "Product",
+        "group": "Catalog",
+        "key": {
+            "field": "id",
+            "type": "int"
+        },
+        "titleField": "name",
+        "softDelete": true,
+        "permissions": {
+            "viewAny": true,
+            "create": true,
+            "update": true,
+            "delete": true,
+            "export": true,
+            "setDefaultView": true
+        },
+        "search": [
+            "sku",
+            "name",
+            "category"
+        ],
+        "defaultSort": [
+            {
+                "field": "createdAt",
+                "order": "desc"
+            }
+        ],
+        "fields": [
+            {
+                "name": "id",
+                "label": "ID",
+                "type": "id",
+                "valueType": "int",
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "sku",
+                "label": "SKU",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "unique": true,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(40)"
+                ],
+                "filter": [
+                    "eq",
+                    "ne",
+                    "like",
+                    "nlike",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "name",
+                "label": "Name",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(200)"
+                ],
+                "filter": [
+                    "eq",
+                    "ne",
+                    "like",
+                    "nlike",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "slug",
+                "label": "Slug",
+                "type": "slug",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "unique": true,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(220)"
+                ]
+            },
+            {
+                "name": "status",
+                "label": "Status",
+                "type": "enum",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "filter": [
+                    "eq",
+                    "ne",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true,
+                "options": [
+                    {
+                        "value": "draft",
+                        "label": "Draft"
+                    },
+                    {
+                        "value": "active",
+                        "label": "Active"
+                    },
+                    {
+                        "value": "archived",
+                        "label": "Archived"
+                    }
+                ]
+            },
+            {
+                "name": "category",
+                "label": "Category",
+                "type": "belongsTo",
+                "valueType": "int",
+                "format": "the related record's id",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "relation": {
+                    "kind": "belongsTo",
+                    "resource": "categories"
+                },
+                "filter": [
+                    "eq",
+                    "ne",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "priceCents",
+                "label": "Price",
+                "type": "money",
+                "valueType": "int",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "money": {
+                    "unit": "minor units (cents)",
+                    "currencyField": "currency"
+                },
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "currency",
+                "label": "Currency",
+                "type": "currency",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": false,
+                "default": "EUR",
+                "filter": [
+                    "eq",
+                    "ne",
+                    "in",
+                    "nin"
+                ],
+                "options": [
+                    {
+                        "value": "EUR",
+                        "label": "EUR"
+                    },
+                    {
+                        "value": "USD",
+                        "label": "USD"
+                    },
+                    {
+                        "value": "GBP",
+                        "label": "GBP"
+                    }
+                ]
+            },
+            {
+                "name": "stock",
+                "label": "Stock",
+                "type": "number",
+                "valueType": "int",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "weightKg",
+                "label": "Weight (kg)",
+                "type": "number",
+                "valueType": "float",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false
+            },
+            {
+                "name": "isFeatured",
+                "label": "Featured",
+                "type": "boolean",
+                "valueType": "bool",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "filter": [
+                    "eq"
+                ],
+                "sortable": true,
+                "disabledWhen": [
+                    {
+                        "field": "status",
+                        "op": "eq",
+                        "value": "archived"
+                    }
+                ]
+            },
+            {
+                "name": "description",
+                "label": "Description",
+                "type": "richtext",
+                "valueType": "string",
+                "format": "a rich-text document: ProseMirror/Tiptap JSON, sent as a string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "richtext": {
+                    "features": [
+                        "bold",
+                        "italic",
+                        "underline",
+                        "strike",
+                        "code",
+                        "heading",
+                        "list",
+                        "blockquote",
+                        "codeBlock",
+                        "horizontalRule",
+                        "link",
+                        "table",
+                        "image"
+                    ]
+                }
+            },
+            {
+                "name": "attributes",
+                "label": "Attributes",
+                "type": "keyValue",
+                "valueType": "string",
+                "format": "an object of string values",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true
+            },
+            {
+                "name": "imageKey",
+                "label": "Image",
+                "type": "image",
+                "valueType": "string",
+                "format": "a storage key from an upload; images cannot be uploaded through these tools",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true
+            },
+            {
+                "name": "tags",
+                "label": "Tags",
+                "type": "manyToMany",
+                "format": "a list of the related records' ids; the list replaces the current one",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": false,
+                "relation": {
+                    "kind": "manyToMany",
+                    "resource": "tags"
+                }
+            },
+            {
+                "name": "releasedAt",
+                "label": "Released at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between",
+                    "null",
+                    "nnull"
+                ],
+                "sortable": true,
+                "visibleWhen": [
+                    {
+                        "field": "status",
+                        "op": "ne",
+                        "value": "draft"
+                    }
+                ],
+                "requiredWhen": [
+                    {
+                        "field": "status",
+                        "op": "eq",
+                        "value": "active"
+                    }
+                ]
+            },
+            {
+                "name": "createdAt",
+                "label": "Created at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "updatedAt",
+                "label": "Updated at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "writable": []
+            }
+        ],
+        "actions": [
+            {
+                "name": "publish-products",
+                "label": "Publish",
+                "confirmation": "Publish the selected products? They become visible to customers.",
+                "fields": [
+                    {
+                        "name": "releasedAt",
+                        "label": "Release date",
+                        "type": "datetime",
+                        "help": "Empty publishes now.",
+                        "required": false
+                    },
+                    {
+                        "name": "featured",
+                        "label": "Feature on the storefront",
+                        "type": "boolean",
+                        "required": false,
+                        "default": false
+                    }
+                ]
+            },
+            {
+                "name": "archive-products",
+                "label": "Archive",
+                "destructive": true
+            },
+            {
+                "name": "adjust-stock",
+                "label": "Adjust stock",
+                "fields": [
+                    {
+                        "name": "delta",
+                        "label": "Change by",
+                        "type": "number",
+                        "help": "Negative removes stock.",
+                        "required": true,
+                        "rules": [
+                            "NotBlank"
+                        ]
+                    },
+                    {
+                        "name": "note",
+                        "label": "Note",
+                        "type": "text",
+                        "required": false,
+                        "rules": [
+                            "MaxLength(200)"
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "reprice-products",
+                "label": "Reprice",
+                "confirmation": "Reprice the selected products? Prices are rounded to the cent.",
+                "queued": true,
+                "fields": [
+                    {
+                        "name": "percent",
+                        "label": "Change by %",
+                        "type": "number",
+                        "help": "Negative lowers prices. Runs in the background; you are notified when it finishes.",
+                        "required": true,
+                        "rules": [
+                            "NotBlank",
+                            "GreaterThanOrEqual(-90)",
+                            "LessThanOrEqual(500)"
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "catalog-summary",
+                "label": "Download catalog summary",
+                "standalone": true
+            }
+        ]
+    },
+    "profiles": {
+        "resource": "profiles",
+        "label": "Profiles",
+        "labelSingular": "Profile",
+        "group": "Access",
+        "key": {
+            "field": "id",
+            "type": "int"
+        },
+        "titleField": "name",
+        "softDelete": false,
+        "permissions": {
+            "viewAny": true,
+            "create": false,
+            "update": true,
+            "delete": true,
+            "export": true,
+            "setDefaultView": true
+        },
+        "search": [
+            "name",
+            "email"
+        ],
+        "defaultSort": [
+            {
+                "field": "id",
+                "order": "asc"
+            }
+        ],
+        "fields": [
+            {
+                "name": "id",
+                "label": "ID",
+                "type": "id",
+                "valueType": "int",
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "name",
+                "label": "Name",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(120)"
+                ],
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "email",
+                "label": "Email",
+                "type": "email",
+                "valueType": "string",
+                "sortable": true,
+                "searchable": true,
+                "writable": []
+            },
+            {
+                "name": "createdAt",
+                "label": "Created at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "sortable": true,
+                "writable": []
+            }
+        ],
+        "actions": []
+    },
+    "support-teams": {
+        "resource": "support-teams",
+        "label": "Teams",
+        "labelSingular": "Team",
+        "group": "Support",
+        "key": {
+            "field": "id",
+            "type": "int"
+        },
+        "titleField": "name",
+        "softDelete": false,
+        "permissions": {
+            "viewAny": true,
+            "create": true,
+            "update": true,
+            "delete": true,
+            "export": true,
+            "setDefaultView": true
+        },
+        "search": [
+            "name",
+            "slug",
+            "email"
+        ],
+        "defaultSort": [
+            {
+                "field": "id",
+                "order": "asc"
+            }
+        ],
+        "fields": [
+            {
+                "name": "id",
+                "label": "ID",
+                "type": "id",
+                "valueType": "int",
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "name",
+                "label": "Name",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "slug",
+                "label": "Slug",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "email",
+                "label": "Email",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "createdAt",
+                "label": "Created at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between"
+                ],
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "updatedAt",
+                "label": "Updated at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between"
+                ],
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "agents",
+                "label": "Agents",
+                "type": "hasMany",
+                "relation": {
+                    "kind": "hasMany",
+                    "resource": "agents"
+                },
+                "writable": []
+            }
+        ],
+        "actions": []
+    },
+    "tags": {
+        "resource": "tags",
+        "label": "Tags",
+        "labelSingular": "Tag",
+        "group": "Catalog",
+        "key": {
+            "field": "id",
+            "type": "int"
+        },
+        "titleField": "name",
+        "softDelete": false,
+        "permissions": {
+            "viewAny": true,
+            "create": true,
+            "update": true,
+            "delete": true,
+            "export": true,
+            "setDefaultView": true
+        },
+        "search": [
+            "name"
+        ],
+        "defaultSort": [
+            {
+                "field": "id",
+                "order": "asc"
+            }
+        ],
+        "fields": [
+            {
+                "name": "id",
+                "label": "ID",
+                "type": "id",
+                "valueType": "int",
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "name",
+                "label": "Name",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "unique": true,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(60)"
+                ],
+                "filter": [
+                    "eq",
+                    "ne",
+                    "like",
+                    "nlike",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "color",
+                "label": "Color",
+                "type": "color",
+                "valueType": "string",
+                "format": "#rrggbb",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "Regex(\"/^#[0-9A-Fa-f]{6}$/D\")"
+                ]
+            },
+            {
+                "name": "products",
+                "label": "Products",
+                "type": "manyToMany",
+                "format": "a list of the related records' ids; the list replaces the current one",
+                "relation": {
+                    "kind": "manyToMany",
+                    "resource": "products"
+                },
+                "writable": []
+            }
+        ],
+        "actions": []
+    },
+    "ticket-replies": {
+        "resource": "ticket-replies",
+        "label": "Ticket replies",
+        "labelSingular": "Ticket reply",
+        "group": "Support",
+        "key": {
+            "field": "id",
+            "type": "int"
+        },
+        "titleField": "author",
+        "softDelete": false,
+        "permissions": {
+            "viewAny": true,
+            "create": true,
+            "update": true,
+            "delete": true,
+            "export": true,
+            "setDefaultView": true
+        },
+        "search": [
+            "author"
+        ],
+        "defaultSort": [
+            {
+                "field": "id",
+                "order": "asc"
+            }
+        ],
+        "fields": [
+            {
+                "name": "id",
+                "label": "ID",
+                "type": "id",
+                "valueType": "int",
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "ticket",
+                "label": "Ticket",
+                "type": "belongsTo",
+                "valueType": "int",
+                "format": "the related record's id",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "relation": {
+                    "kind": "belongsTo",
+                    "resource": "tickets"
+                },
+                "filter": [
+                    "eq",
+                    "ne",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "author",
+                "label": "Author",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(120)"
+                ],
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "body",
+                "label": "Body",
+                "type": "markdown",
+                "valueType": "string",
+                "format": "Markdown text",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "NotBlank"
+                ]
+            },
+            {
+                "name": "isInternal",
+                "label": "Internal",
+                "type": "boolean",
+                "valueType": "bool",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "filter": [
+                    "eq"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "createdAt",
+                "label": "Created at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between"
+                ],
+                "sortable": true,
+                "writable": []
+            }
+        ],
+        "actions": []
+    },
+    "tickets": {
+        "resource": "tickets",
+        "label": "Tickets",
+        "labelSingular": "Ticket",
+        "group": "Support",
+        "key": {
+            "field": "id",
+            "type": "int"
+        },
+        "titleField": "subject",
+        "softDelete": true,
+        "permissions": {
+            "viewAny": true,
+            "create": true,
+            "update": true,
+            "delete": true,
+            "export": true,
+            "setDefaultView": true
+        },
+        "search": [
+            "number",
+            "subject",
+            "customerEmail",
+            "team"
+        ],
+        "defaultSort": [
+            {
+                "field": "createdAt",
+                "order": "desc"
+            }
+        ],
+        "fields": [
+            {
+                "name": "id",
+                "label": "ID",
+                "type": "id",
+                "valueType": "int",
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "number",
+                "label": "Number",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "unique": true,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(20)"
+                ],
+                "filter": [
+                    "eq",
+                    "ne",
+                    "like",
+                    "nlike",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "subject",
+                "label": "Subject",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(200)"
+                ],
+                "filter": [
+                    "eq",
+                    "ne",
+                    "like",
+                    "nlike",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "body",
+                "label": "Body",
+                "type": "richtext",
+                "valueType": "string",
+                "format": "a rich-text document: ProseMirror/Tiptap JSON, sent as a string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "NotBlank"
+                ],
+                "richtext": {
+                    "features": [
+                        "bold",
+                        "italic",
+                        "list",
+                        "link",
+                        "blockquote"
+                    ]
+                }
+            },
+            {
+                "name": "status",
+                "label": "Status",
+                "type": "enum",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "filter": [
+                    "eq",
+                    "ne",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true,
+                "options": [
+                    {
+                        "value": "open",
+                        "label": "Open"
+                    },
+                    {
+                        "value": "pending",
+                        "label": "Pending"
+                    },
+                    {
+                        "value": "resolved",
+                        "label": "Resolved"
+                    },
+                    {
+                        "value": "closed",
+                        "label": "Closed"
+                    }
+                ]
+            },
+            {
+                "name": "priority",
+                "label": "Priority",
+                "type": "enum",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "filter": [
+                    "eq",
+                    "ne",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true,
+                "options": [
+                    {
+                        "value": "low",
+                        "label": "Low"
+                    },
+                    {
+                        "value": "normal",
+                        "label": "Normal"
+                    },
+                    {
+                        "value": "high",
+                        "label": "High"
+                    },
+                    {
+                        "value": "urgent",
+                        "label": "Urgent"
+                    }
+                ]
+            },
+            {
+                "name": "channel",
+                "label": "Channel",
+                "type": "enum",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "filter": [
+                    "eq",
+                    "ne",
+                    "in",
+                    "nin"
+                ],
+                "options": [
+                    {
+                        "value": "email",
+                        "label": "Email"
+                    },
+                    {
+                        "value": "chat",
+                        "label": "Chat"
+                    },
+                    {
+                        "value": "phone",
+                        "label": "Phone"
+                    },
+                    {
+                        "value": "web",
+                        "label": "Web"
+                    }
+                ]
+            },
+            {
+                "name": "customerEmail",
+                "label": "Customer",
+                "type": "email",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(255)",
+                    "Email"
+                ],
+                "filter": [
+                    "eq",
+                    "ne",
+                    "like",
+                    "nlike",
+                    "in",
+                    "nin"
+                ],
+                "searchable": true
+            },
+            {
+                "name": "customerRef",
+                "label": "Customer id (shop)",
+                "type": "number",
+                "valueType": "int",
+                "help": "The shop customer on the MySQL connection, by id: a relationship never spans two databases.",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true
+            },
+            {
+                "name": "team",
+                "label": "Team",
+                "type": "belongsTo",
+                "valueType": "int",
+                "format": "the related record's id",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "relation": {
+                    "kind": "belongsTo",
+                    "resource": "support-teams"
+                },
+                "filter": [
+                    "eq",
+                    "ne",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "assignee",
+                "label": "Assignee",
+                "type": "belongsTo",
+                "valueType": "int",
+                "format": "the related record's id",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "relation": {
+                    "kind": "belongsTo",
+                    "resource": "agents"
+                },
+                "filter": [
+                    "eq",
+                    "ne",
+                    "in",
+                    "nin",
+                    "null",
+                    "nnull"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "labels",
+                "label": "Labels",
+                "type": "manyToMany",
+                "format": "a list of the related records' ids; the list replaces the current one",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": false,
+                "relation": {
+                    "kind": "manyToMany",
+                    "resource": "labels"
+                }
+            },
+            {
+                "name": "replies",
+                "label": "Replies",
+                "type": "hasMany",
+                "relation": {
+                    "kind": "hasMany",
+                    "resource": "ticket-replies"
+                },
+                "writable": []
+            },
+            {
+                "name": "compensationCents",
+                "label": "Compensation",
+                "type": "money",
+                "valueType": "int",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "money": {
+                    "unit": "minor units (cents)",
+                    "currencyField": "currency"
+                },
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between",
+                    "in",
+                    "nin"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "currency",
+                "label": "Currency",
+                "type": "currency",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": false,
+                "default": "EUR",
+                "choices": "156 values, such as AED, AFN, ALL, AMD, ANG"
+            },
+            {
+                "name": "satisfaction",
+                "label": "Satisfaction",
+                "type": "number",
+                "valueType": "int",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "rules": [
+                    "GreaterThanOrEqual(1)",
+                    "LessThanOrEqual(5)"
+                ],
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between",
+                    "in",
+                    "nin",
+                    "null",
+                    "nnull"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "isEscalated",
+                "label": "Escalated",
+                "type": "boolean",
+                "valueType": "bool",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "filter": [
+                    "eq"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "metadata",
+                "label": "Metadata",
+                "type": "json",
+                "valueType": "string",
+                "format": "any JSON value",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true
+            },
+            {
+                "name": "dueAt",
+                "label": "Due",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between",
+                    "null",
+                    "nnull"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "resolvedAt",
+                "label": "Resolved at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "filter": [
+                    "eq",
+                    "ne",
+                    "lt",
+                    "lte",
+                    "gt",
+                    "gte",
+                    "between",
+                    "null",
+                    "nnull"
+                ]
+            },
+            {
+                "name": "createdAt",
+                "label": "Created at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "updatedAt",
+                "label": "Updated at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "writable": []
+            }
+        ],
+        "actions": [
+            {
+                "name": "escalate-tickets",
+                "label": "Escalate"
+            }
+        ]
+    },
+    "users": {
+        "resource": "users",
+        "label": "Users",
+        "labelSingular": "User",
+        "group": "Access",
+        "key": {
+            "field": "id",
+            "type": "int"
+        },
+        "titleField": "name",
+        "softDelete": false,
+        "permissions": {
+            "viewAny": true,
+            "create": false,
+            "update": true,
+            "delete": true,
+            "export": true,
+            "setDefaultView": true
+        },
+        "search": [
+            "name",
+            "email"
+        ],
+        "defaultSort": [
+            {
+                "field": "id",
+                "order": "asc"
+            }
+        ],
+        "fields": [
+            {
+                "name": "id",
+                "label": "ID",
+                "type": "id",
+                "valueType": "int",
+                "sortable": true,
+                "writable": []
+            },
+            {
+                "name": "name",
+                "label": "Name",
+                "type": "string",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(120)"
+                ],
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "email",
+                "label": "Email",
+                "type": "email",
+                "valueType": "string",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "unique": true,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(255)",
+                    "Email"
+                ],
+                "sortable": true,
+                "searchable": true
+            },
+            {
+                "name": "isAdmin",
+                "label": "Admin",
+                "type": "boolean",
+                "valueType": "bool",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "filter": [
+                    "eq"
+                ],
+                "sortable": true
+            },
+            {
+                "name": "passwordHash",
+                "label": "New password",
+                "type": "password",
+                "valueType": "string",
+                "help": "Leave empty to keep the current password.",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": true,
+                "nullable": false,
+                "rules": [
+                    "MinLength(8)"
+                ]
+            },
+            {
+                "name": "createdAt",
+                "label": "Created at",
+                "type": "datetime",
+                "valueType": "timestamp",
+                "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
+                "sortable": true,
+                "writable": []
+            }
+        ],
+        "actions": []
+    }
+}

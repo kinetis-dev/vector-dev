@@ -176,6 +176,7 @@ databases
 :hidden:
 
 mcp
+ai
 testing
 ```
 

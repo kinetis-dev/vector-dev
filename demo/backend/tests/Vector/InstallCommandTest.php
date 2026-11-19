@@ -146,6 +146,30 @@ final class InstallCommandTest extends TestCase
         self::assertNotSame([], glob($this->root . '/migrations/*_vector_*.php'));
     }
 
+    public function testAnotherConnectionHoldingVectorsMigrationsIsNoted(): void
+    {
+        mkdir($this->root . '/migrations/admin', 0755, true);
+        touch($this->root . '/migrations/admin/20260926000005_vector_audit.php');
+
+        [$status, $output] = $this->install();
+
+        self::assertSame(0, $status);
+        self::assertStringContainsString("Note: Vector's migrations are also published for the \"admin\" connection.", $output);
+    }
+
+    public function testAnotherPackagesMigrationsInAnotherConnectionAreNotVectors(): void
+    {
+        // kinetis/vector-ai's, beside Vector's tables on another connection: `*_vector_ai_*` is not Vector's own
+        mkdir($this->root . '/migrations/admin', 0755, true);
+        touch($this->root . '/migrations/admin/20261119000101_vector_ai_credentials.php');
+        touch($this->root . '/migrations/admin/20261119000102_vector_ai_usage.php');
+
+        [$status, $output] = $this->install();
+
+        self::assertSame(0, $status);
+        self::assertStringNotContainsString('also published', $output);
+    }
+
     public function testOnlyMigrationsArePublished(): void
     {
         [$status] = $this->install();

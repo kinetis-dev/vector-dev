@@ -41,6 +41,7 @@ export default {
         records: 'Kayıtlar',
         resources: 'Kaynaklar',
         noMatch: 'Eşleşen kayıt yok',
+        commands: 'Komutlar',
     },
     inbox: {
         title: 'Bildirimler',

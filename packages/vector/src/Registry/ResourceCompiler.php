@@ -574,7 +574,26 @@ final class ResourceCompiler
             'badge' => self::badge($instance, $compiledFields, $class),
             'actions' => array_values($actions),
             'widgets' => WidgetCompiler::widgets($instance->widgets(), $class),
-        ] + array_filter(['searchRelations' => $searchRelations, 'fullText' => $fullText]);
+        ] + array_filter(['searchRelations' => $searchRelations, 'fullText' => $fullText, 'meta' => self::resourceMeta($attribute, $class)]);
+    }
+
+    /**
+     * The resource's metadata bag, checked as Field::meta() checks a field's.
+     *
+     * @param class-string $class
+     * @return array<string, mixed>
+     */
+    private static function resourceMeta(Resource $attribute, string $class): array
+    {
+        foreach ($attribute->meta as $key => $value) {
+            try {
+                Field::checkMeta($key, $value, '#[Resource]');
+            } catch (\InvalidArgumentException $e) {
+                throw ResourceCompileException::resource($class, $e->getMessage());
+            }
+        }
+
+        return $attribute->meta;
     }
 
     /**
@@ -1165,7 +1184,8 @@ final class ResourceCompiler
         $name = $array['name'];
         $method = $array['computed']['method'] ?? throw ResourceCompileException::field($class, $name, 'is computed but names no method; call method()');
 
-        if (!method_exists($class, $method) || !(new \ReflectionMethod($class, $method))->isPublic() || (new \ReflectionMethod($class, $method))->isStatic()) {
+        // through ReflectionClass rather than `new ReflectionMethod`: a PHPStan rule this repository runs fails on that constructor's two signatures
+        if (!method_exists($class, $method) || !(new \ReflectionClass($class))->getMethod($method)->isPublic() || (new \ReflectionClass($class))->getMethod($method)->isStatic()) {
             throw ResourceCompileException::field($class, $name, "is computed by {$method}(), which is not a public instance method of the resource");
         }
 

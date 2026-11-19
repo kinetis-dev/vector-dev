@@ -30,9 +30,10 @@ final class VectorRegistryTest extends TestCase
     {
         $data = VectorRegistry::compile(new DiscoveryContext(dirname(__DIR__, 2)));
 
-        self::assertSame(5, $data['version']);
+        self::assertSame(6, $data['version']);
         self::assertSame(['main'], array_keys($data['dashboards']));
-        self::assertSame(['branding', 'jobs', 'languages', 'store'], array_keys($data['settings']));
+        self::assertSame(['ai', 'branding', 'jobs', 'languages', 'store'], array_keys($data['settings']), 'kinetis/vector-ai\'s group among them');
+        self::assertSame(['ai' => \Kinetis\VectorAi\Shell\AiShellContributor::class], $data['contributors']);
         self::assertSame(
             ['agents', 'categories', 'customer-profiles', 'customers', 'labels', 'order-lines', 'orders', 'products', 'profiles', 'support-teams', 'tags', 'ticket-replies', 'tickets', 'users'],
             array_keys($data['resources']),

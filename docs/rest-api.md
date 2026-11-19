@@ -213,6 +213,18 @@ advanced condition that can be removed.
 Anything outside the descriptor's allow-lists answers `422` with the
 reason.
 
+### Validating a filter without running it
+
+Code that builds a filter — an extension, a package turning a sentence
+into conditions — checks it with the same grammar before anything runs:
+`Kinetis\Vector\Query\ListRequest::fromQueryParams($params,
+$descriptor, $converter)`, with the request's
+`Kinetis\Vector\Write\ValueConverter`, parses the parameters against the
+resource's descriptor as this user sees it and throws
+`InvalidListRequestException` (the `422` above) on anything outside it.
+It runs no query; only `ResourceService::list()` does. This is the
+supported way to validate a filter.
+
 ## Statement bounds
 
 A list, a show and a write run a fixed number of statements; see

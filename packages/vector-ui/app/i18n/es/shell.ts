@@ -41,6 +41,7 @@ export default {
         records: 'Registros',
         resources: 'Recursos',
         noMatch: 'Ningún registro coincide',
+        commands: 'Comandos',
     },
     inbox: {
         title: 'Notificaciones',

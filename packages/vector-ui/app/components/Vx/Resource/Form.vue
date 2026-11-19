@@ -353,6 +353,14 @@ const hiddenErrors = computed(() => Object.entries(serverErrors)
                             v-bind="fieldsByName.get(name)!.repeater ? { serverErrors } : {}"
                             @update:model-value="clearServerError(name)"
                         />
+                        <VxInputAddons
+                            :field="fieldsByName.get(name)!"
+                            :resource="resource.slug"
+                            :record="inputRecord"
+                            :model-value="values[name]"
+                            :disabled="states[name]?.disabled === true"
+                            @update:model-value="(v: unknown) => { values[name] = v; clearServerError(name) }"
+                        />
                     </template>
                 </VxLayout>
             </v-card-text>

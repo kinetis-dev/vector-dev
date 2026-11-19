@@ -6,6 +6,7 @@ parameters:
     paths:
         - src
         - ../../packages/vector/src
+        - ../../packages/vector-ai/src
         - migrations
         - bootstrap.php
         - public/index.php
@@ -34,5 +35,10 @@ services:
             - phpstan.rules.rule
     -
         class: Kinetis\Linting\NoProcessGlobalsRule
+        tags:
+            - phpstan.rules.rule
+    # Neuron AI's features that block a worker, fork it or keep state between requests (kinetis/neuron)
+    -
+        class: Kinetis\Neuron\Linting\NoWorkerUnsafeNeuronRule
         tags:
             - phpstan.rules.rule

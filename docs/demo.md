@@ -10,7 +10,9 @@ relation shape Vector administers is exercised:
   labels.
 
 It runs both admin modes, background jobs on a real queue, the queue
-dashboard ({doc}`queues`), and a seeded catalog.
+dashboard ({doc}`queues`), a seeded catalog, and `kinetis/vector-ai`
+({doc}`ai`) installed but unconfigured: its *AI assistant* settings group
+is there, and no AI feature.
 
 ## Run it
 
@@ -33,7 +35,7 @@ from `demo/`.
 |---|---|---|
 | `nginx`, `app` | `localhost:8080` | The API: nginx and PHP-FPM. `/openapi` in development. Set `NGINX_HOST_PORT` to publish it on another host port when 8080 is taken. |
 | `frankenphp` | `localhost:8081` | The same application under FrankenPHP worker mode, Kinetis's primary runtime: 12 worker threads on the native database drivers. |
-| `node` | `localhost:3000` | The standalone admin: `nuxt dev` for `demo/frontend`. |
+| `node` | `localhost:3000` | The standalone admin: `nuxt dev` for `demo/frontend`, which extends `@kinetis/vector-ai-ui` (`@kinetis/vector-ui` with the AI layer). |
 | `worker` | — | `queue:work --queue=default,vector`: the application's jobs first, then Vector's. |
 | `mysql` | `localhost:3306` | The shop, and the SQL queue table the test suite uses. `vector` / `vector`. Set `MYSQL_HOST_PORT` to publish it on another host port when 3306 is taken. |
 | `postgres` | `localhost:5432` | `vector_support`, the support desk (connection `support`), and `vector_admin`, Vector's own tables (connection `admin`). `vector` / `vector`. |
@@ -216,6 +218,10 @@ docker compose restart app frankenphp
 `pnpm generate:hosted` builds into `packages/vector-ui/dist/static`,
 labelled with `packages/vector-ui/package.json`'s version, which is the
 one `kinetis/vector` pins. `vector:install-ui --check` then exits 0.
+
+The hosted admin is the plain one: the AI layer reaches the standalone
+admin only, through `extends` (hosted delivery of it comes in a later
+release), so the end-to-end suite's AI spec runs standalone.
 
 Then open `http://localhost:8080/vector/ui`, or
 `http://localhost:8081/vector/ui` for the same admin under FrankenPHP.

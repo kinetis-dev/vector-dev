@@ -1,59 +1,41 @@
 import * as vue from 'vue'
 import { Extension as TiptapExtension, Mark as TiptapMark, Node as TiptapNode, mergeAttributes } from '@tiptap/core'
-import {
-    VAlert, VAutocomplete, VBtn, VCard, VCheckbox, VChip, VDialog, VDivider, VExpansionPanel, VExpansionPanels, VExpansionPanelText,
-    VExpansionPanelTitle, VIcon, VList, VListItem, VMenu, VPagination, VProgressLinear, VRating, VSelect, VSkeletonLoader, VSwitch,
-    VTab, VTable, VTabs, VTabsWindow, VTabsWindowItem, VTextField, VTextarea, VTooltip,
-} from 'vuetify/components'
-import type { VectorPageLabel } from '../composables/useVectorExtensions'
+import type { VectorPageLabel, VectorPaletteCommand } from '../composables/useVectorExtensions'
+import type { VectorHost } from '../composables/useVectorExtend'
 
 /**
- * Runtime UI extensions. `window.Vector` is the
- * registration API an extension module calls; the URLs come from the
- * hosted shell (`VECTOR_UI_EXTENSIONS`) or, in standalone mode, from
- * runtime config, and are imported after the app is created. Vue and a
- * curated set of Vuetify components are handed over so an extension
- * needs no bundler and no copy of either library.
+ * Runtime UI extensions. `window.Vector` is the registration API an
+ * extension module calls; the URLs come from the hosted shell
+ * (`VECTOR_UI_EXTENSIONS`) or, in standalone mode, from runtime config,
+ * and are imported after the app is created. Vue and a curated set of
+ * Vuetify components are handed over so an extension needs no bundler and
+ * no copy of either library.
+ *
+ * Version 2 keeps every version 1 function as it was and adds the shell's
+ * own slots (defineShellAction, defineListToolbarItem, defineInputAddon,
+ * defineEditorToolbarItem, definePaletteCommand, defineSettingsAddon) and
+ * `host`, the admin's services. A layer reaches the same points through
+ * useVectorExtend() and useVectorHost().
  */
 export default defineNuxtPlugin(() => {
     const registries = useVectorExtensions()
+    const extend = useVectorExtend()
+    const host = useVectorHost()
     const i18n = useNuxtApp().$vectorI18n
     const api$ = useVectorApi()
     const notifications = useVectorNotifications()
     const appConfig = useAppConfig()
     const config = useRuntimeConfig()
-    // Tree-shaking keeps only what is imported here, so this is every Vuetify component an extension can reach.
-    // VTable for a custom page's tables: its wrapper, not a bare <table>, carries Vuetify's table styles.
-    const vuetify = {
-        VAlert, VAutocomplete, VBtn, VCard, VCheckbox, VChip, VDialog, VDivider, VExpansionPanel, VExpansionPanels, VExpansionPanelText,
-        VExpansionPanelTitle, VIcon, VList, VListItem, VMenu, VPagination, VProgressLinear, VRating, VSelect, VSkeletonLoader, VSwitch,
-        VTab, VTable, VTabs, VTabsWindow, VTabsWindowItem, VTextField, VTextarea, VTooltip,
-    }
 
     const api = {
-        version: 1,
+        version: 2,
         vue,
-        vuetify,
+        vuetify: host.vuetify,
         // what a rich-text extension is built from, so one needs no bundler of its own
         tiptap: { Node: TiptapNode, Mark: TiptapMark, Extension: TiptapExtension, mergeAttributes },
-        defineCell: (name: string, component: vue.Component) => registries.cells.set(name, vue.markRaw(component)),
-        defineInput: (name: string, component: vue.Component) => registries.inputs.set(name, vue.markRaw(component)),
-        defineWidget: (type: string, component: vue.Component) => registries.widgets.set(type, vue.markRaw(component)),
-        /**
-         * A rich-text node or mark type (a Tiptap extension) a field's `features` may then name. The server
-         * accepts it only when the application registered the same name with Document::extend().
-         */
-        defineRichTextExtension: (name: string, extension: import('@tiptap/core').AnyExtension) => registries.richText.set(name, vue.markRaw(extension)),
+        ...extend,
         /** Adds or overrides UI messages for a locale: defineMessages('de', { common: { save: 'Speichern' } }). */
         defineMessages: (locale: string, messages: Record<string, unknown>) => i18n.global.mergeLocaleMessage(locale, messages),
-        /**
-         * A custom page at `/p/{name}`, listed in the menu: definePage('stock', { title: 'Stock', icon: 'mdi-warehouse', component }).
-         * `title` and `group` may be functions, `() => t('stock.title')`, called each time they are shown, so they follow the language.
-         */
-        definePage: (name: string, page: { title: VectorPageLabel, icon?: string, group?: VectorPageLabel, component: vue.Component }) => {
-            if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) throw new Error(`Vector page name "${name}" must be lowercase letters, digits and dashes.`)
-            registries.pages.set(name, { ...page, component: vue.markRaw(page.component) })
-        },
         /** The admin's API client, with its credentials, for extensions calling the application's own endpoints. */
         api: api$,
         notify: {
@@ -63,6 +45,7 @@ export default defineNuxtPlugin(() => {
         navigate: (path: string) => navigateTo(`${appConfig.vector.basePath}${path}`),
         /** The admin's translator, for an extension's own messages (defineMessages) or the admin's. */
         t: (key: string, params: Record<string, unknown> = {}, plural?: number) => vt(key, params, plural),
+        host,
     }
 
     window.Vector = api
@@ -81,6 +64,7 @@ export default defineNuxtPlugin(() => {
 declare global {
     interface Window {
         Vector?: {
+            /** 2: version 1's functions, unchanged, plus the shell slots and `host`. */
             version: number
             vue: typeof vue
             vuetify: Record<string, vue.Component>
@@ -91,6 +75,13 @@ declare global {
             defineRichTextExtension: (name: string, extension: import('@tiptap/core').AnyExtension) => void
             defineMessages: (locale: string, messages: Record<string, unknown>) => void
             definePage: (name: string, page: { title: VectorPageLabel, icon?: string, group?: VectorPageLabel, component: vue.Component }) => void
+            defineShellAction: (name: string, component: vue.Component) => void
+            defineListToolbarItem: (name: string, component: vue.Component) => void
+            defineInputAddon: (name: string, addon: { types: string[], component: vue.Component }) => void
+            defineEditorToolbarItem: (name: string, component: vue.Component) => void
+            definePaletteCommand: (name: string, command: VectorPaletteCommand) => void
+            defineSettingsAddon: (group: string, component: vue.Component) => void
+            host: VectorHost
             api: import('nitropack').$Fetch
             notify: { success: (message: string) => void, error: (message: string) => void }
             navigate: (path: string) => unknown

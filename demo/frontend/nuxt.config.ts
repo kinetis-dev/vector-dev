@@ -1,6 +1,8 @@
-// The reference admin: nothing but the layer and where the API is.
+// The reference admin: nothing but the layers and where the API is.
+// @kinetis/vector-ai-ui is @kinetis/vector-ui with the AI layer on top;
+// against a backend without kinetis/vector-ai it is the plain admin.
 export default defineNuxtConfig({
-    extends: ['@kinetis/vector-ui'],
+    extends: ['@kinetis/vector-ai-ui'],
 
     compatibilityDate: '2026-09-24',
 

@@ -21,7 +21,7 @@ final readonly class Labels
     private const array TEXT_MAPS = ['ranges'];
 
     /** Subtrees that are data, not definitions. */
-    private const array DATA = ['values', 'rows', 'points', 'branding', 'minorUnits', 'rules', 'default', 'conditions'];
+    private const array DATA = ['values', 'rows', 'points', 'branding', 'minorUnits', 'rules', 'default', 'conditions', 'meta', 'capabilities'];
 
     public function __construct(private TranslatorInterface $translator) {}
 

@@ -1,7 +1,9 @@
 # Working on Vector
 
-Vector is developed in one repository: the two packages, and the demo
-application ({doc}`demo`) that consumes them the way an adopter would.
+Vector is developed in one repository: the packages — `kinetis/vector`
+and `@kinetis/vector-ui`, and the AI companion `kinetis/vector-ai` and
+`@kinetis/vector-ai-ui` — and the demo application ({doc}`demo`) that
+consumes them the way an adopter would.
 Every command on this page runs from `demo/`, with the stack up and
 seeded.
 
@@ -11,10 +13,12 @@ seeded.
 packages/vector/            kinetis/vector: registry, REST API, jobs, the queue dashboard (src/Queues/), MCP tools, migration stubs
 packages/vector-ui/         @kinetis/vector-ui, the Nuxt layer; its Vitest suite in test/nuxt/
   hosted/                   the hosted bundle's build entry: the layer alone, built into dist/static
+packages/vector-ai/         kinetis/vector-ai: AI configuration, sealed provider keys, the ai settings group, the usage ledger, migration stubs
+packages/vector-ai-ui/      @kinetis/vector-ai-ui, the AI layer over @kinetis/vector-ui; its Vitest suite in test/nuxt/
 demo/docker-compose.yml     the stack: app, worker, nginx, frankenphp, mysql, postgres, redis, node; e2e and oha on demand
 demo/docker/                the PHP images (PHP-FPM and FrankenPHP) and their shared extension recipe, nginx, the Caddyfile, php.ini
 demo/bin/                   check-frankenphp and benchmark, for the FrankenPHP worker service
-demo/backend/               the demo application, kinetis/vector installed from ../../packages/vector
+demo/backend/               the demo application, kinetis/vector and kinetis/vector-ai installed from ../../packages
   src/Auth/                 both sign-ins, their throttling, the vector and mcp group middleware, impersonation
   src/Console/              demo:seed, and demo:queue-flaky, which queues the flaky job below
   src/Jobs/                 SyncWarehouseStockJob, a job that fails on purpose, for the queue dashboard
@@ -28,31 +32,37 @@ demo/backend/               the demo application, kinetis/vector installed from 
   public/vector-extensions/ the demo's runtime UI extensions
   translations/             the demo's labels
   tests/                    PHPUnit (App\Tests\)
-demo/frontend/              the demo Nuxt app: extends @kinetis/vector-ui
+demo/frontend/              the demo Nuxt app: extends @kinetis/vector-ai-ui (and so @kinetis/vector-ui)
 demo/e2e/                   the end-to-end suite: Playwright, both admin modes
 docs/                       this manual (Sphinx, MyST Markdown)
 bin/orbitron-mcp            launches the Orbitron MCP server for demo/backend
 ```
 
-Controllers, commands, entities and resources anywhere under `App\` or
-`Kinetis\Vector\` are discovered; there is no registry to edit. Nothing
+Controllers, commands, entities and resources anywhere under `App\`,
+`Kinetis\Vector\` or `Kinetis\VectorAi\` are discovered; there is no
+registry to edit. Nothing
 under `packages/` may reference `App\`.
 
-The demo installs `kinetis/vector` as a Composer `path` repository, so
-`vendor/composer/installed.json` keeps the package's `composer.json` as
-it was at the last install. After changing it, its `extra.kinetis` keys
-especially, reinstall the package so discovery sees the change:
+The demo installs `kinetis/vector` and `kinetis/vector-ai` as Composer
+`path` repositories, so `vendor/composer/installed.json` keeps each
+package's `composer.json` as it was at the last install. After changing
+one, its `extra.kinetis` keys especially, reinstall it so discovery sees
+the change:
 
 ```console
-docker compose exec app composer update kinetis/vector
+docker compose exec app composer update kinetis/vector kinetis/vector-ai
 ```
+
+`kinetis/vector-ai` requires `kinetis/vector` `^0.16`; the demo requires
+the path-installed `kinetis/vector` as `dev-main as 0.16.0` so it
+satisfies that.
 
 ## Tests
 
 ```console
 docker compose exec app vendor/bin/phpunit                                        # the API and the PHP package
 docker compose exec -e VECTOR_TEST_DB_CONNECTION=default app vendor/bin/phpunit   # the same, Vector's tables on MySQL
-docker compose exec node pnpm test                                                # the UI layer: Vitest, no server
+docker compose exec node pnpm test                                                # the UI layers: Vitest, no server
 docker compose exec node pnpm typecheck                                           # vue-tsc over the layer and its tests
 docker compose run --rm e2e                                                       # the admin in a browser, both modes
 bin/check-frankenphp                                                              # the application under FrankenPHP worker mode
@@ -139,8 +149,10 @@ docker compose exec node pnpm lint
 docker compose exec node pnpm --filter frontend generate
 ```
 
-PHPStan runs at level 8 over the demo and `packages/vector/src`, with
-three Kinetis rules. `NoStaticPropertiesRule` flags a `static` property,
+PHPStan runs at level 8 over the demo, `packages/vector/src` and
+`packages/vector-ai/src`, with three Kinetis rules and kinetis/neuron's
+`NoWorkerUnsafeNeuronRule`, which flags the Neuron features that block,
+fork or keep state in a worker. `NoStaticPropertiesRule` flags a `static` property,
 which outlives every request a worker handles; `NoBlockingIoRule` flags
 a call that blocks the event loop instead of yielding;
 `NoProcessGlobalsRule` flags `exit` and `die`, the request superglobals,
@@ -154,8 +166,8 @@ is correct on a persistent worker.
 docker compose exec app composer psalm          # Psalm, types and taints; writes backend/psalm.sarif
 ```
 
-Psalm covers the demo's `src/` and `migrations/` and
-`packages/vector/src`, at its level 7 (Psalm's 1 is its strictest).
+Psalm covers the demo's `src/` and `migrations/`,
+`packages/vector/src` and `packages/vector-ai/src`, at its level 7 (Psalm's 1 is its strictest).
 Psalm 7 checks types and taints in one run. Request input reaches this
 code through PSR-7 and the framework's hydration, and SQL runs through
 Kinetis's own links. Psalm knows neither as a taint source or sink, so a
@@ -229,7 +241,7 @@ pull requests, each for the paths it covers:
 
 - `ci.yml` — on PHP 8.4 and 8.5, in the demo's own PHP image with
   MySQL, PostgreSQL and Redis as services: `composer validate --strict`
-  for the package's and the demo's `composer.json` files, `composer audit`, the PHPUnit suite
+  for the packages' and the demo's `composer.json` files, `composer audit`, the PHPUnit suite
   (both placements of Vector's tables, as above), PHPStan and Psalm (one run, ordinary and
   taint issues together), and one more job on PHP 8.4 that removes
   `kinetis/queue-failed-jobs` from the demo, boots Vector without it and
@@ -247,7 +259,8 @@ pull requests, each for the paths it covers:
   that changes files under `packages/vector-ui` bumps both `vector-ui`
   and `vector`, since `kinetis/vector` pins the UI release
   (`packages/vector/resources/ui.json`, which `bump.mjs vector-ui`
-  moves); see {doc}`releasing`.
+  moves), and `@kinetis/vector-ai-ui` depends on exactly that release
+  (so `vector-ai-ui` is bumped too); see {doc}`releasing`.
 - `infection.yml` — `composer infection:workers`, then
   `composer infection:vector` or `composer infection:queues`,
   when Vector's Registry, Query or Queues or the mutation setup

@@ -1,0 +1,51 @@
+{
+    "name": "kinetis/vector-ai",
+    "description": "AI for Kinetis Vector, on kinetis/neuron. This release lays the foundations only (provider configuration, sealed provider keys, the AI settings and a usage ledger); the AI features arrive in later releases.",
+    "keywords": [
+        "kinetis",
+        "vector",
+        "admin",
+        "ai",
+        "llm"
+    ],
+    "homepage": "https://kinetis.dev/vector/docs/ai.html",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Alon Noy"
+        }
+    ],
+    "support": {
+        "docs": "https://kinetis.dev/vector/docs/ai.html",
+        "issues": "https://github.com/kinetis-dev/vector-dev/issues",
+        "source": "https://github.com/kinetis-dev/vector-dev"
+    },
+    "require": {
+        "php": "^8.4",
+        "ext-sodium": "*",
+        "kinetis/aws-sigv4": "^1.3.7",
+        "kinetis/framework": "^1.28.0",
+        "kinetis/mcp": "^1.9.0",
+        "kinetis/neuron": "^1.1",
+        "kinetis/query-builder": "^1.8.4",
+        "kinetis/revolt-http-client": "^1.9.0",
+        "kinetis/vector": "^0.16",
+        "neuron-core/neuron-ai": "^4.1.24",
+        "psr/http-message": "^2.0",
+        "psr/log": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Kinetis\\VectorAi\\": "src/"
+        }
+    },
+    "extra": {
+        "kinetis": {
+            "scan": "Kinetis\\VectorAi\\",
+            "bootstrap": "Kinetis\\VectorAi\\PackageBootstrap"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

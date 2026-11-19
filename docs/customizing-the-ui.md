@@ -6,7 +6,9 @@ does the job.
 1. **Descriptor and settings.** Fields, filters, actions, widgets,
    navigation and the **Branding** settings. No JavaScript.
 2. **Runtime extensions.** ES modules the admin loads at startup, adding
-   cells, inputs, widget renderers and pages. JavaScript, no rebuild.
+   cells, inputs, widget renderers, pages and the shell's own slots
+   (app-bar actions, list-toolbar items, input and editor addons,
+   palette commands, settings addons). JavaScript, no rebuild.
 3. **Your own build.** A Nuxt application extending the layer,
    overriding any of its files (Nuxt layer semantics: the same path in
    your application wins), registering global components named in
@@ -84,10 +86,11 @@ curated set of Vuetify components and the registration functions. The
 Vuetify components are the only ones an extension can reach, since the
 bundle keeps no other:
 
-- `VAlert`, `VAutocomplete`, `VBtn`, `VCard`, `VCheckbox`, `VChip`,
-  `VDivider`, `VIcon`, `VProgressLinear`, `VRating`, `VSelect`,
-  `VSkeletonLoader`, `VSwitch`, `VTable`, `VTextField`, `VTextarea`;
-- `VDialog`, `VMenu`, `VTooltip`;
+- `VAlert`, `VAutocomplete`, `VBadge`, `VBtn`, `VCard`, `VCheckbox`,
+  `VChip`, `VDivider`, `VIcon`, `VProgressCircular`, `VProgressLinear`,
+  `VRating`, `VSelect`, `VSkeletonLoader`, `VSwitch`, `VTable`,
+  `VTextField`, `VTextarea`, `VToolbar`;
+- `VDialog`, `VMenu`, `VNavigationDrawer`, `VTooltip`;
 - `VList`, `VListItem`, `VPagination`;
 - `VTabs`, `VTab`, `VTabsWindow`, `VTabsWindowItem`;
 - `VExpansionPanels`, `VExpansionPanel`, `VExpansionPanelTitle`,
@@ -117,7 +120,77 @@ demo's `public/vector-extensions/stock-level.js` is this one.
 `defineMessages`, `defineRichTextExtension`, `api` (the admin's API
 client, with its credentials), `notify`, `navigate`, `t` (the admin's
 translator) and `tiptap` (`Node`, `Mark`, `Extension`, `mergeAttributes`,
-to build a rich-text node without a bundler).
+to build a rich-text node without a bundler), and, from version 2, the
+shell slots and `host` below.
+
+## Shell slots (`window.Vector` version 2)
+
+`window.Vector.version` is `2`. Every version 1 function keeps its
+signature and behaviour; version 2 adds slots in the admin's own chrome.
+Each takes a name (lowercase letters, digits and dashes; registering a
+name again replaces what it named), renders in registration order, and
+renders nothing while nothing is registered.
+
+| Function | Where it renders | What the component gets |
+|---|---|---|
+| `defineShellAction(name, component)` | the app bar, before the notifications inbox | no props; it may teleport its own dialog or end-side `VNavigationDrawer` |
+| `defineListToolbarItem(name, component)` | a list's toolbar row, beside the search, above the filter bar | `resource`, `filters`, `groups`, `advanced`, `search`; emits `update:filters`, `update:groups`, `update:advanced`, `update:search` (the filter bar's own models) to change the list |
+| `defineInputAddon(name, { types, component })` | under each form input whose field type is in `types`, in record forms, action dialogs and settings groups | `field`, `resource` (the slug; empty in a settings group), `record`, `modelValue`, `disabled`; emits `update:modelValue` to change the field |
+| `defineEditorToolbarItem(name, component)` | the rich-text and Markdown editors' toolbars, before the undo/redo end | `editor` (the live Tiptap `Editor`), `field` |
+| `definePaletteCommand(name, { title, icon, run })` | the command palette (<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd>), under *Commands* | `run(query)` is called with what was typed, and the palette closes; `title` may be a function, like a page's |
+| `defineSettingsAddon(group, component)` | the Settings page, under that group's form, outside it | `group`, the group's name |
+
+```js
+export default function ({ vue, vuetify, defineListToolbarItem }) {
+    defineListToolbarItem('only-active', {
+        props: { resource: Object, filters: Object, groups: Array, advanced: Array, search: String },
+        emits: ['update:filters'],
+        setup: (props, { emit }) => () => props.resource.slug !== 'products' ? null : vue.h(vuetify.VBtn, {
+            size: 'small', variant: 'tonal',
+            onClick: () => emit('update:filters', { ...props.filters, status: 'active' }),
+        }, () => 'Active only'),
+    })
+}
+```
+
+### Host services
+
+`window.Vector.host` lends what the admin knows, for an extension that
+needs more than its props:
+
+- `schema`: the loaded descriptor, a read-only ref (`null` before the
+  first load);
+- `context()`: where the admin is, `{ path, resource?, recordId? }`, the
+  path under the admin's base path;
+- `locale()`: the language the admin is shown in;
+- `markdownHtml(text)` and `sanitizeHtml(html)`: the admin's own
+  Markdown renderer and HTML sanitizer, so an extension's markup is held
+  to the same rules as a field's;
+- `vuetify`: the curated Vuetify set above.
+
+A package's own capabilities reach the UI through the descriptor: a
+`#[ShellContributor(name: 'acme')]` on the server ({ref}`shell-contributors`)
+publishes its object as `host.schema.value.capabilities.acme`, absent
+when the package is not installed — what a slot checks before it
+renders.
+
+### From a layer
+
+A Nuxt layer over `@kinetis/vector-ui` reaches the same points without
+`window.Vector`: `useVectorExtend()` returns every `define*` function,
+`useVectorHost()` the host services. Call them in a client plugin:
+
+```ts
+// app/plugins/acme.client.ts
+import AcmePanel from '../components/AcmePanel.vue'
+
+export default defineNuxtPlugin(() => {
+    useVectorExtend().defineSettingsAddon('acme', AcmePanel)
+})
+```
+
+`@kinetis/vector-ai-ui` is such a layer ({doc}`ai`): its provider-key
+panel is a settings addon of the `ai` group.
 
 ## Rich-text extensions
 
@@ -235,3 +308,4 @@ is ever rendered as markup or executed.
 
 - {doc}`languages` — translating the admin.
 - {doc}`deployment` — where extensions are served from.
+- {doc}`ai` — `@kinetis/vector-ai-ui`, a layer built on these points.

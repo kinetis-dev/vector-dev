@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9a5a3f0fb3b7c13f28087d441ccb9e80",
+    "content-hash": "d85ee8595b11ecf60646424cf148fe07",
     "packages": [
         {
             "name": "amphp/amp",
@@ -401,6 +401,244 @@
                 }
             ],
             "time": "2026-05-09T15:40:03+00:00"
+        },
+        {
+            "name": "amphp/hpack",
+            "version": "v3.2.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/amphp/hpack.git",
+                "reference": "291da27078e7e149a9bad4d08ff05bf7d81c89f4"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/amphp/hpack/zipball/291da27078e7e149a9bad4d08ff05bf7d81c89f4",
+                "reference": "291da27078e7e149a9bad4d08ff05bf7d81c89f4",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.1"
+            },
+            "require-dev": {
+                "amphp/php-cs-fixer-config": "^2",
+                "http2jp/hpack-test-case": "^1",
+                "nikic/php-fuzzer": "^0.0.11",
+                "phpunit/phpunit": "^7 | ^8 | ^9"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "3.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Amp\\Http\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Daniel Lowrey",
+                    "email": "rdlowrey@php.net"
+                },
+                {
+                    "name": "Bob Weinand"
+                },
+                {
+                    "name": "Niklas Keller",
+                    "email": "me@kelunik.com"
+                },
+                {
+                    "name": "Aaron Piotrowski",
+                    "email": "aaron@trowski.com"
+                }
+            ],
+            "description": "HTTP/2 HPack implementation.",
+            "homepage": "https://github.com/amphp/hpack",
+            "keywords": [
+                "headers",
+                "hpack",
+                "http-2"
+            ],
+            "support": {
+                "issues": "https://github.com/amphp/hpack/issues",
+                "source": "https://github.com/amphp/hpack/tree/v3.2.2"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/amphp",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-05-03T19:28:59+00:00",
+            "published-time": "2026-05-03T19:30:31+00:00"
+        },
+        {
+            "name": "amphp/http",
+            "version": "v2.1.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/amphp/http.git",
+                "reference": "3680d80bd38b5d6f3c2cef2214ca6dd6cef26588"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/amphp/http/zipball/3680d80bd38b5d6f3c2cef2214ca6dd6cef26588",
+                "reference": "3680d80bd38b5d6f3c2cef2214ca6dd6cef26588",
+                "shasum": ""
+            },
+            "require": {
+                "amphp/hpack": "^3",
+                "amphp/parser": "^1.1",
+                "league/uri-components": "^2.4.2 | ^7.1",
+                "php": ">=8.1",
+                "psr/http-message": "^1 | ^2"
+            },
+            "require-dev": {
+                "amphp/php-cs-fixer-config": "^2",
+                "league/uri": "^6.8 | ^7.1",
+                "phpunit/phpunit": "^9",
+                "psalm/phar": "^5.26.1"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "src/functions.php",
+                    "src/Internal/constants.php"
+                ],
+                "psr-4": {
+                    "Amp\\Http\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Niklas Keller",
+                    "email": "me@kelunik.com"
+                },
+                {
+                    "name": "Aaron Piotrowski",
+                    "email": "aaron@trowski.com"
+                }
+            ],
+            "description": "Basic HTTP primitives which can be shared by servers and clients.",
+            "support": {
+                "issues": "https://github.com/amphp/http/issues",
+                "source": "https://github.com/amphp/http/tree/v2.1.2"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/amphp",
+                    "type": "github"
+                }
+            ],
+            "time": "2024-11-23T14:57:26+00:00",
+            "published-time": "2024-11-23T14:59:51+00:00"
+        },
+        {
+            "name": "amphp/http-client",
+            "version": "v5.3.8",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/amphp/http-client.git",
+                "reference": "be5bf6a84e7b02bcf763020358833824f414c3bb"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/amphp/http-client/zipball/be5bf6a84e7b02bcf763020358833824f414c3bb",
+                "reference": "be5bf6a84e7b02bcf763020358833824f414c3bb",
+                "shasum": ""
+            },
+            "require": {
+                "amphp/amp": "^3",
+                "amphp/byte-stream": "^2",
+                "amphp/hpack": "^3",
+                "amphp/http": "^2",
+                "amphp/pipeline": "^1",
+                "amphp/socket": "^2",
+                "amphp/sync": "^2",
+                "league/uri": "^7",
+                "league/uri-components": "^7",
+                "league/uri-interfaces": "^7.1",
+                "php": ">=8.1",
+                "psr/http-message": "^1 | ^2",
+                "revolt/event-loop": "^1"
+            },
+            "conflict": {
+                "amphp/file": "<3 | >=5"
+            },
+            "require-dev": {
+                "amphp/file": "^3 | ^4",
+                "amphp/http-server": "^3",
+                "amphp/php-cs-fixer-config": "^2",
+                "amphp/phpunit-util": "^3",
+                "ext-json": "*",
+                "kelunik/link-header-rfc5988": "^1",
+                "phpunit/phpunit": "^9",
+                "psalm/phar": "6.16.1"
+            },
+            "suggest": {
+                "amphp/file": "Required for file request bodies and HTTP archive logging",
+                "ext-json": "Required for logging HTTP archives",
+                "ext-zlib": "Allows using compression for response bodies."
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "src/functions.php",
+                    "src/Internal/functions.php"
+                ],
+                "psr-4": {
+                    "Amp\\Http\\Client\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Daniel Lowrey",
+                    "email": "rdlowrey@gmail.com"
+                },
+                {
+                    "name": "Niklas Keller",
+                    "email": "me@kelunik.com"
+                },
+                {
+                    "name": "Aaron Piotrowski",
+                    "email": "aaron@trowski.com"
+                }
+            ],
+            "description": "An advanced async HTTP client library for PHP, enabling efficient, non-blocking, and concurrent requests and responses.",
+            "homepage": "https://amphp.org/http-client",
+            "keywords": [
+                "async",
+                "client",
+                "concurrent",
+                "http",
+                "non-blocking",
+                "rest"
+            ],
+            "support": {
+                "issues": "https://github.com/amphp/http-client/issues",
+                "source": "https://github.com/amphp/http-client/tree/v5.3.8"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/amphp",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-11-11T03:22:40+00:00",
+            "published-time": "2026-11-11T03:51:52+00:00"
         },
         {
             "name": "amphp/parallel",
@@ -991,6 +1229,79 @@
             "time": "2026-06-14T17:37:39+00:00"
         },
         {
+            "name": "async-aws/core",
+            "version": "1.30.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/async-aws/core.git",
+                "reference": "dc0c26832e44db34466dd68d450293d573e732d1"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/async-aws/core/zipball/dc0c26832e44db34466dd68d450293d573e732d1",
+                "reference": "dc0c26832e44db34466dd68d450293d573e732d1",
+                "shasum": ""
+            },
+            "require": {
+                "ext-hash": "*",
+                "ext-simplexml": "*",
+                "php": "^8.2",
+                "psr/cache": "^1.0 || ^2.0 || ^3.0",
+                "psr/log": "^1.0 || ^2.0 || ^3.0",
+                "symfony/deprecation-contracts": "^2.1 || ^3.0",
+                "symfony/http-client": "^4.4.16 || ^5.1.7 || ^6.0 || ^7.0 || ^8.0",
+                "symfony/http-client-contracts": "^1.1.8 || ^2.0 || ^3.0",
+                "symfony/service-contracts": "^1.0 || ^2.0 || ^3.0"
+            },
+            "conflict": {
+                "async-aws/s3": "<1.1",
+                "symfony/http-client": "5.2.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^11.5.42",
+                "symfony/error-handler": "^7.3.2 || ^8.0",
+                "symfony/phpunit-bridge": "^7.3.2 || ^8.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.30-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "AsyncAws\\Core\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Core package to integrate with AWS. This is a lightweight AWS SDK provider by AsyncAws.",
+            "keywords": [
+                "amazon",
+                "async-aws",
+                "aws",
+                "sdk",
+                "sts"
+            ],
+            "support": {
+                "source": "https://github.com/async-aws/core/tree/1.30.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/jderusse",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nyholm",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-09-09T11:10:02+00:00",
+            "published-time": "2026-09-09T11:13:13+00:00"
+        },
+        {
             "name": "daverandom/libdns",
             "version": "v2.1.0",
             "source": {
@@ -1331,6 +1642,64 @@
                 "source": "https://github.com/kinetis-dev/authorization/tree/v1.0.8"
             },
             "time": "2026-11-09T20:29:43+00:00"
+        },
+        {
+            "name": "kinetis/aws-sigv4",
+            "version": "v1.3.7",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/kinetis-dev/aws-sigv4.git",
+                "reference": "d7b8683b358cfb35e8802796cc45f8170913432d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/kinetis-dev/aws-sigv4/zipball/d7b8683b358cfb35e8802796cc45f8170913432d",
+                "reference": "d7b8683b358cfb35e8802796cc45f8170913432d",
+                "shasum": ""
+            },
+            "require": {
+                "amphp/http-client": "^5.3.6",
+                "async-aws/core": "^1.29.2",
+                "kinetis/revolt-http-client": "^1.4.5",
+                "nyholm/psr7": "^1.8.2",
+                "php": "^8.4",
+                "psr/http-client": "^1.0.3",
+                "psr/http-message": "^2.0",
+                "symfony/http-client": "^8.1.11",
+                "symfony/http-client-contracts": "^3.7.1"
+            },
+            "require-dev": {
+                "infection/infection": "^0.35.0",
+                "kinetis/framework": "^1.25.0",
+                "phpstan/phpstan": "^2.2.8",
+                "phpunit/phpunit": "^13.3.3",
+                "vimeo/psalm": "^7.0"
+            },
+            "type": "library",
+            "extra": {
+                "kinetis": []
+            },
+            "autoload": {
+                "psr-4": {
+                    "Kinetis\\AwsSigV4\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Alon Noy"
+                }
+            ],
+            "description": "A PSR-18 client that signs outgoing requests with AWS Signature Version 4 (SigV4) for one configured origin — checked against AWS's published SigV4 test vectors, non-blocking via kinetis/revolt-http-client. Usable standalone, not only with Kinetis.",
+            "support": {
+                "issues": "https://github.com/kinetis-dev/aws-sigv4/issues",
+                "source": "https://github.com/kinetis-dev/aws-sigv4/tree/v1.3.7"
+            },
+            "time": "2026-11-09T20:29:43+00:00",
+            "published-time": "2026-11-09T20:43:20+00:00"
         },
         {
             "name": "kinetis/cache-redis",
@@ -1683,6 +2052,65 @@
                 "source": "https://github.com/kinetis-dev/migrations/tree/v1.5.0"
             },
             "time": "2026-11-11T17:47:35+00:00"
+        },
+        {
+            "name": "kinetis/neuron",
+            "version": "v1.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/kinetis-dev/neuron.git",
+                "reference": "f882be5636cae7e5979727d1934641df0c0e19fa"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/kinetis-dev/neuron/zipball/f882be5636cae7e5979727d1934641df0c0e19fa",
+                "reference": "f882be5636cae7e5979727d1934641df0c0e19fa",
+                "shasum": ""
+            },
+            "require": {
+                "kinetis/aws-sigv4": "^1.3.7",
+                "kinetis/framework": "^1.28.0",
+                "kinetis/mcp": "^1.9.0",
+                "kinetis/mcp-protocol": "^1.1.2",
+                "kinetis/revolt-http-client": "^1.9.0",
+                "neuron-core/neuron-ai": "^4.1.24",
+                "nyholm/psr7": "^1.8.2",
+                "php": "^8.4",
+                "psr/http-client": "^1.0.3",
+                "psr/http-message": "^2.0"
+            },
+            "require-dev": {
+                "infection/infection": "^0.35.0",
+                "nikic/php-parser": "^5.8.0",
+                "phpstan/phpstan": "^2.2.8",
+                "phpunit/phpunit": "^13.3.3",
+                "vimeo/psalm": "^7.0"
+            },
+            "type": "library",
+            "extra": {
+                "kinetis": []
+            },
+            "autoload": {
+                "psr-4": {
+                    "Kinetis\\Neuron\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Alon Noy"
+                }
+            ],
+            "description": "Runs Neuron AI providers over kinetis/revolt-http-client: a non-blocking, origin-pinned, deadline- and byte-bounded HttpClientInterface for neuron-core/neuron-ai, safe to share across requests in a persistent worker, an Amazon Bedrock chat and embeddings provider over kinetis/aws-sigv4, and the application's own #[McpTool] tools as Neuron tools, called in process in the current request's scope.",
+            "support": {
+                "issues": "https://github.com/kinetis-dev/neuron/issues",
+                "source": "https://github.com/kinetis-dev/neuron/tree/v1.1.0"
+            },
+            "time": "2026-11-15T15:35:33+00:00",
+            "published-time": "2026-11-15T15:45:47+00:00"
         },
         {
             "name": "kinetis/orm",
@@ -2119,6 +2547,61 @@
             "time": "2026-11-02T22:37:56+00:00"
         },
         {
+            "name": "kinetis/revolt-http-client",
+            "version": "v1.9.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/kinetis-dev/revolt-http-client.git",
+                "reference": "5430ad379bd0b429fc35dc9230f8b8ba25966364"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/kinetis-dev/revolt-http-client/zipball/5430ad379bd0b429fc35dc9230f8b8ba25966364",
+                "reference": "5430ad379bd0b429fc35dc9230f8b8ba25966364",
+                "shasum": ""
+            },
+            "require": {
+                "amphp/http-client": "^5.3.6",
+                "ext-zlib": "*",
+                "php": "^8.4",
+                "revolt/event-loop": "^1.0.9",
+                "symfony/http-client": "^8.1.11",
+                "symfony/http-client-contracts": "^3.7.1"
+            },
+            "require-dev": {
+                "infection/infection": "^0.35.0",
+                "kinetis/framework": "^1.28.0",
+                "phpstan/phpstan": "^2.2.8",
+                "phpunit/phpunit": "^13.3.3",
+                "vimeo/psalm": "^7.0"
+            },
+            "type": "library",
+            "extra": {
+                "kinetis": []
+            },
+            "autoload": {
+                "psr-4": {
+                    "Kinetis\\RevoltHttpClient\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Alon Noy"
+                }
+            ],
+            "description": "A Revolt-native, Fiber-suspending implementation of Symfony's HttpClientInterface — usable standalone by any project (AsyncAws or otherwise), not only Kinetis.",
+            "support": {
+                "issues": "https://github.com/kinetis-dev/revolt-http-client/issues",
+                "source": "https://github.com/kinetis-dev/revolt-http-client/tree/v1.9.0"
+            },
+            "time": "2026-11-15T01:03:50+00:00",
+            "published-time": "2026-11-15T01:17:18+00:00"
+        },
+        {
             "name": "kinetis/session",
             "version": "v1.4.0",
             "source": {
@@ -2307,6 +2790,66 @@
             ],
             "support": {
                 "docs": "https://kinetis.dev/vector/docs/",
+                "issues": "https://github.com/kinetis-dev/vector-dev/issues",
+                "source": "https://github.com/kinetis-dev/vector-dev"
+            },
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "kinetis/vector-ai",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../../packages/vector-ai",
+                "reference": "0ec6a22c5b35f44928c747578dd5bb5f14200e09"
+            },
+            "require": {
+                "ext-sodium": "*",
+                "kinetis/aws-sigv4": "^1.3.7",
+                "kinetis/framework": "^1.28.0",
+                "kinetis/mcp": "^1.9.0",
+                "kinetis/neuron": "^1.1",
+                "kinetis/query-builder": "^1.8.4",
+                "kinetis/revolt-http-client": "^1.9.0",
+                "kinetis/vector": "^0.16",
+                "neuron-core/neuron-ai": "^4.1.24",
+                "php": "^8.4",
+                "psr/http-message": "^2.0",
+                "psr/log": "^3.0"
+            },
+            "type": "library",
+            "extra": {
+                "kinetis": {
+                    "scan": "Kinetis\\VectorAi\\",
+                    "bootstrap": "Kinetis\\VectorAi\\PackageBootstrap"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Kinetis\\VectorAi\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Alon Noy"
+                }
+            ],
+            "description": "AI for Kinetis Vector, on kinetis/neuron. This release lays the foundations only (provider configuration, sealed provider keys, the AI settings and a usage ledger); the AI features arrive in later releases.",
+            "homepage": "https://kinetis.dev/vector/docs/ai.html",
+            "keywords": [
+                "admin",
+                "ai",
+                "kinetis",
+                "llm",
+                "vector"
+            ],
+            "support": {
+                "docs": "https://kinetis.dev/vector/docs/ai.html",
                 "issues": "https://github.com/kinetis-dev/vector-dev/issues",
                 "source": "https://github.com/kinetis-dev/vector-dev"
             },
@@ -2602,6 +3145,92 @@
             "time": "2026-11-04T12:45:07+00:00"
         },
         {
+            "name": "league/uri-components",
+            "version": "7.10.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/thephpleague/uri-components.git",
+                "reference": "2a790e66948d3504a2f2cd42b80d4b8874601540"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/thephpleague/uri-components/zipball/2a790e66948d3504a2f2cd42b80d4b8874601540",
+                "reference": "2a790e66948d3504a2f2cd42b80d4b8874601540",
+                "shasum": ""
+            },
+            "require": {
+                "league/uri": "^7.10.0",
+                "php": "^8.1"
+            },
+            "suggest": {
+                "ext-bcmath": "to improve IPV4 host parsing",
+                "ext-fileinfo": "to create Data URI from file contennts",
+                "ext-gmp": "to improve IPV4 host parsing",
+                "ext-intl": "to handle IDN host with the best performance",
+                "ext-mbstring": "to use the sorting algorithm for Query parameter",
+                "jeremykendall/php-domain-parser": "to further parse the URI host and resolve its Public Suffix and Top Level Domain",
+                "league/uri-polyfill": "to backport the PHP URI extension for older versions of PHP",
+                "php-64bit": "to improve IPV4 host parsing",
+                "rowbot/url": "to handle URLs using the WHATWG URL Living Standard specification",
+                "symfony/polyfill-intl-idn": "to handle IDN host via the Symfony polyfill if ext-intl is not present",
+                "symfony/polyfill-mbstring": "to handle query sorting if ext-mbstring is not present"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "7.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "League\\Uri\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ignace Nyamagana Butera",
+                    "email": "nyamsprod@gmail.com",
+                    "homepage": "https://nyamsprod.com"
+                }
+            ],
+            "description": "URI components manipulation library",
+            "homepage": "http://uri.thephpleague.com",
+            "keywords": [
+                "authority",
+                "components",
+                "fragment",
+                "host",
+                "middleware",
+                "modifier",
+                "path",
+                "port",
+                "query",
+                "rfc3986",
+                "scheme",
+                "uri",
+                "url",
+                "userinfo"
+            ],
+            "support": {
+                "docs": "https://uri.thephpleague.com",
+                "forum": "https://thephpleague.slack.com",
+                "issues": "https://github.com/thephpleague/uri-src/issues",
+                "source": "https://github.com/thephpleague/uri-components/tree/7.10.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/nyamsprod",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-11-04T12:45:07+00:00",
+            "published-time": "2026-11-04T13:02:25+00:00"
+        },
+        {
             "name": "league/uri-interfaces",
             "version": "7.10.0",
             "source": {
@@ -2684,6 +3313,100 @@
                 }
             ],
             "time": "2026-11-04T12:45:07+00:00"
+        },
+        {
+            "name": "neuron-core/neuron-ai",
+            "version": "4.1.27",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/neuron-core/neuron-ai.git",
+                "reference": "c2b9a03e003776b7c72f697a10a5d5b0368db467"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/neuron-core/neuron-ai/zipball/c2b9a03e003776b7c72f697a10a5d5b0368db467",
+                "reference": "c2b9a03e003776b7c72f697a10a5d5b0368db467",
+                "shasum": ""
+            },
+            "require": {
+                "ext-curl": "*",
+                "php": "^8.1",
+                "psr/event-dispatcher": "^1.0"
+            },
+            "require-dev": {
+                "amphp/amp": "^3.1.1",
+                "amphp/http-client": "^5.3",
+                "aws/aws-sdk-php": "^3.209",
+                "elasticsearch/elasticsearch": "^8.19|^9.0",
+                "ext-bcmath": "*",
+                "ext-igbinary": "*",
+                "ext-mongodb": "*",
+                "ext-pdo": "*",
+                "ext-pdo_pgsql": "*",
+                "ext-redis": "*",
+                "ext-sodium": "*",
+                "friendsofphp/php-cs-fixer": "^3.75",
+                "google/auth": "^1.49",
+                "guzzlehttp/guzzle": "^7.0|^8.0",
+                "html2text/html2text": "^4.3",
+                "illuminate/database": "^10.21|^11.0|^12.0",
+                "laudis/neo4j-php-client": "^3.4",
+                "mongodb/mongodb": "^2.3",
+                "opensearch-project/opensearch-php": "^2.5",
+                "phpstan/phpstan": "^2.1",
+                "phpunit/phpunit": "^10.0",
+                "psr/http-message": "^1.0|^2.0",
+                "psr/log": "^1.0|^2.0|^3.0",
+                "pusher/pusher-php-server": "^7.2.4",
+                "rector/rector": "^2.0",
+                "spatie/fork": "^1.2",
+                "symfony/mercure": "^0.7|^0.8",
+                "tomasvotruba/type-coverage": "^2.0",
+                "typesense/typesense-php": "^5.0.2",
+                "vlucas/phpdotenv": "^5.6"
+            },
+            "suggest": {
+                "ext-bcmath": "Exact integer tools in the Calculator toolkit (factorial, combinations, gcd, mod_pow, primes).",
+                "ext-igbinary": "Smaller/faster durable-step serialization via IgbinarySerializer.",
+                "ext-redis": "Redis workflow persistence via RedisPersistence and Pub/Sub streaming via RedisChannel and RedisChannelReader.",
+                "ext-sodium": "End-to-end encryption for Pusher streaming channels.",
+                "psr/log": "Logging observability events through LogListener.",
+                "pusher/pusher-php-server": "Pusher-compatible streaming channels, including encrypted channels (requires >=7.2.4 for HTTP timeout propagation).",
+                "spatie/fork": "Parallel evaluation runs via the --concurrency option (requires ext-pcntl and ext-posix).",
+                "symfony/mercure": "Mercure streaming channel (^0.8 for hubs speaking Mercure protocol 1.0)."
+            },
+            "bin": [
+                "bin/neuron"
+            ],
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "NeuronAI\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Valerio Barbera",
+                    "email": "valerio@inspector.dev"
+                }
+            ],
+            "description": "A unified layer for building AI-native applications in PHP.",
+            "support": {
+                "issues": "https://github.com/neuron-core/neuron-ai/issues",
+                "source": "https://github.com/neuron-core/neuron-ai/tree/4.1.27"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/neuron-core",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-11-17T18:22:05+00:00",
+            "published-time": "2026-11-17T18:36:02+00:00"
         },
         {
             "name": "nyholm/psr7",
@@ -2998,6 +3721,56 @@
             "time": "2026-08-24T00:54:40+00:00"
         },
         {
+            "name": "psr/cache",
+            "version": "3.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-fig/cache.git",
+                "reference": "aa5030cfa5405eccfdcb1083ce040c2cb8d253bf"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-fig/cache/zipball/aa5030cfa5405eccfdcb1083ce040c2cb8d253bf",
+                "reference": "aa5030cfa5405eccfdcb1083ce040c2cb8d253bf",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.0.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psr\\Cache\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "PHP-FIG",
+                    "homepage": "https://www.php-fig.org/"
+                }
+            ],
+            "description": "Common interface for caching libraries",
+            "keywords": [
+                "cache",
+                "psr",
+                "psr-6"
+            ],
+            "support": {
+                "source": "https://github.com/php-fig/cache/tree/3.0.0"
+            },
+            "time": "2021-02-03T23:26:27+00:00",
+            "published-time": "2021-02-03T23:27:34+00:00"
+        },
+        {
             "name": "psr/container",
             "version": "2.0.2",
             "source": {
@@ -3099,6 +3872,59 @@
                 "source": "https://github.com/php-fig/event-dispatcher/tree/1.0.0"
             },
             "time": "2019-01-08T18:20:26+00:00"
+        },
+        {
+            "name": "psr/http-client",
+            "version": "1.0.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-fig/http-client.git",
+                "reference": "bb5906edc1c324c9a05aa0873d40117941e5fa90"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-fig/http-client/zipball/bb5906edc1c324c9a05aa0873d40117941e5fa90",
+                "reference": "bb5906edc1c324c9a05aa0873d40117941e5fa90",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.0 || ^8.0",
+                "psr/http-message": "^1.0 || ^2.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psr\\Http\\Client\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "PHP-FIG",
+                    "homepage": "https://www.php-fig.org/"
+                }
+            ],
+            "description": "Common interface for HTTP clients",
+            "homepage": "https://github.com/php-fig/http-client",
+            "keywords": [
+                "http",
+                "http-client",
+                "psr",
+                "psr-18"
+            ],
+            "support": {
+                "source": "https://github.com/php-fig/http-client"
+            },
+            "time": "2023-09-23T14:17:50+00:00",
+            "published-time": "2023-09-23T14:18:12+00:00"
         },
         {
             "name": "psr/http-factory",
@@ -3638,6 +4464,256 @@
             "time": "2026-04-27T14:27:52+00:00"
         },
         {
+            "name": "symfony/deprecation-contracts",
+            "version": "v3.8.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/deprecation-contracts.git",
+                "reference": "feb1edf4e546af3b85c5caebe8359a20db230ca3"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/deprecation-contracts/zipball/feb1edf4e546af3b85c5caebe8359a20db230ca3",
+                "reference": "feb1edf4e546af3b85c5caebe8359a20db230ca3",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.1"
+            },
+            "type": "library",
+            "extra": {
+                "thanks": {
+                    "url": "https://github.com/symfony/contracts",
+                    "name": "symfony/contracts"
+                },
+                "branch-alias": {
+                    "dev-main": "3.8-dev"
+                }
+            },
+            "autoload": {
+                "files": [
+                    "function.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Nicolas Grekas",
+                    "email": "p@tchwork.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "A generic function and convention to trigger deprecation notices",
+            "homepage": "https://symfony.com",
+            "support": {
+                "source": "https://github.com/symfony/deprecation-contracts/tree/v3.8.1"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-09-16T14:15:10+00:00"
+        },
+        {
+            "name": "symfony/http-client",
+            "version": "v8.1.11",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/http-client.git",
+                "reference": "1758b323ba9c5e88b42602b9c2cb27b640de4d36"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/http-client/zipball/1758b323ba9c5e88b42602b9c2cb27b640de4d36",
+                "reference": "1758b323ba9c5e88b42602b9c2cb27b640de4d36",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.4.1",
+                "psr/log": "^1|^2|^3",
+                "symfony/deprecation-contracts": "^2.5|^3.0",
+                "symfony/http-client-contracts": "^3.7",
+                "symfony/service-contracts": "^2.5|^3"
+            },
+            "conflict": {
+                "amphp/amp": "<3",
+                "php-http/discovery": "<1.15"
+            },
+            "provide": {
+                "php-http/async-client-implementation": "*",
+                "php-http/client-implementation": "*",
+                "psr/http-client-implementation": "1.0",
+                "symfony/http-client-implementation": "3.0"
+            },
+            "require-dev": {
+                "amphp/http-client": "^5.3.2",
+                "amphp/http-tunnel": "^2.0",
+                "guzzlehttp/guzzle": "^7.10|^8.0",
+                "nyholm/psr7": "^1.0",
+                "php-http/httplug": "^1.0|^2.0",
+                "psr/http-client": "^1.0",
+                "symfony/cache": "^7.4|^8.0",
+                "symfony/dependency-injection": "^7.4|^8.0",
+                "symfony/http-kernel": "^7.4|^8.0",
+                "symfony/messenger": "^7.4|^8.0",
+                "symfony/process": "^7.4|^8.0",
+                "symfony/rate-limiter": "^7.4|^8.0",
+                "symfony/stopwatch": "^7.4|^8.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\Component\\HttpClient\\": ""
+                },
+                "exclude-from-classmap": [
+                    "/Tests/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Nicolas Grekas",
+                    "email": "p@tchwork.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Provides powerful methods to fetch HTTP resources synchronously or asynchronously",
+            "homepage": "https://symfony.com",
+            "keywords": [
+                "http"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/http-client/tree/v8.1.11"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-11-04T08:39:20+00:00"
+        },
+        {
+            "name": "symfony/http-client-contracts",
+            "version": "v3.8.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/http-client-contracts.git",
+                "reference": "f9f94260f787446c6fd430b2ae1969fe41ae1ba8"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/http-client-contracts/zipball/f9f94260f787446c6fd430b2ae1969fe41ae1ba8",
+                "reference": "f9f94260f787446c6fd430b2ae1969fe41ae1ba8",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.1"
+            },
+            "type": "library",
+            "extra": {
+                "thanks": {
+                    "url": "https://github.com/symfony/contracts",
+                    "name": "symfony/contracts"
+                },
+                "branch-alias": {
+                    "dev-main": "3.8-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\Contracts\\HttpClient\\": ""
+                },
+                "exclude-from-classmap": [
+                    "/Test/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Nicolas Grekas",
+                    "email": "p@tchwork.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Generic abstractions related to HTTP clients",
+            "homepage": "https://symfony.com",
+            "keywords": [
+                "abstractions",
+                "contracts",
+                "decoupling",
+                "interfaces",
+                "interoperability",
+                "standards"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/http-client-contracts/tree/v3.8.1"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-10-04T15:04:25+00:00"
+        },
+        {
             "name": "symfony/polyfill-ctype",
             "version": "v1.37.0",
             "source": {
@@ -3953,6 +5029,93 @@
                 }
             ],
             "time": "2026-10-25T14:40:25+00:00"
+        },
+        {
+            "name": "symfony/service-contracts",
+            "version": "v3.8.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/service-contracts.git",
+                "reference": "052852a96fd5e5ebdb617dba22031e41a3300fb5"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/service-contracts/zipball/052852a96fd5e5ebdb617dba22031e41a3300fb5",
+                "reference": "052852a96fd5e5ebdb617dba22031e41a3300fb5",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.1",
+                "psr/container": "^1.1|^2.0",
+                "symfony/deprecation-contracts": "^2.5|^3"
+            },
+            "conflict": {
+                "ext-psr": "<1.1|>=2"
+            },
+            "type": "library",
+            "extra": {
+                "thanks": {
+                    "url": "https://github.com/symfony/contracts",
+                    "name": "symfony/contracts"
+                },
+                "branch-alias": {
+                    "dev-main": "3.8-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\Contracts\\Service\\": ""
+                },
+                "exclude-from-classmap": [
+                    "/Test/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Nicolas Grekas",
+                    "email": "p@tchwork.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Generic abstractions related to writing services",
+            "homepage": "https://symfony.com",
+            "keywords": [
+                "abstractions",
+                "contracts",
+                "decoupling",
+                "interfaces",
+                "interoperability",
+                "standards"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/service-contracts/tree/v3.8.1"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-10-20T17:38:25+00:00"
         },
         {
             "name": "ueberdosis/tiptap-php",
@@ -8577,77 +9740,6 @@
             "time": "2026-11-04T07:07:11+00:00"
         },
         {
-            "name": "symfony/deprecation-contracts",
-            "version": "v3.8.1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/symfony/deprecation-contracts.git",
-                "reference": "feb1edf4e546af3b85c5caebe8359a20db230ca3"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/symfony/deprecation-contracts/zipball/feb1edf4e546af3b85c5caebe8359a20db230ca3",
-                "reference": "feb1edf4e546af3b85c5caebe8359a20db230ca3",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=8.1"
-            },
-            "type": "library",
-            "extra": {
-                "thanks": {
-                    "url": "https://github.com/symfony/contracts",
-                    "name": "symfony/contracts"
-                },
-                "branch-alias": {
-                    "dev-main": "3.8-dev"
-                }
-            },
-            "autoload": {
-                "files": [
-                    "function.php"
-                ]
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Nicolas Grekas",
-                    "email": "p@tchwork.com"
-                },
-                {
-                    "name": "Symfony Community",
-                    "homepage": "https://symfony.com/contributors"
-                }
-            ],
-            "description": "A generic function and convention to trigger deprecation notices",
-            "homepage": "https://symfony.com",
-            "support": {
-                "source": "https://github.com/symfony/deprecation-contracts/tree/v3.8.1"
-            },
-            "funding": [
-                {
-                    "url": "https://symfony.com/sponsor",
-                    "type": "custom"
-                },
-                {
-                    "url": "https://github.com/fabpot",
-                    "type": "github"
-                },
-                {
-                    "url": "https://github.com/nicolas-grekas",
-                    "type": "github"
-                },
-                {
-                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
-                    "type": "tidelift"
-                }
-            ],
-            "time": "2026-09-16T14:15:10+00:00"
-        },
-        {
             "name": "symfony/filesystem",
             "version": "v8.1.11",
             "source": {
@@ -8785,185 +9877,6 @@
                 }
             ],
             "time": "2026-11-02T10:58:30+00:00"
-        },
-        {
-            "name": "symfony/http-client",
-            "version": "v8.1.11",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/symfony/http-client.git",
-                "reference": "1758b323ba9c5e88b42602b9c2cb27b640de4d36"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/symfony/http-client/zipball/1758b323ba9c5e88b42602b9c2cb27b640de4d36",
-                "reference": "1758b323ba9c5e88b42602b9c2cb27b640de4d36",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=8.4.1",
-                "psr/log": "^1|^2|^3",
-                "symfony/deprecation-contracts": "^2.5|^3.0",
-                "symfony/http-client-contracts": "^3.7",
-                "symfony/service-contracts": "^2.5|^3"
-            },
-            "conflict": {
-                "amphp/amp": "<3",
-                "php-http/discovery": "<1.15"
-            },
-            "provide": {
-                "php-http/async-client-implementation": "*",
-                "php-http/client-implementation": "*",
-                "psr/http-client-implementation": "1.0",
-                "symfony/http-client-implementation": "3.0"
-            },
-            "require-dev": {
-                "amphp/http-client": "^5.3.2",
-                "amphp/http-tunnel": "^2.0",
-                "guzzlehttp/guzzle": "^7.10|^8.0",
-                "nyholm/psr7": "^1.0",
-                "php-http/httplug": "^1.0|^2.0",
-                "psr/http-client": "^1.0",
-                "symfony/cache": "^7.4|^8.0",
-                "symfony/dependency-injection": "^7.4|^8.0",
-                "symfony/http-kernel": "^7.4|^8.0",
-                "symfony/messenger": "^7.4|^8.0",
-                "symfony/process": "^7.4|^8.0",
-                "symfony/rate-limiter": "^7.4|^8.0",
-                "symfony/stopwatch": "^7.4|^8.0"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Symfony\\Component\\HttpClient\\": ""
-                },
-                "exclude-from-classmap": [
-                    "/Tests/"
-                ]
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Nicolas Grekas",
-                    "email": "p@tchwork.com"
-                },
-                {
-                    "name": "Symfony Community",
-                    "homepage": "https://symfony.com/contributors"
-                }
-            ],
-            "description": "Provides powerful methods to fetch HTTP resources synchronously or asynchronously",
-            "homepage": "https://symfony.com",
-            "keywords": [
-                "http"
-            ],
-            "support": {
-                "source": "https://github.com/symfony/http-client/tree/v8.1.11"
-            },
-            "funding": [
-                {
-                    "url": "https://symfony.com/sponsor",
-                    "type": "custom"
-                },
-                {
-                    "url": "https://github.com/fabpot",
-                    "type": "github"
-                },
-                {
-                    "url": "https://github.com/nicolas-grekas",
-                    "type": "github"
-                },
-                {
-                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
-                    "type": "tidelift"
-                }
-            ],
-            "time": "2026-11-04T08:39:20+00:00"
-        },
-        {
-            "name": "symfony/http-client-contracts",
-            "version": "v3.8.1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/symfony/http-client-contracts.git",
-                "reference": "f9f94260f787446c6fd430b2ae1969fe41ae1ba8"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/symfony/http-client-contracts/zipball/f9f94260f787446c6fd430b2ae1969fe41ae1ba8",
-                "reference": "f9f94260f787446c6fd430b2ae1969fe41ae1ba8",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=8.1"
-            },
-            "type": "library",
-            "extra": {
-                "thanks": {
-                    "url": "https://github.com/symfony/contracts",
-                    "name": "symfony/contracts"
-                },
-                "branch-alias": {
-                    "dev-main": "3.8-dev"
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Symfony\\Contracts\\HttpClient\\": ""
-                },
-                "exclude-from-classmap": [
-                    "/Test/"
-                ]
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Nicolas Grekas",
-                    "email": "p@tchwork.com"
-                },
-                {
-                    "name": "Symfony Community",
-                    "homepage": "https://symfony.com/contributors"
-                }
-            ],
-            "description": "Generic abstractions related to HTTP clients",
-            "homepage": "https://symfony.com",
-            "keywords": [
-                "abstractions",
-                "contracts",
-                "decoupling",
-                "interfaces",
-                "interoperability",
-                "standards"
-            ],
-            "support": {
-                "source": "https://github.com/symfony/http-client-contracts/tree/v3.8.1"
-            },
-            "funding": [
-                {
-                    "url": "https://symfony.com/sponsor",
-                    "type": "custom"
-                },
-                {
-                    "url": "https://github.com/fabpot",
-                    "type": "github"
-                },
-                {
-                    "url": "https://github.com/nicolas-grekas",
-                    "type": "github"
-                },
-                {
-                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
-                    "type": "tidelift"
-                }
-            ],
-            "time": "2026-10-04T15:04:25+00:00"
         },
         {
             "name": "symfony/polyfill-intl-grapheme",
@@ -9291,93 +10204,6 @@
                 }
             ],
             "time": "2026-10-30T15:20:09+00:00"
-        },
-        {
-            "name": "symfony/service-contracts",
-            "version": "v3.8.1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/symfony/service-contracts.git",
-                "reference": "052852a96fd5e5ebdb617dba22031e41a3300fb5"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/symfony/service-contracts/zipball/052852a96fd5e5ebdb617dba22031e41a3300fb5",
-                "reference": "052852a96fd5e5ebdb617dba22031e41a3300fb5",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=8.1",
-                "psr/container": "^1.1|^2.0",
-                "symfony/deprecation-contracts": "^2.5|^3"
-            },
-            "conflict": {
-                "ext-psr": "<1.1|>=2"
-            },
-            "type": "library",
-            "extra": {
-                "thanks": {
-                    "url": "https://github.com/symfony/contracts",
-                    "name": "symfony/contracts"
-                },
-                "branch-alias": {
-                    "dev-main": "3.8-dev"
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Symfony\\Contracts\\Service\\": ""
-                },
-                "exclude-from-classmap": [
-                    "/Test/"
-                ]
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Nicolas Grekas",
-                    "email": "p@tchwork.com"
-                },
-                {
-                    "name": "Symfony Community",
-                    "homepage": "https://symfony.com/contributors"
-                }
-            ],
-            "description": "Generic abstractions related to writing services",
-            "homepage": "https://symfony.com",
-            "keywords": [
-                "abstractions",
-                "contracts",
-                "decoupling",
-                "interfaces",
-                "interoperability",
-                "standards"
-            ],
-            "support": {
-                "source": "https://github.com/symfony/service-contracts/tree/v3.8.1"
-            },
-            "funding": [
-                {
-                    "url": "https://symfony.com/sponsor",
-                    "type": "custom"
-                },
-                {
-                    "url": "https://github.com/fabpot",
-                    "type": "github"
-                },
-                {
-                    "url": "https://github.com/nicolas-grekas",
-                    "type": "github"
-                },
-                {
-                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
-                    "type": "tidelift"
-                }
-            ],
-            "time": "2026-10-20T17:38:25+00:00"
         },
         {
             "name": "symfony/string",
@@ -9800,10 +10626,18 @@
             "time": "2026-11-15T13:41:13+00:00"
         }
     ],
-    "aliases": [],
+    "aliases": [
+        {
+            "package": "kinetis/vector",
+            "version": "dev-main",
+            "alias": "0.16.0",
+            "alias_normalized": "0.16.0.0"
+        }
+    ],
     "minimum-stability": "stable",
     "stability-flags": {
-        "kinetis/vector": 20
+        "kinetis/vector": 20,
+        "kinetis/vector-ai": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,
@@ -9815,5 +10649,5 @@
         "ext-pgsql": "*"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.11.0"
 }

@@ -41,6 +41,7 @@ export default {
         records: '记录',
         resources: '资源',
         noMatch: '没有匹配的记录',
+        commands: '命令',
     },
     inbox: {
         title: '通知',

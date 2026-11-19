@@ -13,6 +13,7 @@ const props = defineProps<{ field: VectorField, rules: ((v: unknown) => true | s
 const model = defineModel<string | null>()
 
 const { t } = useVectorT()
+const { editorToolbar } = useVectorExtensions()
 const client = useVectorResource(() => props.resource ?? '')
 const { richText: custom } = useVectorExtensions()
 const rich = computed(() => props.field.richtext ?? { features: [], imageField: null, mentions: null, storesHtml: false, maxBytes: 262_144 })
@@ -154,6 +155,10 @@ const inTable = computed(() => active('table'))
                 <template v-if="on('image') && rich.imageField">
                     <v-btn icon="mdi-image-plus" size="small" variant="text" :loading="uploading" :aria-label="t('fields.richtext.image')" @click="picker?.click()" />
                     <input ref="picker" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="d-none" :aria-label="t('fields.richtext.image')" @change="insertImage">
+                </template>
+                <!-- editor-toolbar items extensions and layers registered (defineEditorToolbarItem), given the live editor -->
+                <template v-if="editor">
+                    <component :is="item" v-for="[name, item] in editorToolbar" :key="name" :data-editor-toolbar-item="name" :editor="editor" :field="field" />
                 </template>
                 <v-spacer />
                 <v-btn icon="mdi-undo" size="small" variant="text" :aria-label="t('fields.richtext.undo')" @click="run(e => e.chain().focus().undo().run())" />

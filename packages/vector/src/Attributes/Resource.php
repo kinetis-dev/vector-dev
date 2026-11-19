@@ -19,10 +19,12 @@ use Attribute;
  * @param string|null $slug the URL segment; defaults to the entity's table name with underscores replaced by dashes
  * @param string|null $title the field shown as a record's title; defaults to the first string field
  * @param bool $relationTarget whether derived relations to the entity link to this resource; required on exactly one of an entity's resources when it has several
+ * @param array<string, scalar|list<scalar|null>|null> $meta free-form, namespaced metadata (`vendor.key` => value) published verbatim as the descriptor's `meta`; Vector never reads it
  */
 #[Attribute(Attribute::TARGET_CLASS)]
 final readonly class Resource
 {
+    /** @param array<string, scalar|list<scalar|null>|null> $meta */
     public function __construct(
         public string $entity,
         public ?string $slug = null,
@@ -32,5 +34,6 @@ final readonly class Resource
         public ?string $icon = null,
         public ?string $title = null,
         public bool $relationTarget = false,
+        public array $meta = [],
     ) {}
 }

@@ -14,7 +14,9 @@
 //   - each product's CHANGELOG.md has a `## [<version>]` section;
 //   - each directory a product's optional `includes` names exists;
 //   - kinetis/vector's resources/ui.json pins exactly the vector-ui
-//     release in packages/vector-ui/package.json (see checkPin()).
+//     release in packages/vector-ui/package.json (see checkPin());
+//   - @kinetis/vector-ai-ui depends on exactly the @kinetis/vector-ui
+//     release kinetis/vector pins (see checkPairing()).
 //
 // history, against a comparison base:
 //   - a product whose files under its path changed has its version bumped,
@@ -213,7 +215,7 @@ export function checkConsistency(manifest, read) {
         }
     }
 
-    return [...problems, ...checkPin(manifest, read)]
+    return [...problems, ...checkPin(manifest, read), ...checkPairing(manifest, read)]
 }
 
 /**
@@ -268,6 +270,48 @@ export function checkPin(manifest, read) {
     }
 
     return problems
+}
+
+/**
+ * The vector-ui/vector-ai-ui pairing: @kinetis/vector-ai-ui depends on
+ * exactly the @kinetis/vector-ui release kinetis/vector pins, so an
+ * application extending the AI layer runs the admin release its
+ * kinetis/vector expects. scripts/bump.mjs vector-ui moves the dependency
+ * with the pin. Checked only when the manifest lists vector and
+ * vector-ai-ui.
+ */
+export function checkPairing(manifest, read) {
+    const vector = manifest.packages.vector
+    const aiUi = manifest.packages['vector-ai-ui']
+    const ui = manifest.packages['vector-ui']
+
+    if (vector === undefined || aiUi === undefined) {
+        return []
+    }
+
+    const uiName = ui?.name ?? '@kinetis/vector-ui'
+    const pinJson = read(`${vector.path}/${PIN_FILE}`)
+    const npm = read(`${aiUi.path}/package.json`)
+
+    if (pinJson === null || npm === null) {
+        return []
+    }
+
+    let pinned
+
+    try {
+        pinned = JSON.parse(pinJson).version
+    } catch {
+        return []
+    }
+
+    const dependency = JSON.parse(npm).dependencies?.[uiName]
+
+    if (dependency !== pinned) {
+        return [`vector-ai-ui: ${aiUi.path}/package.json depends on ${uiName} ${dependency === undefined ? '(not at all)' : `"${dependency}"`}, but ${vector.path}/${PIN_FILE} pins ${pinned}; it must depend on exactly that release (scripts/bump.mjs vector-ui moves both)`]
+    }
+
+    return []
 }
 
 /**

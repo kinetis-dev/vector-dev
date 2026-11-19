@@ -41,6 +41,7 @@ export default {
         records: 'רשומות',
         resources: 'משאבים',
         noMatch: 'אין רשומות תואמות',
+        commands: 'פקודות',
     },
     inbox: {
         title: 'התראות',

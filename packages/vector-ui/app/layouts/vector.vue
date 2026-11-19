@@ -9,6 +9,8 @@ const drawer = ref<boolean | null>(null)
 const { schema, menu, load, clear } = useVectorSchema()
 const { branding, apply } = useVectorBranding()
 const palette = ref<{ open: boolean } | null>(null)
+// app-bar actions extensions and layers registered (defineShellAction), in registration order
+const { shellActions } = useVectorExtensions()
 const { t, noun } = useVectorT()
 
 apply() // hosted: branding is known before the descriptor loads
@@ -179,6 +181,7 @@ const pageGroups = computed(() => {
             <v-btn v-if="appConfig.vector.commandPalette" variant="text" prepend-icon="mdi-magnify" class="d-none d-sm-flex" @click="palette && (palette.open = true)">
                 {{ t('common.search') }} <kbd class="ms-2 text-caption text-medium-emphasis">⌘K</kbd>
             </v-btn>
+            <component :is="action" v-for="[name, action] in shellActions" :key="name" :data-shell-action="name" />
             <VxInbox />
             <v-menu v-if="language.locales.value.length > 1">
                 <template #activator="{ props }">

@@ -92,7 +92,7 @@ final class ListCommandTest extends TestCase
 
         self::assertSame(0, $status);
         self::assertSame('', $capture->stderr());
-        // the settings groups are Vector's own; the project declares no dashboard
+        // the settings groups are the installed packages' own (Vector's, and kinetis/vector-ai's `ai`); the project declares no dashboard
         self::assertSame(<<<'TEXT'
             Resources:
             Slug   Label  Group  Entity                               Resource                                     Connection
@@ -101,7 +101,8 @@ final class ListCommandTest extends TestCase
 
             Settings groups:
             Name       Label            Class
-            ---------  ---------------  ---------------------------------
+            ---------  ---------------  ------------------------------------
+            ai         AI assistant     Kinetis\VectorAi\Settings\AiSettings
             branding   Branding         Kinetis\Vector\Settings\Branding
             jobs       Background jobs  Kinetis\Vector\Settings\Jobs
             languages  Languages        Kinetis\Vector\Settings\Languages
