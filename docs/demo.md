@@ -13,11 +13,30 @@ It runs both admin modes, background jobs on a real queue, the queue
 dashboard ({doc}`queues`), a seeded catalog, and `kinetis/vector-ai`
 ({doc}`ai`) installed but unconfigured: its *AI assistant* settings group
 is there, and no AI feature is offered. To try plain-language filters
-without a model, configure the `fake` provider the demo scripts
-(`App\Vector\Ai\DemoAiReplies`) in `backend/.env` —
+and the assistant without a model, configure the `fake` provider the
+demo scripts (`App\Vector\Ai\DemoAiReplies`) in `backend/.env` —
 `VECTOR_AI_PROVIDERS=demo` and `VECTOR_AI_DEMO_TYPE=fake` — and type
 *paid orders over 500* on the Orders list. The demo's profiles opt out
 of AI, and the users' e-mail field does.
+
+Then try the assistant, in the standalone admin (`localhost:3000`):
+
+1. Open the Products list and click the sparkle button in the app bar.
+   The drawer opens beside the page; its context line reads *Products
+   list*.
+2. Ask *Which products are low on stock?* The scripted run calls
+   `vector_query` for the active products with 10 or fewer in stock — the
+   drawer shows the tool it read with — and the answer streams in,
+   naming `products#1`.
+3. Click `products#1`: the record opens, and the drawer and its
+   conversation stay, now about *Product #1*.
+4. Press ⌘K (Ctrl+K), type the same question and choose *Ask the
+   assistant…*: the drawer opens and asks it. *New conversation* starts
+   afresh.
+
+Any other question gets *No reply is scripted for this message.*; with a
+real provider configured instead (VECTOR_AI_PROVIDERS, {doc}`ai`) the
+assistant answers what is asked.
 
 ## Run it
 
@@ -228,8 +247,9 @@ The hosted admin is the plain one: the AI layer reaches the standalone
 admin only, through `extends` (hosted delivery of it comes in a later
 release), so the end-to-end suite's AI specs run standalone:
 `ai.standalone.spec.ts` against the demo as it ships, and
-`ai-filters.standalone.spec.ts` with the scripted `fake` provider
-configured as above; each skips itself on the other stack.
+`ai-filters.standalone.spec.ts` and `ai-assistant.standalone.spec.ts`
+with the scripted `fake` provider configured as above; each skips
+itself on the other stack.
 
 Then open `http://localhost:8080/vector/ui`, or
 `http://localhost:8081/vector/ui` for the same admin under FrankenPHP.

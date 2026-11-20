@@ -7,9 +7,12 @@ namespace Kinetis\VectorAi\Testing;
 use Generator;
 use NeuronAI\Chat\Messages\AssistantMessage;
 use NeuronAI\Chat\Messages\Message;
+use NeuronAI\Chat\Messages\ToolCallMessage;
+use NeuronAI\Chat\Messages\ToolResultMessage;
 use NeuronAI\Chat\Messages\Usage;
 use NeuronAI\Providers\ProviderResponse;
 use NeuronAI\Testing\FakeAIProvider;
+use NeuronAI\Tools\ToolCall;
 
 /**
  * The `fake` provider type: Neuron's FakeAIProvider replaying the replies
@@ -19,6 +22,12 @@ use NeuronAI\Testing\FakeAIProvider;
  * (getRecorded(), from FakeAIProvider), and hands each to the replies'
  * ScriptedCalls when they carry one. A message no reply is scripted for
  * gets "No reply is scripted for this message.".
+ *
+ * A message whose reply is scripted as turns (ScriptedReplies::of())
+ * starts a run that calls tools: each call answers with the turn for the
+ * rounds of tool results since that message — a ToolCallMessage asking for
+ * its `toolCalls`, or text — so the next call sees the results, and the
+ * request log keeps every one.
  *
  * Built for one call by ProviderResolver, like every provider.
  */
@@ -69,18 +78,33 @@ class ScriptedProvider extends FakeAIProvider
         }
     }
 
-    /** The last text block of the last user message among $messages, or '' when there is none. */
+    /** The last text block of the last user message among $messages — a tool result is none — or '' when there is none. */
     public static function lastUserMessage(Message ...$messages): string
     {
+        return self::turnOf(...$messages)[0];
+    }
+
+    /**
+     * The user message the run answers, and its round: how many rounds of
+     * tool results came after it.
+     *
+     * @return array{string, int}
+     */
+    private static function turnOf(Message ...$messages): array
+    {
+        $round = 0;
+
         foreach (array_reverse($messages) as $message) {
-            if ($message->getRole() === 'user') {
+            if ($message instanceof ToolResultMessage) {
+                ++$round;
+            } elseif ($message->getRole() === 'user') {
                 $blocks = $message->getTextBlocks();
 
-                return $blocks === [] ? '' : end($blocks)->content;
+                return [$blocks === [] ? '' : end($blocks)->content, $round];
             }
         }
 
-        return '';
+        return ['', $round];
     }
 
     /** Hands the request just recorded to the replies' ScriptedCalls, when they carry one. */
@@ -97,9 +121,18 @@ class ScriptedProvider extends FakeAIProvider
     /** @param array<Message> $messages */
     private function prepare(array $messages): void
     {
-        $text = self::lastUserMessage(...$messages);
-        $reply = new AssistantMessage($this->replies->replyTo($text) ?? self::UNSCRIPTED);
-        $reply->setUsage(new Usage(max(1, intdiv(strlen($text), 4)), max(1, intdiv(strlen((string) $reply->getContent()), 4))));
+        [$text, $round] = self::turnOf(...$messages);
+        $turn = $this->replies->turn($text, $round);
+        $reply = match (true) {
+            $turn !== null && ($turn['toolCalls'] ?? []) !== [] => new ToolCallMessage($turn['text'] ?? null, array_map(
+                static fn (array $call, int $i): ToolCall => new ToolCall($call['name'], "call_{$round}_{$i}", $call['arguments'] ?? []),
+                $turn['toolCalls'],
+                array_keys($turn['toolCalls']),
+            )),
+            $turn !== null => new AssistantMessage($turn['text'] ?? ''),
+            default => new AssistantMessage($this->replies->replyTo($text) ?? self::UNSCRIPTED),
+        };
+        $reply->setUsage(new Usage(max(1, intdiv(strlen($text), 4)), max(1, intdiv(strlen(is_string($content = $reply->getContent()) ? $content : (string) json_encode($reply)), 4))));
         $this->addResponses($reply);
     }
 }

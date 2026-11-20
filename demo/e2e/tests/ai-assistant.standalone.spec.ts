@@ -1,0 +1,61 @@
+import { expect, test } from '../support/fixtures'
+
+// The read-only assistant against the demo's `fake` AI provider, which
+// answers the question App\Vector\Ai\DemoAiReplies scripts: it reads the
+// low-stock products with vector_query, then names one as `products#1`.
+// Needs the stack configured with it (backend/.env: VECTOR_AI_PROVIDERS=demo,
+// VECTOR_AI_DEMO_TYPE=fake); skipped against the demo as it ships, which
+// ai.standalone.spec.ts covers. Standalone only: the hosted bundle is
+// the plain admin.
+const QUESTION = 'Which products are low on stock?'
+const ANSWER = 'I listed the active products with 10 or fewer in stock, lowest first.'
+
+test.describe('AI, the assistant', () => {
+    test.beforeEach(async ({ api }) => {
+        test.skip((await api.aiCapabilities())?.assistant !== true, 'needs a fake AI provider: VECTOR_AI_PROVIDERS=demo, VECTOR_AI_DEMO_TYPE=fake')
+    })
+
+    test('opens from the app bar, streams the answer, and its record link opens the record', async ({ admin: page }) => {
+        await page.goto('r/products')
+        await page.locator('[data-shell-action="ai-assistant"]').click()
+
+        const drawer = page.locator('[data-ai-assistant]')
+        await expect(drawer).toBeVisible()
+        await expect(drawer.locator('[data-ai-assistant-context]')).toHaveText('Products list')
+
+        const streamed = page.waitForResponse(response => response.url().endsWith('/vector/ai/assistant') && response.request().method() === 'POST')
+        await drawer.locator('[data-ai-assistant-input] textarea').fill(QUESTION)
+        await drawer.locator('[data-ai-assistant-input] textarea').press('Enter')
+        expect((await streamed).headers()['content-type']).toContain('text/event-stream')
+
+        const answer = drawer.locator('[data-ai-assistant-answer]')
+        await expect(answer).toContainText(ANSWER)
+        await expect(drawer.locator('[data-ai-assistant-tools]')).toContainText('vector_query')
+
+        const link = answer.locator('a[data-record-link="products#1"]')
+        await expect(link).toBeVisible()
+        await link.click()
+        await expect(page).toHaveURL(/\/r\/products\/1$/)
+        // the drawer is the layout's: the conversation is still there on the record's page
+        await expect(drawer.locator('[data-ai-assistant-answer]')).toContainText(ANSWER)
+        await expect(drawer.locator('[data-ai-assistant-context]')).toHaveText('Product #1')
+    })
+
+    test('"Ask the assistant…" in the command palette asks what was typed', async ({ admin: page }) => {
+        await page.goto('')
+        // the shortcut is listened for once the admin has rendered
+        await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible()
+        await page.keyboard.press('Control+K')
+        const palette = page.getByRole('dialog')
+        await palette.getByRole('textbox', { name: 'Search' }).fill(QUESTION)
+        await palette.getByText('Ask the assistant…').click()
+
+        const drawer = page.locator('[data-ai-assistant]')
+        await expect(drawer).toBeVisible()
+        await expect(drawer.locator('[data-ai-assistant-turn="user"]').first()).toHaveText(QUESTION)
+        await expect(drawer.locator('[data-ai-assistant-answer]')).toContainText(ANSWER)
+
+        await drawer.locator('[data-ai-assistant-new]').click()
+        await expect(drawer.locator('[data-ai-assistant-empty]')).toBeVisible()
+    })
+})

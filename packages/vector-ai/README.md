@@ -6,13 +6,18 @@ an operator configures. Built on
 [kinetis/neuron](https://kinetis.dev/docs/neuron.html), so every provider
 call suspends the calling Fiber instead of blocking the worker.
 
-**This release offers plain-language filters**: an admin describes the
-records they want on a list, and the model's answer is validated by
-the list's own validator before it is previewed. It also lays the
-foundations the other features build on — the operator configuration,
-the sealed provider keys, the `ai` settings group, the access policy,
-the model boundary and the usage ledger. The assistant and writing help
-arrive in later releases.
+**This release offers plain-language filters and the read-only
+assistant.** On a list, an admin describes the records they want, and
+the model's answer is validated by the list's own validator before it
+is previewed. In a drawer beside any page, the assistant answers
+questions about the admin's data, reading it with Vector's own MCP
+tools as the signed-in person — governed, budgeted, and never able to
+change anything — and streams its answer (`POST /vector/ai/assistant`,
+the Vercel AI SDK data-stream protocol, or JSON). Both rest on the
+foundations every feature shares — the operator configuration, the
+sealed provider keys, the `ai` settings group, the access policy, the
+model boundary and the usage ledger. The assistant proposing changes,
+and writing help, arrive in later releases.
 
 ```console
 composer require kinetis/vector-ai

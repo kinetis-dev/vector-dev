@@ -37,3 +37,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `vector-ai:install`. The UI half,
   `@kinetis/vector-ai-ui`, is delivered through Nuxt `extends`; hosted
   (no-build) delivery of it comes in a later release.
+- The read-only assistant: `POST /vector/ai/assistant` runs one agent
+  turn over Vector's five read tools (`vector_resources`,
+  `vector_describe`, `vector_query`, `vector_get`, `vector_widget`) as
+  the request's user, streamed in the Vercel AI SDK data-stream protocol
+  (`Kinetis\Neuron\AgentStream`) or, with `Accept: application/json`,
+  answered whole as `{text, toolCalls}`. The conversation is the
+  browser's, replayed on every turn (at most 40 messages, 64 KiB). Every
+  tool call is an `Assistant\GovernedTool`: `vector_query` clamped to 25
+  rows and 20 pages, a resource kept from the model or one the user may
+  not list (`viewAny`) refused as a tool error and left out of the
+  system prompt, a `vector_query` whose `filter` (`or` and `and` groups
+  included) or `sort` names a field kept from the model, or whose `q`
+  would search one, refused as a tool error that does not name the
+  field, and a query naming no sort ordered by the default sort without
+  such fields (`ModelBoundary::sends()`, `searches()` and
+  `defaultSort()`, which `vector_describe`'s answer follows too), at most `maxToolCallsPerRun` calls, every answer cut by the
+  boundary and sent after a fixed data-not-instructions preamble.
+  `ModelBoundary::record()`, `page()` and `toolResult()` decide what of a
+  record, a page, a description or a widget a model is sent (excluded
+  fields gone, the primary key kept, a relation's label and carried
+  columns — a belongsTo's or a hasOne's — only as far as its target's
+  fields may be sent, strings cut at
+  2,000 characters, at most 25 rows; a widget whose link leads to a
+  resource kept from the model refused, and a table's row keys and
+  columns that are fields its linked resource keeps back left out). One deadline per provider call (`VECTOR_AI_TIMEOUT`), a
+  stream stopped once the browser leaves, one usage row per provider
+  call, one log line per run without its content, and a mid-stream
+  failure told by the neutral error frame and logged by category (a
+  warning for a provider's failure, an error for the run's own:
+  `error`, `runaway_tools`);
+  `capabilities.ai.assistant` on. `Testing\ScriptedProvider` scripts
+  tool-calling turns (`ScriptedReplies::of()` with a list of turns).

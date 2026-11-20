@@ -30,5 +30,23 @@ export default {
             budget: 'Today\'s AI budget is spent; try again after {time}.',
             budgetSpent: 'Today\'s AI budget is spent.',
         },
+        assistant: {
+            title: 'Assistant',
+            open: 'Assistant',
+            close: 'Close the assistant',
+            ask: 'Ask the assistant…',
+            new: 'New conversation',
+            empty: 'Ask about the data you can see here: the assistant reads it as you, and changes nothing.',
+            placeholder: 'Ask the assistant',
+            send: 'Send',
+            retry: 'Retry',
+            failed: 'The assistant could not answer.',
+            tool: 'Read with {name}',
+            context: {
+                page: 'On {path}',
+                list: '{label} list',
+                record: '{label} #{id}',
+            },
+        },
     },
 }

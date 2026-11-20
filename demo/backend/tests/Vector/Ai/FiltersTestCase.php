@@ -59,15 +59,17 @@ abstract class FiltersTestCase extends AiTestCase
 
     /**
      * What the fake provider answers from now on: the sentence (or the
-     * repair turn's text, repair()) => the answer, an array being sent as JSON.
+     * repair turn's text, repair()) => the answer, an array being sent as
+     * JSON — or, a list, the turns of a run that calls tools (ScriptedReplies::of()).
      *
-     * @param array<string, string|array<string, mixed>> $replies
+     * @param array<string, string|array<array-key, mixed>> $replies
      */
     protected function script(array $replies): void
     {
         $this->calls = new ScriptedCalls();
         $this->replies = ScriptedReplies::of(
-            array_map(static fn (string|array $r): string => is_string($r) ? $r : json_encode($r, JSON_THROW_ON_ERROR), $replies),
+            // an answer object is sent as JSON; a list is the turns of a tool-using run
+            array_map(static fn (string|array $r): string|array => is_string($r) || array_is_list($r) ? $r : json_encode($r, JSON_THROW_ON_ERROR), $replies),
             $this->calls,
         );
     }

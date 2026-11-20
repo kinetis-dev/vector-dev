@@ -5,8 +5,11 @@ Nuxt layer over [`@kinetis/vector-ui`](https://www.npmjs.com/package/@kinetis/ve
 the UI half of [`kinetis/vector-ai`](https://packagist.org/packages/kinetis/vector-ai).
 
 **This release offers plain-language filters**, in every list's
-toolbar, and the provider-key panel of the `ai` settings group. The
-assistant and writing help arrive in later releases.
+toolbar; **the read-only assistant**, a sparkle button in the app bar
+opening a drawer beside the page (and *Ask the assistant…* in the ⌘K
+palette), whose streamed answers link every `resource#id` they name to
+that record; and the provider-key panel of the `ai` settings group.
+Writing help arrives in a later release.
 
 Extend this layer instead of `@kinetis/vector-ui` in your Nuxt app
 (standalone mode): `extends: ['@kinetis/vector-ai-ui']`. Hosted

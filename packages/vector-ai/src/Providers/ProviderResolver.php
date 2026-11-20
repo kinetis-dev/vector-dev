@@ -16,6 +16,7 @@ use Kinetis\VectorAi\Secrets\CredentialStore;
 use Kinetis\VectorAi\Settings\AiSettingsReader;
 use Kinetis\VectorAi\Testing\ScriptedProvider;
 use Kinetis\VectorAi\Testing\ScriptedReplies;
+use NeuronAI\HttpClient\StoppableHttpClient;
 use NeuronAI\Providers\Anthropic\Anthropic;
 use NeuronAI\Providers\Ollama\Ollama;
 use NeuronAI\Providers\OpenAI\OpenAI;
@@ -33,7 +34,7 @@ use NeuronAI\Providers\OpenAILike;
  * over the app-scoped transport (never an empty HTTP client, which would
  * make Neuron block the worker on curl) and under the feature's own
  * deadline when it has a shorter one (Feature::timeout(); a Bedrock
- * call keeps its signing client's), and parallel tool calls, which
+ * call keeps its signing client's) — VECTOR_AI_TIMEOUT otherwise — and parallel tool calls, which
  * fork the worker, are never turned on. Built per request.
  */
 final readonly class ProviderResolver
@@ -47,9 +48,15 @@ final readonly class ProviderResolver
     ) {}
 
     /**
+     * $shouldStop, when given, is asked before every event a streamed
+     * answer reads, and ends the answer with what it has when it is true:
+     * a browser that left (StoppableHttpClient). A Bedrock call cannot
+     * take it, and the `fake` provider reads nothing.
+     *
+     * @param (\Closure(): bool)|null $shouldStop
      * @throws AiFailure (unavailable) when no provider, model or key is configured for $feature
      */
-    public function for(Feature $feature, CurrentUserInterface $user): ResolvedProvider
+    public function for(Feature $feature, CurrentUserInterface $user, ?\Closure $shouldStop = null): ResolvedProvider
     {
         $provider = $this->providerFor($feature);
         $model = $this->modelFor($feature, $provider);
@@ -59,7 +66,7 @@ final readonly class ProviderResolver
             throw AiFailure::unconfigured("The AI provider \"{$provider->name}\" has no API key: set it in the environment, or store one in the AI settings.");
         }
 
-        return new ResolvedProvider($this->build($provider, $model, (string) $key, $feature->timeout()), $provider->name, $model, $this->config->maxOutputTokens);
+        return new ResolvedProvider($this->build($provider, $model, (string) $key, $feature->timeout(), $shouldStop), $provider->name, $model, $this->config->maxOutputTokens);
     }
 
     private function providerFor(Feature $feature): ProviderConfig
@@ -90,14 +97,19 @@ final readonly class ProviderResolver
         return $model;
     }
 
-    private function build(ProviderConfig $provider, string $model, #[\SensitiveParameter] string $key, ?float $deadline): \NeuronAI\Providers\AIProviderInterface
+    /** @param (\Closure(): bool)|null $shouldStop */
+    private function build(ProviderConfig $provider, string $model, #[\SensitiveParameter] string $key, ?float $deadline, ?\Closure $shouldStop): \NeuronAI\Providers\AIProviderInterface
     {
         $maxTokens = $this->config->maxOutputTokens;
-        // a request's own timeout replaces the transport's bound rather than
-        // narrowing it, so the deadline handed down is the shorter of the two
-        $http = fn (): \NeuronAI\HttpClient\HttpClientInterface => $deadline === null
-            ? $this->transports->http($provider)
-            : new DeadlineHttpClient($this->transports->http($provider), min($deadline, $this->config->timeout));
+        // one deadline per call, bounding the send, the first byte and the last,
+        // a stream's included: a request's own timeout replaces the transport's
+        // bound rather than narrowing it, so it is the shorter of the two
+        $seconds = min($deadline ?? $this->config->timeout, $this->config->timeout);
+        $http = function () use ($provider, $seconds, $shouldStop): \NeuronAI\HttpClient\HttpClientInterface {
+            $client = new DeadlineHttpClient($this->transports->http($provider), $seconds);
+
+            return $shouldStop === null ? $client : new StoppableHttpClient($client, $shouldStop);
+        };
 
         return match ($provider->type) {
             ProviderType::OpenAi => $provider->baseUrl === ProviderType::OpenAi->defaultBaseUrl()

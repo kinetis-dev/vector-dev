@@ -2839,7 +2839,7 @@
                     "name": "Alon Noy"
                 }
             ],
-            "description": "AI for Kinetis Vector, on kinetis/neuron. This release offers plain-language filters on the admin's lists, over provider configuration, sealed provider keys, the AI settings, a model boundary and a usage ledger; the assistant and writing help arrive in later releases.",
+            "description": "AI for Kinetis Vector, on kinetis/neuron. This release offers plain-language filters on the admin's lists and a read-only in-admin assistant, over provider configuration, sealed provider keys, the AI settings, a model boundary and a usage ledger; writing help arrives in a later release.",
             "homepage": "https://kinetis.dev/vector/docs/ai.html",
             "keywords": [
                 "admin",

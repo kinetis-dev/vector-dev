@@ -21,3 +21,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the descriptor carries `capabilities.ai`. Delivered through Nuxt
   `extends` (standalone); hosted (no-build) delivery comes in a later
   release.
+- The assistant: a sparkle button in the app bar (`defineShellAction`)
+  opening an end-side drawer with the conversation, a composer, *New
+  conversation* and a line naming the page the questions are about; it
+  belongs to the layout, so it survives navigation. *Ask the assistant…*
+  in the command palette (`definePaletteCommand`) opens it asking what
+  was typed. Answers stream in from `POST /vector/ai/assistant` (the
+  Vercel AI SDK data-stream protocol, parsed as it arrives), falling back
+  to the whole JSON answer where the runtime answers `501`; they are
+  rendered through the admin's own Markdown sanitizer, with each
+  `resource#id` of a resource the descriptor knows linked to the record.
+  A failure shows its reason and Retry; a spent budget says when it
+  renews. The conversation is the signed-in user's: it is forgotten, and
+  the drawer closed, when the user changes (an impersonation), the
+  session ends or the admin signs out. Shown only while
+  `capabilities.ai.assistant` is on.
