@@ -40,6 +40,9 @@ final readonly class RewriteStore
 
     public const string BUDGET = 'budget';
 
+    /** What a CSV row adds beyond its key and text, quotes doubled: two pairs of quotes, a comma and a CRLF. */
+    public const int ROW_FRAMING = 7;
+
     public function __construct(private VectorDatabase $db) {}
 
     /** Whether job $jobId already has a row for $recordKey. */
@@ -54,11 +57,16 @@ final readonly class RewriteStore
         return $this->query()->where('job_id', '=', $jobId)->count() > 0;
     }
 
-    /** The summed byte length of job $jobId's proposals, as stored. */
+    /**
+     * What job $jobId's proposals add to its CSV, at most: for each, its
+     * key and text with every quote doubled, plus ROW_FRAMING — the sum of
+     * ProposeRewrites::rowBytes() over the stored rows.
+     */
     public function bytes(int $jobId): int
     {
+        $doubled = static fn (string $column): string => "OCTET_LENGTH({$column}) * 2 - OCTET_LENGTH(REPLACE({$column}, '\"', ''))";
         $row = $this->query()
-            ->selectRaw('COALESCE(SUM(OCTET_LENGTH(proposal)), 0) AS n')
+            ->selectRaw('COALESCE(SUM(' . $doubled('record_key') . ' + ' . $doubled('proposal') . ' + ' . self::ROW_FRAMING . '), 0) AS n')
             ->where('job_id', '=', $jobId)
             ->where('status', '=', self::PROPOSED)
             ->first();

@@ -66,7 +66,7 @@ final class ProposeRewritesTest extends WritingTestCase
         $data = $registry->toArray();
 
         foreach ([
-            'orders' => [RewriteOrderStatus::class, LongGuidance::class, TranslateWithoutLocale::class, TidyIntoSmallFile::class],
+            'orders' => [RewriteOrderStatus::class, LongGuidance::class, TranslateWithoutLocale::class, TidyIntoSmallFile::class, TidyIntoTinyCsv::class],
             'products' => [RewriteProductDescriptions::class],
             'users' => [RewritePasswords::class],
             'tags' => [RewriteTagNames::class],
@@ -304,7 +304,7 @@ final class ProposeRewritesTest extends WritingTestCase
 
         // one proposal, under the limit; the next chunk reads it back, proposes one more and passes it
         $this->chunk($jobId, 'tidy-into-small-file', [$ids[0]]);
-        self::assertSame(strlen(self::tidy($ids[0])), $this->rewrites()->bytes($jobId));
+        self::assertSame(ProposeRewrites::rowBytes((string) $ids[0], self::tidy($ids[0])), $this->rewrites()->bytes($jobId));
         $this->chunk($jobId, 'tidy-into-small-file', [$ids[1], $ids[2], $ids[3]]);
         self::assertCount(2, $this->calls());
         $finished = $this->finishJob($jobId, 'tidy-into-small-file');
@@ -333,6 +333,91 @@ final class ProposeRewritesTest extends WritingTestCase
         $rows = iterator_to_array(CsvReader::fromString((string) $finished->contents)->rows(), false);
         self::assertSame([['id' => (string) $ids[0], 'notes' => self::tidy($ids[0])]], $rows);
         self::assertStringContainsString('Stopped calling AI: writing help stopped being available to this run, so 2 record(s) were not sent.', (string) $finished->message);
+    }
+
+    public function testWritingSwitchedOffBetweenChunksOfOneScopeStopsTheNextChunk(): void
+    {
+        $ids = $this->orders(3);
+        $this->scriptTidy($ids);
+        $jobId = $this->job('tidy-order-notes');
+
+        // as RunActionJob runs them: every chunk in the one scope of the job
+        $second = $this->inJob(function (ActionRunner $runner, ResourceDescriptor $orders) use ($ids, $jobId): ActionResponse {
+            $runner->runNow($orders, 'tidy-order-notes', [$ids[0]], [], $jobId);
+            $this->settings(['writingEnabled' => false]);
+
+            return $runner->runNow($orders, 'tidy-order-notes', [$ids[1], $ids[2]], [], $jobId);
+        });
+
+        self::assertSame('Writing help is no longer available to this run: 2 record(s) in this chunk were not sent.', $second->message);
+        self::assertSame(0, $second->affected);
+        self::assertCount(1, $this->calls());
+        $left = $this->vectorQuery()->table(RewriteStore::TABLE)->select('record_key', 'reason')->where('job_id', '=', $jobId)
+            ->where('status', '=', RewriteStore::BUDGET)->orderBy('record_key', 'ASC')->get();
+        self::assertSame([(string) $ids[1] => 'unavailable', (string) $ids[2] => 'unavailable'], array_column($left, 'reason', 'record_key'));
+    }
+
+    public function testAChunkAuditsAndCountsOnlyTheRecordsItProposedFor(): void
+    {
+        $ids = $this->orders(4);
+        $this->shop()->table('orders')->where('id', '=', $ids[2])->update(['notes' => self::LOCKED . self::note($ids[2])]);
+        $this->scriptWriting(
+            [self::note($ids[0]) => self::tidy($ids[0]), self::note($ids[3]) => self::tidy($ids[3])],
+            [self::note($ids[1]) => new ProviderException('down')],
+        );
+        $jobId = $this->job('tidy-order-notes');
+
+        [$first, $again] = $this->inJob(static fn (ActionRunner $runner, ResourceDescriptor $orders): array => [
+            $runner->runNow($orders, 'tidy-order-notes', $ids, [], $jobId),
+            // delivered again: every record is done, so none is proposed for, or audited, again
+            $runner->runNow($orders, 'tidy-order-notes', $ids, [], $jobId),
+        ]);
+
+        self::assertSame(2, $first->affected, 'a proposal each for two of the four: one failed, one may not be updated');
+        self::assertSame('Proposed 2 rewrite(s) in this chunk.', $first->message);
+        self::assertSame(0, $again->affected);
+        $audited = $this->vectorQuery()->table('vector_audit')->select('record_id')->where('resource', '=', 'orders')
+            ->where('event', '=', 'action:tidy-order-notes')->where('actor_id', '=', self::ACTOR_PREFIX . '01')->orderBy('id', 'ASC')->get();
+        self::assertSame([(string) $ids[0], (string) $ids[3]], array_column($audited, 'record_id'));
+    }
+
+    public function testTheCsvNeverPassesTheFileCapAndCountsWhatDidNotFit(): void
+    {
+        $ids = $this->orders(4);
+        // quote-heavy: every quote is doubled in the CSV, so the file grows faster than the text
+        $answers = [];
+
+        foreach ($ids as $id) {
+            $answers[self::note($id)] = self::quoted($id);
+        }
+
+        $this->scriptWriting($answers);
+        $jobId = $this->job('tidy-into-tiny-csv');
+        $this->chunk($jobId, 'tidy-into-tiny-csv', $ids);
+        self::assertCount(4, $this->calls(), 'the early stop is far off: all four are proposed');
+        $finished = $this->finishJob($jobId, 'tidy-into-tiny-csv');
+
+        $csv = (string) $finished->contents;
+        self::assertLessThanOrEqual(TidyIntoTinyCsv::CAP, strlen($csv));
+        $rows = iterator_to_array(CsvReader::fromString($csv)->rows(), false);
+        self::assertSame([(string) $ids[0], (string) $ids[1]], array_column($rows, 'id'), 'whole rows, in order, until the next would not fit');
+        self::assertSame([self::quoted($ids[0]), self::quoted($ids[1])], array_column($rows, 'notes'));
+        $message = (string) $finished->message;
+        self::assertStringContainsString('for 2 record(s)', $message);
+        self::assertStringContainsString("Left out 2 proposal(s) because the proposals filled the job's file; run the rest as another selection.", $message);
+        // what did not fit is kept until the prune, as every row is
+        self::assertSame(4, $this->vectorQuery()->table(RewriteStore::TABLE)->where('job_id', '=', $jobId)->where('status', '=', RewriteStore::PROPOSED)->count());
+    }
+
+    public function testTheCsvWriterStopsBeforeTheRowThatWouldPassItsLimit(): void
+    {
+        $header = ProposeRewrites::csv(['id', 'notes'], []);
+        $row = strlen(ProposeRewrites::csv(['id', 'notes'], [['1', 'say "hi"']])) - strlen($header);
+
+        [$csv, $fitted] = ProposeRewrites::csvWithin(['id', 'notes'], [['1', 'say "hi"'], ['2', 'say "hi"'], ['3', 'x']], strlen($header) + 2 * $row - 1);
+        self::assertSame(1, $fitted);
+        self::assertSame(strlen($header) + $row, strlen($csv));
+        self::assertLessThanOrEqual(ProposeRewrites::rowBytes('1', 'say "hi"'), $row, 'rowBytes() never undercounts a row');
     }
 
     public function testARecordTheUserMayNotUpdateIsSkippedAndNeverSent(): void
@@ -539,6 +624,12 @@ final class ProposeRewritesTest extends WritingTestCase
     private static function note(int $id): string
     {
         return "order {$id}: costumer want's delivery, after 5pm \"please\"";
+    }
+
+    /** A quote-heavy answer for order $id: 48 bytes, of them 12 quotes, that the CSV writes as 62. */
+    private static function quoted(int $id): string
+    {
+        return 'Say ' . str_repeat('"yes" ', 6) . sprintf('to %04d.', $id % 10000);
     }
 
     private static function tidy(int $id): string
@@ -761,6 +852,34 @@ final class TidyIntoSmallFile extends ProposeRewrites
     protected function fileLimit(): int
     {
         return 100;
+    }
+}
+
+/**
+ * The demo's TidyOrderNotes with a CSV of at most CAP bytes: the BOM and
+ * header (13), then two quote-heavy rows of ProposeRewritesTest::quoted()
+ * (about 67 each) fit, and a third does not.
+ */
+final class TidyIntoTinyCsv extends ProposeRewrites
+{
+    public const int CAP = 180;
+
+    #[\Override]
+    public function field(): string
+    {
+        return 'notes';
+    }
+
+    #[\Override]
+    public function operation(): WritingOperation
+    {
+        return WritingOperation::Grammar;
+    }
+
+    #[\Override]
+    protected function fileCap(): int
+    {
+        return self::CAP;
     }
 }
 

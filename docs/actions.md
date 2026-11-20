@@ -52,7 +52,23 @@ For every run, Vector:
 4. loads the entities and hands them to `handle()`;
 5. saves everything in one flush, unless the response is `danger`;
 6. logs the run in `vector_action_events` and adds an entry naming the
-   action to each record's audit trail.
+   action to each record's audit trail — every record handed to
+   `handle()`, or only those the response declares (below).
+
+`affected` in the response is the count `handle()` gave it; when that
+is 0 on a run with records, it reports how many records the run was
+handed. An action that skips some of its records declares the ones it
+acted on instead, with `->withRecords($ids)` on its response:
+
+```php
+return ActionResponse::message("{$count} published.")->withRecords($published);
+```
+
+Then only those records are logged and audited — none for an empty
+list, which still flushes and logs the run — and `affected` is their
+count. An identifier the action was not handed is ignored, so an
+action cannot audit a record outside its selection (or its chunk, when
+queued). The declaration is not part of the response the client sees.
 
 An action runs on one record, on the selected records, or on every
 record a filter matches ("all matching"), within the resource's bulk

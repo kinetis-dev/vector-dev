@@ -14,6 +14,7 @@ use Kinetis\VectorAi\Failure\AiFailure;
 use Kinetis\VectorAi\Failure\AiFailureMapper;
 use Kinetis\VectorAi\Http\AiRequestException;
 use Kinetis\VectorAi\Providers\ResolvedProvider;
+use Kinetis\VectorAi\Settings\AiSettingsReader;
 use Kinetis\VectorAi\Writing\WritingAssistant;
 use Kinetis\VectorAi\Writing\WritingGuard;
 use Kinetis\VectorAi\Writing\WritingOperation;
@@ -37,7 +38,9 @@ use Kinetis\VectorAi\Writing\WritingOperation;
  *         public function operation(): WritingOperation { return WritingOperation::Grammar; }
  *     }
  *
- * The run is writing help's (WritingGuard), as the admin who started it:
+ * The run is writing help's (WritingGuard), as the admin who started it,
+ * asked again at the start of every chunk with the `ai` settings read
+ * anew (a job runs all its chunks in one scope):
  * a password, non-text, hidden, read-only or AI-kept field, one not on
  * the detail view (the records are read as it serializes them), writing
  * help off, unconfigured or not theirs, a translation without a language
@@ -51,7 +54,15 @@ use Kinetis\VectorAi\Writing\WritingOperation;
  * run goes on; once the day's token budget is spent (`budget`) or the
  * proposals near the job file's size (fileLimit(), `file_full`), no
  * further record is sent and the job says so. Answers are cleaned and
- * capped as writing help's are.
+ * capped as writing help's are. Each chunk declares the records it
+ * proposed for (ActionResponse::withRecords()): only those are audited,
+ * and counted as affected.
+ *
+ * The CSV finish() returns is never larger than JobStore::MAX_FILE_BYTES,
+ * which the job's file must fit: rows are added in the order the
+ * proposals were made until the next would pass it, and a proposal that
+ * did not fit is left out of the file and counted in the job's message
+ * (its row stays until the prune, as every row does).
  *
  * Chunks are delivered at least once: every record's outcome is a row of
  * RewriteStore keyed by (job, record), asked before the call, so a chunk
@@ -64,10 +75,9 @@ use Kinetis\VectorAi\Writing\WritingOperation;
 abstract class ProposeRewrites extends VectorAction
 {
     /**
-     * How many bytes of proposals a run makes at most before it stops
-     * calling AI: JobStore::MAX_FILE_BYTES, which the CSV must fit, less
-     * room for what the CSV adds to the text — its doubled quotes, the
-     * header, the key column and the row framing.
+     * How many bytes of CSV rows a run makes at most before it stops
+     * calling AI, counted as rowBytes() counts them: JobStore::MAX_FILE_BYTES,
+     * which the CSV must fit, less room for the answer that passes it.
      */
     public const int FILE_LIMIT = JobStore::MAX_FILE_BYTES - 4 * 1024 * 1024;
 
@@ -76,6 +86,7 @@ abstract class ProposeRewrites extends VectorAction
         private readonly WritingAssistant $writing,
         private readonly RewriteStore $store,
         private readonly AiFailureMapper $failures,
+        private readonly AiSettingsReader $settings,
     ) {}
 
     /** The field whose text is rewritten: a string, text, Markdown or rich-text field. */
@@ -97,13 +108,23 @@ abstract class ProposeRewrites extends VectorAction
     }
 
     /**
-     * How many bytes of proposals this run makes before it stops calling
-     * AI; never more than FILE_LIMIT, whatever a subclass returns. Checked
-     * before each call, so a run can pass it by one answer.
+     * How many bytes of CSV rows (rowBytes()) this run makes before it
+     * stops calling AI; never more than FILE_LIMIT, whatever a subclass
+     * returns. Checked before each call, so a run can pass it by one
+     * answer.
      */
     protected function fileLimit(): int
     {
         return self::FILE_LIMIT;
+    }
+
+    /**
+     * The most bytes the CSV finish() returns may hold; never more than
+     * JobStore::MAX_FILE_BYTES, whatever a subclass returns.
+     */
+    protected function fileCap(): int
+    {
+        return JobStore::MAX_FILE_BYTES;
     }
 
     #[\Override]
@@ -143,6 +164,9 @@ abstract class ProposeRewrites extends VectorAction
             return ActionResponse::danger('Rewrite proposals run only as a background job.');
         }
 
+        // a job runs every chunk in one scope: a switch-off saved since the last chunk must be seen by this one
+        $this->settings->refresh();
+
         try {
             [$visible, $field, $provider, $instructions] = $this->configured($request->resource);
         } catch (AiRequestException $e) {
@@ -153,15 +177,15 @@ abstract class ProposeRewrites extends VectorAction
 
             $unsent = $this->leaveOutRest($request, 'unavailable');
 
-            return ActionResponse::message("Writing help is no longer available to this run: {$unsent} record(s) in this chunk were not sent.");
+            return ActionResponse::message("Writing help is no longer available to this run: {$unsent} record(s) in this chunk were not sent.")->withRecords([]);
         }
 
         $name = $this->field();
         $key = $visible->primaryKeyField();
         $operation = $this->operation();
         $format = ($field['type'] ?? null) === 'markdown' ? 'markdown' : 'plain';
-        $proposed = 0;
-        // the proposals' bytes so far, read once and counted on as this chunk proposes
+        $proposed = [];
+        // the proposals' CSV bytes so far, read once and counted on as this chunk proposes
         $bytes = $this->store->bytes($request->jobId);
         $limit = min($this->fileLimit(), self::FILE_LIMIT);
 
@@ -221,11 +245,12 @@ abstract class ProposeRewrites extends VectorAction
             }
 
             $this->store->propose($request->jobId, $id, $answer['text'], $answer['truncated']);
-            $bytes += strlen($answer['text']);
-            $proposed++;
+            $bytes += self::rowBytes($id, $answer['text']);
+            $proposed[] = $id;
         }
 
-        return ActionResponse::message("Proposed {$proposed} rewrite(s) in this chunk.", $proposed);
+        // only the records proposed for are audited; one done in an earlier delivery is not declared again
+        return ActionResponse::message('Proposed ' . count($proposed) . ' rewrite(s) in this chunk.')->withRecords($proposed);
     }
 
     /**
@@ -247,9 +272,13 @@ abstract class ProposeRewrites extends VectorAction
         $resource = $request->resource;
         $field = $this->field();
         $proposals = $this->store->proposals($request->jobId);
-        $csv = self::csv([$resource->primaryKeyField(), $field], array_map(static fn (array $p): array => [$p['key'], $p['text']], $proposals));
-        $cut = count(array_filter($proposals, static fn (array $p): bool => $p['truncated']));
-        $message = self::summary($this->store->tally($request->jobId), $cut, Field::labelFrom($field), $resource->primaryKeyField());
+        [$csv, $fitted] = self::csvWithin(
+            [$resource->primaryKeyField(), $field],
+            array_map(static fn (array $p): array => [$p['key'], $p['text']], $proposals),
+            min($this->fileCap(), JobStore::MAX_FILE_BYTES),
+        );
+        $cut = count(array_filter(array_slice($proposals, 0, $fitted), static fn (array $p): bool => $p['truncated']));
+        $message = self::summary($this->store->tally($request->jobId), $cut, count($proposals) - $fitted, Field::labelFrom($field), $resource->primaryKeyField());
 
         return ActionResponse::download($csv, "{$resource->slug()}-{$field}-proposals-{$request->jobId}.csv", 'text/csv; charset=utf-8', $message);
     }
@@ -268,6 +297,22 @@ abstract class ProposeRewrites extends VectorAction
      */
     public static function csv(array $header, array $rows): string
     {
+        return self::csvWithin($header, $rows, PHP_INT_MAX)[0];
+    }
+
+    /**
+     * csv(), at most $maxBytes long: the header and then rows in order,
+     * stopping before the first row that would pass $maxBytes; the CSV and
+     * how many of $rows it holds.
+     *
+     * @param list<string> $header
+     * @param list<list<string>> $rows
+     * @return array{string, int}
+     * @throws \InvalidArgumentException for a value encodable() refuses
+     * @throws \LengthException when not even the header fits
+     */
+    public static function csvWithin(array $header, array $rows, int $maxBytes): array
+    {
         foreach ([$header, ...$rows] as $row) {
             foreach ($row as $value) {
                 if (!self::encodable($value)) {
@@ -283,16 +328,44 @@ abstract class ProposeRewrites extends VectorAction
         }
 
         fwrite($out, "\xEF\xBB\xBF");
+        fputcsv($out, $header, ',', '"', '\\', "\r\n");
 
-        foreach ([$header, ...$rows] as $row) {
+        if ((int) ftell($out) > $maxBytes) {
+            fclose($out);
+
+            throw new \LengthException("A CSV header does not fit in {$maxBytes} bytes.");
+        }
+
+        $fitted = 0;
+
+        foreach ($rows as $row) {
+            $before = max(0, (int) ftell($out));
             fputcsv($out, $row, ',', '"', '\\', "\r\n");
+
+            if ((int) ftell($out) > $maxBytes) {
+                ftruncate($out, $before);
+
+                break;
+            }
+
+            $fitted++;
         }
 
         rewind($out);
         $csv = (string) stream_get_contents($out);
         fclose($out);
 
-        return $csv;
+        return [$csv, $fitted];
+    }
+
+    /**
+     * What a proposal's row adds to the CSV, at most: its key and text
+     * with every quote doubled, both quoted, the comma and the CRLF.
+     * RewriteStore::bytes() sums the same over the stored rows.
+     */
+    public static function rowBytes(string $key, string $text): int
+    {
+        return strlen($key) + substr_count($key, '"') + strlen($text) + substr_count($text, '"') + RewriteStore::ROW_FRAMING;
     }
 
     /**
@@ -345,10 +418,11 @@ abstract class ProposeRewrites extends VectorAction
      *
      * @param array<string, array<string, int>> $tally status => reason => count
      * @param int $cut how many proposals were cut at the field's length cap
+     * @param int $unfitted how many proposals were left out of the CSV, which held no more
      */
-    private static function summary(array $tally, int $cut, string $label, string $key): string
+    private static function summary(array $tally, int $cut, int $unfitted, string $label, string $key): string
     {
-        $proposed = array_sum($tally[RewriteStore::PROPOSED] ?? []);
+        $proposed = array_sum($tally[RewriteStore::PROPOSED] ?? []) - $unfitted;
         $parts = ["Proposed rewrites of {$label} for {$proposed} record(s): review the CSV, then import it in update mode keyed by {$key} to apply them."];
 
         if ($cut > 0) {
@@ -377,6 +451,10 @@ abstract class ProposeRewrites extends VectorAction
 
         foreach ($tally[RewriteStore::BUDGET] ?? [] as $reason => $count) {
             $parts[] = 'Stopped calling AI: ' . ($stops[$reason] ?? $reason) . ", so {$count} record(s) were not sent.";
+        }
+
+        if ($unfitted > 0) {
+            $parts[] = "Left out {$unfitted} proposal(s) because the proposals filled the job's file; run the rest as another selection.";
         }
 
         return implode(' ', $parts);

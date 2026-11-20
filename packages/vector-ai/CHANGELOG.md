@@ -30,7 +30,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   CSV on the job, and `vector-ai:approvals:prune` deletes them once the
   job has ended (schedule `vector:jobs:reap` before it). A proposal or
   record ID ending in a backslash, which the importer cannot read back,
-  is left out of the CSV and counted as skipped.
+  is left out of the CSV and counted as skipped. Each chunk declares the
+  records it proposed for (`ActionResponse::withRecords()`), so only
+  those are audited and `affected` counts proposals. Every chunk reads
+  the `ai` settings anew (`AiSettingsReader::refresh()`), so a switch-off
+  saved while the job runs stops the next chunk. The CSV is never larger
+  than `JobStore::MAX_FILE_BYTES`: the early stop counts rows as the CSV
+  writes them (quotes doubled, `ProposeRewrites::rowBytes()`), and
+  `finish()` adds whole rows only while they fit, counting a proposal
+  that did not in the job's message.
 - `Writing\WritingGuard`: writing help's field, permission, boundary,
   provider and budget checks, shared by the writing endpoint and
   `ProposeRewrites`.

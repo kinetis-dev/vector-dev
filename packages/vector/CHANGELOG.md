@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `download` it answers becomes the job's file and message, `danger`
   fails the job, null (the default) changes nothing.
   `ActionResponse::download()` takes an optional message for it.
+- An action can declare the records it acted on:
+  `ActionResponse::withRecords(list<int|string>)`. Only those, of the
+  records it was handed, are logged in `vector_action_events` and get an
+  `action:<name>` audit entry (none for an empty list), and `affected`
+  is their count rather than the chunk's size. An identifier the action
+  was not handed is ignored. A response that declares nothing behaves as
+  before; the response's JSON is unchanged.
 
 ## [0.16.0] - 2026-11-19
 

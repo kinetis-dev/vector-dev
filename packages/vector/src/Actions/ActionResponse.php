@@ -8,11 +8,18 @@ namespace Kinetis\Vector\Actions;
  * What the client does after an action ran: show a message, show a
  * failure, navigate, open a URL, or save a file. One instance is one of
  * those; `affected` counts the records the action touched.
+ *
+ * An action may also declare which of the records it was handed it
+ * actually acted on (withRecords()): ActionRunner then logs and audits
+ * those alone, and `affected` is their count. Without a declaration
+ * every record handed to the action is logged and audited. The
+ * declaration is not part of the response the client sees.
  */
 final readonly class ActionResponse
 {
     /**
      * @param 'message'|'danger'|'redirect'|'url'|'download'|'job' $type
+     * @param list<int|string>|null $records the records the action declares it acted on; null when it declares none
      */
     private function __construct(
         public string $type,
@@ -23,6 +30,7 @@ final readonly class ActionResponse
         public ?string $contentType,
         public int $affected,
         public ?int $jobId = null,
+        public ?array $records = null,
     ) {}
 
     /** The action was queued; the client polls the job. */
@@ -61,7 +69,20 @@ final readonly class ActionResponse
 
     public function withAffected(int $affected): self
     {
-        return new self($this->type, $this->message, $this->url, $this->contents, $this->filename, $this->contentType, $affected);
+        return new self($this->type, $this->message, $this->url, $this->contents, $this->filename, $this->contentType, $affected, $this->jobId, $this->records);
+    }
+
+    /**
+     * Declares the records, of those handed to the action, that it acted
+     * on: only these are logged and audited, and `affected` becomes their
+     * count. An empty list declares that it acted on none. An identifier
+     * the action was not handed is ignored.
+     *
+     * @param list<int|string> $ids
+     */
+    public function withRecords(array $ids): self
+    {
+        return new self($this->type, $this->message, $this->url, $this->contents, $this->filename, $this->contentType, $this->affected, $this->jobId, $ids);
     }
 
     /** @return array<string, mixed> */

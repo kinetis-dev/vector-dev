@@ -549,7 +549,8 @@ refuses an expired proposal with `410`, and answers a stale executing
 one `failed`, whether or not the sweep has run. The same command deletes
 the rewrite rows a bulk run kept, once its job has ended
 ({ref}`ai-bulk`); schedule `vector:jobs:reap` before it, so a run whose
-worker died counts as ended.
+worker died counts as ended. The demo stack's `scheduler` service runs
+both, in that order, every hour ({doc}`demo`).
 
 **What the model can and cannot do.** It can only propose: no code path
 lets the model, or a request body, execute a write except the person's
@@ -694,10 +695,12 @@ would never arrive), a resource or field kept from the model, writing
 help off, unconfigured, unbudgeted or refused to them by `canUse()`, a
 translation without a language tag, or guidance over 300 characters
 fails the **whole job**, with that reason, before the model is asked
-anything. These are asked again at the start of every chunk: should one
-stop holding once a chunk has run — writing help switched off, the key
-removed — the rest of the selection is not sent (`unavailable`), and
-the job still ends with the CSV of what was proposed.
+anything. These are asked again at the start of every chunk, with the
+`ai` settings read anew (a job runs all its chunks in one request
+scope): should one stop holding once a chunk has run — writing help
+switched off, the key removed — the rest of the selection is not sent
+(`unavailable`), and the job still ends with the CSV of what was
+proposed.
 
 **Per record.** A record they may not update
 (`recordPermissions()['update']`), one whose text is empty or over
@@ -715,7 +718,10 @@ record is sent, the proposals made so far are kept, and the job says how
 many records were not sent and why: the day's token budget is spent
 (`budget`), or the proposals have filled the job's file (`file_full`;
 see the CSV, below). Every call is a usage row with the feature
-`writing`.
+`writing`. Each chunk declares the records it made a proposal for
+({doc}`actions`): only those get an `action:<name>` entry in their
+audit trail, and the job's `affected` counts proposals, not the
+records handed to the action.
 
 **The CSV.** One per run, on the job: the **Jobs** page offers it for
 download when the job is done (`GET /vector/jobs/{id}/download`),
@@ -738,11 +744,17 @@ skipped in the job's message; rewrite that record by hand. The job's
 message counts the proposals, the records left out and why, the failed
 calls by category and the empty answers, the answers cut at the cap and
 the records not sent, by why (`budget`, `file_full`, `unavailable`). A
-job file holds at most 12 MiB ({doc}`limits`): the run stops calling the
-model once its proposals reach 8 MiB
-(`ProposeRewrites::FILE_LIMIT`, leaving room for the CSV's quoting and
-ID column), so the calls it made are not lost to a file too large to
-save; run the records not sent as another selection.
+job file holds at most 12 MiB ({doc}`limits`), and **the CSV is never
+larger**: the run stops calling the model once its proposals' rows —
+counted as the CSV writes them, every quote doubled — reach 8 MiB
+(`ProposeRewrites::FILE_LIMIT`), and the CSV is then built row by row,
+in the order the proposals were made, stopping before the row that
+would pass 12 MiB. A proposal that did not fit is left out of the file
+and counted in the job's message ("the proposals filled the job's
+file"); its row stays in `vector_ai_rewrites` until the sweep, below.
+Either way the calls the run made are not lost to a file too large to
+save; run the records not sent, or not in the file, as another
+selection.
 
 **Applying it.** Review the file, delete the rows you do not want, edit
 any you do, and import it on the same resource ({doc}`jobs`): **Update

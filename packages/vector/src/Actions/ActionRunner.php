@@ -29,7 +29,8 @@ use Kinetis\Vector\Write\ValueConverter;
  * record a filter matches, within the resource's bulk limit), checks
  * the policy and the action's own visibility for every record,
  * validates the dialog's values, hands the loaded entities to the
- * action, flushes once and logs the run.
+ * action, flushes once and logs the run — for every record handed over,
+ * or for those the response declares (ActionResponse::withRecords()).
  */
 final readonly class ActionRunner
 {
@@ -126,9 +127,33 @@ final readonly class ActionRunner
             return $response; // the action declined; nothing is flushed
         }
 
-        $this->writer->commitAction($resource, $name, $ids);
+        if ($response->records === null) {
+            $this->writer->commitAction($resource, $name, $ids);
 
-        return $response->affected === 0 && $ids !== [] ? $response->withAffected(count($ids)) : $response;
+            return $response->affected === 0 && $ids !== [] ? $response->withAffected(count($ids)) : $response;
+        }
+
+        // the action declared what it acted on: only those, of the records it was handed, are logged and audited
+        $acted = self::declared($ids, $response->records);
+        $this->writer->commitAction($resource, $name, $acted);
+
+        return $response->withAffected(count($acted));
+    }
+
+    /**
+     * The identifiers of $ids an action declared, as $ids holds them and
+     * in its order; one it was not handed is dropped, so an action cannot
+     * audit a record it was not given.
+     *
+     * @param list<int|string> $ids
+     * @param list<int|string> $declared
+     * @return list<int|string>
+     */
+    private static function declared(array $ids, array $declared): array
+    {
+        $wanted = array_fill_keys(array_map(strval(...), $declared), true);
+
+        return array_values(array_filter($ids, static fn (int|string $id): bool => isset($wanted[(string) $id])));
     }
 
     /**

@@ -41,9 +41,9 @@ of products#9 to 42.* The scripted run reads the product with
 changes yet. The drawer shows a card with the stock now and the stock
 proposed: *Approve* writes it as you — History shows the update *via
 assistant* — and the assistant acknowledges your decision; *Reject*
-(try *Set the stock of products#9 to 7.*) changes nothing. Schedule
-`vendor/bin/kinetis vector-ai:approvals:prune` to sweep stale
-proposals ({doc}`ai`).
+(try *Set the stock of products#9 to 7.*) changes nothing. The
+`scheduler` service sweeps stale proposals every hour
+(`vector-ai:approvals:prune`, {doc}`ai`).
 
 And writing help: edit an order, type *Please make sure to call the
 customer before the delivery, because the customer has asked us to call
@@ -90,14 +90,15 @@ from `demo/`.
 | `frankenphp` | `localhost:8081` | The same application under FrankenPHP worker mode, Kinetis's primary runtime: 12 worker threads on the native database drivers. |
 | `node` | `localhost:3000` | The standalone admin: `nuxt dev` for `demo/frontend`, which extends `@kinetis/vector-ai-ui` (`@kinetis/vector-ui` with the AI layer). |
 | `worker` | — | `queue:work --queue=default,vector`: the application's jobs first, then Vector's. |
+| `scheduler` | — | Every hour, `vector:jobs:reap` (jobs whose worker died are marked failed), then `vector-ai:approvals:prune` (stale assistant proposals, and the rewrite proposal rows of ended jobs). Kinetis has no scheduler; in production, cron or the platform's runs these. |
 | `mysql` | `localhost:3306` | The shop, and the SQL queue table the test suite uses. `vector` / `vector`. Set `MYSQL_HOST_PORT` to publish it on another host port when 3306 is taken. |
 | `postgres` | `localhost:5432` | `vector_support`, the support desk (connection `support`), and `vector_admin`, Vector's own tables (connection `admin`). `vector` / `vector`. |
 | `redis` | `localhost:6379` | The job queue (connection `jobs`) and, in database 1, the cache holding sign-in throttling and refresh tokens. |
 
 The repository is mounted at `/workspace`. `demo/backend/vendor/` and
 the `node_modules/` directories are named volumes. Uploaded files live
-on the private `storage` volume, shared by `app`, `worker` and
-`frankenphp` and never served by nginx or Caddy. The file sessions are a
+on the private `storage` volume, shared by `app`, `worker`,
+`scheduler` and `frankenphp` and never served by nginx or Caddy. The file sessions are a
 volume too, so one browser session holds on both ports. Request bodies
 may be up to 12 MB (`MAX_BODY_SIZE` and nginx's `client_max_body_size`).
 
