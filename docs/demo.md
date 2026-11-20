@@ -12,7 +12,12 @@ relation shape Vector administers is exercised:
 It runs both admin modes, background jobs on a real queue, the queue
 dashboard ({doc}`queues`), a seeded catalog, and `kinetis/vector-ai`
 ({doc}`ai`) installed but unconfigured: its *AI assistant* settings group
-is there, and no AI feature.
+is there, and no AI feature is offered. To try plain-language filters
+without a model, configure the `fake` provider the demo scripts
+(`App\Vector\Ai\DemoAiReplies`) in `backend/.env` —
+`VECTOR_AI_PROVIDERS=demo` and `VECTOR_AI_DEMO_TYPE=fake` — and type
+*paid orders over 500* on the Orders list. The demo's profiles opt out
+of AI, and the users' e-mail field does.
 
 ## Run it
 
@@ -221,7 +226,10 @@ one `kinetis/vector` pins. `vector:install-ui --check` then exits 0.
 
 The hosted admin is the plain one: the AI layer reaches the standalone
 admin only, through `extends` (hosted delivery of it comes in a later
-release), so the end-to-end suite's AI spec runs standalone.
+release), so the end-to-end suite's AI specs run standalone:
+`ai.standalone.spec.ts` against the demo as it ships, and
+`ai-filters.standalone.spec.ts` with the scripted `fake` provider
+configured as above; each skips itself on the other stack.
 
 Then open `http://localhost:8080/vector/ui`, or
 `http://localhost:8081/vector/ui` for the same admin under FrankenPHP.

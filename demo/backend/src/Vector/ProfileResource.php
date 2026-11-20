@@ -17,9 +17,10 @@ use Kinetis\Vector\VectorResource;
  * account, without its admin flag or password. Users stays the
  * relation target, so a relation to a user links there. Its policy
  * refuses create and delete, which belong to UserResource and its
- * last-admin guard.
+ * last-admin guard. Nothing of it is sent to an AI model
+ * (`ai.send` false, docs/ai.md): the list offers no plain-language filter.
  */
-#[Resource(entity: User::class, slug: 'profiles', label: 'Profiles', labelSingular: 'Profile', group: 'Access', icon: 'mdi-card-account-details-outline', title: 'name')]
+#[Resource(entity: User::class, slug: 'profiles', label: 'Profiles', labelSingular: 'Profile', group: 'Access', icon: 'mdi-card-account-details-outline', title: 'name', meta: ['ai.send' => false])]
 final class ProfileResource extends VectorResource
 {
     #[\Override]

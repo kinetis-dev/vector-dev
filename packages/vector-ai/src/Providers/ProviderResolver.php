@@ -31,7 +31,9 @@ use NeuronAI\Providers\OpenAILike;
  * provider is unconfigured. A Neuron provider holds a system prompt,
  * tools and stream state, so a new one is built on every call, always
  * over the app-scoped transport (never an empty HTTP client, which would
- * make Neuron block the worker on curl), and parallel tool calls, which
+ * make Neuron block the worker on curl) and under the feature's own
+ * deadline when it has a shorter one (Feature::timeout(); a Bedrock
+ * call keeps its signing client's), and parallel tool calls, which
  * fork the worker, are never turned on. Built per request.
  */
 final readonly class ProviderResolver
@@ -57,7 +59,7 @@ final readonly class ProviderResolver
             throw AiFailure::unconfigured("The AI provider \"{$provider->name}\" has no API key: set it in the environment, or store one in the AI settings.");
         }
 
-        return new ResolvedProvider($this->build($provider, $model, (string) $key), $provider->name, $model, $this->config->maxOutputTokens);
+        return new ResolvedProvider($this->build($provider, $model, (string) $key, $feature->timeout()), $provider->name, $model, $this->config->maxOutputTokens);
     }
 
     private function providerFor(Feature $feature): ProviderConfig
@@ -88,17 +90,22 @@ final readonly class ProviderResolver
         return $model;
     }
 
-    private function build(ProviderConfig $provider, string $model, #[\SensitiveParameter] string $key): \NeuronAI\Providers\AIProviderInterface
+    private function build(ProviderConfig $provider, string $model, #[\SensitiveParameter] string $key, ?float $deadline): \NeuronAI\Providers\AIProviderInterface
     {
         $maxTokens = $this->config->maxOutputTokens;
+        // a request's own timeout replaces the transport's bound rather than
+        // narrowing it, so the deadline handed down is the shorter of the two
+        $http = fn (): \NeuronAI\HttpClient\HttpClientInterface => $deadline === null
+            ? $this->transports->http($provider)
+            : new DeadlineHttpClient($this->transports->http($provider), min($deadline, $this->config->timeout));
 
         return match ($provider->type) {
             ProviderType::OpenAi => $provider->baseUrl === ProviderType::OpenAi->defaultBaseUrl()
-                ? new OpenAI($key, $model, ['max_completion_tokens' => $maxTokens], false, $this->transports->http($provider))
-                : new OpenAILike((string) $provider->baseUrl, $key, $model, ['max_tokens' => $maxTokens], false, $this->transports->http($provider)),
-            ProviderType::OpenAiLike => new OpenAILike((string) $provider->baseUrl, $key, $model, ['max_tokens' => $maxTokens], false, $this->transports->http($provider)),
-            ProviderType::Anthropic => new Anthropic($key, $model, '2023-06-01', $maxTokens, [], $this->transports->http($provider)),
-            ProviderType::Ollama => new Ollama((string) $provider->baseUrl, $model, ['options' => ['num_predict' => $maxTokens]], $this->transports->http($provider)),
+                ? new OpenAI($key, $model, ['max_completion_tokens' => $maxTokens], false, $http())
+                : new OpenAILike((string) $provider->baseUrl, $key, $model, ['max_tokens' => $maxTokens], false, $http()),
+            ProviderType::OpenAiLike => new OpenAILike((string) $provider->baseUrl, $key, $model, ['max_tokens' => $maxTokens], false, $http()),
+            ProviderType::Anthropic => new Anthropic($key, $model, '2023-06-01', $maxTokens, [], $http()),
+            ProviderType::Ollama => new Ollama((string) $provider->baseUrl, $model, ['options' => ['num_predict' => $maxTokens]], $http()),
             ProviderType::Bedrock => new BedrockProvider($this->transports->bedrock($provider), $model, ['maxTokens' => $maxTokens], $this->config->maxResponseBytes),
             ProviderType::Fake => new ScriptedProvider($this->replies),
         };

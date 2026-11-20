@@ -2803,7 +2803,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector-ai",
-                "reference": "0ec6a22c5b35f44928c747578dd5bb5f14200e09"
+                "reference": "d260e8bf1deefe59252fb2ae237c7ecb26192e6d"
             },
             "require": {
                 "ext-sodium": "*",
@@ -2839,7 +2839,7 @@
                     "name": "Alon Noy"
                 }
             ],
-            "description": "AI for Kinetis Vector, on kinetis/neuron. This release lays the foundations only (provider configuration, sealed provider keys, the AI settings and a usage ledger); the AI features arrive in later releases.",
+            "description": "AI for Kinetis Vector, on kinetis/neuron. This release offers plain-language filters on the admin's lists, over provider configuration, sealed provider keys, the AI settings, a model boundary and a usage ledger; the assistant and writing help arrive in later releases.",
             "homepage": "https://kinetis.dev/vector/docs/ai.html",
             "keywords": [
                 "admin",

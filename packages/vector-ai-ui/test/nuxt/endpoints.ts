@@ -8,7 +8,7 @@ export interface Received {
     body: unknown
 }
 
-type Answer = { status?: number, body?: unknown }
+type Answer = { status?: number, body?: unknown, headers?: Record<string, string> }
 type Reply = Answer | ((request: Received) => Answer | Promise<Answer>)
 
 interface H3Event {
@@ -16,7 +16,7 @@ interface H3Event {
     path: string
     headers: Headers
     web: { request: Request }
-    node: { res: { statusCode: number } }
+    node: { res: { statusCode: number, setHeader: (name: string, value: string) => void } }
 }
 
 /** A request's body as the tests assert it: a multipart form's fields (a file by its name), parsed JSON, or undefined when empty. */
@@ -53,6 +53,7 @@ export function endpoint(url: string, reply: Reply = {}, method?: string) {
 
         const answer = typeof reply === 'function' ? await reply(request) : reply
         event.node.res.statusCode = answer.status ?? 200
+        for (const [name, value] of Object.entries(answer.headers ?? {})) event.node.res.setHeader(name, value)
 
         return answer.body ?? {}
     }

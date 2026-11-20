@@ -52,7 +52,7 @@ from first install to the reference.
 ## Integrations
 
 - [MCP tools](https://kinetis.dev/vector/docs/mcp.html): The admin's services as Model Context Protocol tools for AI agents.
-- [AI](https://kinetis.dev/vector/docs/ai.html): kinetis/vector-ai and @kinetis/vector-ai-ui: installing, the VECTOR_AI_* configuration, the AI settings, sealed provider keys, access, data governance with meta('ai.send'), usage and the UI layer through Nuxt extends; the features arrive in later releases.
+- [AI](https://kinetis.dev/vector/docs/ai.html): kinetis/vector-ai and @kinetis/vector-ai-ui: installing, the VECTOR_AI_* configuration, the AI settings, sealed provider keys, access, data governance with meta('ai.send'), plain-language filters, usage and the UI layer through Nuxt extends; the assistant and writing help arrive in later releases.
 - [Testing your admin](https://kinetis.dev/vector/docs/testing.html): Driving the REST API from the application's own test suite.
 
 ## Reference

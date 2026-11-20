@@ -8,13 +8,11 @@ product — the Composer package `kinetis/vector-ai` and the Nuxt layer
 provider call suspends the calling Fiber instead of blocking the worker.
 
 ```{important}
-This release lays the foundations only: the operator configuration, the
+This release offers **plain-language filters** ({ref}`ai-filters`), on
+the foundations every feature shares: the operator configuration, the
 sealed provider keys, the `ai` settings group, the access policy, the
-usage ledger and the AI layer's provider-key panel. **No AI feature is
-offered yet**:
-plain-language filters, the assistant and writing help arrive in later
-releases. Until then the admin shows the *AI assistant* settings group
-and nothing else.
+model boundary, the usage ledger and the AI layer's provider-key panel.
+The assistant and writing help arrive in later releases.
 ```
 
 ## Installing
@@ -37,6 +35,11 @@ your Nuxt app extends `@kinetis/vector-ai-ui` instead of
 `@kinetis/vector-ui`: `extends: ['@kinetis/vector-ai-ui']`. Hosted
 (no-build) delivery of the AI layer comes in a later release; until then
 the hosted admin `vector:install-ui` installs is the plain one.
+
+The standalone admin is on another origin, so add `Retry-After` to your
+`CorsMiddleware`'s `exposedHeaders`: a browser hides any header CORS does
+not expose, and without it the admin can say only that today's budget is
+spent, not when it renews.
 
 Each `@kinetis/vector-ai-ui` release depends on exactly the
 `@kinetis/vector-ui` release `kinetis/vector` pins. Against a backend
@@ -159,11 +162,16 @@ policy admits. Bind your own on AppScope, as you bind
 $app->instance(AiAccessInterface::class, new MyAiAccess());
 ```
 
+(ai-boundary)=
 ## What a model is sent
 
-By default a feature may send the model a record's fields, except those
-a resource or field opts out of with the metadata bag
-({ref}`resource-meta`):
+`Kinetis\VectorAi\Governance\ModelBoundary` is the one place that
+decides it, for every feature. Some fields are never sent, whatever is
+configured: password, file and image fields, and every field the
+user's `viewField` policy hides from them (the resource is read as they
+see it). Beyond those, by default a feature may send the model a
+resource's fields, except those a resource or field opts out of with
+the metadata bag ({ref}`resource-meta`):
 
 ```php
 #[Resource(entity: Customer::class, meta: ['ai.send' => false])]   // nothing of this resource
@@ -171,24 +179,95 @@ Email::make('email')->meta('ai.send', false),                     // nor this fi
 ```
 
 The *Record data sent to the model* setting switches to an allow-list:
-then only what opts in with `meta('ai.send', true)` is sent. Vector
-publishes the bag and never reads it; `kinetis/vector-ai` does. Which
-resources and fields are kept from the model is published per user as
-`capabilities.ai.excluded`, once a feature sends record data.
+then only a resource that opts in with `meta: ['ai.send' => true]`, and
+within it only the fields that opt in with `meta('ai.send', true)`, are
+sent. Vector publishes the bag and never reads it; `kinetis/vector-ai`
+does. A resource kept from the model whole offers no AI at all: its
+plain-language filter answers `403`, and the admin hides it.
+
+(ai-filters)=
+## Plain-language filters
+
+An admin describes the records they want — *orders over $500 from last
+week that haven't shipped* — in a field with a sparkle icon beside a
+list's search. The answer shows as the filter bar's own chips, with one
+sentence saying what it keeps; the admin edits them like any filter,
+then applies or discards them. Nothing reaches the list until it is
+applied, and then through the ordinary list request, which validates
+it again.
+
+`POST /vector/ai/filters/{resource}` (in the `vector` middleware group):
+
+```json
+{ "text": "orders over $500 from last week that haven't shipped", "timezone": "Europe/Berlin",
+  "current": { "filter": { "status": { "ne": "cancelled" } } } }
+```
+
+`text` is required, at most 500 characters; `timezone`, an IANA zone the
+sentence's dates are read in, defaults to UTC — anything else, an offset
+such as `+02:00` or an abbreviation such as `CET` included, is read as
+UTC too; `current.filter`, the
+list's filter now in the list grammar, is context, cut to the fields the
+model may be told of. The body is at most 16 KiB. The answer is the
+list's own grammar:
+
+```json
+{ "filter": { "status": { "nin": "shipped,delivered" }, "totalCents": { "gt": "50000" },
+              "placedAt": { "between": "2026-11-09,2026-11-15" } },
+  "groups": [], "q": null,
+  "explanation": "Orders placed 9 to 15 November with a total above 500.00 whose status is not shipped or delivered.",
+  "unresolved": [ { "field": "customer", "op": "eq", "text": "Acme",
+                    "candidates": [ { "id": 4, "label": "Acme GmbH" }, { "id": 9, "label": "Acme Ltd" } ] } ] }
+```
+
+`filter` holds the conditions that must all hold; `groups` the "any of"
+groups, each a list of alternatives, as the filter bar keeps them; `q`
+the free-text search. A relation the sentence names in words is looked
+up the way the filter bar's choice list is, under the user's scope: one
+match becomes its id, several become an `unresolved` entry whose
+condition waits for the admin to pick a candidate, none is a `422`.
+
+The model is told the resource as {ref}`the boundary <ai-boundary>`
+lets it be told — per field its name, label, type, filter operators,
+choices, and how a date or money value is written — and today's date in
+the admin's zone, and asked, in one structured call, for conditions
+(`{field, op, value}`), "any of" groups, `q` and an explanation. The
+schema names the fields and operators, but not per field: the list's
+validator is the gate. The answer is put through
+`ListRequest::fromQueryParams()`, as the list and `vector_query` are. A
+field the model was not told of is refused before that — the refusal
+names only the fields it may use — and an operator the field does not
+admit is refused there; either way the model gets **one** repair turn
+quoting the exact reason. A second refusal is the admin's `422`.
+
+| Status | When |
+|---|---|
+| `404` | no such resource |
+| `403` | the user may not list it, it is kept from the model, the feature is off, unconfigured or the daily budget is 0, or the access policy's `canUse()` refuses |
+| `422` | the answer cannot be made valid after one repair (a lookup on a relation whose records the user may not list is such an answer), a lookup matches nothing, or an ambiguous lookup sits inside an "any of" group |
+| `429` | today's token budget is spent; `Retry-After` counts the seconds to midnight UTC |
+| `502`–`504` | the provider failed: the failure's category and status ({ref}`below <ai-failures>`) |
+
+Each provider call — the repair turn too — is a row of the usage ledger,
+with the feature `filters`. A call gets 30 seconds, or
+`VECTOR_AI_TIMEOUT` when that is shorter (a Bedrock call keeps its
+signing client's bound), and is never retried. Neither the sentence, the
+prompt, the answer nor a provider's error body is logged.
 
 ## What the admin is told
 
 `GET /vector/schema` carries, per user, `capabilities.ai`:
 
 ```json
-{ "filters": false, "assistant": false, "assistantWrites": false, "writing": false, "excluded": {} }
+{ "filters": true, "assistant": false, "assistantWrites": false, "writing": false, "excluded": { "profiles": true } }
 ```
 
 A feature is `true` when it ships in the installed release, a provider
 is configured, its switch is on, the access policy lets this user use
 it, their daily budget has tokens left, and a provider, model and key
-resolve for it. In this release no feature ships, so every flag is
-`false`. The key is absent when `kinetis/vector-ai` is not installed; it
+resolve for it. This release ships `filters`. `excluded` names each
+resource this user may list that is kept from the model whole, so the
+admin offers no AI on it; it is empty while no feature is offered. The key is absent when `kinetis/vector-ai` is not installed; it
 is published by a shell contributor ({ref}`shell-contributors`).
 
 ## Usage and failures
@@ -199,20 +278,31 @@ out, the duration, the tool calls and the outcome. The daily budget is
 summed from it per actor since midnight UTC. The numbers come from each
 answer, never from a counter kept in the worker.
 
+(ai-failures)=
 A failed call is reported by category — `timeout`, `too_large`,
 `refused`, `unavailable` or `invalid_request` — with a status, and a
 message that quotes neither the prompt, the provider's answer nor a key.
+It is logged with the category and the provider's status only: a
+provider's error body can quote the prompt, and its request carries the
+key.
 
 ## Testing
 
 The `fake` provider type replays replies keyed by the SHA-256 of the
-last user message and records every request it saw. Bind the replies
-on AppScope in a test:
+last text block of the last user message — for a plain-language filter,
+the admin's sentence, and for its repair turn, that turn's text — for a
+chat, a stream or a structured call alike. Bind the replies on AppScope
+in a test; give them a `ScriptedCalls` to read every request the
+providers were sent, structured schema included:
 
 ```php
+use Kinetis\VectorAi\Testing\ScriptedCalls;
 use Kinetis\VectorAi\Testing\ScriptedReplies;
 
-$app->instance(ScriptedReplies::class, ScriptedReplies::of(['Show low stock' => 'stock lte 5']));
+$calls = new ScriptedCalls();
+$app->instance(ScriptedReplies::class, ScriptedReplies::of([
+    'products low on stock' => '{"conditions":[{"field":"stock","op":"lte","value":"5"}],"anyOf":[],"q":null,"explanation":"Stock of 5 or less."}',
+], $calls));
 ```
 
 with `VECTOR_AI_PROVIDERS=fake` and `VECTOR_AI_FAKE_TYPE=fake` in the

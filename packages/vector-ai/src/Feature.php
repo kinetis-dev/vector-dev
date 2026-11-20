@@ -39,6 +39,19 @@ enum Feature: string
         };
     }
 
+    /**
+     * How long one provider call of this feature may take, in seconds, when
+     * it is shorter than VECTOR_AI_TIMEOUT; null leaves the transport's own.
+     * A filter is asked for while someone waits on a list.
+     */
+    public function timeout(): ?float
+    {
+        return match ($this) {
+            self::Filters => 30.0,
+            self::Assistant, self::AssistantWrites, self::Writing => null,
+        };
+    }
+
     /** The settings switch that turns this feature on. */
     public function enabledSetting(): string
     {

@@ -8,10 +8,12 @@ use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Logging\SafeLogger;
 use Kinetis\Vector\Attributes\ShellContributor;
 use Kinetis\Vector\Http\ShellContributorInterface;
+use Kinetis\Vector\Query\ResourceService;
 use Kinetis\VectorAi\Auth\AiAccessInterface;
 use Kinetis\VectorAi\Config\AiConfig;
 use Kinetis\VectorAi\Failure\AiFailure;
 use Kinetis\VectorAi\Feature;
+use Kinetis\VectorAi\Governance\ModelBoundary;
 use Kinetis\VectorAi\Providers\ProviderResolver;
 use Kinetis\VectorAi\Settings\AiSettingsReader;
 use Kinetis\VectorAi\Usage\UsageLedger;
@@ -21,7 +23,10 @@ use Psr\Log\LogLevel;
 /**
  * `capabilities.ai` in GET /vector/schema: per user, which AI features
  * the admin offers — `filters`, `assistant`, `assistantWrites`,
- * `writing` — and `excluded`, what is kept from the model. A feature is
+ * `writing` — and `excluded`, what is kept from the model: each resource
+ * this user may list that ModelBoundary keeps back whole, as
+ * `{slug: true}`, once a feature that sends to a model is offered (an
+ * empty object until then). A feature is
  * offered when it ships in this release, the operator configured a
  * provider, the `ai` settings turn it on, the access policy lets this
  * user use it, their daily token budget has tokens left and the resolver
@@ -34,14 +39,14 @@ use Psr\Log\LogLevel;
 final readonly class AiShellContributor implements ShellContributorInterface
 {
     /**
-     * The features this release implements. Increment 0 ships none: every
-     * flag is false until a later release adds its feature here.
+     * The features this release implements; a flag stays false until its
+     * feature is listed here.
      *
      * @return list<Feature>
      */
     public static function shipped(): array
     {
-        return [];
+        return [Feature::Filters];
     }
 
     public function __construct(
@@ -51,6 +56,8 @@ final readonly class AiShellContributor implements ShellContributorInterface
         private UsageLedger $usage,
         private ProviderResolver $resolver,
         private LoggerInterface $logger,
+        private ResourceService $resources,
+        private ModelBoundary $boundary,
     ) {}
 
     /** @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object} */
@@ -75,13 +82,17 @@ final readonly class AiShellContributor implements ShellContributorInterface
         $flags = ['filters' => Feature::Filters, 'assistant' => Feature::Assistant, 'assistantWrites' => Feature::AssistantWrites, 'writing' => Feature::Writing];
         $remaining = null;
         $offered = [];
+        $excluded = [];
 
         try {
             foreach ($flags as $key => $feature) {
                 $offered[$key] = in_array($feature, $features, true) && $this->offered($feature, $user, $remaining);
             }
+
+            $excluded = in_array(true, $offered, true) ? $this->excluded() : [];
         } catch (\Throwable $e) {
             $offered = array_map(static fn (): bool => false, $flags);
+            $excluded = [];
             // the class only: a message could carry a provider's detail; a throwing logger must not fail the schema either
             SafeLogger::log($this->logger, LogLevel::WARNING, 'Computing the AI capabilities failed with ' . $e::class . '; every AI feature is off for this request.', ['exception_class' => $e::class]);
         }
@@ -91,9 +102,27 @@ final readonly class AiShellContributor implements ShellContributorInterface
             'assistant' => $offered['assistant'],
             'assistantWrites' => $offered['assistantWrites'],
             'writing' => $offered['writing'],
-            // the resources and fields kept from the model, once a feature sends record data
-            'excluded' => new \stdClass(),
+            'excluded' => $excluded === [] ? new \stdClass() : (object) $excluded,
         ];
+    }
+
+    /**
+     * The resources this user may list that are kept from the model whole,
+     * so the admin offers no AI on them.
+     *
+     * @return array<string, true>
+     */
+    private function excluded(): array
+    {
+        $excluded = [];
+
+        foreach ($this->resources->registry()->resources() as $slug => $resource) {
+            if (!$this->boundary->allows($resource) && $this->resources->permissions($resource)['viewAny'] === true) {
+                $excluded[$slug] = true;
+            }
+        }
+
+        return $excluded;
     }
 
     /**

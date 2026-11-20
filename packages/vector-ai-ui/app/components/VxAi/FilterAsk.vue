@@ -1,0 +1,187 @@
+<script setup lang="ts">
+import type { VectorFilterGroup, VectorFilterQuery, VectorFilters, VectorOperator, VectorResource } from '#vector/app/types/vector'
+
+// Plain-language filters: a list-toolbar item beside the search. The
+// sentence goes to POST /vector/ai/filters/{resource}; the answer — the
+// list's own grammar, validated by the server — shows as the FilterBar's
+// own chips in a preview, which can be edited, then applied (the list's
+// update:filters, update:groups and update:search) or discarded. A
+// relation the sentence named ambiguously shows its candidates to pick
+// from. Shown only when capabilities.ai.filters is on, the resource is not
+// kept from AI, and it has a field to filter by.
+
+interface Candidate { id: number | string, label: string }
+interface Unresolved { field: string, op: VectorOperator, text: string, candidates: Candidate[] }
+interface Translation {
+    filter: VectorFilters
+    groups: VectorFilterGroup[]
+    q: string | null
+    explanation: string
+    unresolved: Unresolved[]
+}
+interface AiCapabilities { filters?: boolean, excluded?: Record<string, unknown> }
+
+const props = defineProps<{
+    resource: VectorResource
+    filters: VectorFilters
+    groups: VectorFilterGroup[]
+    advanced?: VectorFilterQuery[]
+    search: string | null
+}>()
+
+const emit = defineEmits<{
+    'update:filters': [VectorFilters]
+    'update:groups': [VectorFilterGroup[]]
+    'update:search': [string | null]
+}>()
+
+const { schema } = useVectorSchema()
+const api = useVectorApi()
+const { t } = useVectorT()
+
+const shown = computed(() => {
+    const ai = schema.value?.capabilities?.ai as AiCapabilities | undefined
+    return ai?.filters === true
+        && ai.excluded?.[props.resource.slug] === undefined
+        && props.resource.fields.some(f => f.operators.length > 0)
+})
+
+const text = ref('')
+const busy = ref(false)
+const failure = ref<string | null>(null)
+const preview = ref<Translation | null>(null)
+const previewFilters = ref<VectorFilters>({})
+const previewGroups = ref<VectorFilterGroup[]>([])
+
+/** The list's filter as the server reads it: the conditions, and its groups as the list page sends them. */
+function current(): VectorFilterQuery {
+    const all: VectorFilterQuery = { ...props.filters }
+    const groups = props.groups.filter(g => g.length > 0).map(g => ({ or: g }))
+    if (groups.length === 1) all.or = groups[0]!.or
+    else if (groups.length > 1) all.and = groups
+    return all
+}
+
+function zone(): string {
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone
+    } catch {
+        return 'UTC'
+    }
+}
+
+async function ask() {
+    const sentence = text.value.trim()
+    if (sentence === '' || busy.value) return
+    busy.value = true
+    failure.value = null
+
+    try {
+        const answer = await api<Translation>(`/vector/ai/filters/${encodeURIComponent(props.resource.slug)}`, {
+            method: 'POST',
+            body: { text: sentence, timezone: zone(), current: { filter: current() } },
+        })
+        preview.value = answer
+        previewFilters.value = Array.isArray(answer.filter) ? {} : { ...answer.filter }
+        previewGroups.value = answer.groups.map(group => group.map(alternative => ({ ...alternative })))
+    } catch (error) {
+        // the sentence stays, to be corrected or sent again
+        failure.value = describe(error)
+    } finally {
+        busy.value = false
+    }
+}
+
+/**
+ * The server's reason; for a spent budget, when it renews — when the
+ * response lets Retry-After be read. Cross-origin it can only be read when
+ * the API's CORS exposes it; without it, the server's own words.
+ */
+function describe(error: unknown): string {
+    const failed = error as { status?: number, statusCode?: number, response?: { status?: number, headers?: Headers }, data?: { error?: unknown } } | null
+    const status = failed?.status ?? failed?.statusCode ?? failed?.response?.status
+
+    if (status === 429) {
+        const seconds = Number(failed?.response?.headers?.get('Retry-After') ?? Number.NaN)
+        if (Number.isFinite(seconds) && seconds > 0) {
+            const at = new Date(Date.now() + seconds * 1000)
+            return t('ai.filters.budget', { time: at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })
+        }
+        const said = failed?.data?.error
+        return typeof said === 'string' && said !== '' ? said : t('ai.filters.budgetSpent')
+    }
+
+    return vectorErrorMessage(error)
+}
+
+/** A candidate of an ambiguous relation becomes its condition in the preview. */
+function pick(entry: Unresolved, candidate: Candidate) {
+    previewFilters.value = { ...previewFilters.value, [entry.field]: { ...previewFilters.value[entry.field], [entry.op]: String(candidate.id) } }
+    if (preview.value) preview.value = { ...preview.value, unresolved: preview.value.unresolved.filter(u => u !== entry) }
+}
+
+const fieldLabel = (name: string) => props.resource.fields.find(f => f.name === name)?.label ?? name
+
+function apply() {
+    if (!preview.value) return
+    emit('update:filters', previewFilters.value)
+    emit('update:groups', previewGroups.value)
+    // the request carries no search, so a null q leaves the list's own search as it is
+    if (preview.value.q !== null) emit('update:search', preview.value.q)
+    text.value = ''
+    discard()
+}
+
+function discard() {
+    preview.value = null
+    previewFilters.value = {}
+    previewGroups.value = []
+}
+
+function clearSearch() {
+    if (preview.value) preview.value = { ...preview.value, q: null }
+}
+</script>
+
+<template>
+    <div v-if="shown" class="vx-ai-filter d-contents" data-ai-filters>
+        <v-text-field
+            v-model="text"
+            :placeholder="t('ai.filters.placeholder', { label: resource.label })"
+            :aria-label="t('ai.filters.label')"
+            prepend-inner-icon="mdi-creation-outline"
+            :loading="busy"
+            :disabled="busy"
+            :maxlength="500"
+            density="compact"
+            hide-details
+            style="max-width: 360px; min-width: 240px"
+            data-ai-filters-input
+            @keydown.enter.prevent="ask"
+        />
+        <v-alert v-if="failure" type="warning" variant="tonal" density="compact" class="vx-ai-filter__row" :text="failure" closable data-ai-filters-failure @click:close="failure = null" />
+        <v-sheet v-if="preview" border rounded class="vx-ai-filter__row pa-3" data-ai-filters-preview>
+            <p class="text-body-2 mb-2" data-ai-filters-explanation>
+                <v-icon icon="mdi-creation-outline" size="small" class="me-1" />{{ preview.explanation || t('ai.filters.noExplanation') }}
+            </p>
+            <VxListFilterBar v-model="previewFilters" v-model:groups="previewGroups" :resource="resource" class="mb-2" />
+            <div v-if="preview.q" class="mb-2">
+                <v-chip size="small" variant="tonal" closable prepend-icon="mdi-magnify" data-ai-filters-search @click:close="clearSearch">{{ t('ai.filters.search', { q: preview.q }) }}</v-chip>
+            </div>
+            <div v-for="entry in preview.unresolved" :key="`${entry.field}.${entry.op}`" class="d-flex align-center flex-wrap ga-1 mb-2" :data-ai-filters-unresolved="entry.field">
+                <v-chip size="small" color="warning" variant="tonal" prepend-icon="mdi-help-circle-outline">{{ t('ai.filters.which', { field: fieldLabel(entry.field), text: entry.text }) }}</v-chip>
+                <v-chip v-for="candidate in entry.candidates" :key="candidate.id" size="small" variant="outlined" :data-ai-filters-candidate="candidate.id" @click="pick(entry, candidate)">{{ candidate.label }}</v-chip>
+            </div>
+            <div class="d-flex justify-end ga-2">
+                <v-btn size="small" variant="text" data-ai-filters-discard @click="discard">{{ t('ai.filters.discard') }}</v-btn>
+                <v-btn size="small" color="primary" data-ai-filters-apply @click="apply">{{ t('ai.filters.apply') }}</v-btn>
+            </div>
+        </v-sheet>
+    </div>
+</template>
+
+<style scoped>
+/* the field sits in the toolbar's own row; the preview and a failure take a row of their own below it */
+.d-contents { display: contents; }
+.vx-ai-filter__row { flex-basis: 100%; }
+</style>

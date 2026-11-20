@@ -64,6 +64,13 @@ export class Api {
         if (Object.keys(saved).length > 0) await this.preferences(Object.fromEntries(Object.keys(saved).map(key => [key, null])))
     }
 
+    /** The descriptor's `capabilities.ai` for this account; undefined without kinetis/vector-ai. */
+    async aiCapabilities(): Promise<{ filters?: boolean, excluded?: Record<string, unknown> } | undefined> {
+        const response = await this.request.get(`${API}/vector/schema`, { headers: this.headers })
+        expect(response.ok()).toBeTruthy()
+        return (await response.json()).capabilities.ai
+    }
+
     /** A settings group's current values. */
     async settingsValues(group: string): Promise<Record<string, unknown>> {
         const response = await this.request.get(`${API}/vector/settings/${group}`, { headers: this.headers })

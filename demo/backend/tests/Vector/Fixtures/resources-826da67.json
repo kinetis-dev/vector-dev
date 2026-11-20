@@ -3442,6 +3442,9 @@
                     "required": [],
                     "disabled": []
                 },
+                "meta": {
+                    "ai.send": true
+                },
                 "column": "name",
                 "nullable": false,
                 "valueType": "string",
@@ -3529,6 +3532,9 @@
                     "required": [],
                     "disabled": []
                 },
+                "meta": {
+                    "ai.send": true
+                },
                 "options": [
                     {
                         "value": "draft",
@@ -3584,6 +3590,9 @@
                     "visible": [],
                     "required": [],
                     "disabled": []
+                },
+                "meta": {
+                    "ai.send": true
                 },
                 "relation": {
                     "kind": "belongsTo",
@@ -3731,6 +3740,9 @@
                     "visible": [],
                     "required": [],
                     "disabled": []
+                },
+                "meta": {
+                    "ai.send": true
                 },
                 "column": "stock",
                 "nullable": false,
@@ -5157,6 +5169,9 @@
                 "name": "name"
             },
             "config": "simple"
+        },
+        "meta": {
+            "ai.send": true
         }
     },
     "support-teams": {
@@ -9278,6 +9293,9 @@
                     "visible": [],
                     "required": [],
                     "disabled": []
+                },
+                "meta": {
+                    "ai.send": false
                 },
                 "column": "email",
                 "nullable": false,

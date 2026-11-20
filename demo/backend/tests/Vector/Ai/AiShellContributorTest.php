@@ -99,18 +99,39 @@ final class AiShellContributorTest extends AiTestCase
         );
     }
 
+    /** The request scope contributor() builds its dependencies in, disposed after the test. */
+    private ?\Kinetis\Container\RequestScope $scope = null;
+
+    #[\Override]
+    protected function tearDown(): void
+    {
+        $this->scope?->dispose();
+        $this->scope = null;
+        parent::tearDown();
+    }
+
     private function contributor(AiAccessInterface $access, ?RecordingLogger $logger = null): AiShellContributor
     {
-        $config = $this->app->get(AiConfig::class);
-        $settings = $this->app->get(AiSettingsReader::class);
-        $usage = $this->app->get(UsageLedger::class);
-        $resolver = $this->app->get(ProviderResolver::class);
+        if ($this->scope === null) {
+            $this->scope = $this->app->createRequestScope();
+            $this->scope->instance(CurrentUserInterface::class, $this->user());
+        }
+
+        $scope = $this->scope;
+        $config = $scope->get(AiConfig::class);
+        $settings = $scope->get(AiSettingsReader::class);
+        $usage = $scope->get(UsageLedger::class);
+        $resolver = $scope->get(ProviderResolver::class);
+        $resources = $scope->get(\Kinetis\Vector\Query\ResourceService::class);
+        $boundary = $scope->get(\Kinetis\VectorAi\Governance\ModelBoundary::class);
         self::assertInstanceOf(AiConfig::class, $config);
         self::assertInstanceOf(AiSettingsReader::class, $settings);
         self::assertInstanceOf(UsageLedger::class, $usage);
         self::assertInstanceOf(ProviderResolver::class, $resolver);
+        self::assertInstanceOf(\Kinetis\Vector\Query\ResourceService::class, $resources);
+        self::assertInstanceOf(\Kinetis\VectorAi\Governance\ModelBoundary::class, $boundary);
 
-        return new AiShellContributor($config, $access, $settings, $usage, $resolver, $logger ?? new RecordingLogger());
+        return new AiShellContributor($config, $access, $settings, $usage, $resolver, $logger ?? new RecordingLogger(), $resources, $boundary);
     }
 
     /**

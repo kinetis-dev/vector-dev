@@ -1,6 +1,6 @@
 {
     "name": "kinetis/vector-ai",
-    "description": "AI for Kinetis Vector, on kinetis/neuron. This release lays the foundations only (provider configuration, sealed provider keys, the AI settings and a usage ledger); the AI features arrive in later releases.",
+    "description": "AI for Kinetis Vector, on kinetis/neuron. This release offers plain-language filters on the admin's lists, over provider configuration, sealed provider keys, the AI settings, a model boundary and a usage ledger; the assistant and writing help arrive in later releases.",
     "keywords": [
         "kinetis",
         "vector",

@@ -6,11 +6,13 @@ an operator configures. Built on
 [kinetis/neuron](https://kinetis.dev/docs/neuron.html), so every provider
 call suspends the calling Fiber instead of blocking the worker.
 
-**This release lays the foundations only.** It adds the operator
-configuration, the sealed provider keys, the `ai` settings group, the
-access policy and the usage ledger; the
-features themselves arrive in later releases, and until then the admin
-offers none of them.
+**This release offers plain-language filters**: an admin describes the
+records they want on a list, and the model's answer is validated by
+the list's own validator before it is previewed. It also lays the
+foundations the other features build on — the operator configuration,
+the sealed provider keys, the `ai` settings group, the access policy,
+the model boundary and the usage ledger. The assistant and writing help
+arrive in later releases.
 
 ```console
 composer require kinetis/vector-ai

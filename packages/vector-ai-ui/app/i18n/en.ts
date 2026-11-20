@@ -19,5 +19,16 @@ export default {
             saved: 'The key of {provider} was saved.',
             removed: 'The key of {provider} was removed.',
         },
+        filters: {
+            label: 'Filter in plain language',
+            placeholder: 'Describe the {label} you want',
+            noExplanation: 'The filter below was suggested.',
+            search: 'Search: {q}',
+            which: '{field} “{text}”: which one?',
+            apply: 'Apply',
+            discard: 'Discard',
+            budget: 'Today\'s AI budget is spent; try again after {time}.',
+            budgetSpent: 'Today\'s AI budget is spent.',
+        },
     },
 }

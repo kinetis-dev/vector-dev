@@ -13,10 +13,12 @@ use NeuronAI\Testing\FakeAIProvider;
 
 /**
  * The `fake` provider type: Neuron's FakeAIProvider replaying the replies
- * a ScriptedReplies keys by the sha256 of the last user message, for
- * tests and demos that must not reach a model. It records every request
- * it saw (getRecorded(), from FakeAIProvider). A message no reply is
- * scripted for gets "No reply is scripted for this message.".
+ * a ScriptedReplies keys by the sha256 of the last text block of the last
+ * user message, for tests and demos that must not reach a model — a chat,
+ * a stream or a structured call alike. It records every request it saw
+ * (getRecorded(), from FakeAIProvider), and hands each to the replies'
+ * ScriptedCalls when they carry one. A message no reply is scripted for
+ * gets "No reply is scripted for this message.".
  *
  * Built for one call by ProviderResolver, like every provider.
  */
@@ -34,27 +36,62 @@ class ScriptedProvider extends FakeAIProvider
     {
         $this->prepare($messages);
 
-        return parent::chat(...$messages);
+        try {
+            return parent::chat(...$messages);
+        } finally {
+            $this->share();
+        }
     }
 
     #[\Override]
     public function stream(Message ...$messages): Generator
     {
         $this->prepare($messages);
+        $stream = parent::stream(...$messages);
+        $this->share();
 
-        return yield from parent::stream(...$messages);
+        return yield from $stream;
     }
 
-    /** The text of the last user message among $messages, or '' when there is none. */
+    /**
+     * @param Message|Message[] $messages
+     * @param array<string, mixed> $response_schema
+     */
+    #[\Override]
+    public function structured(array|Message $messages, string $class, array $response_schema): ProviderResponse
+    {
+        $this->prepare(is_array($messages) ? array_values($messages) : [$messages]);
+
+        try {
+            return parent::structured($messages, $class, $response_schema);
+        } finally {
+            $this->share();
+        }
+    }
+
+    /** The last text block of the last user message among $messages, or '' when there is none. */
     public static function lastUserMessage(Message ...$messages): string
     {
         foreach (array_reverse($messages) as $message) {
             if ($message->getRole() === 'user') {
-                return (string) $message->getContent();
+                $blocks = $message->getTextBlocks();
+
+                return $blocks === [] ? '' : end($blocks)->content;
             }
         }
 
         return '';
+    }
+
+    /** Hands the request just recorded to the replies' ScriptedCalls, when they carry one. */
+    private function share(): void
+    {
+        $recorded = $this->getRecorded();
+        $last = end($recorded);
+
+        if ($last !== false) {
+            $this->replies->calls?->add($last);
+        }
     }
 
     /** @param array<Message> $messages */
