@@ -75,3 +75,59 @@ export async function readDataStream(body: ReadableStream<Uint8Array>, onFrame: 
         reader.releaseLock()
     }
 }
+
+/**
+ * A change the assistant proposed, as the server announces it — a
+ * `data-approval` frame of the stream (the protocol's custom data part,
+ * its `data`), or an entry of the JSON answer's `approvals`. Everything
+ * the admin is shown of the change comes from here, never from the
+ * model's prose.
+ */
+export interface ApprovalFrame {
+    type: 'approval'
+    /** `apr_` and 26 base32 characters. */
+    id: string
+    tool: string
+    arguments: Record<string, unknown>
+    resource: string | null
+    recordId: string | null
+    /** ISO 8601, UTC. */
+    expiresAt: string
+}
+
+const APPROVAL_ID = /^apr_[a-z2-7]{26}$/
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+/** The approval a value describes — a frame's `data`, or a JSON answer's entry — or null when it is not one. */
+export function approvalOf(value: unknown): ApprovalFrame | null {
+    if (!isRecord(value) || value.type !== 'approval') return null
+    const { id, tool, arguments: args, resource, recordId, expiresAt } = value
+    if (typeof id !== 'string' || !APPROVAL_ID.test(id) || typeof tool !== 'string' || !isRecord(args) || typeof expiresAt !== 'string') return null
+    if (resource !== null && typeof resource !== 'string') return null
+    if (recordId !== null && typeof recordId !== 'string') return null
+    return { type: 'approval', id, tool, arguments: args, resource, recordId, expiresAt }
+}
+
+/** The approval a stream frame announces: a `data-approval` frame's data, or null for any other frame. */
+export function approvalFrame(frame: DataStreamFrame): ApprovalFrame | null {
+    return frame.type === 'data-approval' ? approvalOf(frame.data) : null
+}
+
+/**
+ * The record a `vector_get` tool result carries: the server sends the
+ * result after a one-line preamble, then `{data, permissions}` as JSON.
+ * Null for anything else.
+ */
+export function recordOfToolOutput(output: unknown): Record<string, unknown> | null {
+    if (typeof output !== 'string') return null
+    const json = output.slice(output.indexOf('\n') + 1)
+    try {
+        const parsed: unknown = JSON.parse(json)
+        return isRecord(parsed) && isRecord(parsed.data) ? parsed.data : null
+    } catch {
+        return null
+    }
+}

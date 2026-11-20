@@ -13,6 +13,9 @@ const { data, status, error, refresh } = await useAsyncData(() => `vector.audit.
 const entries = computed<VectorAuditEntry[]>(() => data.value?.data ?? [])
 
 const label = (name: string) => props.resource.fields.find(f => f.name === name)?.label ?? name
+const i18n = useNuxtApp().$vectorI18n
+/** The channel an entry's write came through, in words: a known origin translated, any other as its token. */
+const origin = (token: string) => i18n.global.te(`record.audit.origin.${token}`) ? t(`record.audit.origin.${token}`) : token
 function show(value: unknown): string {
     if (value === null || value === undefined) return t('common.none')
     return displayValue(value)
@@ -58,6 +61,7 @@ async function revert(entry: VectorAuditEntry) {
                 <v-timeline-item v-for="entry in entries" :key="entry.id" :icon="icon[entry.event] ?? 'mdi-play-circle-outline'" dot-color="primary" size="small">
                     <div class="text-body-2">
                         <strong>{{ entry.event }}</strong> {{ t('record.audit.byUser', { actor: entry.actorId }) }}<span v-if="entry.impersonatorId"> {{ t('record.audit.impersonatedBy', { impersonator: entry.impersonatorId }) }}</span>
+                        <v-chip v-if="entry.origin" size="x-small" variant="tonal" class="ms-1" :data-audit-origin="entry.origin">{{ t('record.audit.via', { origin: origin(entry.origin) }) }}</v-chip>
                         <span class="text-medium-emphasis"> · {{ formatDateTime(entry.createdAt) }}</span>
                         <v-btn
                             v-if="revertableFields(entry).length"

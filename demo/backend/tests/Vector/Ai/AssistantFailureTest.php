@@ -163,7 +163,7 @@ final class AssistantFailureTest extends AssistantTestCase
             $scope->dispose();
         }
 
-        self::assertSame(['text' => 'There are products#1.', 'toolCalls' => ['vector_resources']], $answer);
+        self::assertSame(['text' => 'There are products#1.', 'toolCalls' => ['vector_resources'], 'approvals' => []], $answer);
         $ended = $logger->find('An assistant run ended.');
         self::assertNotNull($ended);
         self::assertSame(['vector_resources'], $ended['context']['tools']);

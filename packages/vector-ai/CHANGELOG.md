@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A proposal left `executing` by a request that never finished is no
+  longer stuck: `ApprovalStore::failStale()` marks it `failed` with *The
+  outcome is unknown: the request that ran it did not finish. Check the
+  record's History.* once it has been executing for ten minutes
+  (`ApprovalStore::EXECUTING_MINUTES`), from `vector-ai:approvals:prune`
+  and from an approve or reject of that row, which then answers 409
+  `failed` instead of `executing`. It is never executed again.
+- An approval that threw is recorded as *The change failed, but it may
+  have been made before it did. Check the record's History.* — the
+  write may have committed — and the assistant tells the person the
+  outcome is unknown.
+- The conversation sent to the provider alternates roles: a fixed
+  assistant turn goes between two adjacent user-role turns (an answer
+  that only proposed, then the decision), which Bedrock refused. The
+  drawer also keeps such an answer, with placeholder text.
+- A pending proposal past its expiry cannot be approved or rejected
+  even between the expiry check and the update: the update asks it too.
+- An approval of a row whose tool is not one of the four writes is
+  `failed` without dispatching anything.
+- A proposal Vector's own permissions would refuse the person (`create`,
+  or the record's `update` or `delete`) is refused when it is proposed,
+  instead of showing a card the approval would only fail.
+
 ## [0.1.0] - 2026-11-19
 
 ### Added
@@ -90,3 +115,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `capabilities.ai.excludedFields` names, per resource the user may list
   that is not kept back whole, the fields the boundary keeps back;
   `excluded` keeps its shape.
+- The assistant proposing changes, behind the `assistantWrites` setting
+  and `AiAccessInterface::canUse($user, Feature::AssistantWrites)`
+  (`capabilities.ai.assistantWrites`): Vector's four writes reach the
+  model as `Assistant\ProposingTool`s, and not at all otherwise. A call
+  writes nothing — it counts against `maxToolCallsPerRun`, has its
+  arguments checked as the MCP dispatcher checks them
+  (`Approvals\ToolArguments`, the same `{"errors": [...]}` feedback), is
+  refused for a resource or a field the boundary keeps back, and is
+  stored as a pending row of `vector_ai_approvals` (new migration;
+  `Approvals\ApprovalStore`, 128-bit base32 ids shown as `apr_…`)
+  expiring after `approvalMinutes`. The stream announces each proposal as
+  a `data-approval` frame and the JSON answer lists them under
+  `approvals`. `POST /vector/ai/approvals/{id}/approve` and `/reject`
+  (`Http\ApprovalController`) decide it with an empty body: 403 when
+  writes are off for the user now, 404 for another user's proposal or an
+  impersonation mismatch, 410 once expired, 409 with the stored result
+  once decided; approving runs the row's own arguments through
+  `McpTools` as the user with the origin `assistant`, and records
+  `executed` or `failed` (Vector's refusal, or only *The change failed.*
+  when it threw), one log line and one usage row (`assistant-writes`).
+  A conversation's `{role: "approval", id}` message tells the model the
+  outcome from the row, its result through `ModelBoundary::toolResult()`,
+  which now governs the write tools' results too.
+  `vector-ai:approvals:prune` expires stale proposals and deletes those
+  decided more than `--days` (30) ago.

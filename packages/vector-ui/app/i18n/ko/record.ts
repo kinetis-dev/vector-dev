@@ -44,6 +44,10 @@ export default {
         revertTitle: '이 변경을 되돌리시겠습니까?',
         revertText: '{fields}의 이전 값을 복원합니다. 되돌린 내용도 기록에 남습니다.',
         reverted: '변경을 되돌렸습니다.',
+        via: '{origin}을(를) 통해',
+        origin: {
+            assistant: '어시스턴트',
+        },
     },
     panel: {
         attach: '연결',

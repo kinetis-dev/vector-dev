@@ -34,6 +34,17 @@ Then try the assistant, in the standalone admin (`localhost:3000`):
    assistant…*: the drawer opens and asks it. *New conversation* starts
    afresh.
 
+And the assistant proposing changes: turn *Assistant may propose
+changes* on in the AI settings, open *Product #9* and ask *Set the stock
+of products#9 to 42.* The scripted run reads the product with
+`vector_get` and proposes the new stock with `vector_update`; nothing
+changes yet. The drawer shows a card with the stock now and the stock
+proposed: *Approve* writes it as you — History shows the update *via
+assistant* — and the assistant acknowledges your decision; *Reject*
+(try *Set the stock of products#9 to 7.*) changes nothing. Schedule
+`vendor/bin/kinetis vector-ai:approvals:prune` to sweep stale
+proposals ({doc}`ai`).
+
 And writing help: edit an order, type *Please make sure to call the
 customer before the delivery, because the customer has asked us to call
 ahead before the parcel is delivered.* in its notes, and choose *Writing
@@ -254,8 +265,10 @@ The hosted admin is the plain one: the AI layer reaches the standalone
 admin only, through `extends` (hosted delivery of it comes in a later
 release), so the end-to-end suite's AI specs run standalone:
 `ai.standalone.spec.ts` against the demo as it ships, and
-`ai-filters.standalone.spec.ts`, `ai-assistant.standalone.spec.ts` and
-`ai-writing.standalone.spec.ts` with the scripted `fake` provider configured as above; each skips
+`ai-filters.standalone.spec.ts`, `ai-assistant.standalone.spec.ts`,
+`ai-approval.standalone.spec.ts` (which turns *Assistant may propose
+changes* on for itself, and back) and `ai-writing.standalone.spec.ts`
+with the scripted `fake` provider configured as above; each skips
 itself on the other stack.
 
 Then open `http://localhost:8080/vector/ui`, or

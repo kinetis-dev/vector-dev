@@ -1,0 +1,218 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Kinetis\VectorAi\Approvals;
+
+use DateTimeImmutable;
+use DateTimeZone;
+use Kinetis\QueryBuilder\Query;
+use Kinetis\Vector\Database\VectorDatabase;
+
+/**
+ * `vector_ai_approvals`, on Vector's own connection: the changes the
+ * assistant proposed and where each stands. The row is the whole state
+ * of a proposal — nothing about it is kept in the worker — and every
+ * change of status is one conditional UPDATE on the status it leaves, so
+ * two requests deciding the same row cannot both win. Built per request.
+ */
+final readonly class ApprovalStore
+{
+    public const string TABLE = 'vector_ai_approvals';
+
+    /**
+     * How long a row may stay `executing` before failStale() takes the
+     * request running it for dead: far longer than any one write takes.
+     */
+    public const int EXECUTING_MINUTES = 10;
+
+    public function __construct(private VectorDatabase $db) {}
+
+    /**
+     * Stores a pending proposal that expires $minutes from now.
+     *
+     * @param array<string, mixed> $arguments
+     */
+    public function propose(string $actorId, ?string $impersonatorId, string $conversationId, string $tool, array $arguments, int $minutes): Approval
+    {
+        $now = self::now();
+        $encoded = json_encode((object) $arguments, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION);
+        $approval = new Approval(
+            ApprovalId::generate(),
+            $actorId,
+            $impersonatorId,
+            $conversationId,
+            $tool,
+            $arguments,
+            ApprovalStatus::Pending,
+            null,
+            $now,
+            $now->modify('+' . max(1, $minutes) . ' minutes'),
+        );
+
+        $this->query()->insert([
+            'id' => $approval->id,
+            'actor_id' => $actorId,
+            'impersonator_id' => $impersonatorId,
+            'conversation_id' => $conversationId,
+            'tool' => $tool,
+            'arguments' => $encoded,
+            'arguments_hash' => hash('sha256', $encoded),
+            'status' => ApprovalStatus::Pending->value,
+            'created_at' => self::format($approval->createdAt),
+            'expires_at' => self::format($approval->expiresAt),
+        ]);
+
+        return $approval;
+    }
+
+    /**
+     * The approval $publicId names when it is $actorId's, proposed under
+     * the same impersonator — none, or the same one — as now; otherwise
+     * null, whether it does not exist or is someone else's.
+     */
+    public function owned(string $publicId, string $actorId, ?string $impersonatorId): ?Approval
+    {
+        $id = ApprovalId::parse($publicId);
+
+        if ($id === null) {
+            return null;
+        }
+
+        $row = $this->query()->where('id', '=', $id)->where('actor_id', '=', $actorId)->first();
+
+        if (!is_array($row)) {
+            return null;
+        }
+
+        $approval = self::approval($row);
+
+        // null-safe: an impersonation that ended cannot decide what it proposed, nor the other way round
+        return $approval->impersonatorId === $impersonatorId ? $approval : null;
+    }
+
+    /** The row as it is now, or null when it is gone. */
+    public function fresh(string $id): ?Approval
+    {
+        $row = $this->query()->where('id', '=', $id)->first();
+
+        return is_array($row) ? self::approval($row) : null;
+    }
+
+    /**
+     * Moves a pending row to $to; whether this call did it — false when it
+     * was no longer pending, or, for any $to but `expired`, when it is past
+     * its expiry: the same UPDATE asks both, so a proposal that expires
+     * between the caller's check and this cannot be approved or rejected.
+     */
+    public function decide(string $id, ApprovalStatus $to): bool
+    {
+        $now = self::format(self::now());
+        $query = $this->query()
+            ->where('id', '=', $id)
+            ->where('status', '=', ApprovalStatus::Pending->value);
+
+        if ($to !== ApprovalStatus::Expired) {
+            $query = $query->where('expires_at', '>=', $now);
+        }
+
+        return $query->update(['status' => $to->value, 'decided_at' => $now]) === 1;
+    }
+
+    /**
+     * Fails every row still `executing` that was approved before $before —
+     * only $id when given — with Approval::UNKNOWN_OUTCOME: its request did
+     * not settle it (the worker died, or the request was cut off), so
+     * whether the change was made is unknown. One conditional UPDATE, which
+     * never executes anything again; how many it failed. Callers pass
+     * now minus EXECUTING_MINUTES.
+     */
+    public function failStale(DateTimeImmutable $before, ?string $id = null): int
+    {
+        $query = $this->query()
+            ->where('status', '=', ApprovalStatus::Executing->value)
+            ->where('decided_at', '<', self::format($before));
+
+        if ($id !== null) {
+            $query = $query->where('id', '=', $id);
+        }
+
+        return $query->update([
+            'status' => ApprovalStatus::Failed->value,
+            'result' => json_encode(['error' => Approval::UNKNOWN_OUTCOME], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+        ]);
+    }
+
+    /** The bound of failStale() as of now: the moment before which an `executing` row is taken for dead. */
+    public static function staleBefore(): DateTimeImmutable
+    {
+        return self::now()->modify('-' . self::EXECUTING_MINUTES . ' minutes');
+    }
+
+    /** Records how an execution ended: `executed` with the result, or `failed` with why. */
+    public function settle(string $id, ApprovalStatus $status, mixed $result): void
+    {
+        $this->query()
+            ->where('id', '=', $id)
+            ->where('status', '=', ApprovalStatus::Executing->value)
+            ->update([
+                'status' => $status->value,
+                'result' => json_encode($result, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                'executed_at' => self::format(self::now()),
+            ]);
+    }
+
+    /** Marks every pending row past its expiry `expired`; how many. */
+    public function expireStale(DateTimeImmutable $now): int
+    {
+        return $this->query()
+            ->where('status', '=', ApprovalStatus::Pending->value)
+            ->where('expires_at', '<', self::format($now))
+            ->update(['status' => ApprovalStatus::Expired->value, 'decided_at' => self::format($now)]);
+    }
+
+    /** Deletes every decided row decided before $before; how many. */
+    public function deleteDecidedBefore(DateTimeImmutable $before): int
+    {
+        return $this->query()
+            ->whereIn('status', array_map(static fn (ApprovalStatus $s): string => $s->value, ApprovalStatus::decided()))
+            ->where('decided_at', '<', self::format($before))
+            ->delete();
+    }
+
+    public static function now(): DateTimeImmutable
+    {
+        return new DateTimeImmutable('now', new DateTimeZone('UTC'));
+    }
+
+    /** @param array<string, mixed> $row */
+    private static function approval(array $row): Approval
+    {
+        $arguments = json_decode((string) $row['arguments'], true, 64, JSON_THROW_ON_ERROR);
+        $result = $row['result'] === null ? null : json_decode((string) $row['result'], true, 64, JSON_THROW_ON_ERROR);
+        $utc = new DateTimeZone('UTC');
+
+        return new Approval(
+            (string) $row['id'],
+            (string) $row['actor_id'],
+            $row['impersonator_id'] === null ? null : (string) $row['impersonator_id'],
+            (string) $row['conversation_id'],
+            (string) $row['tool'],
+            is_array($arguments) ? $arguments : [],
+            ApprovalStatus::from((string) $row['status']),
+            $result,
+            new DateTimeImmutable((string) $row['created_at'], $utc),
+            new DateTimeImmutable((string) $row['expires_at'], $utc),
+        );
+    }
+
+    private static function format(DateTimeImmutable $at): string
+    {
+        return $at->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s.u');
+    }
+
+    private function query(): Query
+    {
+        return $this->db->query()->table(self::TABLE);
+    }
+}

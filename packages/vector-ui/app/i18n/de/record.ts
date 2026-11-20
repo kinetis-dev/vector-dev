@@ -44,6 +44,10 @@ export default {
         revertTitle: 'Diese Änderung zurücksetzen?',
         revertText: 'Stellt den früheren Wert von {fields} wieder her. Das Zurücksetzen wird ebenfalls im Verlauf festgehalten.',
         reverted: 'Änderung zurückgesetzt.',
+        via: 'über {origin}',
+        origin: {
+            assistant: 'den Assistenten',
+        },
     },
     panel: {
         attach: 'Verknüpfen',

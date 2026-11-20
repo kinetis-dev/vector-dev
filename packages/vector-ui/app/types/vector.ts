@@ -294,6 +294,8 @@ export interface VectorAuditEntry {
     event: string
     actorId: string
     impersonatorId: string | null
+    /** The channel the write came through when it was not the admin's own hand, such as `assistant`; null or absent otherwise. */
+    origin?: string | null
     changes: Record<string, { from: unknown, to: unknown }>
     createdAt: string
 }

@@ -52,7 +52,7 @@ final class AssistantLivenessTest extends AssistantTestCase
             $scope->dispose();
         }
 
-        self::assertSame(['text' => 'products#1.', 'toolCalls' => []], $answer);
+        self::assertSame(['text' => 'products#1.', 'toolCalls' => [], 'approvals' => []], $answer);
         self::assertSame($suspends, $turned);
     }
 }

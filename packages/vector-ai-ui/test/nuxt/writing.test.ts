@@ -18,7 +18,9 @@ import { endpoint, standaloneApi } from './endpoints'
 const ON = { filters: false, assistant: false, assistantWrites: false, writing: true, excluded: {}, excludedFields: {} }
 
 function descriptor(ai?: Record<string, unknown>) {
-    return { version: DESCRIPTOR_VERSION, resources: {}, menu: [], settings: [], dashboards: [], capabilities: { impersonation: false, queue: false, ...(ai ? { ai } : {}) }, branding: null, ui: { expected: null } }
+    // products have the rich-text description the toolbar item is tried on
+    const resources = { products: { slug: 'products', label: 'Products', labelSingular: 'Product', fields: [field('description', 'richtext')] } }
+    return { version: DESCRIPTOR_VERSION, resources, menu: [], settings: [], dashboards: [], capabilities: { impersonation: false, queue: false, ...(ai ? { ai } : {}) }, branding: null, ui: { expected: null } }
 }
 
 function field(name: string, type: string) {
@@ -231,6 +233,29 @@ describe('writing help', () => {
             const wrapper = await shell(VxAiWritingToolbarItem, { editor: fakeEditor('Hello').editor, field: field('description', 'richtext') }, ROUTE)
             expect(wrapper.find('[data-ai-writing]').exists()).toBe(false)
             wrapper.unmount()
+        })
+
+        // an editor is also mounted in forms that are no record's own: they would send no record, or the wrong one
+        it.each([
+            ['in a bulk edit, on the list', '/r/products'],
+            ['in an action\'s dialog, on a record\'s page', '/r/products/5'],
+            ['on another resource\'s page', '/r/orders/5/edit'],
+        ])('shows nothing %s', async (_, route) => {
+            useState('vector.schema').value = descriptor(ON)
+            const wrapper = await shell(VxAiWritingToolbarItem, { editor: fakeEditor('Hello').editor, field: field('description', 'richtext') }, route)
+            expect(wrapper.find('[data-ai-writing]').exists()).toBe(false)
+            wrapper.unmount()
+        })
+
+        it('shows on the resource\'s create page, and not for a field the resource does not have', async () => {
+            useState('vector.schema').value = descriptor(ON)
+            const create = await shell(VxAiWritingToolbarItem, { editor: fakeEditor('Hello').editor, field: field('description', 'richtext') }, '/r/products/create')
+            expect(create.find('[data-ai-writing]').exists()).toBe(true)
+            create.unmount()
+
+            const related = await shell(VxAiWritingToolbarItem, { editor: fakeEditor('Hello').editor, field: field('body', 'richtext') }, ROUTE)
+            expect(related.find('[data-ai-writing]').exists()).toBe(false)
+            related.unmount()
         })
 
         it('is disabled while nothing is selected', async () => {

@@ -44,6 +44,10 @@ export default {
         revertTitle: 'Rétablir la valeur précédente ?',
         revertText: 'Rétablit la valeur précédente de {fields}. Le rétablissement est également enregistré dans l’historique.',
         reverted: 'Valeur précédente rétablie.',
+        via: 'via {origin}',
+        origin: {
+            assistant: 'l’assistant',
+        },
     },
     panel: {
         attach: 'Associer',

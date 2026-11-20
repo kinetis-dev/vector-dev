@@ -48,7 +48,7 @@ final readonly class AiShellContributor implements ShellContributorInterface
      */
     public static function shipped(): array
     {
-        return [Feature::Filters, Feature::Assistant, Feature::Writing];
+        return [Feature::Filters, Feature::Assistant, Feature::AssistantWrites, Feature::Writing];
     }
 
     public function __construct(

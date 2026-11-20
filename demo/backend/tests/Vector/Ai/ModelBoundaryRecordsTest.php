@@ -252,7 +252,11 @@ final class ModelBoundaryRecordsTest extends AiTestCase
         [$boundary] = $this->boundary();
 
         self::assertSame(['resources' => [['slug' => 'profiles']]], $boundary->toolResult('vector_resources', [], ['resources' => [['slug' => 'profiles']]]));
-        self::assertSame(['error' => ModelBoundary::UNAVAILABLE], $boundary->toolResult('vector_create', ['resource' => 'users'], ['data' => ['id' => 1]]));
+        self::assertSame(['error' => ModelBoundary::UNAVAILABLE], $boundary->toolResult('vector_unknown', ['resource' => 'users'], ['data' => ['id' => 1]]));
+        // an approved write's result, as the continuation tells the model: governed like a read, never a download's bytes
+        self::assertSame(['error' => ModelBoundary::UNAVAILABLE], $boundary->toolResult('vector_update', ['resource' => 'profiles', 'id' => '1'], ['data' => ['id' => 1]]));
+        self::assertSame(['deleted' => '7'], $boundary->toolResult('vector_delete', ['resource' => 'products', 'id' => '7'], ['deleted' => '7']));
+        self::assertSame(['type' => 'download'], $boundary->toolResult('vector_run_action', ['resource' => 'products', 'action' => 'x'], ['type' => 'download', 'filename' => 'a.csv', 'contents' => 'c2VjcmV0']));
 
         $table = static fn (string $link): array => ['data' => ['type' => 'table', 'columns' => [], 'rows' => [['id' => 1, '_link' => $link]], 'link' => null]];
         self::assertSame($table('/r/products/1'), $boundary->toolResult('vector_widget', ['widget' => 'low-stock'], $table('/r/products/1')));

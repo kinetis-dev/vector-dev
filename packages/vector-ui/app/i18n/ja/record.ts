@@ -44,6 +44,10 @@ export default {
         revertTitle: 'この変更を元に戻しますか？',
         revertText: '{fields} を以前の値に戻します。この取り消しも履歴に記録されます。',
         reverted: '変更を元に戻しました。',
+        via: '{origin}経由',
+        origin: {
+            assistant: 'アシスタント',
+        },
     },
     panel: {
         attach: '関連付け',

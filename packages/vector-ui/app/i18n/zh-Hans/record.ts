@@ -44,6 +44,10 @@ export default {
         revertTitle: '还原此更改？',
         revertText: '恢复 {fields} 的先前值。此次还原也会记录在历史记录中。',
         reverted: '更改已还原。',
+        via: '通过{origin}',
+        origin: {
+            assistant: '助手',
+        },
     },
     panel: {
         attach: '关联',

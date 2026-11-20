@@ -95,7 +95,7 @@ final readonly class RecordWriter
         $id = $this->writer->read($entity, $resource->primaryKeyField());
         $this->log($resource, 'create', [$id]);
         $record = $this->reader->written($resource, (string) $id);
-        $this->audit->record($resource->slug(), [(string) $id], 'create', self::auditable($record), (string) $this->user->id(), $this->impersonator());
+        $this->audit->record($resource->slug(), [(string) $id], 'create', self::auditable($record), (string) $this->user->id(), $this->impersonator(), $this->actor->origin);
 
         return $record;
     }
@@ -216,7 +216,7 @@ final readonly class RecordWriter
         $changes = self::diff(self::auditable($current), self::auditable($record));
 
         if ($changes !== []) {
-            $this->audit->record($resource->slug(), [$id], $event, $changes, (string) $this->user->id(), $this->impersonator());
+            $this->audit->record($resource->slug(), [$id], $event, $changes, (string) $this->user->id(), $this->impersonator(), $this->actor->origin);
         }
 
         return $record;
@@ -553,21 +553,21 @@ final readonly class RecordWriter
         $actor = (string) $this->user->id();
 
         foreach ($created as $id) {
-            $this->audit->record($child->slug(), [$id], 'create', self::auditable($after[$id] ?? []), $actor, $this->impersonator());
+            $this->audit->record($child->slug(), [$id], 'create', self::auditable($after[$id] ?? []), $actor, $this->impersonator(), $this->actor->origin);
         }
 
         foreach ($updated as $id => $before) {
             $changes = self::diff(self::auditable($before), self::auditable($after[(string) $id] ?? $before));
 
             if ($changes !== []) {
-                $this->audit->record($child->slug(), [(string) $id], 'update', $changes, $actor, $this->impersonator());
+                $this->audit->record($child->slug(), [(string) $id], 'update', $changes, $actor, $this->impersonator(), $this->actor->origin);
             }
         }
 
         $removed = array_column($plan['removed'], 'id');
 
         if ($removed !== []) {
-            $this->audit->record($child->slug(), $removed, 'delete', [], $actor, $this->impersonator());
+            $this->audit->record($child->slug(), $removed, 'delete', [], $actor, $this->impersonator(), $this->actor->origin);
         }
 
         foreach (['create' => $created, 'update' => array_keys($updated), 'delete' => $removed] as $action => $ids) {
@@ -670,7 +670,7 @@ final readonly class RecordWriter
             $changes = self::diff(self::auditable($current), self::auditable($after[(string) $id] ?? $current));
 
             if ($changes !== []) {
-                $this->audit->record($resource->slug(), [(string) $id], 'update', $changes, (string) $this->user->id(), $this->impersonator());
+                $this->audit->record($resource->slug(), [(string) $id], 'update', $changes, (string) $this->user->id(), $this->impersonator(), $this->actor->origin);
             }
         }
 
@@ -731,7 +731,7 @@ final readonly class RecordWriter
             $changes = self::diff(self::auditable($item['before']), self::auditable($record));
 
             if ($changes !== []) {
-                $this->audit->record($resource->slug(), [$item['id']], 'update', $changes, (string) $this->user->id(), $this->impersonator());
+                $this->audit->record($resource->slug(), [$item['id']], 'update', $changes, (string) $this->user->id(), $this->impersonator(), $this->actor->origin);
             }
 
             $records[] = $record;
@@ -879,7 +879,7 @@ final readonly class RecordWriter
         $instance->afterUpdate($entity, $context);
         $this->log($resource, "{$verb}:{$relation}", [$id]);
         $record = $this->reader->show($resource, $id);
-        $this->audit->record($resource->slug(), [$id], $verb, [$relation => ['from' => $present, 'to' => array_map($idOf, $list)]], (string) $this->user->id(), $this->impersonator());
+        $this->audit->record($resource->slug(), [$id], $verb, [$relation => ['from' => $present, 'to' => array_map($idOf, $list)]], (string) $this->user->id(), $this->impersonator(), $this->actor->origin);
 
         return $record;
     }
@@ -933,7 +933,7 @@ final readonly class RecordWriter
 
         if ($entities !== []) {
             $this->log($resource, $operation, array_keys($entities));
-            $this->audit->record($resource->slug(), array_map(strval(...), array_keys($entities)), $operation, [], (string) $this->user->id(), $this->impersonator());
+            $this->audit->record($resource->slug(), array_map(strval(...), array_keys($entities)), $operation, [], (string) $this->user->id(), $this->impersonator(), $this->actor->origin);
         }
 
         return count($entities);
@@ -1190,7 +1190,7 @@ final readonly class RecordWriter
         $this->log($resource, "action:{$action}", $ids);
 
         if ($ids !== []) {
-            $this->audit->record($resource->slug(), array_map(strval(...), $ids), "action:{$action}", [], (string) $this->user->id(), $this->impersonator());
+            $this->audit->record($resource->slug(), array_map(strval(...), $ids), "action:{$action}", [], (string) $this->user->id(), $this->impersonator(), $this->actor->origin);
         }
     }
 
@@ -1268,6 +1268,6 @@ final readonly class RecordWriter
             'action' => $action,
             'record_ids' => json_encode(array_map(strval(...), $ids), JSON_THROW_ON_ERROR),
             'created_at' => (new DateTimeImmutable('now', new DateTimeZone('UTC')))->format('Y-m-d H:i:s.u'),
-        ]);
+        ] + ($this->actor->origin === null ? [] : ['origin' => $this->actor->origin]));
     }
 }

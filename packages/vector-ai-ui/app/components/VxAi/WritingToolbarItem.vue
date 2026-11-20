@@ -13,7 +13,11 @@ import WritingResult from './WritingResult.vue'
 // document keeps to the field's own schema — a Markdown answer is parsed
 // by the editor's own Markdown reader — and the person saves it as their
 // own edit. The resource and the record come from the page the editor is
-// on. Shown only where writing help is offered for this field.
+// on, so it is shown only on that resource's own create or edit page, for
+// one of that resource's own fields — as the input addon is: an editor is
+// also mounted in a bulk edit, an action's dialog and a relation's inline
+// create, where the page names no record of this field's resource — and
+// only where writing help is offered for this field.
 
 /** The part of a Tiptap editor this item uses; the layer does not depend on Tiptap itself. */
 interface Chain {
@@ -48,7 +52,19 @@ const { t } = useVectorT()
 
 const markdown = computed(() => props.field.type === 'markdown')
 const context = host.context()
-const shown = computed(() => (props.field.type === 'richtext' || markdown.value) && writing.offered(context.resource, props.field.name))
+// This resource's create page (/r/{resource}/create) or one of its records'
+// edit pages (/r/{resource}/{id}/edit), and a field that resource has: not
+// its list (bulk edit), not a record's page (its actions' dialogs, a
+// related record's create form), not another resource's page.
+const page = context.path.split('/')
+const ownField = context.resource !== undefined
+    && host.schema.value?.resources?.[context.resource]?.fields.some(f => f.name === props.field.name) === true
+const onForm = ownField && page[1] === 'r' && (
+    context.recordId === undefined
+        ? page.length === 4 && page[3] === 'create'
+        : page.length === 5 && page[4] === 'edit'
+)
+const shown = computed(() => onForm && (props.field.type === 'richtext' || markdown.value) && writing.offered(context.resource, props.field.name))
 
 // the editor's state is no Vue state: its transactions say when the selection moved
 const empty = ref(props.editor.state.selection.empty)

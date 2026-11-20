@@ -24,6 +24,7 @@ final class AuditImpersonationMcpTest extends VectorTestCase
         self::assertSame('update', $latest['event']);
         self::assertSame('1', $latest['actorId']);
         self::assertNull($latest['impersonatorId']);
+        self::assertNull($latest['origin'], 'a write through the admin is the admin\'s own hand');
         self::assertSame(['stock', 'updatedAt'], array_keys($latest['changes']));
         self::assertSame((int) $product['stock'], $latest['changes']['stock']['from']);
         self::assertSame((int) $product['stock'] + 7, $latest['changes']['stock']['to']);

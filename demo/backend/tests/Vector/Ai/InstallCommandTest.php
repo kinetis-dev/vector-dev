@@ -25,6 +25,7 @@ final class InstallCommandTest extends TestCase
     private const array MIGRATIONS = [
         '20261119000101_vector_ai_credentials',
         '20261119000102_vector_ai_usage',
+        '20261120000101_vector_ai_approvals',
     ];
 
     private string $root;

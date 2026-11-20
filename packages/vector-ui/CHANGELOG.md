@@ -26,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Vuetify set gains `VNavigationDrawer`, `VToolbar`,
   `VProgressCircular` and `VBadge`.
 - The types carry `meta` on resources and fields.
+- History shows a write's origin as a chip — *via assistant* for the AI
+  assistant's approved proposals — from `record.audit.origin.<token>`,
+  or the token itself when it has no message.
 
 ### Changed
 

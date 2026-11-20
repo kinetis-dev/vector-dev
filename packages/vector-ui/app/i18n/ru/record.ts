@@ -44,6 +44,10 @@ export default {
         revertTitle: 'Откатить это изменение?',
         revertText: 'Возвращает прежнее значение полей: {fields}. Откат также записывается в историю.',
         reverted: 'Изменение откачено.',
+        via: 'через {origin}',
+        origin: {
+            assistant: 'ассистента',
+        },
     },
     panel: {
         attach: 'Привязать',

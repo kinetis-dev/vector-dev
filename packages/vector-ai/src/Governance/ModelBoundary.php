@@ -192,6 +192,11 @@ final readonly class ModelBoundary
      *   resource widget of a resource kept from the model, a widget whose
      *   link leads to one, and a table whose rows link to records of one;
      * - `vector_resources`, listed in PASSES: the index as it is, strings cut;
+     * - the result of an approved write the assistant proposed (ProposingTool):
+     *   `vector_create` and `vector_update`, record() of its `data`;
+     *   `vector_delete`, the id it deleted; `vector_run_action`, the
+     *   response's `type` and `message` only — never a download's contents
+     *   or a URL;
      * - any other tool: refused.
      *
      * A refusal is `{"error": UNAVAILABLE}`, as is a describe, query or get
@@ -213,7 +218,7 @@ final readonly class ModelBoundary
             return $this->widget($arguments, $result);
         }
 
-        if (!in_array($tool, ['vector_describe', 'vector_query', 'vector_get'], true)) {
+        if (!in_array($tool, ['vector_describe', 'vector_query', 'vector_get', 'vector_create', 'vector_update', 'vector_delete', 'vector_run_action'], true)) {
             return self::refusal();
         }
 
@@ -226,6 +231,9 @@ final readonly class ModelBoundary
         return match ($tool) {
             'vector_describe' => $this->description($visible, $result),
             'vector_query' => $this->page($visible, $result),
+            'vector_create', 'vector_update' => ['data' => is_array($result['data'] ?? null) ? $this->record($visible, $result['data']) : null],
+            'vector_delete' => ['deleted' => is_scalar($result['deleted'] ?? null) ? (string) $result['deleted'] : null],
+            'vector_run_action' => $this->truncated(array_intersect_key($result, ['type' => true, 'message' => true])),
             default => [
                 'data' => is_array($result['data'] ?? null) ? $this->record($visible, $result['data']) : null,
                 'permissions' => $result['permissions'] ?? null,
@@ -256,6 +264,47 @@ final readonly class ModelBoundary
         }
 
         return $this->allows($visible) ? $visible : null;
+    }
+
+    /**
+     * Whether this user may make the write $tool would propose, as far as
+     * Vector's own permissions tell before it is made: `vector_create`,
+     * the resource's `create`; `vector_update` and `vector_delete`, that
+     * record's `update` or `delete` (a forced delete, `forceDelete` too),
+     * read as this user — a record they cannot see is no record they may
+     * write. Any other tool: true. Approving still enforces all of it.
+     *
+     * @param array<array-key, mixed> $arguments the proposal's arguments, already checked against the tool's schema
+     */
+    public function permits(ResourceDescriptor $visible, string $tool, array $arguments): bool
+    {
+        if ($tool === 'vector_create') {
+            return ($this->resources->permissions($visible)['create'] ?? false) === true;
+        }
+
+        if (!in_array($tool, ['vector_update', 'vector_delete'], true)) {
+            return true;
+        }
+
+        $id = $arguments['id'] ?? null;
+
+        if (!is_string($id) && !is_int($id)) {
+            return false;
+        }
+
+        try {
+            $record = $this->resources->show($visible, (string) $id);
+        } catch (VectorException | AuthorizationException) {
+            return false;
+        }
+
+        $permissions = $this->resources->recordPermissions($visible, $record);
+
+        if ($tool === 'vector_update') {
+            return $permissions['update'];
+        }
+
+        return $permissions['delete'] || (($arguments['force'] ?? false) === true && $permissions['forceDelete']);
     }
 
     /**

@@ -39,7 +39,7 @@ final class AiCapabilitiesConfiguredTest extends AiTestCase
 
     public function testTheShippedFeaturesAreOfferedAndWhatIsKeptBackIsExcluded(): void
     {
-        self::assertSame([Feature::Filters, Feature::Assistant, Feature::Writing], AiShellContributor::shipped());
+        self::assertSame([Feature::Filters, Feature::Assistant, Feature::AssistantWrites, Feature::Writing], AiShellContributor::shipped());
 
         $response = $this->client->get('/vector/schema', headers: $this->headers());
         $ai = $response->assertOk()->json()['capabilities']['ai'] ?? null;
@@ -54,6 +54,10 @@ final class AiCapabilitiesConfiguredTest extends AiTestCase
         self::assertSame(['imageKey'], $fields['products'] ?? null, 'an image field is never sent');
         self::assertArrayNotHasKey('profiles', $fields, 'a resource kept back whole is under excluded');
         self::assertArrayNotHasKey('orders', $fields, 'a resource with nothing kept back is absent');
+
+        // proposing changes is off until its own switch is on
+        $this->client->request('PUT', '/vector/settings/ai', body: ['assistantWrites' => true], headers: $this->adminHeaders())->assertOk();
+        self::assertTrue($this->client->get('/vector/schema', headers: $this->headers())->assertOk()->json()['capabilities']['ai']['assistantWrites'] ?? null);
     }
 
     public function testTheAssistantFollowsItsOwnSwitch(): void

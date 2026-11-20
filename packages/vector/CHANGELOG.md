@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   answers, per user and per request, `capabilities.<name>` in
   `GET /vector/schema`. A malformed name, one taken twice or one of the
   built-in capability keys stops the compile.
+- A write's origin: `ActorContext` takes an optional `origin` token
+  (`assistant`, say) for a write that did not come from the admin's own
+  hand, recorded in a new nullable `origin` column of `vector_audit` and
+  `vector_action_events` (the `vector_write_origin` migration) and
+  returned on each entry of `GET /vector/r/{resource}/{id}/audit`. Null
+  for every other write, and not written at all then, so an installation
+  that has not applied the migration keeps recording its writes.
 
 ### Changed
 

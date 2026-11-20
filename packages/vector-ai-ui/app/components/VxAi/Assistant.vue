@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { linkRecords } from '../../utils/recordLinks'
+import ApprovalCard from './ApprovalCard.vue'
 
 // The assistant: a sparkle button in the app bar (a shell action) and the
 // end-side drawer it opens, holding the conversation, a composer, "New
@@ -7,9 +8,15 @@ import { linkRecords } from '../../utils/recordLinks'
 // Shell actions belong to the layout, so the drawer and its conversation
 // survive navigation. An answer is Markdown, rendered and sanitized as the
 // admin renders a markdown field, its `resource#id` references made links
-// to the records. Shown only when capabilities.ai.assistant is on.
+// to the records. A change the assistant proposed (capabilities.ai.assistantWrites)
+// shows as an approval card under its answer: approving or rejecting it
+// sends the decision, and the assistant then says what happened. Shown
+// only when capabilities.ai.assistant is on.
 
-interface AiCapabilities { assistant?: boolean }
+interface AiCapabilities { assistant?: boolean, assistantWrites?: boolean }
+
+/** The tools that only propose a change. */
+const PROPOSING = ['vector_create', 'vector_update', 'vector_delete', 'vector_run_action']
 
 // the layout's own attributes (data-shell-action) go on the button: the drawer is elsewhere
 defineOptions({ inheritAttrs: false })
@@ -18,9 +25,12 @@ const host = useVectorHost()
 const appConfig = useAppConfig()
 const route = useRoute()
 const { t } = useVectorT()
-const { open, draft, turns, busy, send, retry, reset } = useVectorAssistant()
+const { open, draft, turns, busy, send, retry, reset, decide } = useVectorAssistant()
 
 const shown = computed(() => (host.schema.value?.capabilities?.ai as AiCapabilities | undefined)?.assistant === true)
+const writes = computed(() => (host.schema.value?.capabilities?.ai as AiCapabilities | undefined)?.assistantWrites === true)
+/** The turns the drawer shows: a decision on a proposal is told by its card, not as a message. */
+const shownTurns = computed(() => turns.value.filter(turn => turn.role !== 'approval'))
 const slugs = computed(() => new Set(Object.keys(host.schema.value?.resources ?? {})))
 
 /** Which page the questions are about, in words. */
@@ -75,15 +85,23 @@ onMounted(() => {
                     </p>
                     <v-divider />
                     <div class="flex-grow-1 overflow-y-auto pa-3" aria-live="polite" data-ai-assistant-conversation>
-                        <p v-if="turns.length === 0" class="text-body-2 text-medium-emphasis" data-ai-assistant-empty>{{ t('ai.assistant.empty') }}</p>
-                        <div v-for="turn in turns" :key="turn.id" class="mb-3" :data-ai-assistant-turn="turn.role">
+                        <p v-if="turns.length === 0" class="text-body-2 text-medium-emphasis" data-ai-assistant-empty>{{ t(writes ? 'ai.assistant.emptyWrites' : 'ai.assistant.empty') }}</p>
+                        <div v-for="turn in shownTurns" :key="turn.id" class="mb-3" :data-ai-assistant-turn="turn.role">
                             <v-sheet v-if="turn.role === 'user'" color="primary" variant="tonal" rounded class="pa-2 ms-8 text-body-2 vx-ai-assistant__user">{{ turn.content }}</v-sheet>
                             <div v-else class="me-4">
                                 <div v-if="turn.tools.length" class="d-flex flex-wrap ga-1 mb-1" data-ai-assistant-tools>
-                                    <v-chip v-for="(tool, i) in turn.tools" :key="`${tool}.${i}`" size="x-small" variant="outlined" prepend-icon="mdi-database-search-outline">{{ t('ai.assistant.tool', { name: tool }) }}</v-chip>
+                                    <v-chip v-for="(tool, i) in turn.tools" :key="`${tool}.${i}`" size="x-small" variant="outlined" :prepend-icon="PROPOSING.includes(tool) ? 'mdi-pencil-outline' : 'mdi-database-search-outline'">{{ t(PROPOSING.includes(tool) ? 'ai.assistant.proposingTool' : 'ai.assistant.tool', { name: tool }) }}</v-chip>
                                 </div>
                                 <!-- eslint-disable-next-line vue/no-v-html -- Markdown sanitized by the admin's own renderer; the record links are built, not parsed -->
                                 <div v-if="turn.content" class="text-body-2 vx-ai-assistant__answer" data-ai-assistant-answer @click="follow" v-html="html(turn.content)" />
+                                <ApprovalCard
+                                    v-for="approval in turn.approvals"
+                                    :key="approval.frame.id"
+                                    :approval="approval"
+                                    :busy="busy"
+                                    @approve="decide(approval, 'approve')"
+                                    @reject="decide(approval, 'reject')"
+                                />
                                 <v-progress-linear v-if="turn.streaming" indeterminate color="primary" class="mt-1" data-ai-assistant-streaming />
                                 <v-alert v-if="turn.failed" type="warning" variant="tonal" density="compact" class="mt-1" data-ai-assistant-failure>
                                     {{ turn.failed }}

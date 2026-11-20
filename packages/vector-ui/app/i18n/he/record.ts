@@ -44,6 +44,10 @@ export default {
         revertTitle: 'להחזיר את השינוי?',
         revertText: 'מחזיר את הערך הקודם של {fields}. גם ההחזרה מתועדת בהיסטוריה.',
         reverted: 'השינוי הוחזר.',
+        via: 'דרך {origin}',
+        origin: {
+            assistant: 'העוזר',
+        },
     },
     panel: {
         attach: 'צירוף',

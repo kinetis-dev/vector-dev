@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- An assistant answer that only proposed changes, with no text, is kept
+  in the conversation sent back (as a short placeholder), so the
+  decision's turn does not follow the question directly.
+
 ## [0.1.0] - 2026-11-19
 
 ### Added
@@ -48,4 +54,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   failure leaves the text as it was and says why; a Markdown answer is
   shown through the admin's own sanitizer. Shown only while
   `capabilities.ai.writing` is on and neither the resource
-  (`excluded`) nor the field (`excludedFields`) is kept from AI.
+  (`excluded`) nor the field (`excludedFields`) is kept from AI. The
+  editor toolbar item, like the input addon, shows only on its
+  resource's create or edit page, for that resource's own field: not in
+  a bulk edit, an action's dialog or a relation's inline create.
+- Approval cards: a change the assistant proposed (a `data-approval`
+  frame, or the JSON answer's `approvals`) shows under its answer as a
+  card built from the structured proposal — the tool, the resource, the
+  record and each field, with its value before where a `vector_get` of
+  the same run read it, and when it expires — never from the model's
+  prose. Approve and Reject post to `/vector/ai/approvals/{id}/approve`
+  and `/reject` with no body; a decision that stands (also one the
+  server reports as already made, 409) is sent back as an `approval`
+  message so the assistant says what happened, and an expired (410) or
+  unknown (404) proposal says so on its card.

@@ -5,10 +5,11 @@ Nuxt layer over [`@kinetis/vector-ui`](https://www.npmjs.com/package/@kinetis/ve
 the UI half of [`kinetis/vector-ai`](https://packagist.org/packages/kinetis/vector-ai).
 
 **This release offers plain-language filters**, in every list's
-toolbar; **the read-only assistant**, a sparkle button in the app bar
+toolbar; **the assistant**, a sparkle button in the app bar
 opening a drawer beside the page (and *Ask the assistant…* in the ⌘K
 palette), whose streamed answers link every `resource#id` they name to
-that record; **writing help**, a menu under the text inputs of a resource's
+that record, and whose proposed changes show as approval cards — the
+change field by field, to approve or reject; **writing help**, a menu under the text inputs of a resource's
 create and edit forms (not in bulk edit or action dialogs) and in the
 rich-text and Markdown editors' toolbars that rewrites, shortens,
 corrects or translates the text (or the selection) and shows the answer

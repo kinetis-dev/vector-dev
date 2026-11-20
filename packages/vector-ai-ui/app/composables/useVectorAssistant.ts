@@ -1,23 +1,59 @@
-import { readDataStream, type DataStreamFrame } from '../utils/assistantStream'
+import { approvalFrame, approvalOf, readDataStream, recordOfToolOutput, type ApprovalFrame, type DataStreamFrame } from '../utils/assistantStream'
+
+/**
+ * Where a proposed change stands, as the drawer shows it: the server's
+ * own statuses, `deciding` while a decision is on its way, and `gone`
+ * when the server knows no such proposal for this admin (404).
+ */
+export type ApprovalState = 'pending' | 'deciding' | 'executed' | 'failed' | 'rejected' | 'expired' | 'gone'
+
+/** A change the assistant proposed, as its card shows it. */
+export interface ApprovalCard {
+    frame: ApprovalFrame
+    /** The record as a `vector_get` of the same run read it, to show each field's value before the change; null when the run did not read it. */
+    before: Record<string, unknown> | null
+    state: ApprovalState
+    /** What the approval executed answered, or why it failed. */
+    result: unknown
+    /** Why a decision could not be made, to show on the card; null when it was. */
+    error: string | null
+}
 
 /** One message of the conversation, as the drawer shows it. */
 export interface AssistantTurn {
     id: string
-    role: 'user' | 'assistant'
+    /** `approval` is the admin's decision on a proposal: not shown, but sent so the model hears the outcome. */
+    role: 'user' | 'assistant' | 'approval'
     content: string
     /** The tools the assistant called for this answer, in order. */
     tools: string[]
+    /** The changes this answer proposed, in order. */
+    approvals: ApprovalCard[]
+    /** For an `approval` turn, the proposal decided on. */
+    approvalId?: string
     /** Why the answer failed, to show beside a Retry; null when it did not. */
     failed: string | null
     streaming: boolean
 }
 
 /** What the server answers with `Accept: application/json`. */
-interface WholeAnswer { text: string, toolCalls: string[] }
+interface WholeAnswer { text: string, toolCalls: string[], approvals?: unknown[] }
+
+/** What a decision answers: `{status, result}`, or for a 409 `{error, status, result?}`. */
+interface Decision { status?: unknown, result?: unknown, error?: unknown }
+
+/** The tool calls of one run as its frames tell them: each call's tool, its input as it streamed, and the records `vector_get` read, by `resource#id`. */
+interface RunReads {
+    calls: Map<string, { tool: string, input: string }>
+    records: Map<string, Record<string, unknown>>
+}
 
 /** The most messages, and the largest body, one turn sends (the server refuses more). */
 const MAX_MESSAGES = 40
 const MAX_BODY = 60_000
+
+/** What an answer that proposed changes without saying anything is sent as. */
+export const PROPOSED_ONLY = '(Proposed the changes shown for approval.)'
 
 function newConversation(): string {
     return `c_${crypto.randomUUID().replaceAll('-', '')}`
@@ -46,20 +82,60 @@ export function useVectorAssistant() {
     const host = useVectorHost()
     const { t } = useVectorT()
 
-    /** The conversation as the server takes it: settled text only, newest last, within its caps. */
+    /**
+     * The conversation as the server takes it: settled text, and the
+     * proposals decided on — by id only: the server reads the outcome
+     * from its own row — newest last, within its caps. An answer that only
+     * proposed changes, with no text, is kept with PROPOSED_ONLY in its
+     * place, so its proposals' outcomes do not follow the question directly.
+     */
     function history() {
         let messages = turns.value
-            .filter(turn => turn.failed === null && !turn.streaming && turn.content.trim() !== '')
-            .map(turn => ({ role: turn.role, content: turn.content }))
+            .filter(turn => turn.role === 'approval' || (turn.failed === null && !turn.streaming && (turn.content.trim() !== '' || turn.approvals.length > 0)))
+            .map(turn => turn.role === 'approval'
+                ? { role: 'approval' as const, id: turn.approvalId ?? '' }
+                : { role: turn.role, content: turn.content.trim() === '' ? PROPOSED_ONLY : turn.content })
             .slice(-MAX_MESSAGES)
         while (messages.length > 1 && JSON.stringify(messages).length > MAX_BODY) messages = messages.slice(1)
         return messages
     }
 
-    function apply(reply: AssistantTurn, frame: DataStreamFrame) {
+    function card(frame: ApprovalFrame, reads: RunReads | null): ApprovalCard {
+        const before = frame.resource !== null && frame.recordId !== null ? reads?.records.get(`${frame.resource}#${frame.recordId}`) ?? null : null
+        return { frame, before, state: 'pending', result: null, error: null }
+    }
+
+    function apply(reply: AssistantTurn, frame: DataStreamFrame, reads: RunReads) {
+        const callId = typeof frame.toolCallId === 'string' ? frame.toolCallId : null
         if (frame.type === 'text-delta' && typeof frame.delta === 'string') reply.content += frame.delta
-        else if (frame.type === 'tool-input-start' && typeof frame.toolName === 'string') reply.tools.push(frame.toolName)
+        else if (frame.type === 'tool-input-start' && typeof frame.toolName === 'string') {
+            reply.tools.push(frame.toolName)
+            if (callId !== null) reads.calls.set(callId, { tool: frame.toolName, input: '' })
+        } else if (frame.type === 'tool-input-delta' && callId !== null && typeof frame.inputTextDelta === 'string') {
+            const call = reads.calls.get(callId)
+            if (call) call.input += frame.inputTextDelta
+        } else if (frame.type === 'tool-output-available' && callId !== null) remember(reads, callId, frame.output)
         else if (frame.type === 'error') reply.failed = typeof frame.errorText === 'string' ? frame.errorText : t('ai.assistant.failed')
+        else {
+            const approval = approvalFrame(frame)
+            if (approval !== null) reply.approvals.push(card(approval, reads))
+        }
+    }
+
+    /** What a `vector_get` of the run read, by `resource#id`, for a later proposal's "before". */
+    function remember(reads: RunReads, callId: string, output: unknown) {
+        const call = reads.calls.get(callId)
+        if (call?.tool !== 'vector_get') return
+        let input: { resource?: unknown, id?: unknown }
+        try {
+            input = JSON.parse(call.input) as { resource?: unknown, id?: unknown }
+        } catch {
+            return
+        }
+        const record = recordOfToolOutput(output)
+        if (record !== null && typeof input.resource === 'string' && (typeof input.id === 'string' || typeof input.id === 'number')) {
+            reads.records.set(`${input.resource}#${input.id}`, record)
+        }
     }
 
     async function run() {
@@ -69,15 +145,16 @@ export function useVectorAssistant() {
             messages: history(),
             context: { path: ctx.path, resource: ctx.resource ?? null, recordId: ctx.recordId ?? null },
         }
-        turns.value.push({ id: newId(), role: 'assistant', content: '', tools: [], failed: null, streaming: true })
+        turns.value.push({ id: newId(), role: 'assistant', content: '', tools: [], approvals: [], failed: null, streaming: true })
         // the reactive copy in the list, so every change shows as it streams
         const reply = turns.value[turns.value.length - 1]!
+        const reads: RunReads = { calls: new Map(), records: new Map() }
         busy.value = true
 
         try {
             const stream = await api<ReadableStream<Uint8Array>>('/vector/ai/assistant', { method: 'POST', body, responseType: 'stream', headers: { Accept: 'text/event-stream' } })
-            await readDataStream(stream, frame => apply(reply, frame))
-            if (reply.content === '' && reply.failed === null) reply.failed = t('ai.assistant.failed')
+            await readDataStream(stream, frame => apply(reply, frame, reads))
+            if (reply.content === '' && reply.approvals.length === 0 && reply.failed === null) reply.failed = t('ai.assistant.failed')
         } catch (error) {
             if (statusOf(error) === 501) {
                 // the runtime cannot stream: the same turn, answered whole
@@ -85,6 +162,7 @@ export function useVectorAssistant() {
                     const answer = await api<WholeAnswer>('/vector/ai/assistant', { method: 'POST', body, headers: { Accept: 'application/json' } })
                     reply.content = answer.text
                     reply.tools = [...answer.toolCalls]
+                    reply.approvals = (answer.approvals ?? []).map(approvalOf).filter(frame => frame !== null).map(frame => card(frame, null))
                 } catch (whole) {
                     reply.failed = await describe(whole)
                 }
@@ -101,8 +179,55 @@ export function useVectorAssistant() {
     async function send(text: string) {
         const content = text.trim()
         if (content === '' || busy.value) return
-        turns.value.push({ id: newId(), role: 'user', content, tools: [], failed: null, streaming: false })
+        turns.value.push({ id: newId(), role: 'user', content, tools: [], approvals: [], failed: null, streaming: false })
         draft.value = ''
+        await run()
+    }
+
+    /**
+     * Approves or rejects a proposal: POST /vector/ai/approvals/{id}/{verb},
+     * with no body — the server executes its own stored arguments. A
+     * decision that stands (executed, failed or rejected, also when the
+     * server answers 409 with a decision made before) is appended to the
+     * conversation, once, and the next turn is sent so the assistant says
+     * what happened; an expired (410) or unknown (404) proposal only says
+     * so on its card.
+     */
+    async function decide(approval: ApprovalCard, verb: 'approve' | 'reject') {
+        if (busy.value || approval.state !== 'pending') return
+        approval.state = 'deciding'
+        approval.error = null
+        let decided: Decision | null = null
+
+        try {
+            decided = await api<Decision>(`/vector/ai/approvals/${encodeURIComponent(approval.frame.id)}/${verb}`, { method: 'POST' })
+        } catch (error) {
+            const status = statusOf(error)
+            const data = (error as { data?: unknown } | null)?.data
+            if (status === 409 && data !== null && typeof data === 'object') decided = data as Decision
+            else if (status === 410) approval.state = 'expired'
+            else if (status === 404) approval.state = 'gone'
+            else {
+                approval.state = 'pending'
+                approval.error = await describe(error)
+            }
+        }
+
+        if (decided === null) return
+        const status = decided.status
+        // another request is executing it right now: its outcome is that request's to tell,
+        // so the card goes back to waiting, saying so, and asking again later shows the outcome
+        if (status === 'executing') {
+            approval.state = 'pending'
+            approval.error = t('ai.assistant.approval.inProgress')
+            return
+        }
+        approval.state = status === 'executed' || status === 'failed' || status === 'rejected' || status === 'expired' ? status : 'gone'
+        approval.result = decided.result ?? null
+        if (approval.state === 'expired' || approval.state === 'gone') return
+
+        if (turns.value.some(turn => turn.role === 'approval' && turn.approvalId === approval.frame.id)) return
+        turns.value.push({ id: newId(), role: 'approval', content: '', tools: [], approvals: [], approvalId: approval.frame.id, failed: null, streaming: false })
         await run()
     }
 
@@ -168,7 +293,7 @@ export function useVectorAssistant() {
         return statusOf(error) === 429 ? t('ai.filters.budgetSpent') : t('ai.assistant.failed')
     }
 
-    return { open, draft, turns, busy, conversationId, send, retry, reset, forget, ask }
+    return { open, draft, turns, busy, conversationId, send, retry, reset, forget, ask, decide }
 }
 
 function statusOf(error: unknown): number | undefined {

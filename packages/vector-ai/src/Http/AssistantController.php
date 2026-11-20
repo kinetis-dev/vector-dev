@@ -14,6 +14,7 @@ use Kinetis\Http\Responses\ErrorResponse;
 use Kinetis\Http\Responses\JsonResponse;
 use Kinetis\Validation\Exception\ValidationException;
 use Kinetis\Validation\Violation;
+use Kinetis\VectorAi\Approvals\ApprovalId;
 use Kinetis\VectorAi\Assistant\Assistant;
 use Kinetis\VectorAi\Auth\AiAccessInterface;
 use Kinetis\VectorAi\Config\AiConfig;
@@ -27,17 +28,20 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
- * POST /vector/ai/assistant: one turn of the read-only assistant,
- * `{conversationId, messages: [{role, content}], context?: {path,
- * resource, recordId}}` in. The answer streams as Server-Sent Events in
- * the Vercel AI SDK data-stream protocol; with `Accept:
- * application/json` it comes whole, `{text, toolCalls}` — what the admin
- * falls back to where the runtime cannot stream (RoadRunner answers a
- * stream with 501).
+ * POST /vector/ai/assistant: one turn of the assistant,
+ * `{conversationId, messages: [{role, content} | {role: "approval", id}],
+ * context?: {path, resource, recordId}}` in. The answer streams as
+ * Server-Sent Events in the Vercel AI SDK data-stream protocol, a change
+ * the assistant proposed as a `data-approval` frame; with `Accept:
+ * application/json` it comes whole, `{text, toolCalls, approvals}` — what
+ * the admin falls back to where the runtime cannot stream (RoadRunner
+ * answers a stream with 501).
  *
  * The conversation is the browser's: it is replayed on every turn, holds
- * the user's and the assistant's text only, and authorizes nothing — every
- * tool runs as this request's user. Asked in this order, before any frame
+ * the user's and the assistant's text, and the ids of proposals the admin
+ * decided on (`{role: "approval", id: "apr_…"}`), whose outcome the server
+ * reads from its own row — and authorizes nothing: every tool runs as this
+ * request's user, and nothing in it can execute a change. Asked in this order, before any frame
  * is sent: whether the feature is on, configured and this user's (403),
  * the day's token budget (429 until midnight UTC), the body (422).
  */
@@ -124,7 +128,7 @@ final readonly class AssistantController
      * The conversation id, the messages and the page context, each checked:
      * any violation is a 422 naming it.
      *
-     * @return array{string, list<array{role: 'user'|'assistant', content: string}>, array{path: ?string, resource: ?string, recordId: ?string}}
+     * @return array{string, list<array{role: 'user'|'assistant', content: string}|array{role: 'approval', id: string}>, array{path: ?string, resource: ?string, recordId: ?string}}
      */
     private function input(ServerRequestInterface $request): array
     {
@@ -161,8 +165,16 @@ final readonly class AssistantController
                 $role = is_array($message) ? ($message['role'] ?? null) : null;
                 $content = is_array($message) ? ($message['content'] ?? null) : null;
 
-                if ($role !== 'user' && $role !== 'assistant') {
-                    $violations[] = new Violation(['messages', $i, 'role'], 'invalid', 'must be "user" or "assistant".');
+                if ($role === 'approval') {
+                    $id = $message['id'] ?? null;
+
+                    if (!is_string($id) || ApprovalId::parse($id) === null) {
+                        $violations[] = new Violation(['messages', $i, 'id'], 'invalid', 'must be an approval id, "apr_" and 26 letters or digits.');
+                    } else {
+                        $conversation[] = ['role' => 'approval', 'id' => $id];
+                    }
+                } elseif ($role !== 'user' && $role !== 'assistant') {
+                    $violations[] = new Violation(['messages', $i, 'role'], 'invalid', 'must be "user", "assistant" or "approval".');
                 } elseif (!is_string($content) || trim($content) === '' || mb_strlen($content) > self::MAX_MESSAGE) {
                     $violations[] = new Violation(['messages', $i, 'content'], 'invalid', 'must be text of 1 to ' . self::MAX_MESSAGE . ' characters.');
                 } else {
@@ -170,8 +182,8 @@ final readonly class AssistantController
                 }
             }
 
-            if ($violations === [] && ($conversation[count($conversation) - 1]['role'] ?? null) !== 'user') {
-                $violations[] = new Violation(['messages'], 'invalid', 'must end with the user\'s message.');
+            if ($violations === [] && !in_array($conversation[count($conversation) - 1]['role'] ?? null, ['user', 'approval'], true)) {
+                $violations[] = new Violation(['messages'], 'invalid', 'must end with the user\'s message or a decided approval.');
             }
         }
 

@@ -22,8 +22,10 @@ migration per table, each under its own timestamp: `vector_settings`,
 `vector_preferences`, `vector_views`, `vector_action_events`,
 `vector_audit`, `vector_jobs`, `vector_notifications` and
 `vector_queue_metrics`. It is idempotent. A later change to Vector's
-tables ships as a new migration with a later timestamp, so run it again
-after every upgrade, then `migrate`.
+tables ships as a new migration with a later timestamp —
+`vector_write_origin` adds the `origin` column to the action log and the
+audit trail ({doc}`audit`) — so run it again after every upgrade, then
+`migrate`.
 
 `vector:install-ui` installs the hosted admin UI into `public/vector/ui`:
 the `@kinetis/vector-ui` release this `kinetis/vector` pins, downloaded

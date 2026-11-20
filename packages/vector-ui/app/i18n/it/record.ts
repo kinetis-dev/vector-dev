@@ -44,6 +44,10 @@ export default {
         revertTitle: 'Ripristinare il valore precedente?',
         revertText: 'Ripristina il valore precedente di {fields}. Anche il ripristino viene registrato nella cronologia.',
         reverted: 'Valore precedente ripristinato.',
+        via: 'tramite {origin}',
+        origin: {
+            assistant: 'l’assistente',
+        },
     },
     panel: {
         attach: 'Collega',

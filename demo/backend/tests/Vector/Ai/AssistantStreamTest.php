@@ -120,7 +120,7 @@ final class AssistantStreamTest extends AssistantTestCase
 
         self::assertSame(200, $turn['status']);
         self::assertStringStartsWith('application/json', $turn['response']->getHeaderLine('Content-Type'));
-        self::assertSame(['text' => 'There are products#1 and more.', 'toolCalls' => ['vector_resources']], json_decode($turn['body'], true, 8, JSON_THROW_ON_ERROR));
+        self::assertSame(['text' => 'There are products#1 and more.', 'toolCalls' => ['vector_resources'], 'approvals' => []], json_decode($turn['body'], true, 8, JSON_THROW_ON_ERROR));
         self::assertSame('chat', $this->calls()[0]->method);
     }
 

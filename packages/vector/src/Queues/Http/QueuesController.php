@@ -398,7 +398,7 @@ final readonly class QueuesController
      */
     private function record(array $recordIds, string $event, array $changes): void
     {
-        $this->audit->record(self::AUDIT_RESOURCE, $recordIds, $event, $changes, $this->actor->actorId(), $this->actor->impersonatorId);
+        $this->audit->record(self::AUDIT_RESOURCE, $recordIds, $event, $changes, $this->actor->actorId(), $this->actor->impersonatorId, $this->actor->origin);
     }
 
     /**

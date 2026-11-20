@@ -22,6 +22,18 @@ record's **History** shows it, limited to the fields the viewer may see.
 
 Action runs are also logged, once per run, in `vector_action_events`.
 
+A write that came through another channel than the admin's own hand
+carries its **origin**: the AI assistant's approved proposals are
+recorded with `origin` `assistant` ({doc}`ai`), and History shows them
+*via assistant*. Code that writes on another channel's behalf registers
+`new ActorContext($user, $impersonatorId, origin: 'my-channel')` (a
+lowercase token of at most 40 characters) on the request scope before
+anything that writes is resolved. `origin` is null for every other
+write, and `GET /vector/r/{resource}/{id}/audit` returns it on each
+entry. The column comes with the `vector_write_origin` migration
+`vector:install` publishes; until it is applied, writes without an
+origin are recorded as before.
+
 ## Revert
 
 `POST /vector/r/{resource}/{id}/audit/{entry}/revert` puts back what one
