@@ -15,7 +15,9 @@ use Kinetis\VectorAi\Governance\ModelBoundary;
  * ModelBoundary::record(), page() and toolResult(): what a model is sent
  * of the admin's data — never a password, file or image field or one
  * that opts out, nothing of a resource that opts out, long strings cut,
- * at most 25 rows — and under the allow-list only what opts in.
+ * at most 25 rows — and under the allow-list only what opts in; and
+ * keptFields(), the fields sends() refuses, which the shell's
+ * excludedFields lists.
  */
 final class ModelBoundaryRecordsTest extends AiTestCase
 {
@@ -98,6 +100,69 @@ final class ModelBoundaryRecordsTest extends AiTestCase
         // categories do not opt in: the relation keeps its id, not its label
         self::assertSame(['id' => 3, 'name' => 'Lamp', 'status' => 'active', 'stock' => 4, 'category' => ['id' => 2]], $sent);
         self::assertSame([], $boundary->record($resources->resource('users'), ['id' => 1, 'name' => 'Ada']), 'users do not opt in');
+    }
+
+    public function testKeptFieldsAreThoseSendsRefusesByDefault(): void
+    {
+        [$boundary, $resources] = $this->boundary();
+
+        // a password and an opted-out field; never the primary key
+        self::assertSame(['email', 'passwordHash'], $boundary->keptFields($resources->registry()->resource('users')));
+        // an image field, though nothing opts out
+        self::assertSame(['imageKey'], $boundary->keptFields($resources->registry()->resource('products')));
+        // a resource that opts out whole: every field
+        $profiles = $resources->registry()->resource('profiles');
+        self::assertSame(array_keys($resources->visible($profiles)->fields()), $boundary->keptFields($profiles));
+        self::assertSameAsSends($boundary, $resources);
+    }
+
+    public function testAFieldThatOptsOutIsKept(): void
+    {
+        [$boundary, $resources] = $this->boundary($this->registryWith(['users.name' => ['ai.send' => false]]));
+
+        self::assertSame(['name', 'email', 'passwordHash'], $boundary->keptFields($resources->registry()->resource('users')));
+        self::assertSameAsSends($boundary, $resources);
+    }
+
+    public function testUnderTheAllowListEveryFieldThatDoesNotOptInIsKept(): void
+    {
+        $this->client->request('PUT', '/vector/settings/ai', body: ['dataDefault' => 'allowlist'], headers: $this->adminHeaders())->assertOk();
+        [$boundary, $resources] = $this->boundary($this->registryWith(['products.imageKey' => ['ai.send' => true]]));
+
+        // products opt in with name, status, category and stock; an image field is kept though it opts in
+        self::assertSame(
+            ['sku', 'slug', 'priceCents', 'currency', 'weightKg', 'isFeatured', 'description', 'attributes', 'imageKey', 'tags', 'releasedAt', 'createdAt', 'updatedAt'],
+            $boundary->keptFields($resources->registry()->resource('products')),
+        );
+        self::assertSameAsSends($boundary, $resources);
+    }
+
+    public function testAPasswordAFileAndAnImageFieldAreKeptThoughTheyOptIn(): void
+    {
+        $registry = $this->registryWith(['users.passwordHash' => ['ai.send' => true], 'products.imageKey' => ['ai.send' => true], 'products.sku' => ['ai.send' => true]]);
+        $data = $registry->toArray();
+
+        foreach ($data['resources']['products']['fields'] as $i => $field) {
+            if (is_array($field) && ($field['name'] ?? null) === 'sku') {
+                $data['resources']['products']['fields'][$i]['type'] = 'file';
+            }
+        }
+
+        [$boundary, $resources] = $this->boundary(VectorRegistry::fromArray($data));
+
+        self::assertSame(['email', 'passwordHash'], $boundary->keptFields($resources->registry()->resource('users')));
+        self::assertSame(['sku', 'imageKey'], $boundary->keptFields($resources->registry()->resource('products')));
+        self::assertSameAsSends($boundary, $resources);
+    }
+
+    /** keptFields() of every resource is the fields of it, as this user sees it, that sends() refuses — in the same order. */
+    private static function assertSameAsSends(ModelBoundary $boundary, ResourceService $resources): void
+    {
+        foreach ($resources->registry()->resources() as $slug => $resource) {
+            $visible = $resources->visible($resource);
+            $refused = array_values(array_filter(array_keys($visible->fields()), static fn (string $name): bool => !$boundary->sends($visible, $name)));
+            self::assertSame($refused, $boundary->keptFields($resource), "{$slug}: keptFields() and sends() disagree");
+        }
     }
 
     public function testARelationsLabelIsSentOnlyWhenItsTargetsTitleFieldIs(): void

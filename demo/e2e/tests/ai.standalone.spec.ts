@@ -33,7 +33,7 @@ test.describe('AI, unconfigured', () => {
         await page.goto('r/products')
         const capabilities = (await (await schema).json() as { capabilities: { ai?: unknown } }).capabilities
 
-        expect(capabilities.ai).toEqual({ filters: false, assistant: false, assistantWrites: false, writing: false, excluded: {} })
+        expect(capabilities.ai).toEqual({ filters: false, assistant: false, assistantWrites: false, writing: false, excluded: {}, excludedFields: {} })
         await expect(page.getByRole('heading', { name: 'Products', level: 1 })).toBeVisible()
         // no shell action, list-toolbar item or palette command is registered
         await expect(page.locator('[data-shell-action]')).toHaveCount(0)

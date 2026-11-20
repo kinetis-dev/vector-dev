@@ -12,8 +12,8 @@ relation shape Vector administers is exercised:
 It runs both admin modes, background jobs on a real queue, the queue
 dashboard ({doc}`queues`), a seeded catalog, and `kinetis/vector-ai`
 ({doc}`ai`) installed but unconfigured: its *AI assistant* settings group
-is there, and no AI feature is offered. To try plain-language filters
-and the assistant without a model, configure the `fake` provider the
+is there, and no AI feature is offered. To try plain-language filters,
+the assistant and writing help without a model, configure the `fake` provider the
 demo scripts (`App\Vector\Ai\DemoAiReplies`) in `backend/.env` —
 `VECTOR_AI_PROVIDERS=demo` and `VECTOR_AI_DEMO_TYPE=fake` — and type
 *paid orders over 500* on the Orders list. The demo's profiles opt out
@@ -34,9 +34,16 @@ Then try the assistant, in the standalone admin (`localhost:3000`):
    assistant…*: the drawer opens and asks it. *New conversation* starts
    afresh.
 
-Any other question gets *No reply is scripted for this message.*; with a
-real provider configured instead (VECTOR_AI_PROVIDERS, {doc}`ai`) the
-assistant answers what is asked.
+And writing help: edit an order, type *Please make sure to call the
+customer before the delivery, because the customer has asked us to call
+ahead before the parcel is delivered.* in its notes, and choose *Writing
+help* → *Shorten* under them: the shorter text shows beside yours, and
+*Replace* puts it in the input for you to save.
+
+Any other question or text gets *No reply is scripted for this
+message.*; with a real provider configured instead
+(VECTOR_AI_PROVIDERS, {doc}`ai`) the assistant answers what is asked,
+and writing help works on any text.
 
 ## Run it
 
@@ -247,8 +254,8 @@ The hosted admin is the plain one: the AI layer reaches the standalone
 admin only, through `extends` (hosted delivery of it comes in a later
 release), so the end-to-end suite's AI specs run standalone:
 `ai.standalone.spec.ts` against the demo as it ships, and
-`ai-filters.standalone.spec.ts` and `ai-assistant.standalone.spec.ts`
-with the scripted `fake` provider configured as above; each skips
+`ai-filters.standalone.spec.ts`, `ai-assistant.standalone.spec.ts` and
+`ai-writing.standalone.spec.ts` with the scripted `fake` provider configured as above; each skips
 itself on the other stack.
 
 Then open `http://localhost:8080/vector/ui`, or

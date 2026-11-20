@@ -283,6 +283,38 @@ final readonly class ModelBoundary
     }
 
     /**
+     * The fields of $resource this user sees that sends() refuses, in the
+     * resource's order: every one of them for a resource kept from the
+     * model, otherwise those the rules above keep back — never the primary
+     * key. The answer sends() gives field by field, with the resource read
+     * as this user sees it once rather than once a field.
+     *
+     * @return list<string>
+     */
+    public function keptFields(ResourceDescriptor $resource): array
+    {
+        $visible = $this->resources->visible($resource);
+        $fields = $visible->fields();
+
+        if (!$this->allows($visible)) {
+            return array_map(strval(...), array_keys($fields));
+        }
+
+        $key = $visible->primaryKeyField();
+        $kept = [];
+
+        foreach ($fields as $name => $field) {
+            $name = (string) $name;
+
+            if ($name !== $key && !$this->sendsField($field)) {
+                $kept[] = $name;
+            }
+        }
+
+        return $kept;
+    }
+
+    /**
      * Whether a model may search $visible with `q`: it is searchable, every
      * field search matches — by LIKE, by its full-text index or, for a
      * belongsTo, by the related record's title — passes sends(), and each

@@ -65,7 +65,7 @@ export class Api {
     }
 
     /** The descriptor's `capabilities.ai` for this account; undefined without kinetis/vector-ai. */
-    async aiCapabilities(): Promise<{ filters?: boolean, assistant?: boolean, excluded?: Record<string, unknown> } | undefined> {
+    async aiCapabilities(): Promise<{ filters?: boolean, assistant?: boolean, writing?: boolean, excluded?: Record<string, unknown>, excludedFields?: Record<string, unknown> } | undefined> {
         const response = await this.request.get(`${API}/vector/schema`, { headers: this.headers })
         expect(response.ok()).toBeTruthy()
         return (await response.json()).capabilities.ai
@@ -96,8 +96,8 @@ export class Api {
         return (await response.json()).data
     }
 
-    /** A record's history, newest first: `update`, `action:<name>`, … with the field changes. */
-    async audit(resource: string, id: unknown): Promise<{ event: string, changes: Record<string, unknown> }[]> {
+    /** A record's history, newest first: `update`, `action:<name>`, … with the field changes and who made them. */
+    async audit(resource: string, id: unknown): Promise<{ event: string, changes: Record<string, unknown>, actorId?: string | null, origin?: unknown }[]> {
         const response = await this.request.get(`${API}/vector/r/${resource}/${id}/audit`, { headers: this.headers })
         expect(response.ok(), await response.text()).toBeTruthy()
         return (await response.json()).data

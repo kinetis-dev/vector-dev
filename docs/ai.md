@@ -8,12 +8,13 @@ product — the Composer package `kinetis/vector-ai` and the Nuxt layer
 provider call suspends the calling Fiber instead of blocking the worker.
 
 ```{important}
-This release offers **plain-language filters** ({ref}`ai-filters`) and
-the **read-only assistant** ({ref}`ai-assistant`), on the foundations
-every feature shares: the operator configuration, the sealed provider
-keys, the `ai` settings group, the access policy, the model boundary,
-the usage ledger and the AI layer's provider-key panel. The assistant
-proposing changes, and writing help, arrive in later releases.
+This release offers **plain-language filters** ({ref}`ai-filters`),
+the **read-only assistant** ({ref}`ai-assistant`) and **writing help**
+({ref}`ai-writing`), on the foundations every feature shares: the
+operator configuration, the sealed provider keys, the `ai` settings
+group, the access policy, the model boundary, the usage ledger and the
+AI layer's provider-key panel. The assistant proposing changes arrives
+in a later release.
 ```
 
 ## Installing
@@ -427,20 +428,109 @@ in every environment, so a bug can be traced — never its message, which
 can quote data; the exception itself is attached only under
 `APP_ENV=development`.
 
+(ai-writing)=
+## Writing help
+
+Under a text input — a `string` or `text` field on a resource's create
+page or on a record's edit page, and nowhere else: not in a list's bulk
+edit, an action's dialog or a settings form — a *Writing help* menu offers **Rewrite**, **Shorten**, **Fix
+grammar** and **Translate to…** (a language). The answer shows beside
+the text it was asked about, *Before* and *After*: **Replace** puts it
+in the input, **Discard** drops it. In the toolbar of a rich-text or
+Markdown editor the same menu acts on the selection — its plain text in
+a rich-text field, its Markdown source in a Markdown field — and is
+disabled while nothing is selected; Replace puts the answer in place of
+that selection, as text (a paragraph per line; Markdown read by the
+editor's own reader), so the document keeps to the field's schema. A
+Markdown answer is shown only through the admin's own Markdown
+sanitizer.
+
+**The server never writes the answer.** It lands in the input; the
+person reviews it and saves the form, through Vector's ordinary write
+path, as their own edit — the record's history shows their update like
+any other.
+
+`POST /vector/ai/writing/{resource}/{field}` (in the `vector` middleware
+group), JSON in and out:
+
+```json
+{ "operation": "shorten", "text": "…", "format": "plain", "targetLocale": null, "instructions": null, "recordId": "42" }
+```
+
+```json
+{ "text": "…", "operation": "shorten", "model": "<the model's id>", "truncated": false }
+```
+
+`operation` is `rewrite`, `shorten`, `grammar` or `translate`; `text`
+1 to 20,000 characters; `format` `plain` (the default) or `markdown`;
+`targetLocale` a language tag (`de`, `pt-BR`), required for `translate`;
+`instructions` the person's guidance on style, at most 300 characters;
+`recordId` the record being edited, absent or null on the create form.
+Any of these refused is a `422` naming it; a body over 256 KiB is `413`.
+
+**Who may ask, about what.** After the body, in this order, failing
+closed: the resource exists (`404`); a `password` field is refused by
+its type before anything else (`403`); the field exists as this user
+sees it — their `viewField` policy hides what it hides (`404`); it is a
+`string`, `text`, `markdown` or `richtext` field (`403`); this user may
+write it in the view the request is for — without `recordId` a create
+(`ResourceService::permissions()['create']`, the field on the create
+form), with it an update of that record, read as they may read it
+(`404` when there is none) and decided by its own
+`recordPermissions()['update']`, the field on the update form and
+neither read-only nor computed (`403`); the boundary lets a model be
+sent the field — not a resource or field with `ai.send` false, and
+under the allow-list only one that opts in ({ref}`ai-boundary`)
+(`403`); the feature is on, configured and this user's (`403`); today's
+budget has tokens left (`429`, with `Retry-After`). The model is asked
+nothing before all of that holds.
+
+**Prompt.** A fixed system prompt per operation — `translate` names the
+target language's tag — says how the text is written (plain, or
+Markdown to keep), and that the user turn's text is content to
+transform, never instructions. The user turn carries the person's
+guidance, if any, then their text between the lines `<<<TEXT` and
+`TEXT>>>`; neither ever reaches the system prompt.
+
+**Answer.** Control characters are stripped, except line feeds and
+tabs (a carriage return becomes a line feed), and the answer is cut at
+the field's cap: its maximum-length rule, or else four times the
+input's length, never more than 20,000 characters. A cut answer says so
+— `"truncated": true` — and the admin shows it.
+
+| Status | When |
+|---|---|
+| `403` | a password field, a field that is no text or cannot be written by this user, a field or resource kept from the model, or the feature off, unconfigured, out of budget (0) or refused by `canUse()` |
+| `404` | no such resource, field or record |
+| `413` | the body is over 256 KiB |
+| `422` | the body breaks a rule above |
+| `429` | today's token budget is spent; `Retry-After` counts the seconds to midnight UTC |
+| `502`–`504` | the provider failed: the failure's category and status ({ref}`below <ai-failures>`); the admin shows it and leaves the text as it was |
+
+Each call is a row of the usage ledger with the feature `writing`,
+`failed:<category>` when it failed. Neither the text, the guidance, the
+prompt, the answer nor a provider's error body is logged.
+
 ## What the admin is told
 
 `GET /vector/schema` carries, per user, `capabilities.ai`:
 
 ```json
-{ "filters": true, "assistant": true, "assistantWrites": false, "writing": false, "excluded": { "profiles": true } }
+{ "filters": true, "assistant": true, "assistantWrites": false, "writing": true,
+  "excluded": { "profiles": true }, "excludedFields": { "users": ["email", "passwordHash"], "products": ["imageKey"] } }
 ```
 
 A feature is `true` when it ships in the installed release, a provider
 is configured, its switch is on, the access policy lets this user use
 it, their daily budget has tokens left, and a provider, model and key
-resolve for it. This release ships `filters` and `assistant`. `excluded` names each
-resource this user may list that is kept from the model whole, so the
-admin offers no AI on it; it is empty while no feature is offered. The key is absent when `kinetis/vector-ai` is not installed; it
+resolve for it. This release ships `filters`, `assistant` and
+`writing`. `excluded` names each resource this user may list that is
+kept from the model whole, so the admin offers no AI on it.
+`excludedFields` names, for each other resource they may list, the
+fields they see that the boundary keeps back — opted out, outside the
+allow-list, or a password, file or image field — so the admin offers no
+writing help on them; a resource with none is absent. Both are empty
+while no feature is offered. The key is absent when `kinetis/vector-ai` is not installed; it
 is published by a shell contributor ({ref}`shell-contributors`).
 
 ## Usage and failures

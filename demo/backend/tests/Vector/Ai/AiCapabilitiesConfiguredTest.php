@@ -9,9 +9,10 @@ use Kinetis\VectorAi\Shell\AiShellContributor;
 
 /**
  * With a provider configured, a model resolvable and the switches on, the
- * features this release ships are offered — plain-language filters and
- * the assistant — and the others are not; `excluded` names the resources kept from the
- * model (the demo's profiles opt out). Computed per user, so it follows
+ * features this release ships are offered — plain-language filters, the
+ * assistant and writing help — and the others are not; `excluded` names
+ * the resources kept from the model (the demo's profiles opt out), and
+ * `excludedFields` the fields kept back of the others. Computed per user, so it follows
  * the switch and the budget too.
  */
 final class AiCapabilitiesConfiguredTest extends AiTestCase
@@ -36,14 +37,23 @@ final class AiCapabilitiesConfiguredTest extends AiTestCase
         parent::tearDown();
     }
 
-    public function testFiltersAndTheAssistantAreOfferedAndTheOptedOutResourceIsExcluded(): void
+    public function testTheShippedFeaturesAreOfferedAndWhatIsKeptBackIsExcluded(): void
     {
-        self::assertSame([Feature::Filters, Feature::Assistant], AiShellContributor::shipped());
+        self::assertSame([Feature::Filters, Feature::Assistant, Feature::Writing], AiShellContributor::shipped());
 
         $response = $this->client->get('/vector/schema', headers: $this->headers());
         $ai = $response->assertOk()->json()['capabilities']['ai'] ?? null;
+        self::assertIsArray($ai);
+        $fields = $ai['excludedFields'];
+        unset($ai['excludedFields']);
 
-        self::assertSame(['filters' => true, 'assistant' => true, 'assistantWrites' => false, 'writing' => false, 'excluded' => ['profiles' => true]], $ai);
+        self::assertSame(['filters' => true, 'assistant' => true, 'assistantWrites' => false, 'writing' => true, 'excluded' => ['profiles' => true]], $ai);
+        // per field, for the resources not kept back whole: users' email opts out, a password is never sent
+        self::assertIsArray($fields);
+        self::assertSame(['email', 'passwordHash'], $fields['users'] ?? null);
+        self::assertSame(['imageKey'], $fields['products'] ?? null, 'an image field is never sent');
+        self::assertArrayNotHasKey('profiles', $fields, 'a resource kept back whole is under excluded');
+        self::assertArrayNotHasKey('orders', $fields, 'a resource with nothing kept back is absent');
     }
 
     public function testTheAssistantFollowsItsOwnSwitch(): void
@@ -58,10 +68,11 @@ final class AiCapabilitiesConfiguredTest extends AiTestCase
 
     public function testTheSwitchAndTheBudgetTurnFiltersOff(): void
     {
-        $this->client->request('PUT', '/vector/settings/ai', body: ['filtersEnabled' => false, 'assistantEnabled' => false], headers: $this->adminHeaders())->assertOk();
+        $this->client->request('PUT', '/vector/settings/ai', body: ['filtersEnabled' => false, 'assistantEnabled' => false, 'writingEnabled' => false], headers: $this->adminHeaders())->assertOk();
         $off = $this->client->get('/vector/schema', headers: $this->headers())->assertOk();
         self::assertFalse($off->json()['capabilities']['ai']['filters'] ?? null);
         self::assertStringContainsString('"excluded":{}', $off->body(), 'nothing is excluded while no feature sends to a model');
+        self::assertStringContainsString('"excludedFields":{}', $off->body());
 
         $this->client->request('PUT', '/vector/settings/ai', body: ['filtersEnabled' => true, 'assistantEnabled' => true, 'dailyTokenBudgetPerUser' => 100], headers: $this->adminHeaders())->assertOk();
         $this->vectorQuery()->table('vector_ai_usage')->insert([

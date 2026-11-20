@@ -49,7 +49,7 @@ final class AiShellContributorTest extends AiTestCase
     {
         $ai = $this->client->get('/vector/schema', headers: $this->adminHeaders())->assertOk()->json()['capabilities']['ai'] ?? null;
 
-        self::assertSame(['filters' => false, 'assistant' => false, 'assistantWrites' => false, 'writing' => false, 'excluded' => []], $ai);
+        self::assertSame(['filters' => false, 'assistant' => false, 'assistantWrites' => false, 'writing' => false, 'excluded' => [], 'excludedFields' => []], $ai);
     }
 
     public function testAThrowingDependencyTurnsEveryFeatureOff(): void
@@ -135,12 +135,12 @@ final class AiShellContributorTest extends AiTestCase
     }
 
     /**
-     * @param array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object} $capabilities
+     * @param array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object, excludedFields: object} $capabilities
      * @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool}
      */
     private static function flags(array $capabilities): array
     {
-        unset($capabilities['excluded']);
+        unset($capabilities['excluded'], $capabilities['excludedFields']);
 
         return $capabilities;
     }

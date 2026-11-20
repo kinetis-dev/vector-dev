@@ -69,3 +69,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `error`, `runaway_tools`);
   `capabilities.ai.assistant` on. `Testing\ScriptedProvider` scripts
   tool-calling turns (`ScriptedReplies::of()` with a list of turns).
+- Writing help: `POST /vector/ai/writing/{resource}/{field}` rewrites,
+  shortens, corrects or translates one field's text
+  (`{operation, text, format, targetLocale, instructions, recordId}` in,
+  `{text, operation, model, truncated}` out) and writes nothing — the
+  admin puts the answer in the input for the person to save as their own
+  edit. A password field is refused by its type before anything else;
+  the field must be a `string`, `text`, `markdown` or `richtext` field
+  this user may write in the view the request is for (create without a
+  record, update with one, decided by `recordPermissions()['update']`),
+  one `ModelBoundary` lets a model be sent, with the feature on,
+  configured and the user's, and today's budget left (429). Each
+  operation has a fixed system prompt (`Writing\WritingOperation`); the
+  person's guidance (at most 300 characters) and their text, delimited
+  and labelled as content, go in the user turn. The answer is stripped
+  of control characters but `\n` and `\t`, and cut at the field's
+  maximum length, or four times the input up to 20,000 characters, with
+  `truncated` set (`Writing\WritingAssistant`). One usage row per call,
+  feature `writing`; `capabilities.ai.writing` on.
+  `capabilities.ai.excludedFields` names, per resource the user may list
+  that is not kept back whole, the fields the boundary keeps back;
+  `excluded` keeps its shape.

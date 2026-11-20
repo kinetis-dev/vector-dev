@@ -23,10 +23,12 @@ use Psr\Log\LogLevel;
 /**
  * `capabilities.ai` in GET /vector/schema: per user, which AI features
  * the admin offers — `filters`, `assistant`, `assistantWrites`,
- * `writing` — and `excluded`, what is kept from the model: each resource
- * this user may list that ModelBoundary keeps back whole, as
- * `{slug: true}`, once a feature that sends to a model is offered (an
- * empty object until then). A feature is
+ * `writing` — and what is kept from the model, once a feature that sends
+ * to a model is offered (empty objects until then): `excluded`, each
+ * resource this user may list that ModelBoundary keeps back whole, as
+ * `{slug: true}`; and `excludedFields`, for each other resource they may
+ * list, the fields they see that ModelBoundary keeps back, as
+ * `{slug: [field, …]}` — a resource with none is absent. A feature is
  * offered when it ships in this release, the operator configured a
  * provider, the `ai` settings turn it on, the access policy lets this
  * user use it, their daily token budget has tokens left and the resolver
@@ -46,7 +48,7 @@ final readonly class AiShellContributor implements ShellContributorInterface
      */
     public static function shipped(): array
     {
-        return [Feature::Filters, Feature::Assistant];
+        return [Feature::Filters, Feature::Assistant, Feature::Writing];
     }
 
     public function __construct(
@@ -60,7 +62,7 @@ final readonly class AiShellContributor implements ShellContributorInterface
         private ModelBoundary $boundary,
     ) {}
 
-    /** @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object} */
+    /** @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object, excludedFields: object} */
     #[\Override]
     public function capabilities(CurrentUserInterface $user): array
     {
@@ -75,7 +77,7 @@ final readonly class AiShellContributor implements ShellContributorInterface
      * every feature off rather than failing GET /vector/schema.
      *
      * @param list<Feature> $features
-     * @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object}
+     * @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object, excludedFields: object}
      */
     public function offering(array $features, CurrentUserInterface $user): array
     {
@@ -83,16 +85,20 @@ final readonly class AiShellContributor implements ShellContributorInterface
         $remaining = null;
         $offered = [];
         $excluded = [];
+        $excludedFields = [];
 
         try {
             foreach ($flags as $key => $feature) {
                 $offered[$key] = in_array($feature, $features, true) && $this->offered($feature, $user, $remaining);
             }
 
-            $excluded = in_array(true, $offered, true) ? $this->excluded() : [];
+            if (in_array(true, $offered, true)) {
+                [$excluded, $excludedFields] = $this->excluded();
+            }
         } catch (\Throwable $e) {
             $offered = array_map(static fn (): bool => false, $flags);
             $excluded = [];
+            $excludedFields = [];
             // the class only: a message could carry a provider's detail; a throwing logger must not fail the schema either
             SafeLogger::log($this->logger, LogLevel::WARNING, 'Computing the AI capabilities failed with ' . $e::class . '; every AI feature is off for this request.', ['exception_class' => $e::class]);
         }
@@ -103,26 +109,42 @@ final readonly class AiShellContributor implements ShellContributorInterface
             'assistantWrites' => $offered['assistantWrites'],
             'writing' => $offered['writing'],
             'excluded' => $excluded === [] ? new \stdClass() : (object) $excluded,
+            'excludedFields' => $excludedFields === [] ? new \stdClass() : (object) $excludedFields,
         ];
     }
 
     /**
      * The resources this user may list that are kept from the model whole,
-     * so the admin offers no AI on them.
+     * so the admin offers no AI on them; and, of the others they may list,
+     * the fields they see that are kept back, so the admin offers no AI on
+     * those fields — writing help, for one.
      *
-     * @return array<string, true>
+     * @return array{array<string, true>, array<string, list<string>>}
      */
     private function excluded(): array
     {
         $excluded = [];
+        $fields = [];
 
         foreach ($this->resources->registry()->resources() as $slug => $resource) {
-            if (!$this->boundary->allows($resource) && $this->resources->permissions($resource)['viewAny'] === true) {
+            if ($this->resources->permissions($resource)['viewAny'] !== true) {
+                continue;
+            }
+
+            if (!$this->boundary->allows($resource)) {
                 $excluded[$slug] = true;
+
+                continue;
+            }
+
+            $kept = $this->boundary->keptFields($resource);
+
+            if ($kept !== []) {
+                $fields[$slug] = $kept;
             }
         }
 
-        return $excluded;
+        return [$excluded, $fields];
     }
 
     /**
