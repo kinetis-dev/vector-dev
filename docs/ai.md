@@ -349,7 +349,11 @@ person is on, each value at most 200 (`path`) or 64 characters. The body
 is at most 64 KiB (65,536 bytes). Any of these refused is a `422` naming it.
 
 The drawer keeps within those caps itself: it sends the last 40
-messages, drops the oldest until the whole body is at most 63 KiB in
+messages, cuts any earlier answer of the assistant's longer than 8,000
+characters (code points, as the server counts them) to that length,
+ending it with `…` — an answer near the model's output cap can be
+longer, and cutting it rather than dropping it keeps the turns
+alternating — drops the oldest until the whole body is at most 63 KiB in
 UTF-8 — the bytes it sends, so a long Hebrew, Arabic or CJK
 conversation, two or three bytes a character, fits as well as an
 English one — and then drops any message before the first of the
@@ -474,9 +478,11 @@ one **changes nothing**. The call:
 4. is refused, as a tool error, when Vector's own permissions would
    refuse the person the change — `create` on the resource for
    `vector_create`, that record's `update` or `delete` for
-   `vector_update` and `vector_delete`, and its `forceDelete` — not
-   `delete` — for a forced delete (`force: true`), which Vector grants
-   only for a record in the trash; a record they cannot see is
+   `vector_update` and `vector_delete`, and the policy's `forceDelete`
+   — not `delete` — for a forced delete (`force: true`), asked of the
+   record whether it is live or in the trash, as Vector's own forced
+   delete asks it (a resource that does not soft-delete has none); a
+   record they cannot see is
    refused too — so no card is shown that the approval would only fail.
    Approving still enforces every permission again;
 5. is stored as a pending row of `vector_ai_approvals` — its tool and

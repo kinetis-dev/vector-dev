@@ -12,7 +12,6 @@ use Kinetis\Vector\Query\ResourceService;
 use Kinetis\VectorAi\Auth\AiAvailability;
 use Kinetis\VectorAi\Feature;
 use Kinetis\VectorAi\Governance\ModelBoundary;
-use Kinetis\VectorAi\Providers\ProviderResolver;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 
@@ -25,14 +24,14 @@ use Psr\Log\LogLevel;
  * `{slug: true}`; and `excludedFields`, for each other resource they may
  * list, the fields they see that ModelBoundary keeps back, as
  * `{slug: [field, …]}` — a resource with none is absent. A feature is
- * offered when it ships in this release and AiAvailability::offered() —
- * what its own endpoint asks: the operator configured a provider, the
- * `ai` settings turn it on, the access policy lets this user use it (for
- * `assistantWrites`, the assistant's switch and policy too) — their daily
- * token budget has tokens left, and the resolver would find a provider, a
- * model and a key for it (ProviderResolver::resolvable(), which builds no
- * provider and opens no key: this runs on every GET /vector/schema, a
- * 304 included, since the ETag covers it). Any failure computing it
+ * offered when it ships in this release and AiAvailability::availableNow()
+ * lists it: what its own endpoint asks (offered(): the operator
+ * configured a provider, the `ai` settings turn it on, the access policy
+ * lets this user use it — for `assistantWrites`, the assistant's switch
+ * and policy too), their daily token budget has tokens left, and the
+ * resolver would find a provider, a model and a key for it, building no
+ * provider and opening no key: this runs on every GET /vector/schema, a
+ * 304 included, since the ETag covers it. Any failure computing it
  * leaves every feature off and logs a warning naming the exception's
  * class — never its message, which could carry a provider's detail. The key is absent altogether where
  * kinetis/vector-ai is not installed.
@@ -53,7 +52,6 @@ final readonly class AiShellContributor implements ShellContributorInterface
 
     public function __construct(
         private AiAvailability $availability,
-        private ProviderResolver $resolver,
         private LoggerInterface $logger,
         private ResourceService $resources,
         private ModelBoundary $boundary,
@@ -63,11 +61,12 @@ final readonly class AiShellContributor implements ShellContributorInterface
     #[\Override]
     public function capabilities(CurrentUserInterface $user): array
     {
-        return $this->offering(self::shipped(), $user);
+        // $user is the request's, as SchemaController passes it: the one AiAvailability and ModelBoundary already hold
+        return $this->offering(self::shipped());
     }
 
     /**
-     * The flags for $user when $features are the ones that ship. Whether a
+     * The flags for this request's user when $features are the ones that ship. Whether a
      * feature ships is asked first, so an unshipped one costs no settings,
      * ledger, resolver or key lookup. Any failure on the way — a missing
      * table, a transport that was not built, a policy that throws — turns
@@ -76,19 +75,19 @@ final readonly class AiShellContributor implements ShellContributorInterface
      * @param list<Feature> $features
      * @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object, excludedFields: object}
      */
-    public function offering(array $features, CurrentUserInterface $user): array
+    public function offering(array $features): array
     {
         $flags = ['filters' => Feature::Filters, 'assistant' => Feature::Assistant, 'assistantWrites' => Feature::AssistantWrites, 'writing' => Feature::Writing];
-        $remaining = null;
         $offered = [];
         $excluded = [];
         $excludedFields = [];
 
         try {
-            $availability = $this->availability->forUser($user);
+            // only what ships is asked about: an unshipped feature costs no lookup
+            $available = $this->availability->availableNow(array_values(array_filter($flags, static fn (Feature $f): bool => in_array($f, $features, true))));
 
             foreach ($flags as $key => $feature) {
-                $offered[$key] = in_array($feature, $features, true) && $this->offered($feature, $availability, $remaining);
+                $offered[$key] = in_array($feature, $available, true);
             }
 
             if (in_array(true, $offered, true)) {
@@ -144,26 +143,5 @@ final readonly class AiShellContributor implements ShellContributorInterface
         }
 
         return [$excluded, $fields];
-    }
-
-    /**
-     * Whether a shipped $feature is on: AiAvailability::offered() — the
-     * predicate its endpoint asks — tokens left today, and a provider,
-     * model and key the resolver would find for it, decided from the
-     * configuration without building a provider or opening a key
-     * (ProviderResolver::resolvable()). $remaining caches the budget's
-     * answer across the features of one call.
-     *
-     * @throws \Throwable from any dependency; offering() turns it into "off"
-     */
-    private function offered(Feature $feature, AiAvailability $availability, ?int &$remaining): bool
-    {
-        if (!$availability->offered($feature)) {
-            return false;
-        }
-
-        $remaining ??= $availability->remaining();
-
-        return $remaining > 0 && $this->resolver->resolvable($feature);
     }
 }

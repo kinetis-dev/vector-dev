@@ -13,7 +13,6 @@ use Kinetis\Validation\Violation;
 use Kinetis\Vector\Exception\RecordNotFoundException;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Registry\ResourceDescriptor;
-use Kinetis\VectorAi\Auth\AiAvailability;
 use Kinetis\VectorAi\Writing\WritingAssistant;
 use Kinetis\VectorAi\Writing\WritingGuard;
 use Kinetis\VectorAi\Writing\WritingOperation;
@@ -35,7 +34,7 @@ use Psr\Http\Message\ServerRequestInterface;
  * it, the record read as they may read it and its own `update` decided
  * (403, or 404 for no such record); one ModelBoundary lets a model be
  * sent (403); the feature on, configured and theirs to use (403); the
- * day's token budget (429 until midnight UTC). The rules are
+ * day's token budget (429 until midnight UTC, AiAvailability::budgetSpent()). The rules are
  * WritingGuard's, which the bulk ProposeRewrites action asks too.
  */
 #[RoutePrefix('/vector/ai')]
@@ -63,8 +62,8 @@ final readonly class WritingController
         $this->guard->sendable($visible, $field);
         $provider = $this->guard->provider();
 
-        if (!$this->guard->budgetLeft()) {
-            return AiAvailability::budgetResponse();
+        if (($spent = $this->guard->budgetSpent()) !== null) {
+            return $spent;
         }
 
         $answer = $this->writing->write($provider, $compiled, $input['operation'], $input['text'], $input['format'], $input['targetLocale'], $input['instructions']);

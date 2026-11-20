@@ -58,13 +58,13 @@ final class AiShellContributorTest extends AiTestCase
         // with every feature shipping, the throwing policy is reached: an \Error, not an AiFailure
         self::assertSame(
             ['filters' => false, 'assistant' => false, 'assistantWrites' => false, 'writing' => false],
-            self::flags($this->contributor(new ThrowingAiAccess())->offering(Feature::cases(), $this->user())),
+            self::flags($this->contributor(new ThrowingAiAccess())->offering(Feature::cases())),
         );
 
         // the same contributor with a policy that answers offers what the defaults turn on
         self::assertSame(
             ['filters' => true, 'assistant' => true, 'assistantWrites' => false, 'writing' => true],
-            self::flags($this->contributor(new AllowingAiAccess())->offering(Feature::cases(), $this->user())),
+            self::flags($this->contributor(new AllowingAiAccess())->offering(Feature::cases())),
         );
     }
 
@@ -75,7 +75,7 @@ final class AiShellContributorTest extends AiTestCase
 
         self::assertSame(
             ['filters' => false, 'assistant' => false, 'assistantWrites' => false, 'writing' => false],
-            self::flags($this->contributor(new ThrowingAiAccess(onUse: new \DomainException($secret)), $logger)->offering(Feature::cases(), $this->user())),
+            self::flags($this->contributor(new ThrowingAiAccess(onUse: new \DomainException($secret)), $logger)->offering(Feature::cases())),
         );
 
         self::assertCount(1, $logger->lines);
@@ -87,7 +87,7 @@ final class AiShellContributorTest extends AiTestCase
 
         // nothing failing logs nothing
         $quiet = new RecordingLogger();
-        $this->contributor(new AllowingAiAccess(), $quiet)->offering(Feature::cases(), $this->user());
+        $this->contributor(new AllowingAiAccess(), $quiet)->offering(Feature::cases());
         self::assertSame([], $quiet->lines);
     }
 
@@ -96,7 +96,7 @@ final class AiShellContributorTest extends AiTestCase
         // the throwing policy is never reached: nothing ships
         self::assertSame(
             ['filters' => false, 'assistant' => false, 'assistantWrites' => false, 'writing' => false],
-            self::flags($this->contributor(new ThrowingAiAccess(onUse: new \LogicException('asked')))->offering([], $this->user())),
+            self::flags($this->contributor(new ThrowingAiAccess(onUse: new \LogicException('asked')))->offering([])),
         );
     }
 
@@ -135,7 +135,7 @@ final class AiShellContributorTest extends AiTestCase
         $user = $scope->get(CurrentUserInterface::class);
         self::assertInstanceOf(CurrentUserInterface::class, $user);
 
-        return new AiShellContributor(new AiAvailability($user, $access, $config, $settings, $usage, $resolver), $resolver, $logger ?? new RecordingLogger(), $resources, $boundary);
+        return new AiShellContributor(new AiAvailability($user, $access, $config, $settings, $usage, $resolver), $logger ?? new RecordingLogger(), $resources, $boundary);
     }
 
     /**

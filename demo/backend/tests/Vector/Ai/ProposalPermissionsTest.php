@@ -76,6 +76,20 @@ final class ProposalPermissionsTest extends ApprovalsTestCase
         self::assertSame([ProposingTool::NOT_PERMITTED], self::toolErrors($this->calls()[1]));
     }
 
+    public function testAForcedDeleteOfATrashedRecordStillNeedsForceDelete(): void
+    {
+        $this->shop()->table('products')->where('id', '=', $this->product)->update(['deleted_at' => '2026-01-01 00:00:00']);
+
+        try {
+            $run = $this->propose(['resource' => 'products', 'id' => (string) $this->product, 'force' => true], 'vector_delete');
+        } finally {
+            $this->shop()->table('products')->where('id', '=', $this->product)->update(['deleted_at' => null]);
+        }
+
+        self::assertSame([], $run['approvals']);
+        self::assertSame([ProposingTool::NOT_PERMITTED], self::toolErrors($this->calls()[1]));
+    }
+
     /** @return list<string> the error texts of the tool results a recorded call carried */
     private static function toolErrors(RequestRecord $call): array
     {

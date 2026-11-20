@@ -35,17 +35,32 @@ use NeuronAI\Providers\OpenAILike;
  * make Neuron block the worker on curl) and under the feature's own
  * deadline when it has a shorter one (Feature::timeout(); a Bedrock
  * call keeps its signing client's) — VECTOR_AI_TIMEOUT otherwise — and parallel tool calls, which
- * fork the worker, are never turned on. Built per request.
+ * fork the worker, are never turned on. Built per request — the request
+ * container autowires it, and wipes it with the request — so what
+ * resolvable() remembers of each provider's stored key is one request's.
  */
 final readonly class ProviderResolver
 {
+    /**
+     * Whether a key is stored for each provider, by name, once resolvable()
+     * asked: every feature on one provider shares one lookup. This
+     * resolver's own, and so one request's — never shared.
+     *
+     * @var \ArrayObject<string, bool>
+     */
+    private \ArrayObject $stored;
+
     public function __construct(
         private AiConfig $config,
         private AiTransports $transports,
         private CredentialStore $credentials,
         private AiSettingsReader $settings,
         private ScriptedReplies $replies,
-    ) {}
+    ) {
+        /** @var \ArrayObject<string, bool> $stored */
+        $stored = new \ArrayObject();
+        $this->stored = $stored;
+    }
 
     /**
      * $shouldStop, when given, is asked before every event a streamed
@@ -75,6 +90,8 @@ final readonly class ProviderResolver
      * own record alone: no provider is built and no key decrypted, so
      * GET /vector/schema can ask it of every feature on every request. A
      * stored key altered in the database passes here and fails for().
+     * The stored key's record is looked up once per provider for this
+     * resolver, however many features ask.
      */
     public function resolvable(Feature $feature): bool
     {
@@ -87,7 +104,19 @@ final readonly class ProviderResolver
 
         return !$provider->type->needsKey()
             || $provider->key !== null
-            || ($provider->type->takesKey() && $this->credentials->stored($provider));
+            || ($provider->type->takesKey() && $this->stored($provider));
+    }
+
+    private function stored(ProviderConfig $provider): bool
+    {
+        $stored = $this->stored[$provider->name] ?? null;
+
+        if ($stored === null) {
+            $stored = $this->credentials->stored($provider);
+            $this->stored[$provider->name] = $stored;
+        }
+
+        return $stored;
     }
 
     private function providerFor(Feature $feature): ProviderConfig

@@ -62,7 +62,8 @@ use Psr\Log\LoggerInterface;
  * ends with the adapter's neutral "The run failed." frame, and is logged
  * by category, with the exception's class and file:line but never its
  * message; the exception itself is attached only under
- * APP_ENV=development. Built per request: the tools run in this request's
+ * APP_ENV=development. A stream that fails after the browser left writes
+ * no frame and is logged at info as such, not as a failure. Built per request: the tools run in this request's
  * scope.
  */
 final readonly class Assistant
@@ -181,7 +182,9 @@ final readonly class Assistant
      * protocol, each proposal announced in a `data-approval` frame right
      * after the tool result that stored it. It starts when the response is
      * emitted. $connection is the request's: once the browser has gone, a
-     * failure is no longer written as an error frame.
+     * failure writes no error frame — nobody reads it, and the connection
+     * is closed — and is logged at info as the run's end after the browser
+     * left, not as a failure (told()).
      *
      * @param list<array{role: 'user'|'assistant', content: string}|array{role: 'approval', id: string}> $conversation
      */
@@ -191,7 +194,7 @@ final readonly class Assistant
         $adapter = new VercelAIAdapter();
         $agent->setStreamAdapter(static fn (): VercelAIAdapter => $adapter);
 
-        return new AgentStream($adapter, $connection)->response($this->told($agent->stream($this->messages($conversation)), $adapter, $provider, $ledger, $budget, $proposals));
+        return new AgentStream($adapter, $connection)->response($this->told($agent->stream($this->messages($conversation)), $adapter, $connection, $provider, $ledger, $budget, $proposals));
     }
 
     /**
@@ -272,25 +275,37 @@ final readonly class Assistant
      * frame follows the event during which its tool stored it. A failure
      * ends the stream with the adapter's neutral error frame and is logged
      * by category, never rethrown — the framework would log its message.
+     * Once $connection reports the browser gone, nothing more is written —
+     * the run's own error frame neither — and a failure — a Bedrock call,
+     * which cannot be stopped mid-stream, failing after the person left,
+     * or the stop their leaving caused — is logged at info (gone()), not
+     * as a failure: nobody is left to read either.
      *
      * @param Generator<int, object, mixed, mixed> $events
      * @return Generator<int, ProtocolEvent, mixed, void>
      */
-    private function told(Generator $events, VercelAIAdapter $adapter, ResolvedProvider $provider, AssistantLedger $ledger, ToolBudget $budget, Proposals $proposals): Generator
+    private function told(Generator $events, VercelAIAdapter $adapter, ClientConnectionInterface $connection, ResolvedProvider $provider, AssistantLedger $ledger, ToolBudget $budget, Proposals $proposals): Generator
     {
         $started = hrtime(true);
 
         try {
             foreach ($events as $event) {
-                if ($event instanceof ProtocolEvent) {
+                // once the browser has gone nothing is written — the run's own error frame neither — but the run goes on being read
+                if ($event instanceof ProtocolEvent && !$connection->isGone()) {
                     yield $event;
                 }
 
-                yield from self::announced($adapter, $proposals);
+                yield from self::unlessGone(self::announced($adapter, $proposals), $connection);
             }
 
-            yield from self::announced($adapter, $proposals);
+            yield from self::unlessGone(self::announced($adapter, $proposals), $connection);
         } catch (\Throwable $e) {
+            if ($connection->isGone()) {
+                $this->gone($e, $provider, $ledger, $budget, $started);
+
+                return;
+            }
+
             // empty when the run already sent its error frame
             foreach ($adapter->error($e) as $frame) {
                 yield $frame;
@@ -304,9 +319,40 @@ final readonly class Assistant
         $this->ended($provider, $ledger, $budget, $started);
     }
 
+    /**
+     * $frames, each written only while the browser is still there; read
+     * through either way.
+     *
+     * @param iterable<ProtocolEvent> $frames
+     * @return Generator<int, ProtocolEvent, mixed, void>
+     */
+    private static function unlessGone(iterable $frames, ClientConnectionInterface $connection): Generator
+    {
+        foreach ($frames as $frame) {
+            if (!$connection->isGone()) {
+                yield $frame;
+            }
+        }
+    }
+
     private function ended(ResolvedProvider $provider, AssistantLedger $ledger, ToolBudget $budget, int $started): void
     {
         $this->logger->info('An assistant run ended.', $this->context($provider, $ledger, $budget, $started) + ['outcome' => 'answered']);
+    }
+
+    /**
+     * A run that failed after the browser left: an info line, as a run's
+     * end is, with what failed by class and place but no exception — the
+     * departure, or a failure nobody saw, is no server failure to alert on.
+     */
+    private function gone(\Throwable $e, ResolvedProvider $provider, AssistantLedger $ledger, ToolBudget $budget, int $started): void
+    {
+        $this->logger->info('An assistant run ended after the browser left.', $this->context($provider, $ledger, $budget, $started) + [
+            'outcome' => 'client_gone',
+            'category' => $ledger->failure()?->category->value,
+            'exception_class' => $e::class,
+            'exception_at' => $e->getFile() . ':' . $e->getLine(),
+        ]);
     }
 
     private function failed(\Throwable $e, ResolvedProvider $provider, AssistantLedger $ledger, ToolBudget $budget, int $started): void

@@ -26,6 +26,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `AssistantController::MAX_BODY` by the test suite), instead of by
   JavaScript's string length; a long Hebrew, Arabic or CJK conversation
   no longer gets a 422 `too_large` on every later message.
+- An assistant answer longer than the server's 8,000-character
+  per-message limit (`ASSISTANT_MAX_MESSAGE_CHARS`, checked against
+  `AssistantController::MAX_MESSAGE` by the test suite, counted in code
+  points as the server's `mb_strlen` counts them) is cut to that length,
+  ending with `…`, in the conversation sent back, instead of being
+  replayed whole; one long answer no longer makes every later message,
+  Retry or approval a 422. It is cut rather than dropped so the turns
+  still alternate.
 - A trimmed conversation opens with the person's own message: the
   answers and decisions before it are dropped, so a provider such as
   Bedrock does not refuse it.

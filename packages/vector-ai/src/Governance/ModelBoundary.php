@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Kinetis\VectorAi\Governance;
 
+use Kinetis\Authorization\AuthorizationResponse;
 use Kinetis\Authorization\Exception\AuthorizationException;
+use Kinetis\Authorization\Gate;
+use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Vector\Exception\VectorException;
 use Kinetis\Vector\Mcp\ResourceDescription;
 use Kinetis\Vector\Query\ResourceService;
@@ -27,7 +30,8 @@ use Kinetis\VectorAi\Settings\DataDefault;
  * sense inverts: only a resource, and within it only a field, that opts
  * in with `ai.send` true is sent. Built per request: the user and the
  * settings are this request's, and so is what it remembers of how each
- * resource looks to the user (visible()).
+ * resource looks to the user (visible(); forgetVisible() lets a job that
+ * runs in one scope ask again).
  */
 final readonly class ModelBoundary
 {
@@ -69,6 +73,8 @@ final readonly class ModelBoundary
     public function __construct(
         private ResourceService $resources,
         private AiSettingsReader $settings,
+        private Gate $gate,
+        private CurrentUserInterface $user,
     ) {
         /** @var \ArrayObject<string, ResourceDescriptor> $seen */
         $seen = new \ArrayObject();
@@ -338,10 +344,13 @@ final readonly class ModelBoundary
      * Whether this user may make the write $tool would propose, as far as
      * Vector's own permissions tell before it is made: `vector_create`,
      * the resource's `create`; `vector_update` and `vector_delete`, that
-     * record's `update` or `delete` — a forced delete its `forceDelete`
-     * instead, as Vector's own forced delete asks it, which is only ever
-     * true of a record in the trash — read as this user: a record they
-     * cannot see is no record they may write. Any other tool: true.
+     * record's `update` or `delete` — a forced delete its policy's
+     * `forceDelete` instead, never `delete`, asked through the gate of a
+     * live record as of a trashed one, as Vector's own forced delete
+     * (RecordWriter::batch()) asks it, and refused outright for a resource
+     * that does not soft-delete, which Vector refuses too — read as this
+     * user: a record they cannot see is no record they may write. Any
+     * other tool: true.
      * Approving still enforces all of it.
      *
      * @param array<array-key, mixed> $arguments the proposal's arguments, already checked against the tool's schema
@@ -368,14 +377,34 @@ final readonly class ModelBoundary
             return false;
         }
 
-        $permissions = $this->resources->recordPermissions($visible, $record);
-
-        if ($tool === 'vector_update') {
-            return $permissions['update'];
+        if (($arguments['force'] ?? false) === true && $tool === 'vector_delete') {
+            return $this->mayForceDelete($visible, $record);
         }
 
-        // RecordWriter::delete() asks forceDelete, never delete, of a forced delete: so does this
-        return ($arguments['force'] ?? false) === true ? $permissions['forceDelete'] : $permissions['delete'];
+        $permissions = $this->resources->recordPermissions($visible, $record);
+
+        return $tool === 'vector_update' ? $permissions['update'] : $permissions['delete'];
+    }
+
+    /**
+     * Whether this user may delete $record of $resource for good: what
+     * RecordWriter::batch() asks of a forced delete — the policy's
+     * `forceDelete`, through the gate, of a live record as of one in the
+     * trash — and false for a resource that does not soft-delete, which it
+     * refuses. Not recordPermissions()' `forceDelete`, which is false for
+     * a live record: it says whether to offer the trash's button.
+     *
+     * @param array<string, mixed> $record
+     */
+    private function mayForceDelete(ResourceDescriptor $resource, array $record): bool
+    {
+        if ($resource->softDelete() === null) {
+            return false;
+        }
+
+        $policy = $this->resources->policy($resource);
+
+        return $this->gate->allows($this->user, static fn (CurrentUserInterface $u): bool|AuthorizationResponse => $policy->forceDelete($u, $record));
     }
 
     /**
@@ -488,10 +517,22 @@ final readonly class ModelBoundary
     }
 
     /**
+     * Forgets how each resource looked to this user (visible()), so the
+     * next question asks their `viewField` policy again: what a long job
+     * that runs in one scope — each chunk of ProposeRewrites — calls
+     * before a chunk, so a field hidden since the last one is hidden in
+     * the next.
+     */
+    public function forgetVisible(): void
+    {
+        $this->seen->exchangeArray([]);
+    }
+
+    /**
      * $resource as this user sees it — ResourceService::visible(), which
      * drops the fields their `viewField` policy hides — asked once per
-     * resource for the life of this boundary, however many rows, search
-     * columns and references read it. Asking it again of a resource it
+     * resource for the life of this boundary (or until forgetVisible()),
+     * however many rows, search columns and references read it. Asking it again of a resource it
      * answered for hides nothing more, so any descriptor of the same slug
      * shares the answer.
      */

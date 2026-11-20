@@ -12,6 +12,7 @@ use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Store\JobStore;
 use Kinetis\VectorAi\Failure\AiFailure;
 use Kinetis\VectorAi\Failure\AiFailureMapper;
+use Kinetis\VectorAi\Governance\ModelBoundary;
 use Kinetis\VectorAi\Http\AiRequestException;
 use Kinetis\VectorAi\Providers\ResolvedProvider;
 use Kinetis\VectorAi\Settings\AiSettingsReader;
@@ -93,6 +94,7 @@ abstract class ProposeRewrites extends VectorAction
         private readonly RewriteStore $store,
         private readonly AiFailureMapper $failures,
         private readonly AiSettingsReader $settings,
+        private readonly ModelBoundary $boundary,
     ) {}
 
     /** The field whose text is rewritten: a string, text, Markdown or rich-text field. */
@@ -170,8 +172,10 @@ abstract class ProposeRewrites extends VectorAction
             return ActionResponse::danger('Rewrite proposals run only as a background job.');
         }
 
-        // a job runs every chunk in one scope: a switch-off saved since the last chunk must be seen by this one
+        // a job runs every chunk in one scope: a switch-off saved since the last chunk must be seen by this one,
+        // and so must a field the user's viewField policy has hidden since
         $this->settings->refresh();
+        $this->boundary->forgetVisible();
 
         try {
             [$visible, $field, $provider, $instructions] = $this->configured($request->resource);

@@ -9,6 +9,7 @@ use App\Vector\Widgets\LowStockTable;
 use Generator;
 use Kinetis\Container\RequestScope;
 use Kinetis\Http\CurrentUserInterface;
+use Kinetis\Runtime\ClientConnectionInterface;
 use Kinetis\Runtime\UnobservableClientConnection;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Widgets\VectorWidget;
@@ -35,7 +36,8 @@ use Psr\Log\LogLevel;
  * usage row, and the failure is logged by category — a warning when the
  * provider failed, an error when the run itself did — never the
  * provider's words, which can quote the prompt. The exception itself is
- * attached to the log line only under APP_ENV=development.
+ * attached to the log line only under APP_ENV=development. Once the
+ * browser has gone, a failure writes no error frame and is logged at info.
  */
 final class AssistantFailureTest extends AssistantTestCase
 {
@@ -122,6 +124,36 @@ final class AssistantFailureTest extends AssistantTestCase
         self::assertSame(BrokenWidget::THROWN_AT, $context['exception_at']);
         self::assertArrayNotHasKey('exception', $context, 'the exception itself only under APP_ENV=development');
         self::assertStringNotContainsString(BrokenWidget::SECRET, json_encode($logger->records, JSON_THROW_ON_ERROR), 'a log line carried the exception\'s message');
+    }
+
+    public function testAFailureAfterTheBrowserLeftWritesNoErrorFrameAndIsNotLoggedAsAnError(): void
+    {
+        $logger = new RecordingLogger();
+        [$assistant, $scope] = $this->assistant($logger, 9);
+        $replies = ScriptedReplies::of([self::QUESTION => self::rounds([[['name' => 'vector_widget', 'arguments' => ['widget' => $this->lowStockWidget(), 'dashboard' => 'main']]]], 'Never answered.')]);
+
+        try {
+            // the same bug that is an error while the browser reads, after it left
+            $scope->instance(LowStockTable::class, new BrokenWidget());
+            $body = self::emit($assistant->stream(new ResolvedProvider(new ScriptedProvider($replies), 'test-fake', 'fake', 100), new GoneClientConnection(), 'Be brief.', 'c_gone', [['role' => 'user', 'content' => self::QUESTION]]));
+        } finally {
+            $scope->dispose();
+        }
+
+        self::assertSame([], self::ofType(self::frames($body), 'error'), 'no error frame is written to a browser that left');
+        self::assertNull($logger->find('An assistant run failed.'));
+
+        foreach ($logger->records as $record) {
+            self::assertNotContains($record['level'], [LogLevel::ERROR, LogLevel::CRITICAL, LogLevel::ALERT, LogLevel::EMERGENCY, LogLevel::WARNING], "logged at {$record['level']}: {$record['message']}");
+        }
+
+        $gone = $logger->find('An assistant run ended after the browser left.');
+        self::assertNotNull($gone);
+        self::assertSame(LogLevel::INFO, $gone['level']);
+        self::assertSame('client_gone', $gone['context']['outcome']);
+        self::assertSame(\LogicException::class, $gone['context']['exception_class']);
+        self::assertArrayNotHasKey('exception', $gone['context']);
+        self::assertStringNotContainsString(BrokenWidget::SECRET, json_encode($logger->records, JSON_THROW_ON_ERROR));
     }
 
     public function testAModelCallingPastItsBudgetIsLoggedAsAnError(): void
@@ -242,6 +274,16 @@ final class BrokenWidget extends VectorWidget
     public function calculate(WidgetRequest $request): WidgetResult
     {
         throw new \LogicException(self::SECRET);
+    }
+}
+
+/** A connection whose browser has already left. */
+final class GoneClientConnection implements ClientConnectionInterface
+{
+    #[\Override]
+    public function isGone(): bool
+    {
+        return true;
     }
 }
 

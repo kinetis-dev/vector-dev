@@ -8,6 +8,8 @@ use Kinetis\Config\Config;
 use Kinetis\Container\AppScope;
 use Kinetis\VectorAi\AiTransports;
 use Kinetis\VectorAi\Config\AiConfig;
+use Kinetis\VectorAi\Feature;
+use Kinetis\VectorAi\Providers\ProviderResolver;
 use Kinetis\VectorAi\Secrets\CredentialStore;
 
 /**
@@ -62,6 +64,38 @@ final class AiCapabilitiesKeysTest extends AiTestCase
         // sealed under a VECTOR_AI_KEY that has since changed: it would not open
         $this->vectorQuery()->table('vector_ai_credentials')->where('provider', '=', 'test-openai')->update(['key_id' => 'deadbeef']);
         self::assertSame([false, false], [$this->ai()['filters'], $this->ai()['writing']]);
+    }
+
+    public function testOneRequestLooksTheStoredKeyUpOnceForAllFourFeatures(): void
+    {
+        $this->storeKey();
+        $scope = $this->app->createRequestScope();
+
+        try {
+            $resolver = $scope->get(ProviderResolver::class);
+            self::assertInstanceOf(ProviderResolver::class, $resolver);
+            self::assertTrue($resolver->resolvable(Feature::Filters));
+
+            // gone from the database: any further lookup in this request would find no key
+            $this->vectorQuery()->table('vector_ai_credentials')->where('provider', '=', 'test-openai')->delete();
+
+            foreach ([Feature::Assistant, Feature::AssistantWrites, Feature::Writing] as $feature) {
+                self::assertTrue($resolver->resolvable($feature), "{$feature->value} looked the key up again");
+            }
+        } finally {
+            $scope->dispose();
+        }
+
+        // the next request looks it up afresh: nothing outlived the last one
+        $next = $this->app->createRequestScope();
+
+        try {
+            $resolver = $next->get(ProviderResolver::class);
+            self::assertInstanceOf(ProviderResolver::class, $resolver);
+            self::assertFalse($resolver->resolvable(Feature::Filters));
+        } finally {
+            $next->dispose();
+        }
     }
 
     /** @return array<string, mixed> */

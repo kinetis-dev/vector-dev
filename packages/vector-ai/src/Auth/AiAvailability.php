@@ -30,7 +30,11 @@ use Psr\Http\Message\ResponseInterface;
  *   daily token budget is above 0 — what a feature that calls a model
  *   asks before its provider;
  * - provider(): offered(), and the resolver's provider for it, or a 403;
- * - budgetSpent(): the 429 a spent daily budget is answered with.
+ * - budgetSpent(): the 429 a spent daily budget is answered with — the
+ *   one place every AI endpoint's 429 comes from;
+ * - availableNow(): of some features, those offered() with tokens left
+ *   today and a provider, model and key the resolver would find — what
+ *   `capabilities.ai` publishes.
  *
  * Built per request: the user and the settings are this request's.
  */
@@ -44,12 +48,6 @@ final readonly class AiAvailability
         private UsageLedger $usage,
         private ProviderResolver $resolver,
     ) {}
-
-    /** The same answers for $user, under this request's settings and policy. */
-    public function forUser(CurrentUserInterface $user): self
-    {
-        return new self($user, $this->access, $this->config, $this->settings, $this->usage, $this->resolver);
-    }
 
     /** Whether $feature is switched on and this user's to use; for writes, the assistant's too. */
     public function permits(Feature $feature): bool
@@ -94,6 +92,36 @@ final readonly class AiAvailability
         }
     }
 
+    /**
+     * Of $features, those this user may use right now: offered(), tokens
+     * left of today's budget — read once, and only when one is offered —
+     * and a provider, model and key ProviderResolver::resolvable() would
+     * find, decided without building a provider or opening a key, so
+     * GET /vector/schema can ask it on every request.
+     *
+     * @param list<Feature> $features
+     * @return list<Feature> in $features' order
+     */
+    public function availableNow(array $features): array
+    {
+        $remaining = null;
+        $available = [];
+
+        foreach ($features as $feature) {
+            if (!$this->offered($feature)) {
+                continue;
+            }
+
+            $remaining ??= $this->remaining();
+
+            if ($remaining > 0 && $this->resolver->resolvable($feature)) {
+                $available[] = $feature;
+            }
+        }
+
+        return $available;
+    }
+
     /** The tokens of today's budget this user has left; 0 when the budget is 0. */
     public function remaining(): int
     {
@@ -107,7 +135,7 @@ final readonly class AiAvailability
     }
 
     /** The answer to a request made with today's budget spent: 429 until midnight UTC. */
-    public static function budgetResponse(): ResponseInterface
+    private static function budgetResponse(): ResponseInterface
     {
         $midnight = new DateTimeImmutable('tomorrow', new DateTimeZone('UTC'));
 

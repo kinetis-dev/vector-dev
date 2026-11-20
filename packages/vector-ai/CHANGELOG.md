@@ -40,9 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `finish()` adds whole rows only while they fit, counting a proposal
   that did not in the job's message.
 - `Auth\AiAvailability`: whether this request's user may use each AI
-  feature (`permits()`, `offered()`, `provider()`) and the `429` a spent
-  daily budget is answered with (`budgetResponse()`), asked by every AI
-  endpoint, the writing guard, the assistant and `capabilities.ai`
+  feature (`permits()`, `offered()`, `provider()`, and for
+  `capabilities.ai` `availableNow()`, which adds the day's budget and
+  whether a key is there) and the `429` a spent daily budget is answered
+  with (`budgetSpent()`, the one place every AI endpoint's `429` comes
+  from, the writing endpoint's through the writing guard), asked by every
+  AI endpoint, the writing guard, the assistant and `capabilities.ai`
   instead of a copy of the check in each.
 - `Writing\WritingGuard`: writing help's field, permission, boundary,
   provider and budget checks, shared by the writing endpoint and
@@ -95,8 +98,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   within a chunk, and a switch-off or another request's spending shows
   from the next chunk.
 - `ModelBoundary` reads each resource as the user sees it once, for the
-  life of the boundary (one request, or one job), rather than once per
-  row, search column and reference: a page of 25 rows asks the
+  life of the boundary (one request, or one chunk of a `ProposeRewrites`
+  job, which asks again before each chunk through `forgetVisible()`, so
+  a field hidden mid-run is hidden in the next chunk), rather than once
+  per row, search column and reference: a page of 25 rows asks the
   `viewField` policy once per field instead of 25 times.
 - The model is no longer sent the text of a refusal that failed an
   approved change — a validation, policy or hook message, which can
@@ -106,8 +111,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   codes, and how many others did; for any other, a fixed sentence. The
   package's own failure texts are still told as they are.
 - A forced delete (`vector_delete` with `force: true`) is proposed only
-  when the person has the record's `forceDelete`, as Vector's own forced
-  delete asks; `delete` alone no longer lets it through.
+  when the person's policy grants `forceDelete` on the record, asked
+  through the gate as Vector's own forced delete (`RecordWriter`) asks
+  it — of a live record as of a trashed one, so a live record's forced
+  delete is no longer refused because the trash's
+  `recordPermissions()['forceDelete']` is false for it; `delete` alone
+  does not let it through, and a resource that does not soft-delete has
+  none.
+- A streamed assistant run that fails after the browser left — a Bedrock
+  call, which cannot be stopped mid-stream, or the stop the departure
+  caused — writes no error frame to the closed connection and is logged
+  at info (`An assistant run ended after the browser left.`, outcome
+  `client_gone`) instead of as a warning or an error; once the request's
+  `ClientConnectionInterface` reports the browser gone, nothing more of
+  the run is written.
+- `capabilities.ai` looks up a provider's stored key once per request
+  (`ProviderResolver::resolvable()`), not once per feature: four
+  features sharing one key were four identical queries on every
+  GET /vector/schema, a 304 included.
 
 ### Changed
 

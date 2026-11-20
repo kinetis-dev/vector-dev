@@ -159,6 +159,22 @@ describe('the assistant', () => {
         wrapper.unmount()
     })
 
+    it('keeps every replayed message within the server\'s per-message limit after a long answer', async () => {
+        standaloneApi()
+        const turn = endpoint('/vector/ai/assistant', STREAMED, 'POST')
+        cleanups.push(turn.unregister)
+        const wrapper = await mount()
+        // an answer near the model's output cap: longer than AssistantController::MAX_MESSAGE
+        seed(1, i => i === 0 ? 'Write me a long report' : 'Report line. '.repeat(700))
+
+        await ask(wrapper, 'Shorter, please')
+        const sent = turn.requests[0]!.body as { messages: { role: string, content: string }[] }
+        expect(sent.messages.map(message => message.role)).toEqual(['user', 'assistant', 'user'])
+        for (const message of sent.messages) expect(Array.from(message.content).length).toBeLessThanOrEqual(ASSISTANT_MAX_MESSAGE_CHARS)
+        expect(sent.messages.at(-1)).toEqual({ role: 'user', content: 'Shorter, please' })
+        wrapper.unmount()
+    })
+
     it('sends a conversation trimmed to its last 40 messages opening with the user\'s', async () => {
         standaloneApi()
         const turn = endpoint('/vector/ai/assistant', STREAMED, 'POST')
