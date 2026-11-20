@@ -91,8 +91,9 @@ final readonly class ActionRunner
      *
      * @param list<int|string> $ids
      * @param array<array-key, mixed> $rawFields
+     * @param int|null $jobId the job a queued chunk runs in, handed to the action on its ActionRequest
      */
-    public function runNow(ResourceDescriptor $resource, string $name, array $ids, array $rawFields): ActionResponse
+    public function runNow(ResourceDescriptor $resource, string $name, array $ids, array $rawFields, ?int $jobId = null): ActionResponse
     {
         $compiled = $this->admitted($resource, $name);
         $instance = $this->scope->get($compiled['class']);
@@ -119,7 +120,7 @@ final readonly class ActionRunner
             $entities = array_values($this->writer->loadMany($resource, array_map(strval(...), $ids)));
         }
 
-        $response = $instance->handle(new ActionRequest($resource, $this->user, $this->managers->managerFor($resource->entityClass()), $entities, $records, $values));
+        $response = $instance->handle(new ActionRequest($resource, $this->user, $this->managers->managerFor($resource->entityClass()), $entities, $records, $values, $jobId));
 
         if ($response->type === 'danger') {
             return $response; // the action declined; nothing is flushed
@@ -128,6 +129,28 @@ final readonly class ActionRunner
         $this->writer->commitAction($resource, $name, $ids);
 
         return $response->affected === 0 && $ids !== [] ? $response->withAffected(count($ids)) : $response;
+    }
+
+    /**
+     * A queued run's finish(), once its chunks are done: the action asked
+     * again as at the start of every chunk (policy, canRun(), the
+     * dialog's values), then handed no records and the job's id. Nothing
+     * is flushed or logged.
+     *
+     * @param array<array-key, mixed> $rawFields
+     */
+    public function finish(ResourceDescriptor $resource, string $name, array $rawFields, int $jobId): ?ActionResponse
+    {
+        $compiled = $this->admitted($resource, $name);
+        $instance = $this->scope->get($compiled['class']);
+
+        if (!$instance instanceof VectorAction) {
+            throw new \LogicException("{$compiled['class']} is not a VectorAction.");
+        }
+
+        $values = $this->input->validate($this->fieldsOf($compiled), $rawFields);
+
+        return $instance->finish(new ActionRequest($resource, $this->user, $this->managers->managerFor($resource->entityClass()), [], [], $values, $jobId));
     }
 
     /**

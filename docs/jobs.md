@@ -65,7 +65,10 @@ A job is pushed for one attempt and claims its row with one conditional
 write before it starts, so a message the backend delivers twice does
 not run twice. A failure is final and shown on the job. A queued action
 must still tolerate a chunk running twice: a chunk's flush and the
-progress written after it are separate statements.
+progress written after it are separate statements. Every chunk is told
+its job (`ActionRequest::$jobId`), so an action can key what it keeps
+by job and record, and its `finish()` runs once after the last chunk and
+may leave the job a file ({doc}`actions`).
 
 A failure the admin should read — the selection is gone, the action
 declined, a validation refusal — is reported on the row verbatim; any

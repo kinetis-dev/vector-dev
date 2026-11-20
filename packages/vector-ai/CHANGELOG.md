@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Bulk rewrite proposals: `Actions\ProposeRewrites`, a queued Vector
+  action a resource opts into by listing a subclass (naming the field
+  and a `WritingOperation`, with optional `targetLocale()` and
+  `instructions()`) in its `actions()`. It runs writing help's rules as
+  the admin who started it — a misconfigured run, including a field not
+  on the detail view, fails before any provider call, and one that stops
+  being available after a chunk has run sends no more (`unavailable`)
+  but still delivers its CSV — makes one single-shot writing call per
+  record, skips and counts a record they may not update or with no text,
+  counts a failed call by category whatever it throws and an empty
+  answer as `empty_answer`, stops calling once the day's budget is spent
+  (`budget`) or the proposals near the job file's size
+  (`ProposeRewrites::FILE_LIMIT`, `file_full`), and leaves the job one
+  CSV, `<id field>,<field>`, of the proposals to review and import in
+  update mode keyed by ID. It writes no record. Each record's outcome is
+  kept in the new `vector_ai_rewrites` table (migration
+  `20261121000101_vector_ai_rewrites`) by (job, record), so a chunk
+  delivered again makes no provider call; they outlive the saving of the
+  CSV on the job, and `vector-ai:approvals:prune` deletes them once the
+  job has ended (schedule `vector:jobs:reap` before it). A proposal or
+  record ID ending in a backslash, which the importer cannot read back,
+  is left out of the CSV and counted as skipped.
+- `Writing\WritingGuard`: writing help's field, permission, boundary,
+  provider and budget checks, shared by the writing endpoint and
+  `ProposeRewrites`.
+- `Testing\ScriptedReplies` can make the `fake` provider throw for a
+  message (`of()`'s `$failures`, `failure()`), as a failing provider
+  call would.
+
 ### Fixed
 
 - A proposal left `executing` by a request that never finished is no

@@ -48,19 +48,26 @@ abstract class WritingTestCase extends FiltersTestCase
     }
 
     /**
-     * What the fake answers writing help about each text: the text => the answer.
+     * What the fake answers writing help about each text: the text => the
+     * answer; and the text => what it throws instead, for $failures.
      *
      * @param array<string, string> $answers
+     * @param array<string, \Throwable> $failures
      */
-    protected function scriptWriting(array $answers): void
+    protected function scriptWriting(array $answers, array $failures = []): void
     {
         $keyed = [];
+        $thrown = [];
 
         foreach ($answers as $text => $answer) {
             $keyed[WritingAssistant::content((string) $text)] = $answer;
         }
 
-        $this->script($keyed);
+        foreach ($failures as $text => $failure) {
+            $thrown[WritingAssistant::content((string) $text)] = $failure;
+        }
+
+        $this->script($keyed, $thrown);
     }
 
     /** @param array<string, mixed> $body */

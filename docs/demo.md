@@ -51,6 +51,17 @@ ahead before the parcel is delivered.* in its notes, and choose *Writing
 help* → *Shorten* under them: the shorter text shows beside yours, and
 *Replace* puts it in the input for you to save.
 
+And bulk proposals: select orders on the Orders list and run *Propose AI
+rewrites of Notes* (`App\Vector\Actions\TidyOrderNotes`, a
+`ProposeRewrites` the orders list in their `actions()`). The queue
+worker sends each selected order's notes, one call per order, and the
+job leaves a CSV of `id,notes` proposals on the **Jobs** page; orders
+without notes are left out and counted. Nothing changes until you import
+that CSV on the Orders list in *Update existing records* mode keyed by
+ID — then History shows each change as your own update. With the demo's
+scripted provider every proposal reads *No reply is scripted for this
+message.*; with a real provider it is the corrected text ({doc}`ai`).
+
 Any other question or text gets *No reply is scripted for this
 message.*; with a real provider configured instead
 (VECTOR_AI_PROVIDERS, {doc}`ai`) the assistant answers what is asked,

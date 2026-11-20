@@ -53,9 +53,10 @@ final readonly class ActionResponse
         return new self('url', $message, $url, null, null, null, 0);
     }
 
-    public static function download(string $contents, string $filename, string $contentType = 'text/csv; charset=utf-8'): self
+    /** A file: saved by the browser, or, from a queued action's finish(), left on its job with $message. */
+    public static function download(string $contents, string $filename, string $contentType = 'text/csv; charset=utf-8', ?string $message = null): self
     {
-        return new self('download', null, null, $contents, $filename, $contentType, 0);
+        return new self('download', $message, null, $contents, $filename, $contentType, 0);
     }
 
     public function withAffected(int $affected): self

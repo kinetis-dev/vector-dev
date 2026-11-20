@@ -7,6 +7,8 @@ namespace App\Tests\Vector\Ai;
 use App\Tests\Fixtures\CommandOutput;
 use Kinetis\Console\CommandArguments;
 use Kinetis\Vector\Database\VectorDatabase;
+use Kinetis\Vector\Store\JobStore;
+use Kinetis\VectorAi\Actions\RewriteStore;
 use Kinetis\VectorAi\Approvals\Approval;
 use Kinetis\VectorAi\Approvals\ApprovalId;
 use Kinetis\VectorAi\Approvals\ApprovalStore;
@@ -21,6 +23,8 @@ use Kinetis\VectorAi\Console\PruneApprovalsCommand;
  */
 final class PruneApprovalsCommandTest extends AiTestCase
 {
+    private const string NO_LEFTOVERS = "Deleted 0 rewrite proposal row(s) of jobs that ended.\n";
+
     #[\Override]
     protected function tearDown(): void
     {
@@ -46,7 +50,7 @@ final class PruneApprovalsCommandTest extends AiTestCase
 
         self::assertSame(0, $status);
         self::assertSame('', $stderr);
-        self::assertSame("Expired 1 pending approval(s); failed 1 unfinished approval(s); deleted 3 decided approval(s) older than 30 day(s).\n", $stdout);
+        self::assertSame("Expired 1 pending approval(s); failed 1 unfinished approval(s); deleted 3 decided approval(s) older than 30 day(s).\n" . self::NO_LEFTOVERS, $stdout);
         self::assertSame(['fresh' => 'pending', 'stale' => 'expired', 'recent' => 'executed', 'executing' => 'executing', 'unfinished' => 'failed'], $this->statuses($rows));
         $result = $this->vectorQuery()->table(ApprovalStore::TABLE)->where('id', '=', $rows['unfinished'])->value('result');
         self::assertSame(['error' => Approval::UNKNOWN_OUTCOME], json_decode((string) $result, true, 4, JSON_THROW_ON_ERROR));
@@ -54,7 +58,7 @@ final class PruneApprovalsCommandTest extends AiTestCase
         // a shorter window takes the recent one too; the one it just expired was decided now
         [$status, $stdout] = $this->prune(['--days=1']);
         self::assertSame(0, $status);
-        self::assertSame("Expired 0 pending approval(s); failed 0 unfinished approval(s); deleted 1 decided approval(s) older than 1 day(s).\n", $stdout);
+        self::assertSame("Expired 0 pending approval(s); failed 0 unfinished approval(s); deleted 1 decided approval(s) older than 1 day(s).\n" . self::NO_LEFTOVERS, $stdout);
         self::assertSame(['fresh' => 'pending', 'stale' => 'expired', 'executing' => 'executing', 'unfinished' => 'failed'], $this->statuses($rows));
     }
 
@@ -75,6 +79,43 @@ final class PruneApprovalsCommandTest extends AiTestCase
         self::assertSame(0, $this->store()->failStale(ApprovalStore::staleBefore()), 'a failed row is not failed again');
     }
 
+    public function testItDeletesTheRewriteRowsOfJobsThatEndedAndKeepsARunningJobs(): void
+    {
+        $database = $this->app->get(VectorDatabase::class);
+        self::assertInstanceOf(VectorDatabase::class, $database);
+        $jobs = new JobStore($database);
+        $rewrites = new RewriteStore($database);
+        $failed = $jobs->create('action', 'orders', 'tidy-order-notes', self::ACTOR_PREFIX . '01');
+        $jobs->start($failed);
+        $jobs->fail($failed, 'The worker died.');
+        $running = $jobs->create('action', 'orders', 'tidy-order-notes', self::ACTOR_PREFIX . '01');
+        $jobs->start($running);
+        // done: its file was saved in the same write that marked it so
+        $done = $jobs->create('action', 'orders', 'tidy-order-notes', self::ACTOR_PREFIX . '01');
+        $jobs->start($done);
+        $jobs->finish($done, ['affected' => 1], 1, "id,notes\r\n3,Saved.\r\n", 'orders-notes-proposals.csv', 'text/csv; charset=utf-8');
+
+        try {
+            $rewrites->propose($failed, '1', 'A proposal of a run that failed.', false);
+            $rewrites->leaveOut($failed, '2', RewriteStore::SKIPPED, 'empty');
+            $rewrites->propose($running, '1', 'A proposal of a run still going.', false);
+            $rewrites->propose($done, '3', 'Saved.', false);
+
+            [$status, $stdout] = $this->prune([]);
+
+            self::assertSame(0, $status);
+            self::assertStringEndsWith("Deleted 3 rewrite proposal row(s) of jobs that ended.\n", $stdout);
+            self::assertSame([], $rewrites->proposals($failed));
+            self::assertSame([], $rewrites->proposals($done));
+            self::assertSame([['key' => '1', 'text' => 'A proposal of a run still going.', 'truncated' => false]], $rewrites->proposals($running));
+        } finally {
+            $rewrites->forget($failed);
+            $rewrites->forget($running);
+            $rewrites->forget($done);
+            $this->vectorQuery()->table('vector_jobs')->whereIn('id', [$failed, $running, $done])->delete();
+        }
+    }
+
     public function testARefusedDaysWritesNothing(): void
     {
         [$status, $stdout, $stderr] = $this->prune(['--days=0']);
@@ -91,7 +132,9 @@ final class PruneApprovalsCommandTest extends AiTestCase
     private function prune(array $argv): array
     {
         $capture = new CommandOutput();
-        $status = new PruneApprovalsCommand($this->store(), $capture->output)->run(CommandArguments::parse($argv));
+        $database = $this->app->get(VectorDatabase::class);
+        self::assertInstanceOf(VectorDatabase::class, $database);
+        $status = new PruneApprovalsCommand($this->store(), $capture->output, new RewriteStore($database), new JobStore($database))->run(CommandArguments::parse($argv));
 
         return [$status, $capture->stdout(), $capture->stderr()];
     }

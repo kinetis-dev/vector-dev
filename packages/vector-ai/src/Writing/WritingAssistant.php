@@ -61,6 +61,14 @@ final readonly class WritingAssistant
         return "The text to transform:\n" . self::OPEN . "\n" . $text . "\n" . self::CLOSE;
     }
 
+    /** $instructions without control characters but tab and line feed, trimmed; null when nothing is left. */
+    public static function guidance(string $instructions): ?string
+    {
+        $clean = trim((string) preg_replace('/[\x00-\x08\x0B-\x1F\x7F]/', '', $instructions));
+
+        return $clean === '' ? null : $clean;
+    }
+
     /**
      * The longest answer kept for $field: its maximum-length rule, or
      * GROWTH times the input's length, never more than MAX_OUTPUT.

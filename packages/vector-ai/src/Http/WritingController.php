@@ -9,7 +9,6 @@ use DateTimeZone;
 use Kinetis\Http\Attributes\Middleware;
 use Kinetis\Http\Attributes\Post;
 use Kinetis\Http\Attributes\RoutePrefix;
-use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Http\Responses\ErrorResponse;
 use Kinetis\Http\Responses\JsonResponse;
 use Kinetis\Validation\Exception\ValidationException;
@@ -17,16 +16,8 @@ use Kinetis\Validation\Violation;
 use Kinetis\Vector\Exception\RecordNotFoundException;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Registry\ResourceDescriptor;
-use Kinetis\VectorAi\Auth\AiAccessInterface;
-use Kinetis\VectorAi\Config\AiConfig;
-use Kinetis\VectorAi\Failure\AiFailure;
-use Kinetis\VectorAi\Feature;
-use Kinetis\VectorAi\Governance\ModelBoundary;
-use Kinetis\VectorAi\Providers\ProviderResolver;
-use Kinetis\VectorAi\Providers\ResolvedProvider;
-use Kinetis\VectorAi\Settings\AiSettingsReader;
-use Kinetis\VectorAi\Usage\UsageLedger;
 use Kinetis\VectorAi\Writing\WritingAssistant;
+use Kinetis\VectorAi\Writing\WritingGuard;
 use Kinetis\VectorAi\Writing\WritingOperation;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -46,7 +37,8 @@ use Psr\Http\Message\ServerRequestInterface;
  * it, the record read as they may read it and its own `update` decided
  * (403, or 404 for no such record); one ModelBoundary lets a model be
  * sent (403); the feature on, configured and theirs to use (403); the
- * day's token budget (429 until midnight UTC).
+ * day's token budget (429 until midnight UTC). The rules are
+ * WritingGuard's, which the bulk ProposeRewrites action asks too.
  */
 #[RoutePrefix('/vector/ai')]
 #[Middleware('@vector')]
@@ -56,17 +48,11 @@ final readonly class WritingController
     private const int MAX_BODY = 262144;
 
     /** The field types writing help works on. */
-    public const array TYPES = ['string', 'text', 'markdown', 'richtext'];
+    public const array TYPES = WritingGuard::TYPES;
 
     public function __construct(
-        private CurrentUserInterface $user,
-        private AiAccessInterface $access,
-        private AiConfig $config,
-        private AiSettingsReader $settings,
         private ResourceService $resources,
-        private ModelBoundary $boundary,
-        private ProviderResolver $resolver,
-        private UsageLedger $usage,
+        private WritingGuard $guard,
         private WritingAssistant $writing,
     ) {}
 
@@ -74,28 +60,12 @@ final readonly class WritingController
     public function write(string $resource, string $field, ServerRequestInterface $request): ResponseInterface
     {
         $input = $this->input($request);
-
-        // a password field is never sent, whatever else holds: asked of the compiled field, before this user's view of it
-        if (($this->resources->registry()->resource($resource)->field($field)['type'] ?? null) === 'password') {
-            throw new AiRequestException('A password field is never sent to AI.', 403);
-        }
-
-        $visible = $this->resources->resource($resource);
-        $compiled = $visible->field($field) ?? throw new AiRequestException("{$visible->label()} has no field {$field}.", 404);
-
-        if (!in_array($compiled['type'] ?? null, self::TYPES, true)) {
-            throw new AiRequestException('Writing help works on text, Markdown and rich-text fields only.', 403);
-        }
-
+        [$visible, $compiled] = $this->guard->field($resource, $field);
         $this->authorizeWrite($visible, $compiled, $input['recordId']);
+        $this->guard->sendable($visible, $field);
+        $provider = $this->guard->provider();
 
-        if (!$this->boundary->allows($visible) || !$this->boundary->sends($visible, $field)) {
-            throw new AiRequestException("This field of {$visible->label()} is kept from AI.", 403);
-        }
-
-        $provider = $this->provider();
-
-        if ($this->usage->remaining((string) $this->user->id(), $this->settings->int('dailyTokenBudgetPerUser', 0)) <= 0) {
+        if (!$this->guard->budgetLeft()) {
             $midnight = new DateTimeImmutable('tomorrow', new DateTimeZone('UTC'));
 
             return ErrorResponse::create(429, "Today's AI budget is spent; it renews at midnight UTC.", [
@@ -118,18 +88,7 @@ final readonly class WritingController
      */
     private function authorizeWrite(ResourceDescriptor $visible, array $field, ?string $recordId): void
     {
-        $view = $recordId === null ? 'create' : 'update';
-        $views = is_array($field['views'] ?? null) ? $field['views'] : [];
-
-        if (($field['readonly'] ?? false) === true || ($field['computed'] ?? null) !== null || !in_array($view, $views, true)) {
-            throw new AiRequestException("This field of {$visible->label()} cannot be written on the {$view} form.", 403);
-        }
-
-        $permissions = $this->resources->permissions($visible);
-
-        if (($permissions[$view] ?? false) !== true) {
-            throw new AiRequestException("This account may not {$view} {$visible->label()}.", 403);
-        }
+        $this->guard->writable($visible, $field, $recordId === null ? 'create' : 'update');
 
         if ($recordId === null) {
             return;
@@ -141,27 +100,8 @@ final readonly class WritingController
             throw new AiRequestException("{$visible->label()} has no record {$recordId}.", 404);
         }
 
-        if ($this->resources->recordPermissions($visible, $record)['update'] !== true) {
+        if (!$this->guard->mayUpdate($visible, $record)) {
             throw new AiRequestException("This account may not update this record of {$visible->label()}.", 403);
-        }
-    }
-
-    /** The feature's provider for this user, or 403 when it is off, unconfigured or not theirs. */
-    private function provider(): ResolvedProvider
-    {
-        if (
-            !$this->config->configured()
-            || !$this->settings->bool(Feature::Writing->enabledSetting())
-            || $this->settings->int('dailyTokenBudgetPerUser', 0) <= 0
-            || !$this->access->canUse($this->user, Feature::Writing)
-        ) {
-            throw new AiRequestException('Writing help is not available to this account.', 403);
-        }
-
-        try {
-            return $this->resolver->for(Feature::Writing, $this->user);
-        } catch (AiFailure $e) {
-            throw new AiRequestException('Writing help is not configured: ' . $e->getMessage(), 403);
         }
     }
 
@@ -211,7 +151,7 @@ final readonly class WritingController
 
         $targetLocale = $body['targetLocale'] ?? null;
 
-        if ($operation === WritingOperation::Translate && (!is_string($targetLocale) || preg_match('/^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8}){0,3}$/D', $targetLocale) !== 1)) {
+        if ($operation === WritingOperation::Translate && (!is_string($targetLocale) || !WritingOperation::isLocale($targetLocale))) {
             $violations[] = new Violation(['targetLocale'], 'required', 'is required for translate: a language tag such as de or pt-BR.');
         }
 
@@ -231,7 +171,7 @@ final readonly class WritingController
             throw ValidationException::fromViolations($violations);
         }
 
-        $instructions = is_string($instructions) ? trim((string) preg_replace('/[\x00-\x08\x0B-\x1F\x7F]/', '', $instructions)) : null;
+        $instructions = is_string($instructions) ? WritingAssistant::guidance($instructions) : null;
 
         /** @var WritingOperation $operation */
         /** @var string $text */
@@ -241,7 +181,7 @@ final readonly class WritingController
             'text' => $text,
             'format' => $format,
             'targetLocale' => $operation === WritingOperation::Translate && is_string($targetLocale) ? $targetLocale : null,
-            'instructions' => $instructions === '' ? null : $instructions,
+            'instructions' => $instructions,
             'recordId' => $recordId === null ? null : (string) $recordId,
         ];
     }

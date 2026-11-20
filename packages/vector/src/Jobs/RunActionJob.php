@@ -12,7 +12,9 @@ use Kinetis\Vector\Registry\VectorRegistry;
  * A queued action: the selection is resolved to ids inside the job and
  * handled in chunks, each chunk its own ActionRequest and flush, with
  * progress written after every chunk. Delivery is at least once, so an
- * action that is queued must tolerate a chunk running twice.
+ * action that is queued must tolerate a chunk running twice. Each chunk's
+ * ActionRequest carries the job's id; after the last, the action's
+ * finish() runs once, and a `download` it answers is the job's file.
  */
 final readonly class RunActionJob implements Job
 {
@@ -62,7 +64,7 @@ final readonly class RunActionJob implements Job
             $last = null;
 
             foreach ($compiled['standalone'] ? [[]] : array_chunk($ids, $compiled['chunkSize']) as $chunk) {
-                $response = $runner->runNow($descriptor, $this->action, $chunk, $this->fields);
+                $response = $runner->runNow($descriptor, $this->action, $chunk, $this->fields, $this->jobId);
 
                 if ($response->type === 'danger') {
                     throw new JobFailedException($response->message ?? 'The action declined.');
@@ -74,7 +76,22 @@ final readonly class RunActionJob implements Job
                 $context->jobs->progress($this->jobId, $processed);
             }
 
-            return ['result' => ['affected' => $affected, 'message' => $last], 'processed' => $processed, 'notice' => $last];
+            $finished = $runner->finish($descriptor, $this->action, $this->fields, $this->jobId);
+
+            if ($finished?->type === 'danger') {
+                throw new JobFailedException($finished->message ?? 'The action declined.');
+            }
+
+            $last = $finished->message ?? $last;
+            $result = ['affected' => $affected, 'message' => $last];
+
+            if ($finished?->type === 'download' && $finished->contents !== null) {
+                $name = $finished->filename ?? 'download';
+
+                return ['result' => $result + ['fileName' => $name], 'processed' => $processed, 'file' => $finished->contents, 'fileName' => $name, 'fileType' => $finished->contentType, 'notice' => $last];
+            }
+
+            return ['result' => $result, 'processed' => $processed, 'notice' => $last];
         });
     }
 }

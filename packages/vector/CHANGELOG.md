@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A queued action knows its job and can leave it a file:
+  `ActionRequest::$jobId` names the job every chunk (and the run's
+  `finish()`) runs in, null on the synchronous path, and
+  `VectorAction::finish()` runs once after a queued run's last chunk — a
+  `download` it answers becomes the job's file and message, `danger`
+  fails the job, null (the default) changes nothing.
+  `ActionResponse::download()` takes an optional message for it.
+
 ## [0.16.0] - 2026-11-19
 
 ### Added

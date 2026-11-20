@@ -21,7 +21,9 @@ use NeuronAI\Tools\ToolCall;
  * a stream or a structured call alike. It records every request it saw
  * (getRecorded(), from FakeAIProvider), and hands each to the replies'
  * ScriptedCalls when they carry one. A message no reply is scripted for
- * gets "No reply is scripted for this message.".
+ * gets "No reply is scripted for this message.". A message whose failure
+ * is scripted (ScriptedReplies::failure()) throws it instead, before
+ * anything is recorded.
  *
  * A message whose reply is scripted as turns (ScriptedReplies::of())
  * starts a run that calls tools: each call answers with the turn for the
@@ -122,6 +124,12 @@ class ScriptedProvider extends FakeAIProvider
     private function prepare(array $messages): void
     {
         [$text, $round] = self::turnOf(...$messages);
+        $failure = $this->replies->failure($text);
+
+        if ($failure !== null) {
+            throw $failure;
+        }
+
         $turn = $this->replies->turn($text, $round);
         $reply = match (true) {
             $turn !== null && ($turn['toolCalls'] ?? []) !== [] => new ToolCallMessage($turn['text'] ?? null, array_map(

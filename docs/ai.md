@@ -11,7 +11,9 @@ provider call suspends the calling Fiber instead of blocking the worker.
 This release offers **plain-language filters** ({ref}`ai-filters`),
 the **assistant** ({ref}`ai-assistant`) — which reads, and, where an
 administrator allows it, **proposes changes a person approves**
-({ref}`ai-approvals`) — and **writing help** ({ref}`ai-writing`), on the
+({ref}`ai-approvals`) — **writing help** ({ref}`ai-writing`), and
+**bulk rewrite proposals** as a CSV to review and import
+({ref}`ai-bulk`), on the
 foundations every feature shares: the operator configuration, the
 sealed provider keys, the `ai` settings group, the access policy, the
 model boundary, the usage ledger and the AI layer's provider-key panel.
@@ -21,12 +23,12 @@ model boundary, the usage ledger and the AI layer's provider-key panel.
 
 ```console
 composer require kinetis/vector-ai
-vendor/bin/kinetis vector-ai:install      # the credentials, usage and approvals tables
+vendor/bin/kinetis vector-ai:install      # the credentials, usage, approvals and rewrites tables
 vendor/bin/kinetis migrate
 ```
 
-`vector-ai:install` publishes three migrations, `vector_ai_credentials`,
-`vector_ai_usage` and `vector_ai_approvals`, the way `vector:install` publishes Vector's: into
+`vector-ai:install` publishes four migrations, `vector_ai_credentials`,
+`vector_ai_usage`, `vector_ai_approvals` and `vector_ai_rewrites`, the way `vector:install` publishes Vector's: into
 `migrations/`, or `migrations/<name>/` with `--connection=<name>`. Put
 them on the connection Vector's own tables are on
 (`VECTOR_DB_CONNECTION`); the command notes it when they differ. The
@@ -544,7 +546,10 @@ every proposal still `executing` ten minutes
 running it again; and deletes the proposals decided (executed,
 rejected, expired or failed) more than `--days` days ago. An approval
 refuses an expired proposal with `410`, and answers a stale executing
-one `failed`, whether or not the sweep has run.
+one `failed`, whether or not the sweep has run. The same command deletes
+the rewrite rows a bulk run kept, once its job has ended
+({ref}`ai-bulk`); schedule `vector:jobs:reap` before it, so a run whose
+worker died counts as ended.
 
 **What the model can and cannot do.** It can only propose: no code path
 lets the model, or a request body, execute a write except the person's
@@ -640,6 +645,152 @@ input's length, never more than 20,000 characters. A cut answer says so
 Each call is a row of the usage ledger with the feature `writing`,
 `failed:<category>` when it failed. Neither the text, the guidance, the
 prompt, the answer nor a provider's error body is logged.
+
+(ai-bulk)=
+## Bulk rewrite proposals
+
+Writing help for one field across many records, without a single write
+of AI's: `Kinetis\VectorAi\Actions\ProposeRewrites` is a queued action
+({doc}`actions`, {doc}`jobs`) that sends each selected record's text to
+the model and leaves its job **one CSV of proposals**. Nothing changes
+until the admin reviews the CSV and imports it in **update** mode keyed
+by the record's ID: every change is then an ordinary import row of
+theirs — validated, authorized by the `update` policy, hooked and
+audited as their own update, with no `origin`.
+
+Nothing registers it. A resource opts in by listing a subclass that
+names the field and the operation in its `actions()`:
+
+```php
+use Kinetis\VectorAi\Actions\ProposeRewrites;
+use Kinetis\VectorAi\Writing\WritingOperation;
+
+final class TidyOrderNotes extends ProposeRewrites
+{
+    public function field(): string { return 'notes'; }
+    public function operation(): WritingOperation { return WritingOperation::Grammar; }
+}
+
+// in OrderResource
+public function actions(): array
+{
+    return [TidyOrderNotes::class];
+}
+```
+
+The operations are writing help's: `Rewrite`, `Shorten`, `Grammar` and
+`Translate`, which needs `targetLocale()` (`de`, `pt-BR`). Override
+`instructions()` for guidance on style, at most 300 characters, sent in
+each record's user turn and never the system prompt. The action runs in
+chunks of `chunkSize()` (100), and is offered on the list, not a
+record's page.
+
+**Before any call.** The run is writing help's ({ref}`ai-writing`), as
+the admin who started it: a password field (refused by its type first),
+a field they do not see, one that is no `string`, `text`, `markdown` or
+`richtext` field, one not on the update form or read-only, one not on
+the detail view (the records are read as it serializes them, so its text
+would never arrive), a resource or field kept from the model, writing
+help off, unconfigured, unbudgeted or refused to them by `canUse()`, a
+translation without a language tag, or guidance over 300 characters
+fails the **whole job**, with that reason, before the model is asked
+anything. These are asked again at the start of every chunk: should one
+stop holding once a chunk has run — writing help switched off, the key
+removed — the rest of the selection is not sent (`unavailable`), and
+the job still ends with the CSV of what was proposed.
+
+**Per record.** A record they may not update
+(`recordPermissions()['update']`), one whose text is empty or over
+20,000 characters, is left out — never sent — and counted, as is a
+proposal ending in a backslash (see the CSV, below). Each other
+record is **its own single-shot call**, its text alone between the
+`<<<TEXT` and `TEXT>>>` lines, so no record's text can steer another's
+rewrite. The answer is cleaned and capped as writing help's is (the
+field's maximum-length rule, else four times the input, never over
+20,000 characters). A call that fails, whatever it throws, is counted by
+its category and the run goes on; an answer that is empty once cleaned
+is counted as failed (`empty_answer`), not proposed. Before every call
+the run asks whether it may go on, and once it may not, no further
+record is sent, the proposals made so far are kept, and the job says how
+many records were not sent and why: the day's token budget is spent
+(`budget`), or the proposals have filled the job's file (`file_full`;
+see the CSV, below). Every call is a usage row with the feature
+`writing`.
+
+**The CSV.** One per run, on the job: the **Jobs** page offers it for
+download when the job is done (`GET /vector/jobs/{id}/download`),
+named `<resource>-<field>-proposals-<job>.csv`. Its header is the
+record's ID field and the field, `id,notes` say, and it holds one row
+per proposal:
+
+```text
+id,notes
+12,"Leave the parcel with the neighbour at no. 12, if nobody is home."
+```
+
+It is written with the delimiter, quoting and escape character Vector's
+importer reads with (UTF-8 with a byte-order mark, CRLF line ends), so a
+value with commas, quotes, line breaks or a backslash inside it comes
+back exactly. One that **ends** in a backslash cannot: the importer
+reads its closing quote as escaped and runs on into the next rows. Such
+a proposal (or record ID) is **left out** of the CSV and counted as
+skipped in the job's message; rewrite that record by hand. The job's
+message counts the proposals, the records left out and why, the failed
+calls by category and the empty answers, the answers cut at the cap and
+the records not sent, by why (`budget`, `file_full`, `unavailable`). A
+job file holds at most 12 MiB ({doc}`limits`): the run stops calling the
+model once its proposals reach 8 MiB
+(`ProposeRewrites::FILE_LIMIT`, leaving room for the CSV's quoting and
+ID column), so the calls it made are not lost to a file too large to
+save; run the records not sent as another selection.
+
+**Applying it.** Review the file, delete the rows you do not want, edit
+any you do, and import it on the same resource ({doc}`jobs`): **Update
+existing records**, keyed by `id`, both columns mapped (the suggested
+mapping does it). A row whose record is gone or that the policy refuses
+lands in the failed-rows file, as any import's.
+
+```{warning}
+**Spreadsheet formulas.** The CSV holds the model's text exactly: a
+value starting with `=`, `+`, `-` or `@` is not guarded, because
+Vector's exports guard such a cell with an apostrophe that its import
+does not remove — the guard would end up in the record. A spreadsheet
+may evaluate such a cell as a formula if you open the file in one, and
+the text is the model's, shaped by record contents. Review the CSV in a
+text editor, or import a spreadsheet's export of it only after checking
+those cells.
+```
+
+**Delivered twice, billed once.** Vector delivers a chunk at least once
+({doc}`jobs`). Before each call the action looks the record up in
+`vector_ai_rewrites`, keyed by (job, record) and unique on that pair,
+where every record's outcome — the proposed text, or why it was left
+out — is written as soon as it is known. A chunk run again calls no
+provider for a record already done, and the CSV, built from those rows
+once after the last chunk (`VectorAction::finish()`), holds each record
+once.
+
+**Retention.** The rows hold the proposed texts until the run has
+ended. `finish()`, which builds the CSV, deletes nothing, because
+Vector saves the file on the job only after it returns: a save that
+fails — a database error, say — loses no proposal.
+`vector-ai:approvals:prune` deletes the rows of every ended job, done
+included: one no longer queued or running — done (Vector marks it so in
+the same write that saves the file), failed, or marked failed as
+stalled by `vector:jobs:reap`. A job whose worker died is still stored
+as `running` until `vector:jobs:reap` marks it, and the sweep keeps the
+rows of a running job, so schedule **`vector:jobs:reap` before
+`vector-ai:approvals:prune`** ({ref}`ai-approvals`), both hourly say;
+without the reap, a dead run's rows are never deleted. Until the sweep
+runs, the texts are kept twice — in these rows and in the CSV, which
+stays on the job row as an export's file does. A failed job is not
+re-run by Vector, so its rows serve an operator recovering the
+proposals by hand until the sweep deletes them.
+
+**Rich text.** A `richtext` field's stored value — HTML, or the
+editor's JSON document — is sent as it is, as plain text. Prefer bulk
+proposals on `string`, `text` and `markdown` fields; a rich-text value
+the model has reshaped can fail the import's validation.
 
 ## What the admin is told
 

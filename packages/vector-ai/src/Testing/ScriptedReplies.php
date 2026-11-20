@@ -12,7 +12,8 @@ namespace Kinetis\VectorAi\Testing;
  * every ScriptedProvider the resolver builds replays it. The default,
  * empty, answers every message with ScriptedProvider::UNSCRIPTED.
  *
- * A message can instead start a run that calls tools (of(), turn()).
+ * A message can instead start a run that calls tools (of(), turn()), or
+ * make the provider throw (failure()), as a failing provider call would.
  *
  * A test that needs to see what was sent gives it a ScriptedCalls: each
  * call any of its providers answers is appended there. It is the test's
@@ -24,8 +25,9 @@ final readonly class ScriptedReplies
      * @param array<string, string> $replies sha256 of a user message => the reply
      * @param array<string, list<array{text?: string, toolCalls?: list<array{name: string, arguments?: array<string, mixed>}>}>> $turns
      *     sha256 of a user message => the turns of a run that uses tools, in order
+     * @param array<string, \Throwable> $failures sha256 of a user message => what the provider throws for it
      */
-    public function __construct(public array $replies = [], public ?ScriptedCalls $calls = null, public array $turns = []) {}
+    public function __construct(public array $replies = [], public ?ScriptedCalls $calls = null, public array $turns = [], public array $failures = []) {}
 
     /**
      * A message's reply is either its text, or the turns of a tool-using
@@ -35,8 +37,9 @@ final readonly class ScriptedReplies
      * ScriptedProvider::UNSCRIPTED.
      *
      * @param array<string, string|list<array{text?: string, toolCalls?: list<array{name: string, arguments?: array<string, mixed>}>}>> $byMessage user message => reply
+     * @param array<string, \Throwable> $failures user message => what the provider throws for it, instead of answering
      */
-    public static function of(array $byMessage, ?ScriptedCalls $calls = null): self
+    public static function of(array $byMessage, ?ScriptedCalls $calls = null, array $failures = []): self
     {
         $replies = [];
         $turns = [];
@@ -49,7 +52,19 @@ final readonly class ScriptedReplies
             }
         }
 
-        return new self($replies, $calls, $turns);
+        $thrown = [];
+
+        foreach ($failures as $message => $failure) {
+            $thrown[self::key((string) $message)] = $failure;
+        }
+
+        return new self($replies, $calls, $turns, $thrown);
+    }
+
+    /** What the provider throws for $message, when that is scripted. */
+    public function failure(string $message): ?\Throwable
+    {
+        return $this->failures[self::key($message)] ?? null;
     }
 
     /**

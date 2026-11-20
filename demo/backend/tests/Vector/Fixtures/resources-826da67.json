@@ -3297,7 +3297,22 @@
             "image": null
         },
         "badge": null,
-        "actions": [],
+        "actions": [
+            {
+                "name": "tidy-order-notes",
+                "class": "App\\Vector\\Actions\\TidyOrderNotes",
+                "label": "Propose AI rewrites of Notes",
+                "icon": "mdi-creation-outline",
+                "confirmation": "Each selected record's Notes is sent to AI. Nothing is changed: you get a CSV of proposals to review, and import it in update mode to apply them.",
+                "destructive": false,
+                "standalone": false,
+                "queued": true,
+                "chunkSize": 100,
+                "showOnIndex": true,
+                "showOnDetail": false,
+                "fields": []
+            }
+        ],
         "widgets": []
     },
     "products": {

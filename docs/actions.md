@@ -68,6 +68,7 @@ limit.
 | `standalone()` | Runs on no records, from the list's toolbar. |
 | `showOnIndex()`, `showOnDetail()` | Where it is offered. |
 | `queued()`, `chunkSize()` | Runs as a background job, in chunks; see {doc}`jobs`. |
+| `finish()` | A queued run's last step, once its chunks are done; see below. |
 
 ## Responses
 
@@ -79,6 +80,16 @@ limit.
 | `ActionResponse::openUrl()` | A URL opens. |
 | `ActionResponse::download()` | A file downloads. |
 | queued | A job to follow on **Jobs**; {doc}`jobs` covers its delivery and what it must tolerate. |
+
+A queued action's chunks each get the job they run in as
+`$request->jobId` (null on the synchronous path), the same for every
+chunk of one run. After the last chunk, Vector calls `finish()` once,
+with no records and the same `jobId`: return
+`ActionResponse::download($contents, $name, $type, $message)` to leave a
+file on the job — the **Jobs** page offers it for download, as an
+export's — `danger()` to fail the job, or null (the default) for
+nothing. `finish()` flushes nothing. Keep what it needs from the chunks
+somewhere keyed by `jobId`, since each chunk is a fresh request.
 
 ## See also
 

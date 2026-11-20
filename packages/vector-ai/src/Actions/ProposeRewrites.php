@@ -1,0 +1,407 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Kinetis\VectorAi\Actions;
+
+use Kinetis\Vector\Actions\ActionRequest;
+use Kinetis\Vector\Actions\ActionResponse;
+use Kinetis\Vector\Actions\VectorAction;
+use Kinetis\Vector\Fields\Field;
+use Kinetis\Vector\Registry\ResourceDescriptor;
+use Kinetis\Vector\Store\JobStore;
+use Kinetis\VectorAi\Failure\AiFailure;
+use Kinetis\VectorAi\Failure\AiFailureMapper;
+use Kinetis\VectorAi\Http\AiRequestException;
+use Kinetis\VectorAi\Providers\ResolvedProvider;
+use Kinetis\VectorAi\Writing\WritingAssistant;
+use Kinetis\VectorAi\Writing\WritingGuard;
+use Kinetis\VectorAi\Writing\WritingOperation;
+
+/**
+ * Writing help across many records, as proposals the admin reviews: a
+ * queued action that sends one field of each selected record to AI —
+ * one single-shot writing call per record, its text delimited and
+ * labelled as content (WritingAssistant), so no record steers another —
+ * and leaves its job one CSV, `<key field>,<field>`, of the proposed
+ * texts. It writes nothing to a record: the admin imports the CSV in
+ * `update` mode, keyed by the key field, and every change is an
+ * ordinary, validated and audited import row of theirs.
+ *
+ * Nothing registers it. A resource opts in by listing a subclass, which
+ * names the field and the operation, in its `actions()`:
+ *
+ *     final class TidyOrderNotes extends ProposeRewrites
+ *     {
+ *         public function field(): string { return 'notes'; }
+ *         public function operation(): WritingOperation { return WritingOperation::Grammar; }
+ *     }
+ *
+ * The run is writing help's (WritingGuard), as the admin who started it:
+ * a password, non-text, hidden, read-only or AI-kept field, one not on
+ * the detail view (the records are read as it serializes them), writing
+ * help off, unconfigured or not theirs, a translation without a language
+ * tag or guidance over WritingAssistant::MAX_INSTRUCTIONS characters
+ * fails the whole job before any provider call. Should one of those stop
+ * holding after a chunk has run, the rest are not sent (`unavailable`)
+ * and finish() still delivers what was made. Per record, one they may
+ * not update, an empty text or one over WritingAssistant::MAX_TEXT is
+ * left out and counted, never sent; a call that fails, whatever it
+ * throws, is counted by its category (AiFailureMapper) and an empty answer as `empty_answer`, and the
+ * run goes on; once the day's token budget is spent (`budget`) or the
+ * proposals near the job file's size (fileLimit(), `file_full`), no
+ * further record is sent and the job says so. Answers are cleaned and
+ * capped as writing help's are.
+ *
+ * Chunks are delivered at least once: every record's outcome is a row of
+ * RewriteStore keyed by (job, record), asked before the call, so a chunk
+ * run again calls no provider for a record it already did and the CSV,
+ * built from those rows in finish(), holds each record once. finish()
+ * deletes nothing: `vector-ai:approvals:prune` deletes the rows of every
+ * ended job, done included. A record whose key or proposal ends in a
+ * backslash is left out and counted: the CSV could not carry it back.
+ */
+abstract class ProposeRewrites extends VectorAction
+{
+    /**
+     * How many bytes of proposals a run makes at most before it stops
+     * calling AI: JobStore::MAX_FILE_BYTES, which the CSV must fit, less
+     * room for what the CSV adds to the text — its doubled quotes, the
+     * header, the key column and the row framing.
+     */
+    public const int FILE_LIMIT = JobStore::MAX_FILE_BYTES - 4 * 1024 * 1024;
+
+    public function __construct(
+        private readonly WritingGuard $guard,
+        private readonly WritingAssistant $writing,
+        private readonly RewriteStore $store,
+        private readonly AiFailureMapper $failures,
+    ) {}
+
+    /** The field whose text is rewritten: a string, text, Markdown or rich-text field. */
+    abstract public function field(): string;
+
+    /** What is done to each text. */
+    abstract public function operation(): WritingOperation;
+
+    /** The language tag a translation targets (`de`, `pt-BR`); required for WritingOperation::Translate. */
+    public function targetLocale(): ?string
+    {
+        return null;
+    }
+
+    /** Guidance on style for every record, at most WritingAssistant::MAX_INSTRUCTIONS characters; sent in the user turn, never the system turn. */
+    public function instructions(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * How many bytes of proposals this run makes before it stops calling
+     * AI; never more than FILE_LIMIT, whatever a subclass returns. Checked
+     * before each call, so a run can pass it by one answer.
+     */
+    protected function fileLimit(): int
+    {
+        return self::FILE_LIMIT;
+    }
+
+    #[\Override]
+    public function label(): string
+    {
+        return 'Propose AI rewrites of ' . Field::labelFrom($this->field());
+    }
+
+    #[\Override]
+    public function icon(): ?string
+    {
+        return 'mdi-creation-outline';
+    }
+
+    #[\Override]
+    public function confirmation(): ?string
+    {
+        return 'Each selected record\'s ' . Field::labelFrom($this->field()) . ' is sent to AI. Nothing is changed: you get a CSV of proposals to review, and import it in update mode to apply them.';
+    }
+
+    #[\Override]
+    public function queued(): bool
+    {
+        return true;
+    }
+
+    #[\Override]
+    public function showOnDetail(): bool
+    {
+        return false;
+    }
+
+    #[\Override]
+    public function handle(ActionRequest $request): ActionResponse
+    {
+        if ($request->jobId === null) {
+            return ActionResponse::danger('Rewrite proposals run only as a background job.');
+        }
+
+        try {
+            [$visible, $field, $provider, $instructions] = $this->configured($request->resource);
+        } catch (AiRequestException $e) {
+            // the first chunk fails the job; a later one keeps what earlier chunks made, for finish() to deliver
+            if (!$this->store->started($request->jobId)) {
+                return ActionResponse::danger($e->getMessage());
+            }
+
+            $unsent = $this->leaveOutRest($request, 'unavailable');
+
+            return ActionResponse::message("Writing help is no longer available to this run: {$unsent} record(s) in this chunk were not sent.");
+        }
+
+        $name = $this->field();
+        $key = $visible->primaryKeyField();
+        $operation = $this->operation();
+        $format = ($field['type'] ?? null) === 'markdown' ? 'markdown' : 'plain';
+        $proposed = 0;
+        // the proposals' bytes so far, read once and counted on as this chunk proposes
+        $bytes = $this->store->bytes($request->jobId);
+        $limit = min($this->fileLimit(), self::FILE_LIMIT);
+
+        foreach ($request->records as $record) {
+            $id = $record[$key] ?? null;
+
+            if (!is_int($id) && !is_string($id)) {
+                continue;
+            }
+
+            $id = (string) $id;
+
+            // done in an earlier delivery of this chunk: never sent twice
+            if ($this->store->done($request->jobId, $id)) {
+                continue;
+            }
+
+            $text = $record[$name] ?? null;
+            $left = match (true) {
+                !self::encodable($id) => [RewriteStore::SKIPPED, 'unencodable'],
+                !$this->guard->mayUpdate($visible, $record) => [RewriteStore::SKIPPED, 'forbidden'],
+                !is_string($text) || trim($text) === '' => [RewriteStore::SKIPPED, 'empty'],
+                mb_strlen($text) > WritingAssistant::MAX_TEXT => [RewriteStore::SKIPPED, 'too_long'],
+                $bytes >= $limit => [RewriteStore::BUDGET, 'file_full'],
+                !$this->guard->budgetLeft() => [RewriteStore::BUDGET, 'budget'],
+                default => null,
+            };
+
+            if ($left !== null) {
+                $this->store->leaveOut($request->jobId, $id, $left[0], $left[1]);
+
+                continue;
+            }
+
+            /** @var string $text */
+            try {
+                $answer = $this->writing->write($provider, $field, $operation, $text, $format, $this->targetLocale(), $instructions);
+            } catch (\Throwable $e) {
+                // its category only: the message can quote the provider's answer
+                $failure = $e instanceof AiFailure ? $e : $this->failures->map($e);
+                $this->store->leaveOut($request->jobId, $id, RewriteStore::FAILED, $failure->category->value);
+
+                continue;
+            }
+
+            if (trim($answer['text']) === '') {
+                $this->store->leaveOut($request->jobId, $id, RewriteStore::FAILED, 'empty_answer');
+
+                continue;
+            }
+
+            // the CSV could not carry it: the importer would read its last backslash as escaping the closing quote
+            if (!self::encodable($answer['text'])) {
+                $this->store->leaveOut($request->jobId, $id, RewriteStore::SKIPPED, 'unencodable');
+
+                continue;
+            }
+
+            $this->store->propose($request->jobId, $id, $answer['text'], $answer['truncated']);
+            $bytes += strlen($answer['text']);
+            $proposed++;
+        }
+
+        return ActionResponse::message("Proposed {$proposed} rewrite(s) in this chunk.", $proposed);
+    }
+
+    /**
+     * The CSV of the run's proposals, `<key field>,<field>`, one row per
+     * record in the order they were made, quoted as Vector's importer
+     * parses it and otherwise exactly the proposed text; with a message
+     * counting what was left out. The run's rows are kept: Vector saves
+     * the file on the job after this returns, and the rows go only once
+     * the job is done with its file (RewriteStore::deleteEnded()), so a
+     * save that fails loses nothing.
+     */
+    #[\Override]
+    public function finish(ActionRequest $request): ?ActionResponse
+    {
+        if ($request->jobId === null) {
+            return null;
+        }
+
+        $resource = $request->resource;
+        $field = $this->field();
+        $proposals = $this->store->proposals($request->jobId);
+        $csv = self::csv([$resource->primaryKeyField(), $field], array_map(static fn (array $p): array => [$p['key'], $p['text']], $proposals));
+        $cut = count(array_filter($proposals, static fn (array $p): bool => $p['truncated']));
+        $message = self::summary($this->store->tally($request->jobId), $cut, Field::labelFrom($field), $resource->primaryKeyField());
+
+        return ActionResponse::download($csv, "{$resource->slug()}-{$field}-proposals-{$request->jobId}.csv", 'text/csv; charset=utf-8', $message);
+    }
+
+    /**
+     * A CSV document: a UTF-8 byte-order mark, then each row through
+     * fputcsv with the delimiter, enclosure and escape character
+     * Kinetis\Vector\Import\CsvReader reads with, lines ending CRLF. No
+     * formula guard: the importer would keep its apostrophe in the value.
+     * A value ending in a backslash cannot be written so that importer
+     * reads it back (encodable()) and is refused rather than written.
+     *
+     * @param list<string> $header
+     * @param list<list<string>> $rows
+     * @throws \InvalidArgumentException for a value encodable() refuses
+     */
+    public static function csv(array $header, array $rows): string
+    {
+        foreach ([$header, ...$rows] as $row) {
+            foreach ($row as $value) {
+                if (!self::encodable($value)) {
+                    throw new \InvalidArgumentException('A CSV value ending in a backslash cannot be read back by Vector\'s importer.');
+                }
+            }
+        }
+
+        $out = fopen('php://memory', 'r+');
+
+        if ($out === false) {
+            throw new \RuntimeException('Could not open a memory stream.');
+        }
+
+        fwrite($out, "\xEF\xBB\xBF");
+
+        foreach ([$header, ...$rows] as $row) {
+            fputcsv($out, $row, ',', '"', '\\', "\r\n");
+        }
+
+        rewind($out);
+        $csv = (string) stream_get_contents($out);
+        fclose($out);
+
+        return $csv;
+    }
+
+    /**
+     * Whether $value survives the CSV round trip: fputcsv writes a value
+     * ending in `\` as `…\"`, and CsvReader, reading with `\` as its escape
+     * character, takes that as an escaped quote and runs on into the next
+     * rows. Any other backslash is read back as written.
+     */
+    public static function encodable(string $value): bool
+    {
+        return !str_ends_with($value, '\\');
+    }
+
+    /**
+     * The field as the run is configured, its provider and its guidance —
+     * refused, before any provider call, when writing help may not run on
+     * it for this user.
+     *
+     * @return array{ResourceDescriptor, array<string, mixed>, ResolvedProvider, ?string}
+     * @throws AiRequestException
+     */
+    private function configured(ResourceDescriptor $resource): array
+    {
+        [$visible, $field] = $this->guard->field($resource->slug(), $this->field());
+        $this->guard->writable($visible, $field, 'update');
+
+        // the records come as the detail view serializes them: a field it hides would read as empty on every one
+        if (!in_array(Field::VIEW_SHOW, is_array($field['views'] ?? null) ? $field['views'] : [], true)) {
+            throw new AiRequestException("This field of {$visible->label()} is not on its detail view, so its text cannot be read for proposals: show it there, or propose rewrites of another field.", 422);
+        }
+
+        $this->guard->sendable($visible, $this->field());
+
+        if ($this->operation() === WritingOperation::Translate && !WritingOperation::isLocale($this->targetLocale() ?? '')) {
+            throw new AiRequestException(static::class . ' translates without a language tag: return one, such as de or pt-BR, from targetLocale().', 422);
+        }
+
+        $instructions = $this->instructions();
+
+        if ($instructions !== null && mb_strlen($instructions) > WritingAssistant::MAX_INSTRUCTIONS) {
+            throw new AiRequestException(static::class . '::instructions() is longer than ' . WritingAssistant::MAX_INSTRUCTIONS . ' characters.', 422);
+        }
+
+        return [$visible, $field, $this->guard->provider(), $instructions === null ? null : WritingAssistant::guidance($instructions)];
+    }
+
+    /**
+     * What the job says it did: the proposals, then each way a record was
+     * left out, by count.
+     *
+     * @param array<string, array<string, int>> $tally status => reason => count
+     * @param int $cut how many proposals were cut at the field's length cap
+     */
+    private static function summary(array $tally, int $cut, string $label, string $key): string
+    {
+        $proposed = array_sum($tally[RewriteStore::PROPOSED] ?? []);
+        $parts = ["Proposed rewrites of {$label} for {$proposed} record(s): review the CSV, then import it in update mode keyed by {$key} to apply them."];
+
+        if ($cut > 0) {
+            $parts[] = "{$cut} answer(s) were cut at the field's length limit.";
+        }
+        $reasons = [
+            'forbidden' => 'this account may not update',
+            'empty' => 'had no text',
+            'too_long' => 'were longer than ' . WritingAssistant::MAX_TEXT . ' characters',
+            'unencodable' => 'ended in a backslash, which the CSV cannot carry back to the import',
+        ];
+
+        foreach ($tally[RewriteStore::SKIPPED] ?? [] as $reason => $count) {
+            $parts[] = "Left out {$count} that " . ($reasons[$reason] ?? $reason) . '.';
+        }
+
+        foreach ($tally[RewriteStore::FAILED] ?? [] as $category => $count) {
+            $parts[] = $category === 'empty_answer' ? "{$count} AI answer(s) were empty." : "{$count} AI call(s) failed ({$category}).";
+        }
+
+        $stops = [
+            'budget' => "today's budget ran out",
+            'file_full' => "the proposals filled the job's file; run the rest as another selection",
+            'unavailable' => 'writing help stopped being available to this run',
+        ];
+
+        foreach ($tally[RewriteStore::BUDGET] ?? [] as $reason => $count) {
+            $parts[] = 'Stopped calling AI: ' . ($stops[$reason] ?? $reason) . ", so {$count} record(s) were not sent.";
+        }
+
+        return implode(' ', $parts);
+    }
+
+    /**
+     * Records every record of the chunk not done yet as not sent (BUDGET,
+     * $reason); how many.
+     */
+    private function leaveOutRest(ActionRequest $request, string $reason): int
+    {
+        $key = $request->resource->primaryKeyField();
+        $unsent = 0;
+
+        foreach ($request->records as $record) {
+            $id = $record[$key] ?? null;
+
+            if ((!is_int($id) && !is_string($id)) || $request->jobId === null || $this->store->done($request->jobId, (string) $id)) {
+                continue;
+            }
+
+            $this->store->leaveOut($request->jobId, (string) $id, RewriteStore::BUDGET, $reason);
+            $unsent++;
+        }
+
+        return $unsent;
+    }
+}

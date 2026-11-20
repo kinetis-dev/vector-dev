@@ -110,8 +110,9 @@ final class ResourcesPerEntityTest extends TestCase
      * from the compiler at 826da67. Users, now one of two resources over
      * its entity, is among them. Products and tickets have since declared
      * a searchable relation and full-text search, products and users their
-     * `ai.send` metadata (docs/ai.md), and the fixture holds them with
-     * those declarations.
+     * `ai.send` metadata (docs/ai.md), orders their bulk AI rewrite
+     * action (TidyOrderNotes), and the fixture holds them with those
+     * declarations.
      */
     public function testEveryExistingDescriptorIsUnchanged(): void
     {

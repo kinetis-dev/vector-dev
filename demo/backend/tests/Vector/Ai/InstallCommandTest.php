@@ -26,6 +26,7 @@ final class InstallCommandTest extends TestCase
         '20261119000101_vector_ai_credentials',
         '20261119000102_vector_ai_usage',
         '20261120000101_vector_ai_approvals',
+        '20261121000101_vector_ai_rewrites',
     ];
 
     private string $root;

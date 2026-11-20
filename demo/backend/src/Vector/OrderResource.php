@@ -6,6 +6,7 @@ namespace App\Vector;
 
 use App\Domain\Order;
 use App\Domain\OrderStatus;
+use App\Vector\Actions\TidyOrderNotes;
 use Kinetis\Vector\Attributes\Resource;
 use Kinetis\Vector\Fields\BelongsTo;
 use Kinetis\Vector\Fields\Currency;
@@ -45,6 +46,13 @@ final class OrderResource extends VectorResource
             DateTime::make('createdAt')->readonly()->hideFromForms()->hideFromIndex(),
             DateTime::make('updatedAt')->readonly()->hideFromForms()->hideFromIndex(),
         ];
+    }
+
+    /** Bulk AI proposals for the notes: a CSV to review and import, never a direct write. */
+    #[\Override]
+    public function actions(): array
+    {
+        return [TidyOrderNotes::class];
     }
 
     #[\Override]

@@ -1151,7 +1151,14 @@
                 "writable": []
             }
         ],
-        "actions": []
+        "actions": [
+            {
+                "name": "tidy-order-notes",
+                "label": "Propose AI rewrites of Notes",
+                "confirmation": "Each selected record's Notes is sent to AI. Nothing is changed: you get a CSV of proposals to review, and import it in update mode to apply them.",
+                "queued": true
+            }
+        ]
     },
     "products": {
         "resource": "products",
