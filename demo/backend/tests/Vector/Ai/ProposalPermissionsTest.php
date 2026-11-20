@@ -18,7 +18,7 @@ use NeuronAI\Tools\ToolOutput;
  * A change Vector's own permissions would refuse this user is refused
  * when it is proposed, not shown as a card the approval would only fail:
  * the resources without a policy of their own (products among them) here
- * let nobody create or update, and let everyone delete. Nothing is stored
+ * let nobody create, update or force-delete, and let everyone delete. Nothing is stored
  * for a refused proposal; the one this user may make still is.
  */
 final class ProposalPermissionsTest extends ApprovalsTestCase
@@ -66,6 +66,16 @@ final class ProposalPermissionsTest extends ApprovalsTestCase
         self::assertSame('pending', $this->row($approval['id'])['status'] ?? null);
     }
 
+    public function testAForcedDeleteNeedsForceDeleteNotDelete(): void
+    {
+        $run = $this->propose(['resource' => 'products', 'id' => (string) $this->product, 'force' => true], 'vector_delete');
+
+        self::assertSame(200, $run['status']);
+        self::assertSame([], $run['approvals'], 'delete alone does not let a forced delete be proposed');
+        self::assertSame([], $this->rows());
+        self::assertSame([ProposingTool::NOT_PERMITTED], self::toolErrors($this->calls()[1]));
+    }
+
     /** @return list<string> the error texts of the tool results a recorded call carried */
     private static function toolErrors(RequestRecord $call): array
     {
@@ -87,9 +97,15 @@ final class ProposalPermissionsTest extends ApprovalsTestCase
     }
 }
 
-/** Lets everyone read and delete, and nobody create or update. */
+/** Lets everyone read and delete, and nobody create, update or force-delete. */
 final class NoWritesButDeletesPolicy extends ResourcePolicy
 {
+    #[\Override]
+    public function forceDelete(CurrentUserInterface $user, array $record): bool
+    {
+        return false;
+    }
+
     #[\Override]
     public function create(CurrentUserInterface $user): bool
     {

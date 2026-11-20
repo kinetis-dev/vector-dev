@@ -4,19 +4,13 @@ declare(strict_types=1);
 
 namespace Kinetis\VectorAi\Writing;
 
-use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Registry\ResourceDescriptor;
-use Kinetis\VectorAi\Auth\AiAccessInterface;
-use Kinetis\VectorAi\Config\AiConfig;
-use Kinetis\VectorAi\Failure\AiFailure;
+use Kinetis\VectorAi\Auth\AiAvailability;
 use Kinetis\VectorAi\Feature;
 use Kinetis\VectorAi\Governance\ModelBoundary;
 use Kinetis\VectorAi\Http\AiRequestException;
-use Kinetis\VectorAi\Providers\ProviderResolver;
 use Kinetis\VectorAi\Providers\ResolvedProvider;
-use Kinetis\VectorAi\Settings\AiSettingsReader;
-use Kinetis\VectorAi\Usage\UsageLedger;
 
 /**
  * What decides whether a field's text may be sent for writing help, as
@@ -31,7 +25,7 @@ use Kinetis\VectorAi\Usage\UsageLedger;
  * - mayUpdate(): that record's own `update`;
  * - sendable(): what ModelBoundary lets a model be sent;
  * - provider(): writing on, configured, budgeted and this user's to use;
- * - budgetLeft(): today's token budget not spent.
+ * - remaining() and budgetLeft(): today's token budget not spent.
  *
  * Refusals are AiRequestExceptions with the status the endpoint answers.
  * Built per request.
@@ -42,14 +36,9 @@ final readonly class WritingGuard
     public const array TYPES = ['string', 'text', 'markdown', 'richtext'];
 
     public function __construct(
-        private CurrentUserInterface $user,
-        private AiAccessInterface $access,
-        private AiConfig $config,
-        private AiSettingsReader $settings,
+        private AiAvailability $availability,
         private ResourceService $resources,
         private ModelBoundary $boundary,
-        private ProviderResolver $resolver,
-        private UsageLedger $usage,
     ) {}
 
     /**
@@ -120,31 +109,24 @@ final readonly class WritingGuard
     }
 
     /**
-     * Writing's provider for this user.
+     * Writing's provider for this user: AiAvailability::provider().
      *
      * @throws AiRequestException 403 when writing is off, unconfigured, unbudgeted or not theirs
      */
     public function provider(): ResolvedProvider
     {
-        if (
-            !$this->config->configured()
-            || !$this->settings->bool(Feature::Writing->enabledSetting())
-            || $this->settings->int('dailyTokenBudgetPerUser', 0) <= 0
-            || !$this->access->canUse($this->user, Feature::Writing)
-        ) {
-            throw new AiRequestException('Writing help is not available to this account.', 403);
-        }
+        return $this->availability->provider(Feature::Writing);
+    }
 
-        try {
-            return $this->resolver->for(Feature::Writing, $this->user);
-        } catch (AiFailure $e) {
-            throw new AiRequestException('Writing help is not configured: ' . $e->getMessage(), 403);
-        }
+    /** How many of today's tokens this user has left. */
+    public function remaining(): int
+    {
+        return $this->availability->remaining();
     }
 
     /** Whether this user has any of today's token budget left. */
     public function budgetLeft(): bool
     {
-        return $this->usage->remaining((string) $this->user->id(), $this->settings->int('dailyTokenBudgetPerUser', 0)) > 0;
+        return $this->remaining() > 0;
     }
 }

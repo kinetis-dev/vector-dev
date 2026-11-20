@@ -1,4 +1,5 @@
 import { approvalFrame, approvalOf, readDataStream, recordOfToolOutput, type ApprovalFrame, type DataStreamFrame } from '../utils/assistantStream'
+import { fitAssistantMessages, type AssistantMessage } from '../utils/assistantBody'
 
 /**
  * Where a proposed change stands, as the drawer shows it: the server's
@@ -48,10 +49,6 @@ interface RunReads {
     records: Map<string, Record<string, unknown>>
 }
 
-/** The most messages, and the largest body, one turn sends (the server refuses more). */
-const MAX_MESSAGES = 40
-const MAX_BODY = 60_000
-
 /** What an answer that proposed changes without saying anything is sent as. */
 export const PROPOSED_ONLY = '(Proposed the changes shown for approval.)'
 
@@ -85,19 +82,16 @@ export function useVectorAssistant() {
     /**
      * The conversation as the server takes it: settled text, and the
      * proposals decided on — by id only: the server reads the outcome
-     * from its own row — newest last, within its caps. An answer that only
+     * from its own row — newest last. An answer that only
      * proposed changes, with no text, is kept with PROPOSED_ONLY in its
      * place, so its proposals' outcomes do not follow the question directly.
      */
-    function history() {
-        let messages = turns.value
+    function history(): AssistantMessage[] {
+        return turns.value
             .filter(turn => turn.role === 'approval' || (turn.failed === null && !turn.streaming && (turn.content.trim() !== '' || turn.approvals.length > 0)))
             .map(turn => turn.role === 'approval'
                 ? { role: 'approval' as const, id: turn.approvalId ?? '' }
                 : { role: turn.role, content: turn.content.trim() === '' ? PROPOSED_ONLY : turn.content })
-            .slice(-MAX_MESSAGES)
-        while (messages.length > 1 && JSON.stringify(messages).length > MAX_BODY) messages = messages.slice(1)
-        return messages
     }
 
     function card(frame: ApprovalFrame, reads: RunReads | null): ApprovalCard {
@@ -140,11 +134,13 @@ export function useVectorAssistant() {
 
     async function run() {
         const ctx = host.context()
-        const body = {
+        const build = (messages: AssistantMessage[]) => ({
             conversationId: conversationId.value,
-            messages: history(),
+            messages,
             context: { path: ctx.path, resource: ctx.resource ?? null, recordId: ctx.recordId ?? null },
-        }
+        })
+        // within the server's caps, measured as the body it is sent as, and opening with the user
+        const body = build(fitAssistantMessages(history(), build))
         turns.value.push({ id: newId(), role: 'assistant', content: '', tools: [], approvals: [], failed: null, streaming: true })
         // the reactive copy in the list, so every change shows as it streams
         const reply = turns.value[turns.value.length - 1]!
@@ -156,7 +152,7 @@ export function useVectorAssistant() {
             await readDataStream(stream, frame => apply(reply, frame, reads))
             if (reply.content === '' && reply.approvals.length === 0 && reply.failed === null) reply.failed = t('ai.assistant.failed')
         } catch (error) {
-            if (statusOf(error) === 501) {
+            if (aiStatusOf(error) === 501) {
                 // the runtime cannot stream: the same turn, answered whole
                 try {
                     const answer = await api<WholeAnswer>('/vector/ai/assistant', { method: 'POST', body, headers: { Accept: 'application/json' } })
@@ -202,7 +198,7 @@ export function useVectorAssistant() {
         try {
             decided = await api<Decision>(`/vector/ai/approvals/${encodeURIComponent(approval.frame.id)}/${verb}`, { method: 'POST' })
         } catch (error) {
-            const status = statusOf(error)
+            const status = aiStatusOf(error)
             const data = (error as { data?: unknown } | null)?.data
             if (status === 409 && data !== null && typeof data === 'object') decided = data as Decision
             else if (status === 410) approval.state = 'expired'
@@ -268,18 +264,8 @@ export function useVectorAssistant() {
 
     /** A failure in words: a spent budget says when it renews, when Retry-After can be read; otherwise the server's reason. */
     async function describe(error: unknown): Promise<string> {
-        const failed = error as { data?: unknown, response?: { headers?: Headers } } | null
-
-        if (statusOf(error) === 429) {
-            const seconds = Number(failed?.response?.headers?.get('Retry-After') ?? Number.NaN)
-            if (Number.isFinite(seconds) && seconds > 0) {
-                const at = new Date(Date.now() + seconds * 1000)
-                return t('ai.filters.budget', { time: at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })
-            }
-        }
-
         // a streamed request's error body is still a stream: read it for the reason
-        let data = failed?.data
+        let data = (error as { data?: unknown } | null)?.data
         if (data instanceof ReadableStream) {
             try {
                 data = JSON.parse(await new Response(data).text())
@@ -288,15 +274,8 @@ export function useVectorAssistant() {
             }
         }
 
-        const said = data !== null && typeof data === 'object' ? (data as { error?: unknown }).error : undefined
-        if (typeof said === 'string' && said !== '') return said
-        return statusOf(error) === 429 ? t('ai.filters.budgetSpent') : t('ai.assistant.failed')
+        return aiFailureMessage(error, t('ai.assistant.failed'), data)
     }
 
     return { open, draft, turns, busy, conversationId, send, retry, reset, forget, ask, decide }
-}
-
-function statusOf(error: unknown): number | undefined {
-    const failed = error as { status?: number, statusCode?: number, response?: { status?: number } } | null
-    return failed?.status ?? failed?.statusCode ?? failed?.response?.status
 }

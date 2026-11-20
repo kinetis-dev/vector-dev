@@ -4,27 +4,18 @@ declare(strict_types=1);
 
 namespace Kinetis\VectorAi\Http;
 
-use DateTimeImmutable;
 use DateTimeZone;
 use Kinetis\Http\Attributes\Middleware;
 use Kinetis\Http\Attributes\Post;
 use Kinetis\Http\Attributes\RoutePrefix;
-use Kinetis\Http\CurrentUserInterface;
-use Kinetis\Http\Responses\ErrorResponse;
 use Kinetis\Http\Responses\JsonResponse;
 use Kinetis\Validation\Exception\ValidationException;
 use Kinetis\Validation\Violation;
 use Kinetis\Vector\Query\ResourceService;
-use Kinetis\VectorAi\Auth\AiAccessInterface;
-use Kinetis\VectorAi\Config\AiConfig;
-use Kinetis\VectorAi\Failure\AiFailure;
+use Kinetis\VectorAi\Auth\AiAvailability;
 use Kinetis\VectorAi\Feature;
 use Kinetis\VectorAi\Filters\FilterTranslator;
 use Kinetis\VectorAi\Governance\ModelBoundary;
-use Kinetis\VectorAi\Providers\ProviderResolver;
-use Kinetis\VectorAi\Providers\ResolvedProvider;
-use Kinetis\VectorAi\Settings\AiSettingsReader;
-use Kinetis\VectorAi\Usage\UsageLedger;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -39,8 +30,9 @@ use Psr\Http\Message\ServerRequestInterface;
  * Asked in this order, as this request's user and never another: the
  * resource (404), the user's viewAny on it, whether the resource may be
  * sent to a model at all (ModelBoundary), whether the feature is on,
- * configured and theirs to use (each 403), then the day's token budget
- * (429 until midnight UTC).
+ * configured and theirs to use (each 403; AiAvailability::provider()),
+ * then the day's token budget (429 until midnight UTC;
+ * AiAvailability::budgetSpent()).
  */
 #[RoutePrefix('/vector/ai')]
 #[Middleware('@vector')]
@@ -50,14 +42,9 @@ final readonly class FiltersController
     private const int MAX_BODY = 16384;
 
     public function __construct(
-        private CurrentUserInterface $user,
-        private AiAccessInterface $access,
-        private AiConfig $config,
-        private AiSettingsReader $settings,
+        private AiAvailability $availability,
         private ResourceService $resources,
         private ModelBoundary $boundary,
-        private ProviderResolver $resolver,
-        private UsageLedger $usage,
         private FilterTranslator $translator,
     ) {}
 
@@ -76,40 +63,16 @@ final readonly class FiltersController
             throw new AiRequestException("{$visible->label()} is kept from AI.", 403);
         }
 
-        $provider = $this->provider();
-        $budget = $this->settings->int('dailyTokenBudgetPerUser', 0);
+        $provider = $this->availability->provider(Feature::Filters);
 
-        if ($this->usage->remaining((string) $this->user->id(), $budget) <= 0) {
-            $midnight = new DateTimeImmutable('tomorrow', new DateTimeZone('UTC'));
-
-            return ErrorResponse::create(429, "Today's AI budget is spent; it renews at midnight UTC.", [
-                'Retry-After' => (string) max(1, $midnight->getTimestamp() - time()),
-            ]);
+        if (($spent = $this->availability->budgetSpent()) !== null) {
+            return $spent;
         }
 
         [$text, $zone, $current] = $this->input($request);
         $translation = $this->translator->translate($visible, $permissions, $provider, $text, $zone, $current);
 
         return JsonResponse::create($translation->toArray(), 200, ['Cache-Control' => 'no-store']);
-    }
-
-    /** The feature's provider for this user, or 403 when it is off, unconfigured or not theirs. */
-    private function provider(): ResolvedProvider
-    {
-        if (
-            !$this->config->configured()
-            || !$this->settings->bool(Feature::Filters->enabledSetting())
-            || $this->settings->int('dailyTokenBudgetPerUser', 0) <= 0
-            || !$this->access->canUse($this->user, Feature::Filters)
-        ) {
-            throw new AiRequestException('Plain-language filters are not available to this account.', 403);
-        }
-
-        try {
-            return $this->resolver->for(Feature::Filters, $this->user);
-        } catch (AiFailure $e) {
-            throw new AiRequestException('Plain-language filters are not configured: ' . $e->getMessage(), 403);
-        }
     }
 
     /**

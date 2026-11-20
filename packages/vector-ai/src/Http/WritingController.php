@@ -4,18 +4,16 @@ declare(strict_types=1);
 
 namespace Kinetis\VectorAi\Http;
 
-use DateTimeImmutable;
-use DateTimeZone;
 use Kinetis\Http\Attributes\Middleware;
 use Kinetis\Http\Attributes\Post;
 use Kinetis\Http\Attributes\RoutePrefix;
-use Kinetis\Http\Responses\ErrorResponse;
 use Kinetis\Http\Responses\JsonResponse;
 use Kinetis\Validation\Exception\ValidationException;
 use Kinetis\Validation\Violation;
 use Kinetis\Vector\Exception\RecordNotFoundException;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Registry\ResourceDescriptor;
+use Kinetis\VectorAi\Auth\AiAvailability;
 use Kinetis\VectorAi\Writing\WritingAssistant;
 use Kinetis\VectorAi\Writing\WritingGuard;
 use Kinetis\VectorAi\Writing\WritingOperation;
@@ -66,11 +64,7 @@ final readonly class WritingController
         $provider = $this->guard->provider();
 
         if (!$this->guard->budgetLeft()) {
-            $midnight = new DateTimeImmutable('tomorrow', new DateTimeZone('UTC'));
-
-            return ErrorResponse::create(429, "Today's AI budget is spent; it renews at midnight UTC.", [
-                'Retry-After' => (string) max(1, $midnight->getTimestamp() - time()),
-            ]);
+            return AiAvailability::budgetResponse();
         }
 
         $answer = $this->writing->write($provider, $compiled, $input['operation'], $input['text'], $input['format'], $input['targetLocale'], $input['instructions']);

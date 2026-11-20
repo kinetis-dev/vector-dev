@@ -346,7 +346,16 @@ user. `conversationId` is 1 to 64 letters, digits, `-` or `_`;
 most 8,000 characters, or of role `approval` with an approval id, the
 last the user's or an approval; `context` the page the
 person is on, each value at most 200 (`path`) or 64 characters. The body
-is at most 64 KiB. Any of these refused is a `422` naming it.
+is at most 64 KiB (65,536 bytes). Any of these refused is a `422` naming it.
+
+The drawer keeps within those caps itself: it sends the last 40
+messages, drops the oldest until the whole body is at most 63 KiB in
+UTF-8 — the bytes it sends, so a long Hebrew, Arabic or CJK
+conversation, two or three bytes a character, fits as well as an
+English one — and then drops any message before the first of the
+person's own, so what is sent opens with the user. The server drops
+such leading turns too, from any client: a provider such as Bedrock
+refuses a conversation that opens with the assistant.
 
 **The answer streams** as Server-Sent Events in the Vercel AI SDK
 data-stream protocol (`x-vercel-ai-ui-message-stream: v1`), one
@@ -402,7 +411,7 @@ over the send, the first byte and the last — a stream's included — and
 the byte ceiling `VECTOR_AI_MAX_RESPONSE_BYTES`; the answer is at most
 `VECTOR_AI_MAX_OUTPUT_TOKENS` tokens. When the browser leaves, the
 provider stream is stopped at the next event it reads (`StoppableHttpClient`,
-asking `connection_aborted()`): under FrankenPHP's worker mode the run
+asking the request's `Kinetis\Runtime\ClientConnectionInterface`): under FrankenPHP's worker mode the run
 ends with the text so far; behind PHP-FPM, nginx closing the connection
 ends the script at its next write. A Bedrock call cannot be stopped this
 way, and runs to its deadline.
@@ -448,7 +457,9 @@ can quote data; the exception itself is attached only under
 
 With **Assistant may propose changes** (`assistantWrites`) on in the AI
 settings, and the access policy's `canUse($user, Feature::AssistantWrites)`
-allowing the person, the assistant gets Vector's four writes —
+allowing the person — on top of the assistant itself being on and the
+policy's `canUse($user, Feature::Assistant)` allowing them, since writes
+are the assistant's — the assistant gets Vector's four writes —
 `vector_create`, `vector_update`, `vector_delete` and
 `vector_run_action` — under their own names and input schemas. Calling
 one **changes nothing**. The call:
@@ -463,8 +474,10 @@ one **changes nothing**. The call:
 4. is refused, as a tool error, when Vector's own permissions would
    refuse the person the change — `create` on the resource for
    `vector_create`, that record's `update` or `delete` for
-   `vector_update` and `vector_delete`, a record they cannot see
-   included — so no card is shown that the approval would only fail.
+   `vector_update` and `vector_delete`, and its `forceDelete` — not
+   `delete` — for a forced delete (`force: true`), which Vector grants
+   only for a record in the trash; a record they cannot see is
+   refused too — so no card is shown that the approval would only fail.
    Approving still enforces every permission again;
 5. is stored as a pending row of `vector_ai_approvals` — its tool and
    arguments, for this person and the impersonator if there is one —
@@ -515,7 +528,15 @@ Once decided, the drawer sends the next turn with the decision
 (`{"role": "approval", "id": …}`): the server reads the outcome from
 the row — the result passed through the boundary — and the assistant
 says what happened, or, for an outcome that is unknown, that the person
-should check the record's History. Wherever two of the person's turns
+should check the record's History. A change Vector refused is never
+quoted to the model, since a validation, policy or hook message can
+quote record values and fields kept from it: a validation refusal is
+told as *Vector refused the change: some values did not pass
+validation.* with, for each failed field the boundary lets through, its
+name and rule code (`{"field": "name", "code": "too_long"}`) and a
+count of the others (`otherFields`); any other refusal as a fixed
+sentence saying Vector stopped it. The person still sees the refusal
+itself on the proposal's card. Wherever two of the person's turns
 would follow each other (an answer that only proposed, with no text,
 then the decision), the server puts a short fixed assistant turn
 between them: providers such as Bedrock refuse roles that do not
@@ -717,7 +738,10 @@ the run asks whether it may go on, and once it may not, no further
 record is sent, the proposals made so far are kept, and the job says how
 many records were not sent and why: the day's token budget is spent
 (`budget`), or the proposals have filled the job's file (`file_full`;
-see the CSV, below). Every call is a usage row with the feature
+see the CSV, below). A chunk reads the day's budget left, and which of
+its records are already done, once at its start, and counts each call's
+tokens off that budget as it goes; spending elsewhere in the meantime —
+the person's assistant, say — shows from the next chunk. Every call is a usage row with the feature
 `writing`. Each chunk declares the records it made a proposal for
 ({doc}`actions`): only those get an `action:<name>` entry in their
 audit trail, and the job's `affected` counts proposals, not the
@@ -816,7 +840,16 @@ the model has reshaped can fail the import's validation.
 A feature is `true` when it ships in the installed release, a provider
 is configured, its switch is on, the access policy lets this user use
 it, their daily budget has tokens left, and a provider, model and key
-resolve for it — and, for `assistantWrites`, the assistant is on too.
+resolve for it — and, for `assistantWrites`, the assistant's switch is
+on and the policy lets them use the assistant too. That is the same
+check, in one place (`Auth\AiAvailability`), that each feature's own
+endpoint makes, so a feature is offered exactly when its endpoint would
+serve it. Whether a provider, model and key resolve is read from the
+configuration, the settings and the stored key's record: computing it
+builds no provider and opens no key, since it runs on every `GET
+/vector/schema` — a `304` included, as the ETag covers it. A stored key
+altered in the database therefore still shows the feature, and its
+endpoint answers `403` *… is not configured*.
 This release ships all four. `excluded` names each resource this user may list that is
 kept from the model whole, so the admin offers no AI on it.
 `excludedFields` names, for each other resource they may list, the

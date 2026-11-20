@@ -6,23 +6,24 @@ namespace Kinetis\VectorAi\Assistant;
 
 use Generator;
 use Kinetis\Config\Config;
-use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Http\StreamedResponse;
 use Kinetis\Mcp\McpRegistry;
 use Kinetis\Neuron\AgentStream;
 use Kinetis\Neuron\InferenceTelemetry;
 use Kinetis\Neuron\McpTools;
+use Kinetis\Runtime\ClientConnectionInterface;
 use Kinetis\Vector\Auth\ActorContext;
 use Kinetis\Vector\Translation\LocaleResolver;
 use Kinetis\VectorAi\Approvals\Approval;
 use Kinetis\VectorAi\Approvals\ApprovalStatus;
 use Kinetis\VectorAi\Approvals\ApprovalStore;
-use Kinetis\VectorAi\Auth\AiAccessInterface;
+use Kinetis\VectorAi\Auth\AiAvailability;
 use Kinetis\VectorAi\Failure\AiFailure;
 use Kinetis\VectorAi\Failure\AiFailureCategory;
 use Kinetis\VectorAi\Failure\AiFailureMapper;
 use Kinetis\VectorAi\Feature;
 use Kinetis\VectorAi\Governance\ModelBoundary;
+use Kinetis\VectorAi\Http\ApprovalController;
 use Kinetis\VectorAi\Providers\ResolvedProvider;
 use Kinetis\VectorAi\Settings\AiSettingsReader;
 use Kinetis\VectorAi\Usage\UsageLedger;
@@ -41,8 +42,9 @@ use Psr\Log\LoggerInterface;
 
 /**
  * The assistant: one agent run over Vector's five read tools, each a
- * GovernedTool, as this request's user — and, where `assistantWrites` is
- * on and AiAccessInterface lets this user (Feature::AssistantWrites),
+ * GovernedTool, as this request's user — and, where AiAvailability
+ * permits Feature::AssistantWrites (its switch and the assistant's on, and
+ * AiAccessInterface letting this user use both),
  * Vector's four write tools as ProposingTools, which only propose: each
  * change waits in `vector_ai_approvals` for the admin, is announced in
  * the stream as an `approval` data frame (the Vercel AI SDK's custom
@@ -114,21 +116,20 @@ final readonly class Assistant
         private LocaleResolver $locales,
         private LoggerInterface $logger,
         private Config $config,
-        private CurrentUserInterface $user,
-        private AiAccessInterface $access,
+        private AiAvailability $availability,
         private ApprovalStore $approvals,
         private McpRegistry $registry,
     ) {}
 
     /**
-     * Whether this run may propose changes: `assistantWrites` on, and this
-     * user allowed Feature::AssistantWrites. When not, the agent is given
-     * none of the write tools.
+     * Whether this run may propose changes: AiAvailability::permits() of
+     * Feature::AssistantWrites — the very predicate the approve endpoint
+     * asks, so nothing is proposed that could not be approved. When not,
+     * the agent is given none of the write tools.
      */
     public function writes(): bool
     {
-        return $this->settings->bool(Feature::AssistantWrites->enabledSetting())
-            && $this->access->canUse($this->user, Feature::AssistantWrites);
+        return $this->availability->permits(Feature::AssistantWrites);
     }
 
     /**
@@ -179,17 +180,18 @@ final readonly class Assistant
      * The run as Server-Sent Events in the Vercel AI SDK data-stream
      * protocol, each proposal announced in a `data-approval` frame right
      * after the tool result that stored it. It starts when the response is
-     * emitted.
+     * emitted. $connection is the request's: once the browser has gone, a
+     * failure is no longer written as an error frame.
      *
      * @param list<array{role: 'user'|'assistant', content: string}|array{role: 'approval', id: string}> $conversation
      */
-    public function stream(ResolvedProvider $provider, string $instructions, string $conversationId, array $conversation): StreamedResponse
+    public function stream(ResolvedProvider $provider, ClientConnectionInterface $connection, string $instructions, string $conversationId, array $conversation): StreamedResponse
     {
         [$agent, $ledger, $budget, $proposals] = $this->agent($provider, $instructions, $conversationId);
         $adapter = new VercelAIAdapter();
         $agent->setStreamAdapter(static fn (): VercelAIAdapter => $adapter);
 
-        return new AgentStream($adapter)->response($this->told($agent->stream($this->messages($conversation)), $adapter, $provider, $ledger, $budget, $proposals));
+        return new AgentStream($adapter, $connection)->response($this->told($agent->stream($this->messages($conversation)), $adapter, $provider, $ledger, $budget, $proposals));
     }
 
     /**
@@ -384,6 +386,11 @@ final readonly class Assistant
      * would be adjacent — such a turn after the admin's message, or any
      * user turn after another, as an edited conversation can send — a
      * BRIDGE assistant turn goes between them, so the roles alternate.
+     * Every turn before the first user-role one is dropped: the browser
+     * trims a long conversation from its start, and a provider such as
+     * Bedrock refuses one that does not open with the user. The
+     * conversation carries no tool calls or results, so no tool result is
+     * left without its call; an approval's outcome is a user turn of text.
      *
      * @param list<array{role: 'user'|'assistant', content: string}|array{role: 'approval', id: string}> $conversation
      * @return list<Message>
@@ -399,6 +406,11 @@ final readonly class Assistant
                 'assistant' => new AssistantMessage($m['content']),
                 'approval' => $this->outcome($m['id']),
             };
+
+            // a turn before any of the user's: dropped, never sent first
+            if ($previous === null && $message->getRole() !== MessageRole::USER->value) {
+                continue;
+            }
 
             if ($previous === MessageRole::USER->value && $message->getRole() === MessageRole::USER->value) {
                 $messages[] = new AssistantMessage(self::BRIDGE);
@@ -441,7 +453,7 @@ final readonly class Assistant
         $text = "Approval {$approval->publicId()}, your proposed {$approval->tool}{$target}: {$status}.";
         $result = match ($approval->status) {
             ApprovalStatus::Executed => $this->boundary->toolResult($approval->tool, $approval->arguments, $approval->result),
-            ApprovalStatus::Failed => ['error' => is_array($approval->result) && is_string($approval->result['error'] ?? null) ? mb_substr($approval->result['error'], 0, ModelBoundary::MAX_STRING) : 'The change failed.'],
+            ApprovalStatus::Failed => $this->failure($approval),
             default => null,
         };
 
@@ -450,5 +462,25 @@ final readonly class Assistant
         }
 
         return new UserMessage([new TextContent($text), new TextContent(self::OUTCOME_PROMPT)]);
+    }
+
+    /**
+     * Why a failed approval failed, as the model may be told it: this
+     * package's own failure texts, which quote nothing, as they are; the
+     * tool's refusal — a validation, policy or hook message, which can
+     * quote record values and fields kept from the model — only through
+     * ModelBoundary::writeFailure().
+     *
+     * @return array<string, mixed>
+     */
+    private function failure(Approval $approval): array
+    {
+        $error = is_array($approval->result) ? ($approval->result['error'] ?? null) : null;
+
+        if (in_array($error, [Approval::UNKNOWN_OUTCOME, Approval::MAY_HAVE_CHANGED, ApprovalController::UNKNOWN_TOOL], true)) {
+            return ['error' => $error];
+        }
+
+        return $this->boundary->writeFailure($approval->resource(), $error);
     }
 }

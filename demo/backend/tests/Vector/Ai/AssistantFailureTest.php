@@ -9,6 +9,7 @@ use App\Vector\Widgets\LowStockTable;
 use Generator;
 use Kinetis\Container\RequestScope;
 use Kinetis\Http\CurrentUserInterface;
+use Kinetis\Runtime\UnobservableClientConnection;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Widgets\VectorWidget;
 use Kinetis\Vector\Widgets\WidgetRequest;
@@ -63,7 +64,7 @@ final class AssistantFailureTest extends AssistantTestCase
         [$assistant, $scope] = $this->assistant($logger, 5);
 
         try {
-            $response = $assistant->stream(new ResolvedProvider(new FailingMidStream(), 'test-fake', 'fake', 100), 'Be brief.', 'c_fail', [['role' => 'user', 'content' => self::QUESTION]]);
+            $response = $assistant->stream(new ResolvedProvider(new FailingMidStream(), 'test-fake', 'fake', 100), new UnobservableClientConnection(), 'Be brief.', 'c_fail', [['role' => 'user', 'content' => self::QUESTION]]);
             $body = self::emit($response);
         } finally {
             $scope->dispose();
@@ -104,7 +105,7 @@ final class AssistantFailureTest extends AssistantTestCase
         try {
             // the low-stock table, as the dashboard resolves it from this request's scope, has a bug
             $scope->instance(LowStockTable::class, new BrokenWidget());
-            $body = self::emit($assistant->stream(new ResolvedProvider(new ScriptedProvider($replies), 'test-fake', 'fake', 100), 'Be brief.', 'c_bug', [['role' => 'user', 'content' => self::QUESTION]]));
+            $body = self::emit($assistant->stream(new ResolvedProvider(new ScriptedProvider($replies), 'test-fake', 'fake', 100), new UnobservableClientConnection(), 'Be brief.', 'c_bug', [['role' => 'user', 'content' => self::QUESTION]]));
         } finally {
             $scope->dispose();
         }
@@ -132,7 +133,7 @@ final class AssistantFailureTest extends AssistantTestCase
         $replies = ScriptedReplies::of([self::QUESTION => self::rounds([$calls], 'Never answered.')]);
 
         try {
-            $body = self::emit($assistant->stream(new ResolvedProvider(new ScriptedProvider($replies), 'test-fake', 'fake', 100), 'Be brief.', 'c_runaway', [['role' => 'user', 'content' => self::QUESTION]]));
+            $body = self::emit($assistant->stream(new ResolvedProvider(new ScriptedProvider($replies), 'test-fake', 'fake', 100), new UnobservableClientConnection(), 'Be brief.', 'c_runaway', [['role' => 'user', 'content' => self::QUESTION]]));
         } finally {
             $scope->dispose();
         }

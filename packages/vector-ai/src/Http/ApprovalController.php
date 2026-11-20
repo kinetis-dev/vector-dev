@@ -16,9 +16,8 @@ use Kinetis\VectorAi\Approvals\Approval;
 use Kinetis\VectorAi\Approvals\ApprovalStatus;
 use Kinetis\VectorAi\Approvals\ApprovalStore;
 use Kinetis\VectorAi\Assistant\ProposingTool;
-use Kinetis\VectorAi\Auth\AiAccessInterface;
+use Kinetis\VectorAi\Auth\AiAvailability;
 use Kinetis\VectorAi\Feature;
-use Kinetis\VectorAi\Settings\AiSettingsReader;
 use Kinetis\VectorAi\Usage\UsageLedger;
 use NeuronAI\Tools\ToolOutput;
 use Psr\Http\Message\ResponseInterface;
@@ -81,8 +80,7 @@ final readonly class ApprovalController
 
     public function __construct(
         private CurrentUserInterface $user,
-        private AiAccessInterface $access,
-        private AiSettingsReader $settings,
+        private AiAvailability $availability,
         private ApprovalStore $approvals,
         private UsageLedger $usage,
         private RequestScope $scope,
@@ -145,15 +143,10 @@ final readonly class ApprovalController
         return JsonResponse::create(['status' => ApprovalStatus::Rejected->value, 'result' => null], 200, ['Cache-Control' => 'no-store']);
     }
 
-    /** 403 unless the assistant may write for this user, now. */
+    /** 403 unless the assistant may write for this user, now: AiAvailability::permits(), as capabilities.ai asks it. */
     private function available(): void
     {
-        if (
-            !$this->settings->bool(Feature::Assistant->enabledSetting())
-            || !$this->settings->bool(Feature::AssistantWrites->enabledSetting())
-            || !$this->access->canUse($this->user, Feature::Assistant)
-            || !$this->access->canUse($this->user, Feature::AssistantWrites)
-        ) {
+        if (!$this->availability->permits(Feature::AssistantWrites)) {
             throw new AiRequestException('The assistant may not make changes for this account.', 403);
         }
     }

@@ -136,6 +136,44 @@ describe('the assistant', () => {
         wrapper.unmount()
     })
 
+    /** A settled conversation of $pairs questions and answers, each $text. */
+    function seed(pairs: number, text: (i: number) => string) {
+        useVectorAssistant().turns.value = Array.from({ length: pairs * 2 }, (_, i) => ({
+            id: `t${i}`, role: i % 2 === 0 ? 'user' as const : 'assistant' as const, content: text(i), tools: [], approvals: [], failed: null, streaming: false,
+        }))
+    }
+
+    it('keeps a long multi-byte conversation within the server\'s body limit, in UTF-8 bytes', async () => {
+        standaloneApi()
+        const turn = endpoint('/vector/ai/assistant', STREAMED, 'POST')
+        cleanups.push(turn.unregister)
+        const wrapper = await mount()
+        // Hebrew: two bytes a character in UTF-8, one unit in JavaScript's length
+        seed(15, i => `${i}: ${'שלום עולם, מה שלומך היום? '.repeat(110)}`)
+
+        await ask(wrapper, 'ומה עכשיו?')
+        const sent = turn.requests[0]!.body as { messages: { role: string, content: string }[] }
+        expect(new TextEncoder().encode(JSON.stringify(sent)).length).toBeLessThanOrEqual(ASSISTANT_MAX_BODY_BYTES)
+        expect(sent.messages.at(-1)).toEqual({ role: 'user', content: 'ומה עכשיו?' })
+        expect(sent.messages.length).toBeGreaterThan(1)
+        wrapper.unmount()
+    })
+
+    it('sends a conversation trimmed to its last 40 messages opening with the user\'s', async () => {
+        standaloneApi()
+        const turn = endpoint('/vector/ai/assistant', STREAMED, 'POST')
+        cleanups.push(turn.unregister)
+        const wrapper = await mount()
+        // 40 settled messages and the new question: the last 40 would open with an answer
+        seed(20, i => `message ${i}`)
+
+        await ask(wrapper, 'One more question')
+        const sent = turn.requests[0]!.body as { messages: { role: string, content: string }[] }
+        expect(sent.messages[0]).toEqual({ role: 'user', content: 'message 2' })
+        expect(sent.messages).toHaveLength(39)
+        wrapper.unmount()
+    })
+
     it('forgets the conversation when another user is signed in, and on sign-out', async () => {
         standaloneApi()
         const turn = endpoint('/vector/ai/assistant', STREAMED, 'POST')

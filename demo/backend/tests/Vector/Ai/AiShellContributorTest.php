@@ -9,6 +9,7 @@ use Kinetis\Config\Config;
 use Kinetis\Container\AppScope;
 use Kinetis\Http\CurrentUserInterface;
 use Kinetis\VectorAi\Auth\AiAccessInterface;
+use Kinetis\VectorAi\Auth\AiAvailability;
 use Kinetis\VectorAi\Config\AiConfig;
 use Kinetis\VectorAi\Feature;
 use Kinetis\VectorAi\Providers\ProviderResolver;
@@ -131,7 +132,10 @@ final class AiShellContributorTest extends AiTestCase
         self::assertInstanceOf(\Kinetis\Vector\Query\ResourceService::class, $resources);
         self::assertInstanceOf(\Kinetis\VectorAi\Governance\ModelBoundary::class, $boundary);
 
-        return new AiShellContributor($config, $access, $settings, $usage, $resolver, $logger ?? new RecordingLogger(), $resources, $boundary);
+        $user = $scope->get(CurrentUserInterface::class);
+        self::assertInstanceOf(CurrentUserInterface::class, $user);
+
+        return new AiShellContributor(new AiAvailability($user, $access, $config, $settings, $usage, $resolver), $resolver, $logger ?? new RecordingLogger(), $resources, $boundary);
     }
 
     /**

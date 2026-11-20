@@ -19,7 +19,6 @@ interface Translation {
     explanation: string
     unresolved: Unresolved[]
 }
-interface AiCapabilities { filters?: boolean, excluded?: Record<string, unknown> }
 
 const props = defineProps<{
     resource: VectorResource
@@ -39,12 +38,8 @@ const { schema } = useVectorSchema()
 const api = useVectorApi()
 const { t } = useVectorT()
 
-const shown = computed(() => {
-    const ai = schema.value?.capabilities?.ai as AiCapabilities | undefined
-    return ai?.filters === true
-        && ai.excluded?.[props.resource.slug] === undefined
-        && props.resource.fields.some(f => f.operators.length > 0)
-})
+const shown = computed(() => aiOffered(aiCapabilities(schema.value), 'filters', props.resource.slug)
+    && props.resource.fields.some(f => f.operators.length > 0))
 
 const text = ref('')
 const busy = ref(false)
@@ -98,20 +93,7 @@ async function ask() {
  * the API's CORS exposes it; without it, the server's own words.
  */
 function describe(error: unknown): string {
-    const failed = error as { status?: number, statusCode?: number, response?: { status?: number, headers?: Headers }, data?: { error?: unknown } } | null
-    const status = failed?.status ?? failed?.statusCode ?? failed?.response?.status
-
-    if (status === 429) {
-        const seconds = Number(failed?.response?.headers?.get('Retry-After') ?? Number.NaN)
-        if (Number.isFinite(seconds) && seconds > 0) {
-            const at = new Date(Date.now() + seconds * 1000)
-            return t('ai.filters.budget', { time: at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })
-        }
-        const said = failed?.data?.error
-        return typeof said === 'string' && said !== '' ? said : t('ai.filters.budgetSpent')
-    }
-
-    return vectorErrorMessage(error)
+    return aiStatusOf(error) === 429 ? aiFailureMessage(error, t('ai.filters.budgetSpent')) : vectorErrorMessage(error)
 }
 
 /** A candidate of an ambiguous relation becomes its condition in the preview. */

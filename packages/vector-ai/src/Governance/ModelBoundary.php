@@ -26,7 +26,8 @@ use Kinetis\VectorAi\Settings\DataDefault;
  * With the *Record data sent to the model* setting on `allowlist`, the
  * sense inverts: only a resource, and within it only a field, that opts
  * in with `ai.send` true is sent. Built per request: the user and the
- * settings are this request's.
+ * settings are this request's, and so is what it remembers of how each
+ * resource looks to the user (visible()).
  */
 final readonly class ModelBoundary
 {
@@ -45,16 +46,34 @@ final readonly class ModelBoundary
     /** The most rows of one page sent. */
     public const int MAX_ROWS = 25;
 
+    /** What a model is told of a write Vector refused for any reason but validation (writeFailure()). */
+    public const string REFUSED = 'Vector refused the change: its policy, a hook or a changed record stopped it. Its reason is not available to the assistant; the admin sees it on the proposal.';
+
+    /** What a model is told of a write Vector's validation refused (writeFailure()), before the fields that failed. */
+    public const string INVALID = 'Vector refused the change: some values did not pass validation.';
+
     /** The tools whose answer is sent as it is, strings cut: they carry no record data. */
     public const array PASSES = ['vector_resources'];
 
     /** Field types never sent, whatever the metadata says. */
     private const array NEVER = ['password', 'file', 'image'];
 
+    /**
+     * Each resource as this user sees it, by slug, once asked (visible()):
+     * this boundary's own, and so one request's or one job's — never shared.
+     *
+     * @var \ArrayObject<string, ResourceDescriptor>
+     */
+    private \ArrayObject $seen;
+
     public function __construct(
         private ResourceService $resources,
         private AiSettingsReader $settings,
-    ) {}
+    ) {
+        /** @var \ArrayObject<string, ResourceDescriptor> $seen */
+        $seen = new \ArrayObject();
+        $this->seen = $seen;
+    }
 
     /** Whether anything of $resource may be sent to a model. */
     public function allows(ResourceDescriptor $resource): bool
@@ -80,7 +99,7 @@ final readonly class ModelBoundary
         }
 
         // read as this user sees it, whatever the caller passed
-        $visible = $this->resources->visible($visible);
+        $visible = $this->visible($visible);
         $compiled = $visible->fields();
         $described = ResourceDescription::of($visible, $permissions);
         $fields = [];
@@ -126,7 +145,7 @@ final readonly class ModelBoundary
             return [];
         }
 
-        $visible = $this->resources->visible($visible);
+        $visible = $this->visible($visible);
         $fields = $visible->fields();
         $key = $visible->primaryKeyField();
         $sent = [];
@@ -242,6 +261,55 @@ final readonly class ModelBoundary
     }
 
     /**
+     * What a model may be told of why an approved write to $resource
+     * failed, in place of $error — the refusal Vector's tool answered
+     * with, whose text can quote record values and fields the rules above
+     * keep back, from a validation, policy or hook message alike. A
+     * validation refusal (`{"errors": [{path, code, message}, …]}`) is
+     * INVALID with, for each violation of a field sends() lets through,
+     * its field and code — never its message — and how many others there
+     * were; any other refusal is REFUSED.
+     *
+     * @return array{error: string, fields?: list<array{field: string, code: string}>, otherFields?: int}
+     */
+    public function writeFailure(mixed $resource, mixed $error): array
+    {
+        try {
+            $decoded = is_string($error) ? json_decode($error, true, 16, JSON_THROW_ON_ERROR) : null;
+        } catch (\JsonException) {
+            $decoded = null;
+        }
+
+        if (!is_array($decoded) || !is_array($decoded['errors'] ?? null)) {
+            return ['error' => self::REFUSED];
+        }
+
+        $visible = $this->sendable($resource);
+        $fields = [];
+        $others = 0;
+
+        foreach ($decoded['errors'] as $violation) {
+            $path = is_array($violation) && is_array($violation['path'] ?? null) ? array_values($violation['path']) : [];
+
+            // a field the tool's `values` named: ['values', 'stock'] from the MCP dispatcher, ['stock'] from Vector
+            if (($path[0] ?? null) === 'values' && count($path) > 1) {
+                array_shift($path);
+            }
+
+            $field = $path[0] ?? null;
+            $code = is_array($violation) && is_string($violation['code'] ?? null) && preg_match('/^[A-Za-z0-9_.-]{1,64}$/', $violation['code']) === 1 ? $violation['code'] : 'invalid';
+
+            if (is_string($field) && $visible !== null && $this->sends($visible, $field)) {
+                $fields[] = ['field' => $field, 'code' => $code];
+            } else {
+                $others++;
+            }
+        }
+
+        return ['error' => self::INVALID, 'fields' => $fields] + ($others > 0 ? ['otherFields' => $others] : []);
+    }
+
+    /**
      * The resource $slug names, as this user sees it, when it exists for
      * them, they may list it (`viewAny`) and it may be sent to a model;
      * otherwise null.
@@ -253,7 +321,7 @@ final readonly class ModelBoundary
         }
 
         try {
-            $visible = $this->resources->resource($slug);
+            $visible = $this->visible($this->resources->registry()->resource($slug));
         } catch (VectorException | AuthorizationException) {
             return null;
         }
@@ -270,9 +338,11 @@ final readonly class ModelBoundary
      * Whether this user may make the write $tool would propose, as far as
      * Vector's own permissions tell before it is made: `vector_create`,
      * the resource's `create`; `vector_update` and `vector_delete`, that
-     * record's `update` or `delete` (a forced delete, `forceDelete` too),
-     * read as this user — a record they cannot see is no record they may
-     * write. Any other tool: true. Approving still enforces all of it.
+     * record's `update` or `delete` — a forced delete its `forceDelete`
+     * instead, as Vector's own forced delete asks it, which is only ever
+     * true of a record in the trash — read as this user: a record they
+     * cannot see is no record they may write. Any other tool: true.
+     * Approving still enforces all of it.
      *
      * @param array<array-key, mixed> $arguments the proposal's arguments, already checked against the tool's schema
      */
@@ -304,7 +374,8 @@ final readonly class ModelBoundary
             return $permissions['update'];
         }
 
-        return $permissions['delete'] || (($arguments['force'] ?? false) === true && $permissions['forceDelete']);
+        // RecordWriter::delete() asks forceDelete, never delete, of a forced delete: so does this
+        return ($arguments['force'] ?? false) === true ? $permissions['forceDelete'] : $permissions['delete'];
     }
 
     /**
@@ -320,7 +391,7 @@ final readonly class ModelBoundary
             return false;
         }
 
-        $visible = $this->resources->visible($visible);
+        $visible = $this->visible($visible);
 
         if ($name === $visible->primaryKeyField()) {
             return true;
@@ -342,7 +413,7 @@ final readonly class ModelBoundary
      */
     public function keptFields(ResourceDescriptor $resource): array
     {
-        $visible = $this->resources->visible($resource);
+        $visible = $this->visible($resource);
         $fields = $visible->fields();
 
         if (!$this->allows($visible)) {
@@ -377,7 +448,7 @@ final readonly class ModelBoundary
             return false;
         }
 
-        $visible = $this->resources->visible($visible);
+        $visible = $this->visible($visible);
 
         if (!$visible->searchable()) {
             return false;
@@ -392,7 +463,7 @@ final readonly class ModelBoundary
         foreach ($visible->searchRelations() as $name => $relation) {
             $target = $this->resources->registry()->resources()[$relation['resource']] ?? null;
 
-            if (!$this->sends($visible, (string) $name) || $target === null || !$this->sends($target, $this->resources->visible($target)->titleField())) {
+            if (!$this->sends($visible, (string) $name) || $target === null || !$this->sends($target, $this->visible($target)->titleField())) {
                 return false;
             }
         }
@@ -410,10 +481,25 @@ final readonly class ModelBoundary
      */
     public function defaultSort(ResourceDescriptor $visible): array
     {
-        $visible = $this->resources->visible($visible);
+        $visible = $this->visible($visible);
         $kept = array_values(array_filter($visible->defaultSort(), fn (array $sort): bool => $this->sends($visible, $sort['field'])));
 
         return $kept !== [] ? $kept : [['field' => $visible->primaryKeyField(), 'order' => 'asc']];
+    }
+
+    /**
+     * $resource as this user sees it — ResourceService::visible(), which
+     * drops the fields their `viewField` policy hides — asked once per
+     * resource for the life of this boundary, however many rows, search
+     * columns and references read it. Asking it again of a resource it
+     * answered for hides nothing more, so any descriptor of the same slug
+     * shares the answer.
+     */
+    private function visible(ResourceDescriptor $resource): ResourceDescriptor
+    {
+        $slug = $resource->slug();
+
+        return $this->seen[$slug] ??= $this->resources->visible($resource);
     }
 
     /** @return array{error: string} */
@@ -437,7 +523,7 @@ final readonly class ModelBoundary
      */
     private function description(ResourceDescriptor $visible, array $described): array
     {
-        $visible = $this->resources->visible($visible);
+        $visible = $this->visible($visible);
         $compiled = $visible->fields();
         $key = $visible->primaryKeyField();
         $sends = fn (mixed $name): bool => is_string($name) && isset($compiled[$name]) && ($name === $key || $this->sendsField($compiled[$name]));
@@ -592,7 +678,7 @@ final readonly class ModelBoundary
             return $sent;
         }
 
-        $target = $this->resources->visible($target);
+        $target = $this->visible($target);
         $fields = $target->fields();
         $key = $target->primaryKeyField();
         $sends = fn (string $name): bool => $name === $key || (isset($fields[$name]) && $this->sendsField($fields[$name]));

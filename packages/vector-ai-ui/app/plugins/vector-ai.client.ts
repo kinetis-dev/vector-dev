@@ -37,7 +37,7 @@ export default defineNuxtPlugin({
         const { schema } = useVectorSchema()
         const { paletteCommands } = useVectorExtensions()
         const { t } = useVectorT()
-        watch(() => (schema.value?.capabilities?.ai as { assistant?: boolean } | undefined)?.assistant === true, (offered) => {
+        watch(() => aiOffered(aiCapabilities(schema.value), 'assistant'), (offered) => {
             if (offered) {
                 // run when chosen, in the app's context: the API client is the one configured then
                 extend.definePaletteCommand('ai-ask', { title: () => t('ai.assistant.ask'), icon: 'mdi-creation-outline', run: query => nuxtApp.runWithContext(() => useVectorAssistant().ask(query)) })

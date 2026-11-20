@@ -13,7 +13,6 @@ import ApprovalCard from './ApprovalCard.vue'
 // sends the decision, and the assistant then says what happened. Shown
 // only when capabilities.ai.assistant is on.
 
-interface AiCapabilities { assistant?: boolean, assistantWrites?: boolean }
 
 /** The tools that only propose a change. */
 const PROPOSING = ['vector_create', 'vector_update', 'vector_delete', 'vector_run_action']
@@ -27,8 +26,8 @@ const route = useRoute()
 const { t } = useVectorT()
 const { open, draft, turns, busy, send, retry, reset, decide } = useVectorAssistant()
 
-const shown = computed(() => (host.schema.value?.capabilities?.ai as AiCapabilities | undefined)?.assistant === true)
-const writes = computed(() => (host.schema.value?.capabilities?.ai as AiCapabilities | undefined)?.assistantWrites === true)
+const shown = computed(() => aiOffered(aiCapabilities(host.schema.value), 'assistant'))
+const writes = computed(() => aiOffered(aiCapabilities(host.schema.value), 'assistantWrites'))
 /** The turns the drawer shows: a decision on a proposal is told by its card, not as a message. */
 const shownTurns = computed(() => turns.value.filter(turn => turn.role !== 'approval'))
 const slugs = computed(() => new Set(Object.keys(host.schema.value?.resources ?? {})))

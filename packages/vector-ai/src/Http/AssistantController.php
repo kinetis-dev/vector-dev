@@ -4,26 +4,17 @@ declare(strict_types=1);
 
 namespace Kinetis\VectorAi\Http;
 
-use DateTimeImmutable;
-use DateTimeZone;
 use Kinetis\Http\Attributes\Middleware;
 use Kinetis\Http\Attributes\Post;
 use Kinetis\Http\Attributes\RoutePrefix;
-use Kinetis\Http\CurrentUserInterface;
-use Kinetis\Http\Responses\ErrorResponse;
 use Kinetis\Http\Responses\JsonResponse;
+use Kinetis\Runtime\ClientConnectionInterface;
 use Kinetis\Validation\Exception\ValidationException;
 use Kinetis\Validation\Violation;
 use Kinetis\VectorAi\Approvals\ApprovalId;
 use Kinetis\VectorAi\Assistant\Assistant;
-use Kinetis\VectorAi\Auth\AiAccessInterface;
-use Kinetis\VectorAi\Config\AiConfig;
-use Kinetis\VectorAi\Failure\AiFailure;
+use Kinetis\VectorAi\Auth\AiAvailability;
 use Kinetis\VectorAi\Feature;
-use Kinetis\VectorAi\Providers\ProviderResolver;
-use Kinetis\VectorAi\Providers\ResolvedProvider;
-use Kinetis\VectorAi\Settings\AiSettingsReader;
-use Kinetis\VectorAi\Usage\UsageLedger;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -42,17 +33,24 @@ use Psr\Http\Message\ServerRequestInterface;
  * decided on (`{role: "approval", id: "apr_…"}`), whose outcome the server
  * reads from its own row — and authorizes nothing: every tool runs as this
  * request's user, and nothing in it can execute a change. Asked in this order, before any frame
- * is sent: whether the feature is on, configured and this user's (403),
- * the day's token budget (429 until midnight UTC), the body (422).
+ * is sent: whether the feature is on, configured and this user's (403,
+ * AiAvailability::provider()), the day's token budget (429 until midnight
+ * UTC, AiAvailability::budgetSpent()), the body (422).
  */
 #[RoutePrefix('/vector/ai')]
 #[Middleware('@vector')]
 final readonly class AssistantController
 {
-    /** The largest request body taken. */
+    /**
+     * The largest request body taken, in bytes. The admin trims the
+     * conversation it sends to fit it, measured in UTF-8 bytes:
+     * `ASSISTANT_MAX_BODY_BYTES` in @kinetis/vector-ai-ui
+     * (app/utils/assistantBody.ts), which its test suite checks against
+     * this constant.
+     */
     public const int MAX_BODY = 65536;
 
-    /** The most messages one turn replays. */
+    /** The most messages one turn replays; `ASSISTANT_MAX_MESSAGES` in @kinetis/vector-ai-ui, checked the same way. */
     public const int MAX_MESSAGES = 40;
 
     /** The longest conversation id. */
@@ -62,27 +60,19 @@ final readonly class AssistantController
     public const int MAX_MESSAGE = 8000;
 
     public function __construct(
-        private CurrentUserInterface $user,
-        private AiAccessInterface $access,
-        private AiConfig $config,
-        private AiSettingsReader $settings,
-        private ProviderResolver $resolver,
-        private UsageLedger $usage,
+        private AiAvailability $availability,
         private Assistant $assistant,
     ) {}
 
     #[Post('/assistant')]
-    public function ask(ServerRequestInterface $request): ResponseInterface
+    public function ask(ServerRequestInterface $request, ClientConnectionInterface $connection): ResponseInterface
     {
-        $provider = $this->provider();
-        $budget = $this->settings->int('dailyTokenBudgetPerUser', 0);
+        // a streamed answer stops reading the provider once the browser has left,
+        // as far as the runtime can tell (Kinetis' runtime-adapters guide lists when)
+        $provider = $this->availability->provider(Feature::Assistant, $connection->isGone(...));
 
-        if ($this->usage->remaining((string) $this->user->id(), $budget) <= 0) {
-            $midnight = new DateTimeImmutable('tomorrow', new DateTimeZone('UTC'));
-
-            return ErrorResponse::create(429, "Today's AI budget is spent; it renews at midnight UTC.", [
-                'Retry-After' => (string) max(1, $midnight->getTimestamp() - time()),
-            ]);
+        if (($spent = $this->availability->budgetSpent()) !== null) {
+            return $spent;
         }
 
         [$conversationId, $conversation, $context] = $this->input($request);
@@ -92,28 +82,7 @@ final readonly class AssistantController
             return JsonResponse::create($this->assistant->answer($provider, $instructions, $conversationId, $conversation), 200, ['Cache-Control' => 'no-store']);
         }
 
-        return $this->assistant->stream($provider, $instructions, $conversationId, $conversation);
-    }
-
-    /** The feature's provider for this user, or 403 when it is off, unconfigured or not theirs. */
-    private function provider(): ResolvedProvider
-    {
-        if (
-            !$this->config->configured()
-            || !$this->settings->bool(Feature::Assistant->enabledSetting())
-            || $this->settings->int('dailyTokenBudgetPerUser', 0) <= 0
-            || !$this->access->canUse($this->user, Feature::Assistant)
-        ) {
-            throw new AiRequestException('The assistant is not available to this account.', 403);
-        }
-
-        try {
-            // a streamed answer stops reading the provider once the browser has left;
-            // PHP knows it at the first write after, and only where the runtime reports it
-            return $this->resolver->for(Feature::Assistant, $this->user, static fn (): bool => connection_aborted() === 1);
-        } catch (AiFailure $e) {
-            throw new AiRequestException('The assistant is not configured: ' . $e->getMessage(), 403);
-        }
+        return $this->assistant->stream($provider, $connection, $instructions, $conversationId, $conversation);
     }
 
     /** Whether the client asked for the whole answer as JSON rather than a stream. */

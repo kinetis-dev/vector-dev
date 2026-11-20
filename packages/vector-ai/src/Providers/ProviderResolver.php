@@ -69,6 +69,27 @@ final readonly class ProviderResolver
         return new ResolvedProvider($this->build($provider, $model, (string) $key, $feature->timeout(), $shouldStop), $provider->name, $model, $this->config->maxOutputTokens);
     }
 
+    /**
+     * Whether for() would find a provider, a model and a key for
+     * $feature, from the configuration, the settings and the stored key's
+     * own record alone: no provider is built and no key decrypted, so
+     * GET /vector/schema can ask it of every feature on every request. A
+     * stored key altered in the database passes here and fails for().
+     */
+    public function resolvable(Feature $feature): bool
+    {
+        try {
+            $provider = $this->providerFor($feature);
+            $this->modelFor($feature, $provider);
+        } catch (AiFailure) {
+            return false;
+        }
+
+        return !$provider->type->needsKey()
+            || $provider->key !== null
+            || ($provider->type->takesKey() && $this->credentials->stored($provider));
+    }
+
     private function providerFor(Feature $feature): ProviderConfig
     {
         $name = $this->settings->string($feature->providerSetting());

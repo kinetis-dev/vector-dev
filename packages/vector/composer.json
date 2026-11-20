@@ -29,7 +29,7 @@
         "ext-zlib": "*",
         "kinetis/authorization": "^1.0.8",
         "kinetis/database-bridge": "^1.4.5",
-        "kinetis/framework": "^1.28.0",
+        "kinetis/framework": "^1.29.0",
         "kinetis/mcp": "^1.9.0",
         "kinetis/mcp-protocol": "^1.1.2",
         "kinetis/migrations": "^1.5.0",

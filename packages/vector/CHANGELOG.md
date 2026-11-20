@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   was not handed is ignored. A response that declares nothing behaves as
   before; the response's JSON is unchanged.
 
+### Changed
+
+- Requires `kinetis/framework` `^1.29.0`.
+
 ## [0.16.0] - 2026-11-19
 
 ### Added

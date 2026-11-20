@@ -7,11 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- One helper, `app/utils/aiAvailability.ts` (`aiCapabilities()`,
+  `aiOffered()`, `aiStatusOf()`, `aiFailureMessage()`), answers whether
+  the admin offers an AI feature and words a failed AI call, a spent
+  budget included, for the filter, writing help, the assistant and its
+  palette command, instead of a copy in each. Nothing they show changes.
+
 ### Fixed
 
 - An assistant answer that only proposed changes, with no text, is kept
   in the conversation sent back (as a short placeholder), so the
   decision's turn does not follow the question directly.
+- The assistant's drawer trims the conversation it sends by the UTF-8
+  bytes of the whole request body, 1 KiB under the server's 64 KiB
+  (`ASSISTANT_MAX_BODY_BYTES`, checked against
+  `AssistantController::MAX_BODY` by the test suite), instead of by
+  JavaScript's string length; a long Hebrew, Arabic or CJK conversation
+  no longer gets a 422 `too_large` on every later message.
+- A trimmed conversation opens with the person's own message: the
+  answers and decisions before it are dropped, so a provider such as
+  Bedrock does not refuse it.
 
 ## [0.1.0] - 2026-11-19
 

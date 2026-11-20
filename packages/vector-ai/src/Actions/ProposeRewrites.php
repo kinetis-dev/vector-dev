@@ -64,6 +64,12 @@ use Kinetis\VectorAi\Writing\WritingOperation;
  * did not fit is left out of the file and counted in the job's message
  * (its row stays until the prune, as every row does).
  *
+ * A chunk reads what it needs of the store and the ledger once, at its
+ * start — which of its records are done, today's budget left, the CSV's
+ * bytes so far — and counts on in memory as it goes: each call's tokens
+ * off the budget, each record's outcome into done. Another request's
+ * spending in the meantime shows at the next chunk.
+ *
  * Chunks are delivered at least once: every record's outcome is a row of
  * RewriteStore keyed by (job, record), asked before the call, so a chunk
  * run again calls no provider for a record it already did and the CSV,
@@ -188,6 +194,10 @@ abstract class ProposeRewrites extends VectorAction
         // the proposals' CSV bytes so far, read once and counted on as this chunk proposes
         $bytes = $this->store->bytes($request->jobId);
         $limit = min($this->fileLimit(), self::FILE_LIMIT);
+        // the records done in an earlier delivery of this chunk, read once; this chunk's own are added as it goes
+        $done = $this->store->doneAmong($request->jobId, self::keys($request));
+        // today's budget left, read once; every call this chunk makes is counted off it
+        $budget = $this->guard->remaining();
 
         foreach ($request->records as $record) {
             $id = $record[$key] ?? null;
@@ -198,10 +208,13 @@ abstract class ProposeRewrites extends VectorAction
 
             $id = (string) $id;
 
-            // done in an earlier delivery of this chunk: never sent twice
-            if ($this->store->done($request->jobId, $id)) {
+            // done in an earlier delivery of this chunk, or earlier in this one: never sent twice
+            if (isset($done[$id])) {
                 continue;
             }
+
+            // whatever follows records a row for it
+            $done[$id] = true;
 
             $text = $record[$name] ?? null;
             $left = match (true) {
@@ -210,7 +223,7 @@ abstract class ProposeRewrites extends VectorAction
                 !is_string($text) || trim($text) === '' => [RewriteStore::SKIPPED, 'empty'],
                 mb_strlen($text) > WritingAssistant::MAX_TEXT => [RewriteStore::SKIPPED, 'too_long'],
                 $bytes >= $limit => [RewriteStore::BUDGET, 'file_full'],
-                !$this->guard->budgetLeft() => [RewriteStore::BUDGET, 'budget'],
+                $budget <= 0 => [RewriteStore::BUDGET, 'budget'],
                 default => null,
             };
 
@@ -221,14 +234,19 @@ abstract class ProposeRewrites extends VectorAction
             }
 
             /** @var string $text */
+            $tokens = 0;
+
             try {
-                $answer = $this->writing->write($provider, $field, $operation, $text, $format, $this->targetLocale(), $instructions);
+                $answer = $this->writing->write($provider, $field, $operation, $text, $format, $this->targetLocale(), $instructions, $tokens);
             } catch (\Throwable $e) {
                 // its category only: the message can quote the provider's answer
                 $failure = $e instanceof AiFailure ? $e : $this->failures->map($e);
                 $this->store->leaveOut($request->jobId, $id, RewriteStore::FAILED, $failure->category->value);
 
                 continue;
+            } finally {
+                // what the ledger recorded for the call, however it ended
+                $budget -= $tokens;
             }
 
             if (trim($answer['text']) === '') {
@@ -466,20 +484,45 @@ abstract class ProposeRewrites extends VectorAction
      */
     private function leaveOutRest(ActionRequest $request, string $reason): int
     {
-        $key = $request->resource->primaryKeyField();
+        if ($request->jobId === null) {
+            return 0;
+        }
+
+        $done = $this->store->doneAmong($request->jobId, self::keys($request));
         $unsent = 0;
 
-        foreach ($request->records as $record) {
-            $id = $record[$key] ?? null;
-
-            if ((!is_int($id) && !is_string($id)) || $request->jobId === null || $this->store->done($request->jobId, (string) $id)) {
+        foreach (self::keys($request) as $id) {
+            if (isset($done[$id])) {
                 continue;
             }
 
-            $this->store->leaveOut($request->jobId, (string) $id, RewriteStore::BUDGET, $reason);
+            $this->store->leaveOut($request->jobId, $id, RewriteStore::BUDGET, $reason);
+            $done[$id] = true;
             $unsent++;
         }
 
         return $unsent;
+    }
+
+    /**
+     * The keys of the chunk's records, in order, as text; a record without
+     * one is left out.
+     *
+     * @return list<string>
+     */
+    private static function keys(ActionRequest $request): array
+    {
+        $key = $request->resource->primaryKeyField();
+        $keys = [];
+
+        foreach ($request->records as $record) {
+            $id = $record[$key] ?? null;
+
+            if (is_int($id) || is_string($id)) {
+                $keys[] = (string) $id;
+            }
+        }
+
+        return $keys;
     }
 }

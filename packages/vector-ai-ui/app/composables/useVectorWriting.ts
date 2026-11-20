@@ -19,12 +19,6 @@ export interface WritingRequest {
     recordId?: string | null
 }
 
-interface AiCapabilities {
-    writing?: boolean
-    excluded?: Record<string, unknown>
-    excludedFields?: Record<string, unknown>
-}
-
 /** The languages "Translate to…" offers, as BCP 47 tags. */
 export const WRITING_LANGUAGES = ['en', 'de', 'fr', 'es', 'it', 'nl', 'pt', 'pl', 'sv', 'ja', 'zh'] as const
 
@@ -42,11 +36,7 @@ export function useVectorWriting() {
     const language = useVectorLocale()
 
     function offered(resource: string | undefined, field: string): boolean {
-        const ai = schema.value?.capabilities?.ai as AiCapabilities | undefined
-        if (ai?.writing !== true || resource === undefined || resource === '') return false
-        if (ai.excluded?.[resource] !== undefined) return false
-        const kept = ai.excludedFields?.[resource]
-        return !(Array.isArray(kept) && kept.includes(field))
+        return resource !== undefined && resource !== '' && aiOffered(aiCapabilities(schema.value), 'writing', resource, field)
     }
 
     function write(resource: string, field: string, request: WritingRequest): Promise<WritingAnswer> {
@@ -58,20 +48,7 @@ export function useVectorWriting() {
 
     /** A failure in words: a spent budget says when it renews, when Retry-After can be read; otherwise the server's reason. */
     function describe(error: unknown): string {
-        const failed = error as { status?: number, statusCode?: number, response?: { status?: number, headers?: Headers }, data?: { error?: unknown } } | null
-        const status = failed?.status ?? failed?.statusCode ?? failed?.response?.status
-
-        if (status === 429) {
-            const seconds = Number(failed?.response?.headers?.get('Retry-After') ?? Number.NaN)
-            if (Number.isFinite(seconds) && seconds > 0) {
-                const at = new Date(Date.now() + seconds * 1000)
-                return t('ai.filters.budget', { time: at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })
-            }
-        }
-
-        const said = failed?.data?.error
-        if (typeof said === 'string' && said !== '') return said
-        return status === 429 ? t('ai.filters.budgetSpent') : t('ai.writing.failed')
+        return aiFailureMessage(error, t('ai.writing.failed'))
     }
 
     /** A language's name in the admin's own language, falling back to its tag. */

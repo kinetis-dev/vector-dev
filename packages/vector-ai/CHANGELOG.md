@@ -39,6 +39,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   writes them (quotes doubled, `ProposeRewrites::rowBytes()`), and
   `finish()` adds whole rows only while they fit, counting a proposal
   that did not in the job's message.
+- `Auth\AiAvailability`: whether this request's user may use each AI
+  feature (`permits()`, `offered()`, `provider()`) and the `429` a spent
+  daily budget is answered with (`budgetResponse()`), asked by every AI
+  endpoint, the writing guard, the assistant and `capabilities.ai`
+  instead of a copy of the check in each.
 - `Writing\WritingGuard`: writing help's field, permission, boundary,
   provider and budget checks, shared by the writing endpoint and
   `ProposeRewrites`.
@@ -70,6 +75,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A proposal Vector's own permissions would refuse the person (`create`,
   or the record's `update` or `delete`) is refused when it is proposed,
   instead of showing a card the approval would only fail.
+- A conversation that opens with the assistant — as one the browser
+  trimmed from its start can — has its turns before the first user-role
+  one dropped before it is sent to the provider, which Bedrock otherwise
+  refused.
+- `capabilities.ai.assistantWrites` is offered only to someone the
+  access policy lets use the assistant too, as the approve endpoint
+  requires; it no longer advertises proposals the server would refuse.
+- `GET /vector/schema` no longer builds an AI provider or opens a stored
+  key for each feature on every request: `ProviderResolver::resolvable()`
+  decides from the configuration, the settings and the stored key's
+  record (`CredentialStore::stored()`). The flags are the same for a
+  configured and an unconfigured provider.
+- `ProposeRewrites` no longer makes two queries per record: a chunk
+  reads which of its records are done (`RewriteStore::doneAmong()`,
+  replacing `done()`) and today's budget left once, and counts each
+  call's tokens (`WritingAssistant::write()`'s new `$tokens` out
+  parameter) and each outcome in memory. The budget still stops the run
+  within a chunk, and a switch-off or another request's spending shows
+  from the next chunk.
+- `ModelBoundary` reads each resource as the user sees it once, for the
+  life of the boundary (one request, or one job), rather than once per
+  row, search column and reference: a page of 25 rows asks the
+  `viewField` policy once per field instead of 25 times.
+- The model is no longer sent the text of a refusal that failed an
+  approved change — a validation, policy or hook message, which can
+  quote record values and fields kept from it (`ai.send` false). It is
+  told `ModelBoundary::writeFailure()` instead: for a validation
+  refusal, which fields the boundary lets through failed and their rule
+  codes, and how many others did; for any other, a fixed sentence. The
+  package's own failure texts are still told as they are.
+- A forced delete (`vector_delete` with `force: true`) is proposed only
+  when the person has the record's `forceDelete`, as Vector's own forced
+  delete asks; `delete` alone no longer lets it through.
+
+### Changed
+
+- Requires `kinetis/framework` ^1.29.0 and `kinetis/neuron` ^1.2. The
+  assistant learns that the browser left from the request's
+  `Kinetis\Runtime\ClientConnectionInterface` instead of calling
+  `connection_aborted()`, and `Assistant::stream()` takes that
+  connection as its second argument.
 
 ## [0.1.0] - 2026-11-19
 

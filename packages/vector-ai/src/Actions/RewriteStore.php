@@ -45,10 +45,26 @@ final readonly class RewriteStore
 
     public function __construct(private VectorDatabase $db) {}
 
-    /** Whether job $jobId already has a row for $recordKey. */
-    public function done(int $jobId, string $recordKey): bool
+    /**
+     * Which of $recordKeys job $jobId already has a row for — each done,
+     * whatever its status — in one query.
+     *
+     * @param list<string> $recordKeys
+     * @return array<string, true>
+     */
+    public function doneAmong(int $jobId, array $recordKeys): array
     {
-        return $this->query()->where('job_id', '=', $jobId)->where('record_key', '=', $recordKey)->count() > 0;
+        if ($recordKeys === []) {
+            return [];
+        }
+
+        $done = [];
+
+        foreach ($this->query()->select('record_key')->where('job_id', '=', $jobId)->whereIn('record_key', array_values(array_unique($recordKeys)))->get() as $row) {
+            $done[(string) $row['record_key']] = true;
+        }
+
+        return $done;
     }
 
     /** Whether job $jobId has any row yet: an earlier chunk of it ran. */

@@ -20,7 +20,8 @@ use Kinetis\VectorAi\Config\ProviderType;
  * drivers bind parameters as text, which raw bytes would not survive.
  *
  * status() says what is set and by whom, and never the key; key() opens
- * one for the resolver and nothing else. Built per request.
+ * one for the resolver and nothing else; stored() says whether there is
+ * one to open, without opening it. Built per request.
  */
 final readonly class CredentialStore
 {
@@ -121,6 +122,25 @@ final readonly class CredentialStore
         } catch (SealedWithAnotherKeyException | \UnexpectedValueException) {
             return null;
         }
+    }
+
+    /**
+     * Whether a key is stored for $provider that key() would open, as far
+     * as can be told without opening it: a row, well-formed, sealed under
+     * VECTOR_AI_KEY as it is now. Nothing is decrypted; a row altered in
+     * the database passes here and fails key().
+     */
+    public function stored(ProviderConfig $provider): bool
+    {
+        $row = $this->query()->select('nonce', 'key_id')->where('provider', '=', $provider->name)->first();
+
+        if (!is_array($row) || !$this->box->canSeal() || !hash_equals((string) $this->box->keyId(), (string) $row['key_id'])) {
+            return false;
+        }
+
+        $nonce = base64_decode((string) $row['nonce'], true);
+
+        return $nonce !== false && strlen($nonce) === SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES;
     }
 
     /**

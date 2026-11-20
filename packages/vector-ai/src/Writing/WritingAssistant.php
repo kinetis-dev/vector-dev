@@ -116,11 +116,13 @@ final readonly class WritingAssistant
     /**
      * @param array<string, mixed> $field the compiled field the text is for
      * @param 'plain'|'markdown' $format
+     * @param-out int $tokens the tokens the call spent, input and output, as the usage ledger records them — 0 when it failed
      * @return array{text: string, operation: string, model: string, truncated: bool}
      * @throws \Kinetis\VectorAi\Failure\AiFailure when the provider fails
      */
-    public function write(ResolvedProvider $provider, array $field, WritingOperation $operation, string $text, string $format, ?string $targetLocale, ?string $instructions): array
+    public function write(ResolvedProvider $provider, array $field, WritingOperation $operation, string $text, string $format, ?string $targetLocale, ?string $instructions, ?int &$tokens = null): array
     {
+        $tokens = 0;
         $blocks = [];
 
         if ($instructions !== null) {
@@ -128,14 +130,18 @@ final readonly class WritingAssistant
         }
 
         $blocks[] = new TextContent(self::content($text));
-        $answer = $this->call($provider, $operation->systemPrompt($format, $targetLocale), new UserMessage($blocks));
+        $answer = $this->call($provider, $operation->systemPrompt($format, $targetLocale), new UserMessage($blocks), $tokens);
         [$written, $truncated] = self::clean($answer, self::cap($field, $text));
 
         return ['text' => $written, 'operation' => $operation->value, 'model' => $provider->model, 'truncated' => $truncated];
     }
 
-    /** One chat call, recorded in the usage ledger whatever its end; a provider's failure as its category. */
-    private function call(ResolvedProvider $provider, string $system, UserMessage $message): string
+    /**
+     * One chat call, recorded in the usage ledger whatever its end; a provider's failure as its category.
+     *
+     * @param-out int $tokens what the ledger records it spent
+     */
+    private function call(ResolvedProvider $provider, string $system, UserMessage $message, ?int &$tokens): string
     {
         $started = hrtime(true);
         // what the ledger records if the call ends some other way than the two below
@@ -158,6 +164,7 @@ final readonly class WritingAssistant
 
             throw $failure;
         } finally {
+            $tokens = max(0, $in) + max(0, $out);
             $this->usage->record(
                 $this->actor->actorId(),
                 $this->actor->impersonatorId,

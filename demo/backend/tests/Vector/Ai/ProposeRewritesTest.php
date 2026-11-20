@@ -466,6 +466,36 @@ final class ProposeRewritesTest extends WritingTestCase
         self::assertSame([['id' => (string) $ids[0], 'notes' => self::tidy($ids[0])]], $rows);
     }
 
+    public function testTheBudgetIsCountedCallByCallWithinOneChunk(): void
+    {
+        $ids = $this->orders(8);
+        $this->scriptTidy($ids);
+        // 100 tokens left today: read once at the chunk's start, each call's tokens counted off it
+        $left = 100;
+        $this->settings(['dailyTokenBudgetPerUser' => 1000]);
+        $this->vectorQuery()->table('vector_ai_usage')->insert([
+            'actor_id' => self::ACTOR_PREFIX . '01', 'impersonator_id' => null, 'feature' => 'filters', 'provider' => 'test-fake', 'model' => 'fake',
+            'input_tokens' => 1000 - $left, 'output_tokens' => 0, 'duration_ms' => 1, 'tool_calls' => 0, 'outcome' => 'answered',
+            'created_at' => gmdate('Y-m-d H:i:s.000000'),
+        ]);
+
+        $job = $this->runAction('tidy-order-notes', $ids)->assertJsonPath('data.status', 'done')->json();
+        self::assertIsArray($job);
+
+        $spent = array_map(
+            static fn (array $row): int => (int) $row['input_tokens'] + (int) $row['output_tokens'],
+            $this->vectorQuery()->table('vector_ai_usage')->where('actor_id', '=', self::ACTOR_PREFIX . '01')->where('feature', '=', 'writing')->orderBy('id', 'ASC')->get(),
+        );
+        $calls = count($this->calls());
+        self::assertCount($calls, $spent, 'one usage row a call');
+        self::assertGreaterThan(1, $calls, 'several calls fit in what was left');
+        self::assertLessThan(count($ids), $calls, 'and the rest of the same chunk was not sent');
+        self::assertLessThan($left, array_sum(array_slice($spent, 0, -1)), 'each call was made while tokens were left');
+        self::assertGreaterThanOrEqual($left, array_sum($spent), 'and none once they were spent');
+        $unsent = count($ids) - $calls;
+        self::assertStringContainsString("Stopped calling AI: today's budget ran out, so {$unsent} record(s) were not sent.", (string) $job['data']['result']['message']);
+    }
+
     public function testAnAnswerOverTheCapIsCut(): void
     {
         $ids = $this->orders(1);

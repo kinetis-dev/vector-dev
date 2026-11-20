@@ -401,6 +401,43 @@ final class AssistantApprovalsTest extends ApprovalsTestCase
         self::assertSame('failed', $this->row($approval->publicId())['status'] ?? null);
     }
 
+    public function testAFailedApprovalsRefusalReachesTheModelOnlyThroughTheBoundary(): void
+    {
+        // users' email is `ai.send` false; a refusal quoting it, from a hook and from validation
+        $secret = 'ada.kept@example.test';
+        $store = $this->store();
+        $arguments = ['resource' => 'users', 'id' => '1', 'values' => ['email' => $secret, 'name' => 'Ada']];
+        $hooked = $store->propose(self::ACTOR_PREFIX . '01', null, 'c_test', 'vector_update', $arguments, 15);
+        $invalid = $store->propose(self::ACTOR_PREFIX . '01', null, 'c_test', 'vector_update', $arguments, 15);
+
+        foreach ([$hooked, $invalid] as $approval) {
+            self::assertTrue($store->decide($approval->id, ApprovalStatus::Executing));
+        }
+
+        $store->settle($hooked->id, ApprovalStatus::Failed, ['error' => "The address {$secret} is on the blocklist."]);
+        $store->settle($invalid->id, ApprovalStatus::Failed, ['error' => json_encode(['errors' => [
+            ['path' => ['email'], 'code' => 'unique', 'message' => "{$secret} is already taken."],
+            ['path' => ['name'], 'code' => 'too_long', 'message' => "must be shorter than {$secret}."],
+        ]], JSON_THROW_ON_ERROR)]);
+
+        $this->script([Assistant::OUTCOME_PROMPT => 'It failed.']);
+        $turn = $this->turn(body: ['conversationId' => 'c_test', 'messages' => [
+            ['role' => 'user', 'content' => self::QUESTION],
+            ['role' => 'assistant', 'content' => 'I proposed two changes.'],
+            ['role' => 'approval', 'id' => $hooked->publicId()],
+            ['role' => 'assistant', 'content' => 'The first failed.'],
+            ['role' => 'approval', 'id' => $invalid->publicId()],
+        ]]);
+
+        self::assertSame(200, $turn['status']);
+        $sent = self::everything($this->calls()[0]);
+        self::assertStringNotContainsString($secret, $sent);
+        self::assertStringNotContainsString('"email"', $sent, 'nor the name of the field kept back');
+        self::assertStringContainsString(ModelBoundary::REFUSED, $sent);
+        self::assertStringContainsString(ModelBoundary::INVALID, $sent);
+        self::assertStringContainsString('"fields":[{"field":"name","code":"too_long"}],"otherFields":1', $sent);
+    }
+
     public function testTheConversationAlternatesRolesAroundAnOutcome(): void
     {
         $approval = $this->proposed($this->update($this->stock + 5));
@@ -424,6 +461,22 @@ final class AssistantApprovalsTest extends ApprovalsTestCase
         ]]);
         $calls = $this->calls();
         self::assertSame(['user', 'assistant', 'user'], self::roles($calls[count($calls) - 1]));
+    }
+
+    public function testAConversationTrimmedToAnAssistantTurnStillOpensWithTheUser(): void
+    {
+        // the browser trims from the start: what is left can open with the assistant's answers
+        $this->script(['And which are out of stock?' => 'None.']);
+        $turn = $this->turn(body: ['conversationId' => 'c_test', 'messages' => [
+            ['role' => 'assistant', 'content' => 'Lamps and chairs.'],
+            ['role' => 'assistant', 'content' => 'Anything else?'],
+            ['role' => 'user', 'content' => 'And which are out of stock?'],
+        ]]);
+
+        self::assertSame(200, $turn['status']);
+        self::assertSame('None.', self::text($turn['frames']));
+        self::assertSame(['user'], self::roles($this->calls()[0]));
+        self::assertStringNotContainsString('Lamps and chairs.', self::sent($this->calls()[0]));
     }
 
     /** Puts approval $publicId in `executing`, approved $minutes ago, as a request that died mid-execution leaves it. */
