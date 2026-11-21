@@ -73,8 +73,16 @@ final class ProposingTool extends Tool
         return $this->definition->inputSchema;
     }
 
+    /** The call, its outcome — proposed, or a tool error — recorded in the run's ToolBudget. */
     #[\Override]
     public function execute(): void
+    {
+        $call = $this->budget->made();
+        $this->propose();
+        GovernedTool::settle($this->budget, $call, $this->getResult());
+    }
+
+    private function propose(): void
     {
         $arguments = $this->inputs;
 

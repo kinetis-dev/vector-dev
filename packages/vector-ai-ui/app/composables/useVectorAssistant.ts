@@ -1,5 +1,6 @@
 import { approvalFrame, approvalOf, readDataStream, recordOfToolOutput, type ApprovalFrame, type DataStreamFrame } from '../utils/assistantStream'
 import { ASSISTANT_MAX_MESSAGE_CHARS, fitAssistantMessages, messageChars, type AssistantMessage } from '../utils/assistantBody'
+import { toolCallsOf, type AssistantToolCall } from '../utils/assistantTools'
 
 /**
  * Where a proposed change stands, as the drawer shows it: the server's
@@ -26,8 +27,8 @@ export interface AssistantTurn {
     /** `approval` is the admin's decision on a proposal: not shown, but sent so the model hears the outcome. */
     role: 'user' | 'assistant' | 'approval'
     content: string
-    /** The tools the assistant called for this answer, in order. */
-    tools: string[]
+    /** The tools the assistant called for this answer, in order, each with whether it answered. */
+    tools: AssistantToolCall[]
     /** The changes this answer proposed, in order. */
     approvals: ApprovalCard[]
     /** For an `approval` turn, the proposal decided on. */
@@ -37,8 +38,8 @@ export interface AssistantTurn {
     streaming: boolean
 }
 
-/** What the server answers with `Accept: application/json`. */
-interface WholeAnswer { text: string, toolCalls: string[], approvals?: unknown[] }
+/** What the server answers with `Accept: application/json`: `toolCalls` as `{name, ok}`, or as bare names from an older server. */
+interface WholeAnswer { text: string, toolCalls: unknown, approvals?: unknown[] }
 
 /** What a decision answers: `{status, result}`, or for a 409 `{error, status, result?}`. */
 interface Decision { status?: unknown, result?: unknown, error?: unknown }
@@ -63,8 +64,8 @@ function newId(): string {
 /**
  * The assistant's conversation: the browser's own, replayed to POST
  * /vector/ai/assistant on every turn (the user's and the assistant's text
- * only), and kept in shared state so the drawer survives navigation and
- * the command palette can open it — for one signed-in user: the layer
+ * only), and kept in shared state so the drawer survives navigation —
+ * for one signed-in user: the layer
  * forgets it when the user changes or signs out. A turn streams in the Vercel AI SDK
  * data-stream protocol; where the runtime cannot stream (501) the same
  * turn is asked again for the whole answer as JSON.
@@ -105,17 +106,26 @@ export function useVectorAssistant() {
         const callId = typeof frame.toolCallId === 'string' ? frame.toolCallId : null
         if (frame.type === 'text-delta' && typeof frame.delta === 'string') reply.content += frame.delta
         else if (frame.type === 'tool-input-start' && typeof frame.toolName === 'string') {
-            reply.tools.push(frame.toolName)
+            reply.tools.push({ id: callId, name: frame.toolName, ok: null })
             if (callId !== null) reads.calls.set(callId, { tool: frame.toolName, input: '' })
         } else if (frame.type === 'tool-input-delta' && callId !== null && typeof frame.inputTextDelta === 'string') {
             const call = reads.calls.get(callId)
             if (call) call.input += frame.inputTextDelta
-        } else if (frame.type === 'tool-output-available' && callId !== null) remember(reads, callId, frame.output)
+        } else if (frame.type === 'tool-output-available' && callId !== null) {
+            settle(reply, callId, true)
+            remember(reads, callId, frame.output)
+        } else if (frame.type === 'tool-output-error' && callId !== null) settle(reply, callId, false)
         else if (frame.type === 'error') reply.failed = typeof frame.errorText === 'string' ? frame.errorText : t('ai.assistant.failed')
         else {
             const approval = approvalFrame(frame)
             if (approval !== null) reply.approvals.push(card(approval, reads))
         }
+    }
+
+    /** Whether call $callId of the reply answered ($ok), or was a tool error. */
+    function settle(reply: AssistantTurn, callId: string, ok: boolean) {
+        const call = reply.tools.find(tool => tool.id === callId)
+        if (call) call.ok = ok
     }
 
     /** What a `vector_get` of the run read, by `resource#id`, for a later proposal's "before". */
@@ -159,7 +169,7 @@ export function useVectorAssistant() {
                 try {
                     const answer = await api<WholeAnswer>('/vector/ai/assistant', { method: 'POST', body, headers: { Accept: 'application/json' } })
                     reply.content = answer.text
-                    reply.tools = [...answer.toolCalls]
+                    reply.tools = toolCallsOf(answer.toolCalls)
                     reply.approvals = (answer.approvals ?? []).map(approvalOf).filter(frame => frame !== null).map(frame => card(frame, null))
                 } catch (whole) {
                     reply.failed = await describe(whole)
@@ -178,8 +188,7 @@ export function useVectorAssistant() {
      * takes (ASSISTANT_MAX_MESSAGE_CHARS, counted in code points as the
      * server counts it) is not sent and not added to the conversation —
      * every later turn would replay it and be refused — but left in the
-     * input to shorten, saying why: from the drawer, and from the
-     * palette's "Ask the assistant…", which has no length limit of its own.
+     * input to shorten, saying why.
      */
     async function send(text: string) {
         const content = text.trim()
@@ -273,12 +282,6 @@ export function useVectorAssistant() {
         open.value = false
     }
 
-    /** Opens the drawer, and asks $text when there is one. */
-    async function ask(text = '') {
-        open.value = true
-        if (text.trim() !== '') await send(text)
-    }
-
     /** A failure in words: a spent budget says when it renews, when Retry-After can be read; otherwise the server's reason. */
     async function describe(error: unknown): Promise<string> {
         // a streamed request's error body is still a stream: read it for the reason
@@ -294,5 +297,5 @@ export function useVectorAssistant() {
         return aiFailureMessage(error, t('ai.assistant.failed'), data)
     }
 
-    return { open, draft, turns, busy, refused, conversationId, send, retry, reset, forget, ask, decide }
+    return { open, draft, turns, busy, refused, conversationId, send, retry, reset, forget, decide }
 }

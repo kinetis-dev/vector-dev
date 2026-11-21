@@ -11,8 +11,9 @@ import { endpoint, standaloneApi, type Received } from './endpoints'
 // record references link to the records the admin knows, a failure says
 // why and offers Retry, a spent budget says when it renews, a runtime
 // that cannot stream falls back to the whole answer, and "New
-// conversation" starts afresh. "Ask the assistant…" in the command
-// palette opens it with what was typed.
+// conversation" starts afresh. The tools an answer called show as one chip
+// a tool, with how many times, leaving out the calls that failed. ⌘J or
+// Ctrl+J opens and closes it; the command palette has no entry of its own.
 
 const ON = { filters: false, assistant: true, assistantWrites: false, writing: false, excluded: {} }
 
@@ -44,9 +45,9 @@ const STREAMED = { headers: { 'Content-Type': 'text/event-stream' }, body: ANSWE
 /** The drawer in an application shell, as the layout renders a shell action. */
 const Shell = defineComponent({ render: () => h(VApp, () => h(VxAiAssistant)) })
 
-async function mount(ai: Record<string, unknown> | null = ON) {
+async function mount(ai: Record<string, unknown> | null = ON, attachTo?: Element) {
     useState('vector.schema').value = descriptor(ai ?? undefined)
-    const wrapper = await mountSuspended(Shell)
+    const wrapper = await mountSuspended(Shell, attachTo ? { attachTo } : {})
     await flushPromises()
     return wrapper
 }
@@ -328,48 +329,150 @@ describe('the assistant', () => {
         wrapper.unmount()
     })
 
-    it('offers "Ask the assistant…" in the palette only while the assistant is on, and it opens the drawer asking what was typed', async () => {
+    /** The chips above the answer, as they read. */
+    function chips(wrapper: Wrapper): string[] {
+        return wrapper.findAll('[data-ai-assistant-tool]').map(chip => chip.text())
+    }
+
+    it('shows one chip a tool, with how many times, and none for a call that failed', async () => {
         standaloneApi()
-        const turn = endpoint('/vector/ai/assistant', STREAMED, 'POST')
-        cleanups.push(turn.unregister)
-        const { paletteCommands } = useVectorExtensions()
-
-        useState('vector.schema').value = descriptor({ ...ON, assistant: false })
-        await nextTick()
-        expect(paletteCommands.get('ai-ask')).toBeUndefined()
-
+        cleanups.push(endpoint('/vector/ai/assistant', { headers: { 'Content-Type': 'text/event-stream' }, body: sse(
+            { type: 'start', messageId: 'msg_1' },
+            { type: 'tool-input-start', toolCallId: 'call_0_0', toolName: 'vector_query' },
+            { type: 'tool-output-error', toolCallId: 'call_0_0', errorText: '"price" is not a sortable field of products.' },
+            { type: 'tool-input-start', toolCallId: 'call_1_0', toolName: 'vector_describe' },
+            { type: 'tool-output-available', toolCallId: 'call_1_0', output: 'Data returned by the admin.' },
+            { type: 'tool-input-start', toolCallId: 'call_2_0', toolName: 'vector_query' },
+            { type: 'tool-output-error', toolCallId: 'call_2_0', errorText: 'page: must be greater than 0' },
+            { type: 'tool-input-start', toolCallId: 'call_3_0', toolName: 'vector_query' },
+            { type: 'tool-output-available', toolCallId: 'call_3_0', output: 'Data returned by the admin.' },
+            { type: 'tool-input-start', toolCallId: 'call_4_0', toolName: 'vector_query' },
+            { type: 'tool-output-available', toolCallId: 'call_4_0', output: 'Data returned by the admin.' },
+            { type: 'tool-input-start', toolCallId: 'call_5_0', toolName: 'vector_get' },
+            { type: 'tool-output-error', toolCallId: 'call_5_0', errorText: 'Not found.' },
+            { type: 'text-delta', id: 't', delta: 'Lowest: products#3.' },
+            { type: 'finish' },
+        ) }, 'POST').unregister)
         const wrapper = await mount()
-        await nextTick()
-        const command = paletteCommands.get('ai-ask')
-        expect(command).toBeDefined()
-        expect(typeof command!.title === 'function' ? command!.title() : command!.title).toBe('Ask the assistant…')
 
-        await command!.run('Which products are low on stock?')
-        await flushPromises()
+        await ask(wrapper, 'Which products are low on stock?')
 
-        expect(useVectorAssistant().open.value).toBe(true)
-        expect((turn.requests[0]!.body as { messages: unknown[] }).messages).toEqual([{ role: 'user', content: 'Which products are low on stock?' }])
-        await vi.waitFor(() => expect(wrapper.find('[data-ai-assistant-answer]').exists()).toBe(true))
+        // in the order the chips appeared: the first vector_query failed, and its chip went
+        expect(chips(wrapper)).toEqual(['Read with vector_describe', 'Read with vector_query ×2'])
         wrapper.unmount()
     })
 
-    it('opens the drawer on a palette question longer than the server takes, sending nothing and saying why', async () => {
+    it('shows the whole answer\'s tool calls the same way, also a server\'s that names them only', async () => {
         standaloneApi()
-        const turn = endpoint('/vector/ai/assistant', STREAMED, 'POST')
-        cleanups.push(turn.unregister)
+        let toolCalls: unknown = []
+        cleanups.push(endpoint('/vector/ai/assistant', (request: Received) => request.headers.get('accept') === 'application/json'
+            ? { body: { text: 'Whole: products#3.', toolCalls } }
+            : { status: 501, body: { error: 'Streamed responses are not supported by this runtime.' } }, 'POST').unregister)
+        const wrapper = await mount()
+
+        toolCalls = [{ name: 'vector_query', ok: false }, { name: 'vector_query', ok: true }, { name: 'vector_update', ok: true }, { name: 'vector_query', ok: true }, { name: 'vector_get', ok: false }]
+        await ask(wrapper, 'Which products are low on stock?')
+        expect(chips(wrapper)).toEqual(['Read with vector_query ×2', 'Proposed with vector_update'])
+
+        // the names alone, as before outcomes were sent: each one answered
+        toolCalls = ['vector_query', 'vector_describe', 'vector_query', 'vector_query']
+        await ask(wrapper, 'And the next ones?')
+        const answers = wrapper.findAll('[data-ai-assistant-turn="assistant"]')
+        expect(answers[1]!.findAll('[data-ai-assistant-tool]').map(chip => chip.text())).toEqual(['Read with vector_query ×3', 'Read with vector_describe'])
+        wrapper.unmount()
+    })
+
+    it('counts a call whose outcome has not arrived yet, until it fails', () => {
+        expect(toolChips([
+            { id: 'a', name: 'vector_query', ok: true },
+            { id: 'b', name: 'vector_query', ok: null },
+            { id: 'c', name: 'vector_get', ok: null },
+        ])).toEqual([{ name: 'vector_query', count: 2 }, { name: 'vector_get', count: 1 }])
+        expect(toolChips([
+            { id: 'a', name: 'vector_query', ok: true },
+            { id: 'b', name: 'vector_query', ok: false },
+            { id: 'c', name: 'vector_get', ok: false },
+        ])).toEqual([{ name: 'vector_query', count: 1 }])
+        expect(toolCallsOf([{ name: 'vector_query' }, 'vector_get', { name: 'vector_describe', ok: false }, 7, null])).toEqual([
+            { id: null, name: 'vector_query', ok: true },
+            { id: null, name: 'vector_get', ok: true },
+            { id: null, name: 'vector_describe', ok: false },
+        ])
+    })
+
+    /** Presses ⌘J (or Ctrl+J with $ctrl) on $target, as a keyboard would, and answers the event. */
+    function press(target: EventTarget, init: KeyboardEventInit = { metaKey: true }): KeyboardEvent {
+        const event = new KeyboardEvent('keydown', { key: 'j', bubbles: true, cancelable: true, ...init })
+        target.dispatchEvent(event)
+        return event
+    }
+
+    it('opens and closes the drawer on ⌘J, and on Ctrl+J, also from its own input', async () => {
+        // in the document, as the admin is: a key pressed in the drawer reaches the window
+        const wrapper = await mount(ON, document.body)
+        const assistant = useVectorAssistant()
+
+        const opening = press(document.body)
+        await nextTick()
+        expect(assistant.open.value).toBe(true)
+        expect(opening.defaultPrevented).toBe(true)
+
+        press(document.body)
+        await nextTick()
+        expect(assistant.open.value).toBe(false)
+
+        press(document.body, { ctrlKey: true })
+        await nextTick()
+        expect(assistant.open.value).toBe(true)
+
+        // focus in the drawer's input: the same keys close it
+        const input = wrapper.find<HTMLTextAreaElement>('[data-ai-assistant-input] textarea')
+        expect(input.exists()).toBe(true)
+        press(input.element, { ctrlKey: true, key: 'J' })
+        await nextTick()
+        expect(assistant.open.value).toBe(false)
+        wrapper.unmount()
+    })
+
+    it('leaves ⌘J alone with shift or alt, when something else handled it, and once it is unmounted', async () => {
+        const wrapper = await mount()
+        const assistant = useVectorAssistant()
+
+        for (const init of [{ metaKey: true, shiftKey: true }, { ctrlKey: true, altKey: true }, {}] as KeyboardEventInit[]) {
+            expect(press(document.body, init).defaultPrevented).toBe(false)
+        }
+        const handled = (event: Event) => event.preventDefault()
+        window.addEventListener('keydown', handled, { capture: true })
+        press(document.body)
+        window.removeEventListener('keydown', handled, { capture: true })
+        await nextTick()
+        expect(assistant.open.value).toBe(false)
+
+        wrapper.unmount()
+        expect(press(document.body).defaultPrevented).toBe(false)
+        expect(assistant.open.value).toBe(false)
+    })
+
+    it.each([
+        ['without capabilities.ai', null],
+        ['with the assistant off', { ...ON, assistant: false }],
+    ])('ignores ⌘J %s', async (_, ai) => {
+        const wrapper = await mount(ai)
+
+        const event = press(document.body)
+        await nextTick()
+
+        expect(event.defaultPrevented).toBe(false)
+        expect(useVectorAssistant().open.value).toBe(false)
+        wrapper.unmount()
+    })
+
+    it('adds nothing to the command palette', async () => {
         const wrapper = await mount()
         await nextTick()
-        const long = 'x'.repeat(ASSISTANT_MAX_MESSAGE_CHARS + 50)
 
-        await useVectorExtensions().paletteCommands.get('ai-ask')!.run(long)
-        await flushPromises()
-
-        const assistant = useVectorAssistant()
-        expect(assistant.open.value).toBe(true)
-        expect(turn.requests).toHaveLength(0)
-        expect(assistant.turns.value).toEqual([])
-        expect(assistant.draft.value).toBe(long)
-        expect(wrapper.find('[data-ai-assistant-refused]').exists()).toBe(true)
+        expect(useVectorExtensions().paletteCommands.get('ai-ask')).toBeUndefined()
+        expect([...useVectorExtensions().paletteCommands.keys()].filter(name => name.startsWith('ai'))).toEqual([])
         wrapper.unmount()
     })
 })

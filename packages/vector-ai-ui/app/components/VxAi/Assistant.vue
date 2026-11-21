@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { linkRecords } from '../../utils/recordLinks'
+import { toolChips } from '../../utils/assistantTools'
 import ApprovalCard from './ApprovalCard.vue'
 
 // The assistant: a sparkle button in the app bar (a shell action) and the
@@ -10,9 +11,12 @@ import ApprovalCard from './ApprovalCard.vue'
 // admin renders a markdown field, its `resource#id` references made links
 // to the records. A change the assistant proposed (capabilities.ai.assistantWrites)
 // shows as an approval card under its answer: approving or rejecting it
-// sends the decision, and the assistant then says what happened. Shown
-// only when capabilities.ai.assistant is on.
-
+// sends the decision, and the assistant then says what happened. Above an
+// answer, a chip for each tool it read or proposed with, a repeated one
+// once with how many times; a call that was a tool error has none. ⌘J
+// (Ctrl+J elsewhere) opens or closes the drawer from anywhere, its own
+// input included; nothing on screen says so. Shown, and the shortcut
+// heard, only when capabilities.ai.assistant is on.
 
 /** The tools that only propose a change. */
 const PROPOSING = ['vector_create', 'vector_update', 'vector_delete', 'vector_run_action']
@@ -62,11 +66,27 @@ function onKeydown(event: KeyboardEvent) {
     }
 }
 
+/** The chip of a tool, with how many times when more than once. */
+function chipLabel(name: string, count: number): string {
+    const proposing = PROPOSING.includes(name)
+    if (count === 1) return t(proposing ? 'ai.assistant.proposingTool' : 'ai.assistant.tool', { name })
+    return t(proposing ? 'ai.assistant.proposingToolTimes' : 'ai.assistant.toolTimes', { name, count })
+}
+
+/** ⌘J, or Ctrl+J: opens or closes the drawer, unless something else already handled the keypress. */
+function onShortcut(event: KeyboardEvent) {
+    if (!shown.value || event.defaultPrevented || !(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey || event.key.toLowerCase() !== 'j') return
+    event.preventDefault()
+    open.value = !open.value
+}
+
 // the drawer lives in the application's layout, beside the page, wherever the shell action is rendered
 const target = ref<string | null>(null)
 onMounted(() => {
     target.value = document.querySelector('.v-application') ? '.v-application' : null
+    window.addEventListener('keydown', onShortcut)
 })
+onBeforeUnmount(() => window.removeEventListener('keydown', onShortcut))
 </script>
 
 <template>
@@ -88,8 +108,8 @@ onMounted(() => {
                         <div v-for="turn in shownTurns" :key="turn.id" class="mb-3" :data-ai-assistant-turn="turn.role">
                             <v-sheet v-if="turn.role === 'user'" color="primary" variant="tonal" rounded class="pa-2 ms-8 text-body-2 vx-ai-assistant__user">{{ turn.content }}</v-sheet>
                             <div v-else class="me-4">
-                                <div v-if="turn.tools.length" class="d-flex flex-wrap ga-1 mb-1" data-ai-assistant-tools>
-                                    <v-chip v-for="(tool, i) in turn.tools" :key="`${tool}.${i}`" size="x-small" variant="outlined" :prepend-icon="PROPOSING.includes(tool) ? 'mdi-pencil-outline' : 'mdi-database-search-outline'">{{ t(PROPOSING.includes(tool) ? 'ai.assistant.proposingTool' : 'ai.assistant.tool', { name: tool }) }}</v-chip>
+                                <div v-if="toolChips(turn.tools).length" class="d-flex flex-wrap ga-1 mb-1" data-ai-assistant-tools>
+                                    <v-chip v-for="chip in toolChips(turn.tools)" :key="chip.name" size="x-small" variant="outlined" :prepend-icon="PROPOSING.includes(chip.name) ? 'mdi-pencil-outline' : 'mdi-database-search-outline'" data-ai-assistant-tool>{{ chipLabel(chip.name, chip.count) }}</v-chip>
                                 </div>
                                 <!-- eslint-disable-next-line vue/no-v-html -- Markdown sanitized by the admin's own renderer; the record links are built, not parsed -->
                                 <div v-if="turn.content" class="text-body-2 vx-ai-assistant__answer" data-ai-assistant-answer @click="follow" v-html="html(turn.content)" />

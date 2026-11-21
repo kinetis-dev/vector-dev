@@ -178,6 +178,30 @@ final class GovernedToolTest extends AiTestCase
         self::assertSame(['vector_resources', 'vector_resources'], $budget->names());
     }
 
+    public function testTheBudgetRecordsWhetherEachCallAnsweredOrWasAToolError(): void
+    {
+        $budget = new ToolBudget(3);
+        $answering = $this->governed(new RecordingTool('vector_query', ['data' => []]), $budget);
+        $refusing = $this->governed(new RecordingTool('vector_query', new InvalidListRequestException('"x" is not a sortable field of users.')), $budget);
+
+        $answering->setInputs(['resource' => 'users']);
+        $answering->execute();
+        $refusing->setInputs(['resource' => 'users', 'sort' => 'x']);
+        $refusing->execute();
+        $answering->setInputs(['resource' => 'profiles']);
+        $answering->execute();
+        // past the budget: refused before it ran, and not one of the calls made
+        $answering->setInputs(['resource' => 'users']);
+        $answering->execute();
+
+        self::assertSame([
+            ['name' => 'vector_query', 'ok' => true],
+            ['name' => 'vector_query', 'ok' => false],
+            ['name' => 'vector_query', 'ok' => false],
+        ], $budget->calls());
+        self::assertSame(['vector_query', 'vector_query', 'vector_query'], $budget->names());
+    }
+
     private function governed(RecordingTool $inner, ToolBudget $budget): GovernedTool
     {
         $this->scope ??= $this->app->createRequestScope();

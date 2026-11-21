@@ -6,8 +6,8 @@ the UI half of [`kinetis/vector-ai`](https://packagist.org/packages/kinetis/vect
 
 **This release offers plain-language filters**, in every list's
 toolbar; **the assistant**, a sparkle button in the app bar
-opening a drawer beside the page (and *Ask the assistant…* in the ⌘K
-palette), whose streamed answers link every `resource#id` they name to
+opening a drawer beside the page (⌘J, or Ctrl+J on Windows and Linux,
+opens or closes it from anywhere), whose streamed answers link every `resource#id` they name to
 that record, and whose proposed changes show as approval cards — the
 change field by field, to approve or reject; **writing help**, a menu under the text inputs of a resource's
 create and edit forms (not in bulk edit or action dialogs) and in the

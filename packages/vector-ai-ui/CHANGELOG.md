@@ -7,13 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- ⌘J (Ctrl+J on Windows and Linux) opens or closes the assistant's
+  drawer from anywhere in the admin, its own input included, while the
+  assistant is offered; a keypress something else already handled is
+  left alone. Nothing on screen shows the shortcut.
+
 ### Changed
 
 - One helper, `app/utils/aiAvailability.ts` (`aiCapabilities()`,
   `aiOffered()`, `aiStatusOf()`, `aiFailureMessage()`), answers whether
   the admin offers an AI feature and words a failed AI call, a spent
-  budget included, for the filter, writing help, the assistant and its
-  palette command, instead of a copy in each. Nothing they show changes.
+  budget included, for the filter, writing help and the assistant,
+  instead of a copy in each. Nothing they show changes.
+- The tool chips above an assistant answer show each tool once, in the
+  order first shown, with how many times it answered when more than
+  once (*Read with vector_query ×3*; `ai.assistant.toolTimes` and
+  `ai.assistant.proposingToolTimes`), and leave out every call that was
+  a tool error — a `tool-output-error` frame, or `ok: false` in the
+  whole answer's `toolCalls`, now `{name, ok}` objects. A whole answer
+  from a server that sends bare tool names still shows them, each taken
+  as answered.
+
+### Removed
+
+- *Ask the assistant…* in the command palette, its `ai.assistant.ask`
+  message and `useVectorAssistant().ask()`: the app-bar button and ⌘J
+  open the assistant.
 
 ### Fixed
 
@@ -34,11 +55,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replayed whole; one long answer no longer makes every later message,
   Retry or approval a 422. It is cut rather than dropped so the turns
   still alternate.
-- A message of the person's own longer than that limit — typed, or asked
-  from the palette's "Ask the assistant…", which has no limit of its
-  own — is not sent and not added to the conversation, where every later
-  turn would replay it and be refused: the drawer opens with it left in
-  the input to shorten and says why (`ai.assistant.tooLong`).
+- A message of the person's own longer than that limit is not sent and
+  not added to the conversation, where every later turn would replay it
+  and be refused: it is left in the input to shorten, saying why
+  (`ai.assistant.tooLong`).
 - A trimmed conversation opens with the person's own message: the
   answers and decisions before it are dropped, so a provider such as
   Bedrock does not refuse it.

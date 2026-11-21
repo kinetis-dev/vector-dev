@@ -120,8 +120,66 @@ final class AssistantStreamTest extends AssistantTestCase
 
         self::assertSame(200, $turn['status']);
         self::assertStringStartsWith('application/json', $turn['response']->getHeaderLine('Content-Type'));
-        self::assertSame(['text' => 'There are products#1 and more.', 'toolCalls' => ['vector_resources'], 'approvals' => []], json_decode($turn['body'], true, 8, JSON_THROW_ON_ERROR));
+        self::assertSame(['text' => 'There are products#1 and more.', 'toolCalls' => [['name' => 'vector_resources', 'ok' => true]], 'approvals' => []], json_decode($turn['body'], true, 8, JSON_THROW_ON_ERROR));
         self::assertSame('chat', $this->calls()[0]->method);
+    }
+
+    public function testTheWholeAnswerTellsWhichToolCallsWereToolErrors(): void
+    {
+        $this->script([self::QUESTION => self::rounds(
+            [[['name' => 'vector_query', 'arguments' => ['resource' => 'products', 'sort' => 'nonexistent']]], [['name' => 'vector_query', 'arguments' => ['resource' => 'profiles']]], [['name' => 'vector_query', 'arguments' => ['resource' => 'products']]]],
+            'Read products#1.',
+        )]);
+
+        $answer = json_decode($this->turn(headers: ['Accept' => 'application/json'])['body'], true, 8, JSON_THROW_ON_ERROR);
+
+        self::assertIsArray($answer);
+        self::assertSame([
+            ['name' => 'vector_query', 'ok' => false],
+            ['name' => 'vector_query', 'ok' => false],
+            ['name' => 'vector_query', 'ok' => true],
+        ], $answer['toolCalls']);
+    }
+
+    public function testTheSameToolCallsStreamAsOutputsAndErrors(): void
+    {
+        $this->script([self::QUESTION => self::rounds(
+            [[['name' => 'vector_query', 'arguments' => ['resource' => 'products', 'sort' => 'nonexistent']]], [['name' => 'vector_query', 'arguments' => ['resource' => 'products']]]],
+            'Read products#1.',
+        )]);
+
+        $frames = $this->turn()['frames'];
+
+        $outcomes = array_map(static fn (array $f): string => $f['type'] . ':' . $f['toolCallId'], array_values(array_filter($frames, static fn (array $f): bool => in_array($f['type'], ['tool-output-available', 'tool-output-error'], true))));
+        self::assertSame(['tool-output-error:call_0_0', 'tool-output-available:call_1_0'], $outcomes);
+    }
+
+    public function testReasoningAModelWritesInlineIsTakenOutOfTheStreamedAnswer(): void
+    {
+        $answer = "<thinking>The admin asks about stock; products#9 looks odd.</thinking>\n\nLow on stock: products#3. <think>Should I say more?</think>That is all.";
+        $this->script([self::QUESTION => self::rounds([[['name' => 'vector_resources']]], $answer)]);
+
+        $turn = $this->turn();
+
+        // what the browser shows, and keeps to send back as the conversation: the answer alone
+        $frames = $turn['frames'];
+        self::assertSame('Low on stock: products#3. That is all.', self::text($frames));
+        self::assertGreaterThan(2, count(self::ofType($frames, 'text-delta')), 'the answer streamed in chunks that split its tags');
+        self::assertSame('finish', self::last($frames)['type']);
+
+        foreach (['thinking', 'think>', 'products#9', 'Should I'] as $reasoning) {
+            self::assertStringNotContainsString($reasoning, $turn['body'], "{$reasoning} reached the browser");
+        }
+    }
+
+    public function testReasoningAModelWritesInlineIsTakenOutOfTheWholeAnswer(): void
+    {
+        $this->script([self::QUESTION => "<think>Nothing to look up.</think>\nThere are products#1 and more."]);
+
+        $answer = json_decode($this->turn(headers: ['Accept' => 'application/json'])['body'], true, 8, JSON_THROW_ON_ERROR);
+
+        self::assertIsArray($answer);
+        self::assertSame('There are products#1 and more.', $answer['text']);
     }
 
     public function testAQueryIsClampedBeforeItIsDispatched(): void

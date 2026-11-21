@@ -301,7 +301,8 @@ final class AssistantApprovalsTest extends ApprovalsTestCase
         self::assertSame(200, $turn['status']);
         $answer = json_decode($turn['body'], true, 16, JSON_THROW_ON_ERROR);
         self::assertIsArray($answer);
-        self::assertSame(['vector_update'], $answer['toolCalls']);
+        // a proposal waiting for the admin is no tool error
+        self::assertSame([['name' => 'vector_update', 'ok' => true]], $answer['toolCalls']);
         self::assertCount(1, $answer['approvals']);
         self::assertSame('vector_update', $answer['approvals'][0]['tool']);
         self::assertSame('pending', $this->row($answer['approvals'][0]['id'])['status'] ?? null);

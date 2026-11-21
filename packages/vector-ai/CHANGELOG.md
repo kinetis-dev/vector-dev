@@ -57,6 +57,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The assistant no longer shows a model's reasoning written inline as
+  part of its answer: what Amazon Nova and Claude 3 write between
+  `<thinking>` and `</thinking>`, and DeepSeek R1, Qwen3 and QwQ between
+  `<think>` and `</think>`, is taken out of the streamed `text-delta`
+  frames and of the whole answer's `text` (`Assistant\InlineReasoningFilter`,
+  which holds back only what could still be a tag split across chunks),
+  so it is neither shown nor sent back with the conversation. A block
+  left open is reasoning to the end of its text part; blank lines a
+  leading block leaves are dropped; any other `<` is text. It still
+  counts toward the usage estimate of a call the browser left.
+
 - A proposal left `executing` by a request that never finished is no
   longer stuck: `ApprovalStore::failStale()` marks it `failed` with *The
   outcome is unknown: the request that ran it did not finish. Check the
@@ -179,6 +190,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Kinetis\Runtime\ClientConnectionInterface` instead of calling
   `connection_aborted()`, and `Assistant::stream()` takes that
   connection as its second argument.
+- The assistant's whole answer (`Accept: application/json`) gives each
+  of its `toolCalls` as `{"name": …, "ok": true|false}` instead of the
+  bare name: `ok` is false for a call that was a tool error — a refusal,
+  a validation failure, a spent budget — as the stream tells it by
+  `tool-output-error`. A proposal waiting for approval answered: it is
+  `ok`. `ToolBudget::calls()` and `settle()` keep each call's outcome;
+  `names()` still lists the tools for the run's log line.
 
 ## [0.1.0] - 2026-11-19
 

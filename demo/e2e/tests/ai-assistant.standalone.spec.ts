@@ -41,21 +41,25 @@ test.describe('AI, the assistant', () => {
         await expect(drawer.locator('[data-ai-assistant-context]')).toHaveText('Product #1')
     })
 
-    test('"Ask the assistant…" in the command palette asks what was typed', async ({ admin: page }) => {
+    test('Ctrl+J opens the drawer, and closes it from its own input', async ({ admin: page }) => {
         await page.goto('')
         // the shortcut is listened for once the admin has rendered
         await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible()
+        const toggle = page.locator('[data-ai-assistant-toggle]')
+        await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+        await page.keyboard.press('Control+J')
+        await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+        const input = page.locator('[data-ai-assistant] [data-ai-assistant-input] textarea')
+        await input.fill(QUESTION)
+        await input.press('Enter')
+        await expect(page.locator('[data-ai-assistant-answer]')).toContainText(ANSWER)
+
+        await input.press('Control+J')
+        await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+        // the command palette has no entry of the assistant's own
         await page.keyboard.press('Control+K')
-        const palette = page.getByRole('dialog')
-        await palette.getByRole('textbox', { name: 'Search' }).fill(QUESTION)
-        await palette.getByText('Ask the assistant…').click()
-
-        const drawer = page.locator('[data-ai-assistant]')
-        await expect(drawer).toBeVisible()
-        await expect(drawer.locator('[data-ai-assistant-turn="user"]').first()).toHaveText(QUESTION)
-        await expect(drawer.locator('[data-ai-assistant-answer]')).toContainText(ANSWER)
-
-        await drawer.locator('[data-ai-assistant-new]').click()
-        await expect(drawer.locator('[data-ai-assistant-empty]')).toBeVisible()
+        await page.getByRole('dialog').getByRole('textbox', { name: 'Search' }).fill(QUESTION)
+        await expect(page.getByRole('dialog').getByText('Ask the assistant…')).toHaveCount(0)
     })
 })

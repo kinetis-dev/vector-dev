@@ -51,7 +51,6 @@ export default {
             title: 'Assistant',
             open: 'Assistant',
             close: 'Close the assistant',
-            ask: 'Ask the assistant…',
             new: 'New conversation',
             empty: 'Ask about the data you can see here: the assistant reads it as you, and changes nothing.',
             emptyWrites: 'Ask about the data you can see here: the assistant reads it as you, and changes nothing unless you approve the change it proposes.',
@@ -62,6 +61,8 @@ export default {
             tooLong: 'This message is longer than the assistant takes ({max} characters): shorten it and send it again.',
             tool: 'Read with {name}',
             proposingTool: 'Proposed with {name}',
+            toolTimes: 'Read with {name} ×{count}',
+            proposingToolTimes: 'Proposed with {name} ×{count}',
             approval: {
                 title: {
                     vector_create: 'Proposed: create a {target}',

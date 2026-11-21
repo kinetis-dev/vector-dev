@@ -10,11 +10,11 @@ import en from '../i18n/en'
  * points: its messages, the provider-key panel under the `ai` settings
  * group, the plain-language filter in every list's toolbar, writing help
  * under every text input and in the rich-text and Markdown editors'
- * toolbars, and the assistant — its app-bar button and drawer, and "Ask the assistant…" in
- * the command palette, which opens the drawer with what was typed. Every
+ * toolbars, and the assistant — its app-bar button and the drawer it
+ * opens, which ⌘J (Ctrl+J) also toggles. Every
  * part renders nothing until the descriptor carries `capabilities.ai`
  * (the filter, until `capabilities.ai.filters`; writing help, until
- * `capabilities.ai.writing`; the assistant and its command, until
+ * `capabilities.ai.writing`; the assistant and its shortcut, until
  * `capabilities.ai.assistant`), so against a backend
  * without kinetis/vector-ai the admin is the plain one. The assistant's
  * conversation is the signed-in user's: it is forgotten when the user
@@ -32,20 +32,8 @@ export default defineNuxtPlugin({
         extend.defineEditorToolbarItem('ai-writing', VxAiWritingToolbarItem)
         extend.defineShellAction('ai-assistant', VxAiAssistant)
 
-        // the palette command is there only while the assistant is offered
         const nuxtApp = useNuxtApp()
         const { schema } = useVectorSchema()
-        const { paletteCommands } = useVectorExtensions()
-        const { t } = useVectorT()
-        watch(() => aiOffered(aiCapabilities(schema.value), 'assistant'), (offered) => {
-            if (offered) {
-                // run when chosen, in the app's context: the API client is the one configured then
-                extend.definePaletteCommand('ai-ask', { title: () => t('ai.assistant.ask'), icon: 'mdi-creation-outline', run: query => nuxtApp.runWithContext(() => useVectorAssistant().ask(query)) })
-            } else {
-                paletteCommands.delete('ai-ask')
-            }
-        }, { immediate: true })
-
         const auth = useVectorAuthStore()
         // whose conversation it is: nobody once the descriptor is cleared on sign-out
         watch(() => (schema.value === null || auth.user === null ? null : String(auth.user.id)), (now, before) => {

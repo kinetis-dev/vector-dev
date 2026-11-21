@@ -313,8 +313,8 @@ prompt, the answer nor a provider's error body is logged.
 ## The assistant
 
 A sparkle button in the app bar opens the assistant in a drawer beside
-the page; **Ask the assistant…** in the command palette (⌘K) opens it
-with what was typed. It answers questions about the admin's data by
+the page; **⌘J** (Ctrl+J on Windows and Linux) opens or closes it from
+anywhere in the admin, its own input included. It answers questions about the admin's data by
 reading it with Vector's own MCP tools, as the signed-in person: it
 sees what they may see and nothing else. It cannot change anything
 itself: where an administrator turns *Assistant may propose changes*
@@ -349,8 +349,8 @@ person is on, each value at most 200 (`path`) or 64 characters. The body
 is at most 64 KiB (65,536 bytes). Any of these refused is a `422` naming it.
 
 The drawer keeps within those caps itself: it does not send a message
-of the person's own longer than 8,000 characters — typed, or asked from
-the palette — but leaves it in the input to shorten and says why, so it
+of the person's own longer than 8,000 characters, but leaves it in the
+input to shorten and says why, so it
 never enters the conversation; it sends the last 40 messages, cuts any earlier answer of the assistant's longer than 8,000
 characters (code points, as the server counts them) to that length,
 ending it with `…` — an answer near the model's output cap can be
@@ -370,10 +370,26 @@ data-stream protocol (`x-vercel-ai-ui-message-stream: v1`), one
 for each tool call, `data-approval` for each change the assistant
 proposed ({ref}`ai-approvals`), `text-start` / `text-delta` / `text-end`
 for the answer, `finish`. **With `Accept: application/json`** it is
-answered whole instead — `{"text": "…", "toolCalls": ["vector_query"],
-"approvals": []}` — which
+answered whole instead — `{"text": "…", "toolCalls": [{"name":
+"vector_query", "ok": true}], "approvals": []}`, each tool call with
+whether it answered (`ok: false` where the stream sends
+`tool-output-error`) — which
 the drawer falls back to where the runtime cannot stream: RoadRunner
-answers a streamed response with `501`.
+answers a streamed response with `501`. Above each answer the drawer
+shows a chip for each tool that answered, a repeated one once with how
+many times (*Read with vector_query ×3*); a call that was a tool error —
+a field the model guessed, a page out of range — has none.
+
+**Reasoning written inline is not the answer.** Some models write their
+reasoning into the text itself: Amazon Nova and Claude 3 between
+`<thinking>` and `</thinking>`, DeepSeek R1, Qwen3 and QwQ between
+`<think>` and `</think>`. The assistant takes it out of the text it
+streams and answers, whichever chunks the tags arrive split across, so
+it is never shown, never part of the conversation the drawer sends back,
+and never replayed to the model; a block still open when the answer ends
+is reasoning to its end, and the blank lines a leading block leaves are
+dropped. It still counts toward the usage estimate, as reasoning a
+provider streams apart does. Any other `<` — `a < b`, `<b>` — is text.
 
 **Tools.** The model has five reads: `vector_resources`,
 `vector_describe`, `vector_query`, `vector_get` and `vector_widget`,

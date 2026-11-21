@@ -74,8 +74,28 @@ final class GovernedTool extends Tool
         return $this->inner->getInputSchema();
     }
 
+    /** The call, its outcome — an answer, or a tool error — recorded in the run's ToolBudget. */
     #[\Override]
     public function execute(): void
+    {
+        $call = $this->budget->made();
+        $this->call();
+        self::settle($this->budget, $call, $this->getResult());
+    }
+
+    /**
+     * Records in $budget whether call $call — the made()th before it ran —
+     * answered with $result rather than a tool error, when the budget let
+     * it run. Shared with ProposingTool.
+     */
+    public static function settle(ToolBudget $budget, int $call, string|ToolOutput $result): void
+    {
+        if ($budget->made() > $call) {
+            $budget->settle($call, !($result instanceof ToolOutput && $result->isError()));
+        }
+    }
+
+    private function call(): void
     {
         $arguments = $this->inputs;
 
