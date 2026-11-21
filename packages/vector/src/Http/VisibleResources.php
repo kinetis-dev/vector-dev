@@ -62,6 +62,16 @@ final readonly class VisibleResources
     }
 
     /**
+     * $slug as this user sees it, when all() has already decided this
+     * request's list and it is on it; null otherwise — asks no policy, so a
+     * caller that wants one resource is not made to pay for every one.
+     */
+    public function decided(string $slug): ?ResourceDescriptor
+    {
+        return isset($this->decided['all']) ? ($this->decided['all'][$slug]['descriptor'] ?? null) : null;
+    }
+
+    /**
      * The published descriptor with this user's overlay: the permissions
      * and only the actions this user may run.
      *

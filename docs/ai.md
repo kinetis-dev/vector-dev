@@ -422,14 +422,15 @@ ends with the text so far; behind PHP-FPM, nginx closing the connection
 ends the script at its next write. A Bedrock call cannot be stopped this
 way, and runs to its deadline.
 
-A run stopped this way **under-counts the budget**. A provider reports
-a call's tokens at the end of its stream, so a call stopped before then
-is recorded with 0 tokens in and out under FrankenPHP; behind PHP-FPM
-the script ends before the call is recorded at all. The tokens the
-provider bills for such a call count against no one's daily budget, so
-an admin who keeps closing the drawer mid-answer can spend more than
-the budget says. Watch the provider's own usage report when that
-matters.
+A call stopped this way is still charged ({ref}`ai-departures`): a
+provider reports most of a call's tokens at the end of its stream, which
+a stopped stream never reaches, so the call is recorded with the input
+the provider reported — or an estimate when it reported none — and the
+larger of the output it reported and an estimate of the text streamed
+back, its outcome `client_gone:estimated` when either side was
+estimated. Behind PHP-FPM the script can end before the call is
+recorded at all; those tokens count against no daily budget, so watch
+the provider's own usage report when that matters.
 
 | Status | When |
 |---|---|
@@ -872,20 +873,44 @@ is published by a shell contributor ({ref}`shell-contributors`).
 Every call is recorded in `vector_ai_usage`: the actor and the
 impersonator, the feature, the provider and model, the tokens in and
 out, the duration, the tool calls and the outcome. The daily budget is
-summed from it per actor since midnight UTC. The numbers come from each
-answer, never from a counter kept in the worker.
+summed from it per actor since midnight UTC. The numbers are each call's
+own, never a counter kept in the worker: the tokens its answer reported,
+or, for an assistant call that ended without them, an estimate.
 
-An assistant call that ends with no tokens reported — its stream
-stopped because the browser left (the usage a provider sends at the end
-never arrives), cut or failed without an HTTP status, or still in
-flight when the run was abandoned — is recorded with an estimate
-instead, so it still counts against the budget: one token for every 4
-bytes of the instructions, the conversation, each call's newest message
-and the text streamed back. Its outcome ends in `:estimated`
-(`client_gone:estimated`, `failed:refused:estimated`). A call refused
-with an HTTP status generated nothing and is recorded with none; one
-whose usage was reported is recorded as reported, never estimated as
-well — each call is one row.
+What an assistant call is charged depends on whether the provider
+produced output, not on whether an HTTP status is known. An estimate is
+one token for every 4 bytes of the instructions, the conversation as
+sent, each call's newest message and the text streamed back — the tool
+definitions, which are sent too, are not counted — and its outcome ends
+in `:estimated`. Each side is the larger of what was reported and what
+was estimated, never their sum; each call is one row.
+
+| The call ended with | Input | Output | Outcome |
+| --- | --- | --- | --- |
+| a complete answer | reported | reported | `answered` |
+| an answer stopped because the browser left | reported, or estimated when none was | the larger of reported and streamed | `client_gone`, `:estimated` when either side was |
+| a stream stopped because the browser left, before any text | estimated | streamed | `client_gone:estimated` |
+| a failure after the provider streamed anything | estimated | streamed | `failed:<category>:estimated` |
+| a failure with nothing streamed — no connection, an HTTP or Bedrock refusal, a timeout before the first byte | 0 | 0 | `failed:<category>` |
+| still in flight when the run was abandoned | as the two rows above, by whether anything streamed | | |
+
+A failure that produced nothing costs nothing, however often it is
+retried: the budget is an abuse limit, not a bill.
+
+(ai-departures)=
+**When the browser leaves.** A run counts as ended by the browser
+leaving only when the application itself stopped it: its stream asked
+whether to stop — before every event it reads — and was told yes, or
+the assistant saw the connection gone between two steps and did not go
+on (before the first one, no request is sent at all, and nothing is
+charged). Such a run is logged at info, `An assistant run ended after
+the browser left.`, outcome `client_gone`, with no provider warning.
+Anything else is a failure, whether or not the browser is still there —
+a provider's refusal (a Bedrock call is never stopped), a cut stream, a
+tool's exception, a runaway model, a database error — logged as the
+run's failure: a warning for a provider's, an error for the run's own.
+Whether the browser is gone decides only whether anything more is
+written to it.
 
 (ai-failures)=
 A failed call is reported by category — `timeout`, `too_large`,

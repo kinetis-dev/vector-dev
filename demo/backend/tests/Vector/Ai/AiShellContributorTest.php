@@ -91,6 +91,18 @@ final class AiShellContributorTest extends AiTestCase
         self::assertSame([], $quiet->lines);
     }
 
+    public function testAFailureBuildingAnotherUsersScopeTurnsEveryFeatureOffRatherThanFailingTheSchema(): void
+    {
+        $logger = new RecordingLogger();
+
+        // their actor cannot even be built: their impersonator cannot be read
+        $flags = $this->contributor(new AllowingAiAccess(), $logger)->capabilities(new UnreadableImpersonation());
+
+        self::assertSame(['filters' => false, 'assistant' => false, 'assistantWrites' => false, 'writing' => false], self::flags($flags));
+        self::assertCount(1, $logger->at('warning'));
+        self::assertSame(['exception_class' => \DomainException::class], $logger->at('warning')[0]['context']);
+    }
+
     public function testAnUnshippedFeatureAsksNoDependency(): void
     {
         // the throwing policy is never reached: nothing ships
@@ -135,7 +147,10 @@ final class AiShellContributorTest extends AiTestCase
         $user = $scope->get(CurrentUserInterface::class);
         self::assertInstanceOf(CurrentUserInterface::class, $user);
 
-        return new AiShellContributor(new AiAvailability($user, $access, $config, $settings, $usage, $resolver), $logger ?? new RecordingLogger(), $visible, $boundary, $user, $this->app);
+        $scopes = $scope->get(\Kinetis\Vector\Auth\ActorScope::class);
+        self::assertInstanceOf(\Kinetis\Vector\Auth\ActorScope::class, $scopes);
+
+        return new AiShellContributor(new AiAvailability($user, $access, $config, $settings, $usage, $resolver), $logger ?? new RecordingLogger(), $visible, $boundary, $user, $scopes);
     }
 
     /**
@@ -189,5 +204,21 @@ final readonly class AllowingAiAccess implements AiAccessInterface
     public function canConfigure(CurrentUserInterface $user): bool
     {
         return true;
+    }
+}
+
+/** A user whose impersonator cannot be read: no actor can be built for them. */
+final readonly class UnreadableImpersonation implements CurrentUserInterface, \Kinetis\Vector\Auth\ImpersonatedUserInterface
+{
+    #[\Override]
+    public function id(): string
+    {
+        return 'test-unreadable';
+    }
+
+    #[\Override]
+    public function impersonatorId(): string|int|null
+    {
+        throw new \DomainException('the impersonation could not be read');
     }
 }

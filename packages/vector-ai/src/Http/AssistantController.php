@@ -13,6 +13,7 @@ use Kinetis\Validation\Exception\ValidationException;
 use Kinetis\Validation\Violation;
 use Kinetis\VectorAi\Approvals\ApprovalId;
 use Kinetis\VectorAi\Assistant\Assistant;
+use Kinetis\VectorAi\Assistant\DepartureSignal;
 use Kinetis\VectorAi\Auth\AiAvailability;
 use Kinetis\VectorAi\Feature;
 use Psr\Http\Message\ResponseInterface;
@@ -67,9 +68,10 @@ final readonly class AssistantController
     #[Post('/assistant')]
     public function ask(ServerRequestInterface $request, ClientConnectionInterface $connection): ResponseInterface
     {
-        // a streamed answer stops reading the provider once the browser has left,
-        // as far as the runtime can tell (Kinetis' runtime-adapters guide lists when)
-        $provider = $this->availability->provider(Feature::Assistant, $connection->isGone(...));
+        // a streamed answer stops reading the provider once the browser has left, as far as the runtime can
+        // tell (Kinetis' runtime-adapters guide lists when); the signal remembers that it was this that stopped it
+        $signal = new DepartureSignal($connection);
+        $provider = $this->availability->provider(Feature::Assistant, $signal->shouldStop(...));
 
         if (($spent = $this->availability->budgetSpent()) !== null) {
             return $spent;
@@ -79,10 +81,10 @@ final readonly class AssistantController
         $instructions = $this->assistant->instructions($context['path'], $context['resource'], $context['recordId']);
 
         if (self::wantsJson($request)) {
-            return JsonResponse::create($this->assistant->answer($provider, $instructions, $conversationId, $conversation), 200, ['Cache-Control' => 'no-store']);
+            return JsonResponse::create($this->assistant->answer($provider, $instructions, $conversationId, $conversation, $signal), 200, ['Cache-Control' => 'no-store']);
         }
 
-        return $this->assistant->stream($provider, $connection, $instructions, $conversationId, $conversation);
+        return $this->assistant->stream($provider, $connection, $instructions, $conversationId, $conversation, $signal);
     }
 
     /** Whether the client asked for the whole answer as JSON rather than a stream. */

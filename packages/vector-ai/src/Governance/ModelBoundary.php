@@ -9,6 +9,7 @@ use Kinetis\Authorization\Exception\AuthorizationException;
 use Kinetis\Authorization\Gate;
 use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Vector\Exception\VectorException;
+use Kinetis\Vector\Http\VisibleResources;
 use Kinetis\Vector\Mcp\ResourceDescription;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Registry\ResourceDescriptor;
@@ -72,6 +73,7 @@ final readonly class ModelBoundary
 
     public function __construct(
         private ResourceService $resources,
+        private VisibleResources $visibleResources,
         private AiSettingsReader $settings,
         private Gate $gate,
         private CurrentUserInterface $user,
@@ -517,21 +519,12 @@ final readonly class ModelBoundary
     }
 
     /**
-     * Takes $visible as how this user sees its resource: a descriptor
-     * ResourceService::visible() already answered for this request's user
-     * — VisibleResources::all()'s, which GET /vector/schema decided — so
-     * visible() asks no `viewField` policy of it again.
-     */
-    public function rememberVisible(ResourceDescriptor $visible): void
-    {
-        $this->seen[$visible->slug()] = $visible;
-    }
-
-    /**
      * $resource as this user sees it — ResourceService::visible(), which
      * drops the fields their `viewField` policy hides — asked once per
      * resource for the life of this boundary — one request's, or one chunk's —
-     * however many rows, search columns and references read it. Asking it again of a resource it
+     * however many rows, search columns and references read it; not at all
+     * when this request's VisibleResources already decided it, as GET
+     * /vector/schema does for every resource. Asking it again of a resource it
      * answered for hides nothing more, so any descriptor of the same slug
      * shares the answer.
      */
@@ -539,7 +532,8 @@ final readonly class ModelBoundary
     {
         $slug = $resource->slug();
 
-        return $this->seen[$slug] ??= $this->resources->visible($resource);
+        // the descriptor GET /vector/schema already decided this request, when it did: no viewField asked again
+        return $this->seen[$slug] ??= $this->visibleResources->decided($slug) ?? $this->resources->visible($resource);
     }
 
     /** @return array{error: string} */

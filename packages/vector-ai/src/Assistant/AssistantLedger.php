@@ -14,28 +14,42 @@ use NeuronAI\Agent\Observability\InferenceStart;
 use NeuronAI\Agent\Observability\InferenceStop;
 use NeuronAI\Chat\Messages\AssistantMessage;
 use NeuronAI\Chat\Messages\ToolCallMessage;
+use NeuronAI\Exceptions\ProviderException;
 use NeuronAI\HttpClient\StoppableHttpClient;
 use NeuronAI\Workflow\Observability\WorkflowError;
 
 /**
- * One usage row per provider call of an assistant run, from the agent's
- * own inference events: an answer is `answered`, with its tokens and the
- * tool calls it asked for; a call the run failed in is `failed:<category>`,
- * mapped — and logged by category and status only — by AiFailureMapper.
- * Keeps the run's token totals for its log line. One per run, subscribed
- * to that run's agent; never shared.
+ * One usage row per provider call of an assistant run, written once, from
+ * the agent's own inference events. Keeps the run's token totals for its
+ * log line, and the exception it ended on (exception()). One per run,
+ * subscribed to that run's agent; never shared.
  *
- * A call that ends without the provider reporting any tokens — a stream
- * stopped because the browser left (StoppableHttpClient, outcome
- * `client_gone`), a stream cut or failed without an HTTP status, or a
- * call still in flight when the run was abandoned (settle()) — would
- * cost the daily budget nothing, though the provider may well bill it.
- * It is recorded with an estimate instead, ESTIMATE_BYTES bytes a token
- * (the prompt and conversation as sent, the newest message of each call
- * and the text streamed back), its outcome marked `:estimated` — the
- * usage table has no column for it. A call refused with an HTTP status
- * generated nothing and stays at 0. Reported usage is never estimated
- * over or added to: each call is one row, recorded once.
+ * What a call is charged depends on whether the provider produced output,
+ * not on whether an HTTP status is known:
+ *
+ * - a complete answer: the tokens it reported, `answered`;
+ * - an answer the departure stopped (StoppableHttpClient::STOP_REASON):
+ *   the input reported, or estimated when none was — Anthropic reports it
+ *   up front, OpenAI only at the end that never comes — and the larger of
+ *   the output reported and the estimate of what streamed back,
+ *   `client_gone`, with `:estimated` when either side was estimated;
+ * - a stream the departure stopped before any text (the DepartureSignal
+ *   fired and Neuron raised a ProviderException): estimated,
+ *   `client_gone:estimated` — and not handed to AiFailureMapper, which
+ *   would log it as the provider's failure;
+ * - a failure after the provider streamed anything: estimated,
+ *   `failed:<category>:estimated`; one with nothing streamed — no
+ *   connection, an HTTP refusal, a Bedrock refusal, a timeout before the
+ *   first byte — costs nothing, `failed:<category>` at 0 and 0;
+ * - a call still in flight when the run was abandoned (settle()): as the
+ *   two rows above, by whether anything streamed.
+ *
+ * An estimate is ESTIMATE_BYTES bytes a token: of the instructions and the
+ * conversation as sent, each call's newest message and the text streamed
+ * back — not the tool definitions, which are sent too. The usage table has
+ * no column for it, so its outcome is marked `:estimated`. Each side is
+ * the larger of the reported and the estimated, never their sum. The
+ * daily budget is an abuse limit, not a bill.
  */
 final class AssistantLedger
 {
@@ -61,19 +75,33 @@ final class AssistantLedger
     /** The bytes the call in flight streamed back so far: what an output estimate counts. */
     private int $streamedBytes = 0;
 
-    /** @param int $promptBytes the bytes of the run's instructions and conversation, as sent to its first call */
+    /** The exception the run ended on, as its WorkflowError reported it — before the error frames it sends — or null. */
+    private ?\Throwable $exception = null;
+
+    /** Whether the run is over (settle()): events after it — a dropped run's own release — record and map nothing. */
+    private bool $closed = false;
+
+    /**
+     * @param int $promptBytes the bytes of the run's instructions and conversation, as sent to its first call
+     * @param DepartureSignal|null $signal the run's: whether its stream was stopped by the departure; none for a run nothing can stop
+     */
     public function __construct(
         private readonly UsageLedger $usage,
         private readonly ActorContext $actor,
         private readonly AiFailureMapper $failures,
         private readonly ResolvedProvider $provider,
         int $promptBytes = 0,
+        private readonly ?DepartureSignal $signal = null,
     ) {
         $this->contextBytes = max(0, $promptBytes);
     }
 
     public function handle(object $event): void
     {
+        if ($this->closed) {
+            return;
+        }
+
         match (true) {
             $event instanceof InferenceStart => $this->start($event),
             $event instanceof InferenceStop => $this->stopped($event),
@@ -89,15 +117,44 @@ final class AssistantLedger
     }
 
     /**
-     * Records the call still in flight, if any, as an estimate: the run
-     * ended — abandoned when the browser left, or failed outside the
-     * provider call's own events — before the provider answered it.
+     * Closes the run: the call still in flight, if any — the run abandoned
+     * when the browser left, or failed outside the call's own events — is
+     * recorded as $outcome, estimated when anything streamed back and at 0
+     * otherwise; nothing after this records or maps anything.
      */
-    public function settle(string $outcome = 'client_gone'): void
+    public function settle(string $outcome): void
     {
-        if ($this->started !== null) {
-            $this->record($this->estimatedInput(), $this->estimatedOutput(), 0, $outcome . self::ESTIMATED);
+        if ($this->closed) {
+            return;
         }
+
+        if ($this->started !== null) {
+            $this->charge($outcome);
+        }
+
+        $this->closed = true;
+    }
+
+    /**
+     * Whether $e is the departure's doing: the DepartureSignal fired — the
+     * application stopped the stream — and Neuron raised what a stopped
+     * stream raises. Anything else is a failure, whoever is left to see it.
+     */
+    public function isDeparture(\Throwable $e): bool
+    {
+        return $this->signal?->fired() === true && $e instanceof ProviderException;
+    }
+
+    /** Whether the run's DepartureSignal fired: the application stopped its stream because the browser left. */
+    public function signalFired(): bool
+    {
+        return $this->signal?->fired() === true;
+    }
+
+    /** The exception the run ended on, as its WorkflowError reported it, or null. */
+    public function exception(): ?\Throwable
+    {
+        return $this->exception;
     }
 
     public function inputTokens(): int
@@ -130,40 +187,59 @@ final class AssistantLedger
         $in = $usage->inputTokens ?? 0;
         $out = $usage->outputTokens ?? 0;
         $toolCalls = $message instanceof ToolCallMessage ? count($message->getToolCalls()) : 0;
-        $outcome = $message instanceof AssistantMessage && $message->stopReason() === StoppableHttpClient::STOP_REASON ? 'client_gone' : 'answered';
 
-        if ($in + $out === 0) {
-            // nothing reported — a stopped stream's usage never arrives: one estimated row instead, never both
-            $this->record($this->estimatedInput(), $this->estimatedOutput(), $toolCalls, $outcome . self::ESTIMATED);
+        if (!$message instanceof AssistantMessage || $message->stopReason() !== StoppableHttpClient::STOP_REASON) {
+            $this->record($in, $out, $toolCalls, 'answered');
 
             return;
         }
 
-        $this->record($in, $out, $toolCalls, $outcome);
+        // stopped by the departure: what was reported so far, and estimates for what was not — the larger, never the sum
+        $estimatedIn = $in <= 0;
+        $streamed = $this->estimatedOutput();
+        $this->record(
+            $estimatedIn ? $this->estimatedInput() : $in,
+            max($out, $streamed),
+            $toolCalls,
+            'client_gone' . ($estimatedIn || $streamed > $out ? self::ESTIMATED : ''),
+        );
     }
 
     /**
-     * A run that failed while a provider call was in flight failed in that
-     * call; any other failure is no call's. Refused with an HTTP status,
-     * the call generated nothing; otherwise — a stream cut or stopped, a
-     * timeout — it is estimated.
+     * The run failed: remembered for told(), which may have stopped reading
+     * it before the failure itself was thrown. While a provider call was in
+     * flight, the call is recorded — as the departure's when the signal
+     * fired on a stopped stream (never mapped: AiFailureMapper logs the
+     * provider's failures), as the provider's failure otherwise.
      */
     private function failed(WorkflowError $event): void
     {
+        $this->exception = $event->exception;
+
         if ($this->started === null) {
             return;
         }
 
-        $this->failure = $this->failures->map($event->exception);
-        $outcome = 'failed:' . $this->failure->category->value;
-
-        if ($this->failure->providerStatus !== null) {
-            $this->record(0, 0, 0, $outcome);
+        if ($this->isDeparture($event->exception)) {
+            $this->record($this->estimatedInput(), $this->estimatedOutput(), 0, 'client_gone' . self::ESTIMATED);
 
             return;
         }
 
-        $this->record($this->estimatedInput(), $this->estimatedOutput(), 0, $outcome . self::ESTIMATED);
+        $this->failure = $this->failures->map($event->exception);
+        $this->charge('failed:' . $this->failure->category->value);
+    }
+
+    /** The call in flight, ended without an answer: estimated when the provider streamed anything back, at 0 when it produced nothing. */
+    private function charge(string $outcome): void
+    {
+        if ($this->streamedBytes > 0) {
+            $this->record($this->estimatedInput(), $this->estimatedOutput(), 0, $outcome . self::ESTIMATED);
+
+            return;
+        }
+
+        $this->record(0, 0, 0, $outcome);
     }
 
     private function estimatedInput(): int

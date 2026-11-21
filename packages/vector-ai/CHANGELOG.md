@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is left out of the CSV and counted as skipped. Each chunk declares the
   records it proposed for (`ActionResponse::withRecords()`), so only
   those are audited and `affected` counts proposals. Every chunk reads
-  the `ai` settings anew (`AiSettingsReader::refresh()`), so a switch-off
+  the `ai` settings anew (Vector runs each on a scope of its own), so a switch-off
   saved while the job runs stops the next chunk. The CSV is never larger
   than `JobStore::MAX_FILE_BYTES`: the early stop counts rows as the CSV
   writes them (quotes doubled, `ProposeRewrites::rowBytes()`), and
@@ -119,44 +119,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `recordPermissions()['forceDelete']` is false for it; `delete` alone
   does not let it through, and a resource that does not soft-delete has
   none.
-- A streamed assistant run that fails after the browser left writes no
-  error frame to the closed connection; once the request's
-  `ClientConnectionInterface` reports the browser gone, nothing more of
-  the run is written, and the run is read no further: the model is not
-  called again, and no tool runs and nothing is proposed for nobody to
-  see (`Assistant::told()` asks the connection before it advances the
-  run). The stop the departure caused — the provider's
-  stream stopped or cut before the answer ended, a Neuron
-  `ProviderException` — is logged at info (`An assistant run ended after
-  the browser left.`, outcome `client_gone`), and so is a run the browser
-  left that ended cleanly, as a stopped stream does, rather than as
-  `answered`; any other failure — a
-  tool's bug, a runaway model, a database error — is still logged as the
-  run's failure, at error level when it is the run's own.
-- An assistant call that ends with no tokens reported — a stream stopped
-  because the browser left, whose usage never arrives, one cut or failed
-  without an HTTP status, or one still in flight when the run was
-  abandoned — counts against the daily budget with an estimate
-  (`AssistantLedger::ESTIMATE_BYTES`, 4 bytes a token, of what was sent
-  and streamed back), its usage row's outcome marked `:estimated`;
-  before, it cost nothing. Reported usage is recorded as it is, never
-  estimated as well; a call the provider refused with an HTTP status
-  stays at 0, and a stopped stream's row is `client_gone`, not
-  `answered`.
+- A streamed assistant run the browser left is told apart from a failed
+  one by an explicit rule, not by the exception's type: it ended because
+  the browser left only when the application stopped it — its stream
+  asked the run's `Assistant\DepartureSignal` (the stop closure
+  `AssistantController` hands the provider) and was stopped, or
+  `Assistant::told()` saw the connection gone between two steps and did
+  not advance the run. Such a run is logged at info (`An assistant run
+  ended after the browser left.`, outcome `client_gone`), never as
+  `answered`, with no provider warning. Everything else — a Bedrock
+  refusal, a cut stream, a tool's exception, a runaway model, a database
+  error — is the run's failure, logged as one whether or not the browser
+  is still there. The connection decides only whether frames are
+  written: once it is gone nothing more is, and the run is advanced no
+  further — a browser gone before the first step sends no request — so
+  the model is not called again and nothing is proposed for nobody.
+- An assistant call is charged by whether the provider produced output:
+  a complete answer as reported; an answer the departure stopped with
+  the input reported (or estimated when none was) and the larger of the
+  reported and the streamed output; a stream stopped before any text, or
+  a failure after the provider streamed anything, estimated
+  (`AssistantLedger::ESTIMATE_BYTES`, 4 bytes a token of what was sent
+  and streamed back, tool definitions not counted); a failure with
+  nothing streamed — no connection, an HTTP or Bedrock refusal — at 0,
+  however often it is retried. An estimated row's outcome ends in
+  `:estimated`; each call is one row, each side the larger of reported
+  and estimated, never their sum.
 - A proposal whose arguments nest deeper than a stored proposal is read
   back with (`ApprovalStore::MAX_DEPTH`, 64, the one limit for both) is
   refused to the model as a tool error (`ProposingTool::TOO_DEEP`) and
   never stored, and `ApprovalStore::propose()` refuses one too: before,
   it was stored and could then never be approved or rejected.
+- An approved change whose result nests deeper than that — an update of
+  a record with deeply nested JSON — is stored with
+  `ApprovalStore::TOO_DEEP` (`{"truncated": "too_deep"}`) as its result
+  instead: the approval still settles, and the conversation that replays
+  it no longer fails on every read.
 - `capabilities.ai` reads the resources the descriptor already decided
-  (`VisibleResources::all()`), and ModelBoundary takes their descriptors
-  as the user sees them (`rememberVisible()`): GET /vector/schema, a 304
+  (`VisibleResources::all()`), and ModelBoundary reads a resource the
+  request's `VisibleResources` already decided from it
+  (`VisibleResources::decided()`): GET /vector/schema, a 304
   included, no longer asks each resource's `viewAny` and each field's
   `viewField` policy a second time for `excluded` and `excludedFields`.
 - `AiShellContributor::capabilities()` answers for the user it is given:
   for the request's own user from the request's services, for anyone
-  else from a request scope of their own, instead of always for the
-  request's user.
+  else from a request scope of their own (`Vector\Auth\ActorScope`),
+  instead of always for the request's user. Building that scope is
+  inside the same catch-all as the rest: a failure there turns every AI
+  feature off rather than failing GET /vector/schema.
 - `capabilities.ai` looks up a provider's stored key once per request
   (`ProviderResolver::resolvable()`), not once per feature: four
   features sharing one key were four identical queries on every

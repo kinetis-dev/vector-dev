@@ -12,11 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Http\VisibleResources::all()` — the resources this request's user may
   list, as they see them, with their permissions — is decided once per
   request: the descriptor, the OpenAPI document and a shell contributor
-  that injects it share one pass of the resource and field policies.
+  that injects it share one pass of the resource and field policies;
+  `decided($slug)` reads one resource from that pass when it was made,
+  and asks no policy when it was not.
 
-- `JobContext::inFreshScope()` runs a closure on a request scope of its
-  own, created as the worker creates a job's, with the job's actor
-  registered on it.
+- `Auth\ActorScope::run()` runs a closure on a request scope of its own,
+  created as the worker creates a job's, acting as a given admin (their
+  `ActorContext` and user registered on it), and disposes of it as
+  kinetis/queue's `SyncQueue` disposes of a job's: the closure's own
+  failure is rethrown, and a disposal failure on top of it is logged at
+  error rather than put in its place; alone, it is the outcome.
+  `JobContext::inFreshScope()` runs a closure that way as the job's
+  actor.
 
 - A queued action knows its job and can leave it a file:
   `ActionRequest::$jobId` names the job every chunk (and the run's

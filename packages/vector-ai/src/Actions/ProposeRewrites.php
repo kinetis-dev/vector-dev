@@ -15,7 +15,6 @@ use Kinetis\VectorAi\Failure\AiFailure;
 use Kinetis\VectorAi\Failure\AiFailureMapper;
 use Kinetis\VectorAi\Http\AiRequestException;
 use Kinetis\VectorAi\Providers\ResolvedProvider;
-use Kinetis\VectorAi\Settings\AiSettingsReader;
 use Kinetis\VectorAi\Writing\WritingAssistant;
 use Kinetis\VectorAi\Writing\WritingGuard;
 use Kinetis\VectorAi\Writing\WritingOperation;
@@ -41,7 +40,7 @@ use Kinetis\VectorAi\Writing\WritingOperation;
  *
  * The run is writing help's (WritingGuard), as the admin who started it,
  * asked again at the start of every chunk with the `ai` settings read
- * anew (a job runs all its chunks in one scope):
+ * anew (Vector runs each chunk on a request scope of its own):
  * a password, non-text, hidden, read-only or AI-kept field, one not on
  * the detail view (the records are read as it serializes them), writing
  * help off, unconfigured or not theirs, a translation without a language
@@ -93,7 +92,6 @@ abstract class ProposeRewrites extends VectorAction
         private readonly WritingAssistant $writing,
         private readonly RewriteStore $store,
         private readonly AiFailureMapper $failures,
-        private readonly AiSettingsReader $settings,
         private readonly AiAvailability $availability,
     ) {}
 
@@ -171,9 +169,6 @@ abstract class ProposeRewrites extends VectorAction
         if ($request->jobId === null) {
             return ActionResponse::danger('Rewrite proposals run only as a background job.');
         }
-
-        // a switch-off saved since the last chunk must be seen by this one, whatever scope it runs in
-        $this->settings->refresh();
 
         try {
             [$visible, $field, $provider, $instructions] = $this->configured($request->resource);

@@ -9,6 +9,7 @@ use Kinetis\Container\AppScope;
 use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Vector\Auth\AllowAllPolicy;
 use Kinetis\Vector\Auth\ResourcePolicy;
+use Kinetis\VectorAi\Approvals\ApprovalStatus;
 use Kinetis\VectorAi\Approvals\ApprovalStore;
 use Kinetis\VectorAi\Assistant\ProposingTool;
 use NeuronAI\Chat\Messages\ToolResultMessage;
@@ -108,6 +109,28 @@ final class ProposalPermissionsTest extends ApprovalsTestCase
         } finally {
             self::assertSame([], $this->rows());
         }
+    }
+
+    public function testAResultTooDeepToBeReadBackIsStoredAsAPlaceholderAndTheRowStaysReadable(): void
+    {
+        // what executing an update can answer: the record, with a JSON field nested past the read limit
+        $value = 'deep';
+
+        for ($i = 0; $i < ApprovalStore::MAX_DEPTH; $i++) {
+            $value = [$value];
+        }
+
+        $store = $this->app->get(ApprovalStore::class);
+        self::assertInstanceOf(ApprovalStore::class, $store);
+        $approval = $store->propose(self::ACTOR_PREFIX . '01', null, 'c_deep_result', 'vector_update', ['resource' => 'products', 'id' => (string) $this->product, 'values' => ['stock' => 1]], 15);
+        self::assertTrue($store->decide($approval->id, ApprovalStatus::Executing));
+
+        $store->settle($approval->id, ApprovalStatus::Executed, ['id' => $this->product, 'meta' => $value]);
+
+        $read = $store->fresh($approval->id);
+        self::assertNotNull($read, 'the row is read back, not a 500');
+        self::assertSame(ApprovalStatus::Executed, $read->status, 'the approval settled');
+        self::assertSame(ApprovalStore::TOO_DEEP, $read->result);
     }
 
     public function testArgumentsJustWithinTheLimitAreStorable(): void

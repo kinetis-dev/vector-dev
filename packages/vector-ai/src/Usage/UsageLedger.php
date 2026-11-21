@@ -15,9 +15,11 @@ use Kinetis\VectorAi\Feature;
  * for which feature, on which provider and model, the tokens in and out,
  * how long, how many tool calls and how it ended — on Vector's own
  * connection. remaining() is what the daily budget leaves a person
- * today (UTC). Every number comes from the answer a call returned, never
- * from a counter kept in the worker: Neuron's UsageMeter keeps one in a
- * static and is not used. Built per request.
+ * today (UTC). Every number is the caller's, per call, never a counter
+ * kept in the worker — Neuron's UsageMeter keeps one in a static and is
+ * not used: the tokens a call's answer reported, or, for an assistant
+ * call that ended without them, AssistantLedger's estimate, its outcome
+ * marked `:estimated`. Built per request.
  */
 final readonly class UsageLedger
 {

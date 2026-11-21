@@ -335,28 +335,6 @@ final class ProposeRewritesTest extends WritingTestCase
         self::assertStringContainsString('Stopped calling AI: writing help stopped being available to this run, so 2 record(s) were not sent.', (string) $finished->message);
     }
 
-    public function testWritingSwitchedOffBetweenChunksOfOneScopeStopsTheNextChunk(): void
-    {
-        $ids = $this->orders(3);
-        $this->scriptTidy($ids);
-        $jobId = $this->job('tidy-order-notes');
-
-        // as RunActionJob runs them: every chunk in the one scope of the job
-        $second = $this->inJob(function (ActionRunner $runner, ResourceDescriptor $orders) use ($ids, $jobId): ActionResponse {
-            $runner->runNow($orders, 'tidy-order-notes', [$ids[0]], [], $jobId);
-            $this->settings(['writingEnabled' => false]);
-
-            return $runner->runNow($orders, 'tidy-order-notes', [$ids[1], $ids[2]], [], $jobId);
-        });
-
-        self::assertSame('Writing help is no longer available to this run: 2 record(s) in this chunk were not sent.', $second->message);
-        self::assertSame(0, $second->affected);
-        self::assertCount(1, $this->calls());
-        $left = $this->vectorQuery()->table(RewriteStore::TABLE)->select('record_key', 'reason')->where('job_id', '=', $jobId)
-            ->where('status', '=', RewriteStore::BUDGET)->orderBy('record_key', 'ASC')->get();
-        self::assertSame([(string) $ids[1] => 'unavailable', (string) $ids[2] => 'unavailable'], array_column($left, 'reason', 'record_key'));
-    }
-
     public function testAChunkAuditsAndCountsOnlyTheRecordsItProposedFor(): void
     {
         $ids = $this->orders(4);

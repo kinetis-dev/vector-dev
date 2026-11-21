@@ -29,10 +29,13 @@ final readonly class ApprovalStore
     /**
      * How deep stored arguments and results may nest, as json_decode()
      * counts it: what reading a row back allows, and so what storable()
-     * lets a proposal be saved with — one that read could not decode
+     * lets a proposal be saved with and settle() a result — one that read could not decode
      * could never be approved or rejected.
      */
     public const int MAX_DEPTH = 64;
+
+    /** What a result nested deeper than MAX_DEPTH is stored as instead (settle()). */
+    public const array TOO_DEEP = ['truncated' => 'too_deep'];
 
     public function __construct(private VectorDatabase $db) {}
 
@@ -187,7 +190,7 @@ final readonly class ApprovalStore
             ->where('status', '=', ApprovalStatus::Executing->value)
             ->update([
                 'status' => $status->value,
-                'result' => json_encode($result, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                'result' => self::encodeResult($result),
                 'executed_at' => self::format(self::now()),
             ]);
     }
@@ -234,6 +237,31 @@ final readonly class ApprovalStore
             new DateTimeImmutable((string) $row['created_at'], $utc),
             new DateTimeImmutable((string) $row['expires_at'], $utc),
         );
+    }
+
+    /**
+     * $result as stored: as it was, when a row can read it back at
+     * MAX_DEPTH; otherwise TOO_DEEP in its place — a record with deeply
+     * nested JSON makes a result no read could decode, and the change was
+     * made all the same: the approval settles, and every later read of the
+     * conversation still works.
+     */
+    private static function encodeResult(mixed $result): string
+    {
+        $flags = JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
+
+        try {
+            $encoded = json_encode($result, $flags);
+            json_decode($encoded, true, self::MAX_DEPTH, JSON_THROW_ON_ERROR);
+
+            return $encoded;
+        } catch (\JsonException $e) {
+            if ($e->getCode() !== JSON_ERROR_DEPTH) {
+                throw $e;
+            }
+
+            return json_encode(self::TOO_DEEP, $flags);
+        }
     }
 
     /** @param array<array-key, mixed> $arguments */

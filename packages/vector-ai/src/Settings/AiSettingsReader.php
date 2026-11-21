@@ -10,9 +10,9 @@ use Kinetis\Vector\Store\SettingsStore;
 /**
  * The `ai` settings group's values for this request, read once on first
  * use (the defaults where nothing is stored). Request-scoped: the values
- * it keeps end with the request. A job runs in one scope, so work that
- * must see a change saved while it runs — each chunk of a queued action
- * — calls refresh() first.
+ * it keeps end with the request — and with each chunk of a queued
+ * action, which Vector runs on a request scope of its own, so a change
+ * saved while a job runs is read by its next chunk.
  */
 final class AiSettingsReader
 {
@@ -28,12 +28,6 @@ final class AiSettingsReader
     public function values(): array
     {
         return $this->values ??= $this->store->values($this->registry->settingsGroup('ai'));
-    }
-
-    /** Forgets the values read so far: the next read asks the store again. */
-    public function refresh(): void
-    {
-        $this->values = null;
     }
 
     public function bool(string $name): bool

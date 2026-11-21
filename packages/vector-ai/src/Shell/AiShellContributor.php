@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Kinetis\VectorAi\Shell;
 
-use Kinetis\Container\AppScope;
+use Kinetis\Container\RequestScope;
 use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Logging\SafeLogger;
 use Kinetis\Vector\Attributes\ShellContributor;
+use Kinetis\Vector\Auth\ActorContext;
+use Kinetis\Vector\Auth\ActorScope;
 use Kinetis\Vector\Http\ShellContributorInterface;
 use Kinetis\Vector\Http\VisibleResources;
 use Kinetis\VectorAi\Auth\AiAvailability;
@@ -57,7 +59,7 @@ final readonly class AiShellContributor implements ShellContributorInterface
         private VisibleResources $visible,
         private ModelBoundary $boundary,
         private CurrentUserInterface $user,
-        private AppScope $app,
+        private ActorScope $scopes,
     ) {}
 
     /**
@@ -77,19 +79,19 @@ final readonly class AiShellContributor implements ShellContributorInterface
             return $this->offering(self::shipped());
         }
 
-        $scope = $this->app->createRequestScope();
-
+        // their scope is built inside the catch-all too: whatever fails on the way turns AI off, never the schema
         try {
-            $scope->instance(CurrentUserInterface::class, $user);
-            $theirs = $scope->get(self::class);
+            return $this->scopes->run(new ActorContext($user), static function (RequestScope $scope): array {
+                $theirs = $scope->get(self::class);
 
-            if (!$theirs instanceof self) {
-                throw new \LogicException(self::class . ' did not resolve.');
-            }
+                if (!$theirs instanceof self) {
+                    throw new \LogicException(self::class . ' did not resolve.');
+                }
 
-            return $theirs->offering(self::shipped());
-        } finally {
-            $scope->dispose();
+                return $theirs->offering(self::shipped());
+            });
+        } catch (\Throwable $e) {
+            return $this->off($e);
         }
     }
 
@@ -122,11 +124,7 @@ final readonly class AiShellContributor implements ShellContributorInterface
                 [$excluded, $excludedFields] = $this->excluded();
             }
         } catch (\Throwable $e) {
-            $offered = array_map(static fn (): bool => false, $flags);
-            $excluded = [];
-            $excludedFields = [];
-            // the class only: a message could carry a provider's detail; a throwing logger must not fail the schema either
-            SafeLogger::log($this->logger, LogLevel::WARNING, 'Computing the AI capabilities failed with ' . $e::class . '; every AI feature is off for this request.', ['exception_class' => $e::class]);
+            return $this->off($e);
         }
 
         return [
@@ -137,6 +135,20 @@ final readonly class AiShellContributor implements ShellContributorInterface
             'excluded' => $excluded === [] ? new \stdClass() : (object) $excluded,
             'excludedFields' => $excludedFields === [] ? new \stdClass() : (object) $excludedFields,
         ];
+    }
+
+    /**
+     * Every feature off, after $e: logged as a warning naming its class
+     * only — a message could carry a provider's detail — and a throwing
+     * logger must not fail the schema either.
+     *
+     * @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object, excludedFields: object}
+     */
+    private function off(\Throwable $e): array
+    {
+        SafeLogger::log($this->logger, LogLevel::WARNING, 'Computing the AI capabilities failed with ' . $e::class . '; every AI feature is off for this request.', ['exception_class' => $e::class]);
+
+        return ['filters' => false, 'assistant' => false, 'assistantWrites' => false, 'writing' => false, 'excluded' => new \stdClass(), 'excludedFields' => new \stdClass()];
     }
 
     /**
@@ -154,8 +166,6 @@ final readonly class AiShellContributor implements ShellContributorInterface
 
         // the resources the descriptor lists, as it decided them: no policy is asked a second time
         foreach ($this->visible->all() as $slug => ['descriptor' => $resource]) {
-            $this->boundary->rememberVisible($resource);
-
             if (!$this->boundary->allows($resource)) {
                 $excluded[$slug] = true;
 
