@@ -639,13 +639,16 @@ agent ends with the request, and an approval is a fresh request.
 (ai-writing)=
 ## Writing help
 
-Under a text input — a `string` or `text` field on a resource's create
+Inside a text input — a `string` or `text` field on a resource's create
 page or on a record's edit page, and nowhere else: not in a list's bulk
-edit, an action's dialog or a settings form — a *Writing help* menu offers **Rewrite**, **Shorten**, **Fix
+edit, an action's dialog or a settings form — an icon at the field's end
+(right in a left-to-right language, left in a right-to-left one) opens a
+*Writing help* menu: **Rewrite**, **Shorten**, **Fix
 grammar** and **Translate to…** (any language the UI ships, and any other the
-descriptor lets the user choose). The answer shows beside
-the text it was asked about, *Before* and *After*: **Replace** puts it
-in the input, **Discard** drops it. In the toolbar of a rich-text or
+descriptor lets the user choose). The answer opens in a popover under
+the field, beside the text it was asked about, *Before* and *After*:
+**Replace** puts it in the input, **Discard** drops it, and so do Escape
+and a click outside the popover. A failure says why in the same popover. In the toolbar of a rich-text or
 Markdown editor the same menu acts on the selection — its plain text in
 a rich-text field, its Markdown source in a Markdown field — or, while
 nothing is selected, on the whole document, and is disabled only while

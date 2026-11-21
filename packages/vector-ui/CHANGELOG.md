@@ -16,7 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by layers through `useVectorExtend()`: `defineShellAction` (the app
   bar), `defineListToolbarItem` (a list's toolbar, with its filters,
   groups, advanced conditions and search, two-way),
-  `defineInputAddon` (under form inputs of given field types),
+  `defineInputAddon` (under form inputs of given field types, or, with
+  `placement: 'inner'`, inside a text or textarea input at its inline
+  end),
   `defineEditorToolbarItem` (the rich-text and Markdown toolbars, given
   the live Tiptap editor), `definePaletteCommand` (the command palette's
   "Commands") and `defineSettingsAddon` (under a settings group's form).

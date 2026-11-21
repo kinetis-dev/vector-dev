@@ -1,9 +1,10 @@
 import { ADMIN, expect, test } from '../support/fixtures'
 
 // Writing help against the demo's `fake` AI provider, which shortens the
-// two texts App\Vector\Ai\DemoAiReplies scripts: an order's notes, under
-// their textarea, and a product description's paragraph, selected in the
-// rich-text editor. The answer shows beside the text; Replace puts it in
+// two texts App\Vector\Ai\DemoAiReplies scripts: an order's notes, from
+// the icon inside their textarea, and a product description's paragraph,
+// selected in the rich-text editor. The answer shows beside the text (for
+// the notes, in a popover under the field); Replace puts it in
 // the input, and the admin saves it as their own edit. Needs the stack
 // configured with it (backend/.env: VECTOR_AI_PROVIDERS=demo,
 // VECTOR_AI_DEMO_TYPE=fake); skipped against the demo as it ships, which
@@ -27,20 +28,24 @@ test.describe('AI, writing help', () => {
             await page.goto(`r/orders/${id}/edit`)
             const notes = page.getByRole('textbox', { name: 'Notes' })
             await notes.fill(LONG_NOTES)
-            // the addons under the notes' input, which follow it
-            const addon = notes.locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " v-input ")][1]/following-sibling::div[contains(concat(" ", normalize-space(@class), " "), " vx-input-addons ")][1]').locator('[data-input-addon="ai-writing"]')
+            // the addon inside the notes' field, at its end
+            const field = notes.locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " v-field ")][1]')
+            const addon = field.locator('.v-field__append-inner [data-input-addon="ai-writing"]')
+            // the answer's popover, on the page's overlay
+            const popover = page.locator('[data-ai-writing-popover]')
 
             const asked = page.waitForResponse(response => response.url().endsWith('/vector/ai/writing/orders/notes') && response.request().method() === 'POST')
             await addon.locator('[data-ai-writing-menu]').click()
             await page.locator('[data-ai-writing-operation="shorten"]').click()
             expect((await asked).request().postDataJSON()).toMatchObject({ operation: 'shorten', text: LONG_NOTES, format: 'plain', recordId: String(id) })
 
-            await expect(addon.locator('[data-ai-writing-before]')).toHaveText(LONG_NOTES)
-            await expect(addon.locator('[data-ai-writing-after]')).toHaveText(SHORT_NOTES)
+            await expect(popover.locator('[data-ai-writing-before]')).toHaveText(LONG_NOTES)
+            await expect(popover.locator('[data-ai-writing-after]')).toHaveText(SHORT_NOTES)
             // nothing is in the input until Replace
             await expect(notes).toHaveValue(LONG_NOTES)
-            await addon.locator('[data-ai-writing-replace]').click()
+            await popover.locator('[data-ai-writing-replace]').click()
             await expect(notes).toHaveValue(SHORT_NOTES)
+            await expect(popover).toBeHidden()
 
             await page.getByRole('button', { name: 'Save', exact: true }).click()
             await expect(page).toHaveURL(new RegExp(`/r/orders/${id}$`))
