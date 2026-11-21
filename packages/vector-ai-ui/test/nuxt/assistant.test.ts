@@ -109,7 +109,7 @@ describe('the assistant', () => {
         wrapper.unmount()
     })
 
-    it('names the home page "Home" rather than its path', async () => {
+    it('names the home page "Dashboard" rather than its path', async () => {
         standaloneApi()
         const auth = useVectorAuthStore()
         auth.$patch({ user: { id: 1, name: 'Ada' }, token: 'token', expiresAt: Date.now() + 3_600_000 })
@@ -125,7 +125,7 @@ describe('the assistant', () => {
             await wrapper.find('[data-ai-assistant-toggle]').trigger('click')
             await flushPromises()
 
-            expect(wrapper.find('[data-ai-assistant-context]').text()).toBe('Home')
+            expect(wrapper.find('[data-ai-assistant-context]').text()).toBe('Dashboard')
         } finally {
             await router.push(before)
             await flushPromises()

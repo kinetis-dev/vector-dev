@@ -46,8 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   up stops following; scrolling back to the end, asking a new question
   or receiving a new answer follows again.
 - The assistant's page context line has a bookmark icon, and names the
-  admin's home page "Home" rather than its path
-  (`ai.assistant.context.home`).
+  admin's home page by its title, "Dashboard" (`shell.home.title`),
+  rather than its path.
 
 ### Removed
 

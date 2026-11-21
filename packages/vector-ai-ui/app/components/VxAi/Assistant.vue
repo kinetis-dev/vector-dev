@@ -45,7 +45,7 @@ const contextLine = computed(() => {
     void route.fullPath // follows navigation
     const ctx = host.context()
     const resource = ctx.resource === undefined ? undefined : host.schema.value?.resources?.[ctx.resource]
-    if (resource === undefined) return ctx.path === '/' ? t('ai.assistant.context.home') : t('ai.assistant.context.page', { path: ctx.path })
+    if (resource === undefined) return ctx.path === '/' ? t('shell.home.title') : t('ai.assistant.context.page', { path: ctx.path })
     return ctx.recordId === undefined
         ? t('ai.assistant.context.list', { label: resource.label })
         : t('ai.assistant.context.record', { label: resource.labelSingular ?? resource.label, id: ctx.recordId })

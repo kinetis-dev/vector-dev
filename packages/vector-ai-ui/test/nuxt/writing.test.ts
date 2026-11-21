@@ -388,6 +388,53 @@ describe('writing help', () => {
             wrapper.unmount()
         })
 
+        it('Replace leaves a document that shrank below the selection meanwhile as it is', async () => {
+            standaloneApi()
+            const call = endpoint('/vector/ai/writing/products/description', { body: ANSWER }, 'POST')
+            cleanups.push(call.unregister)
+            useState('vector.schema').value = descriptor(ON)
+            const fake = fakeEditor(NOTES)
+            const wrapper = await shell(VxAiWritingToolbarItem, { editor: fake.editor, field: field('description', 'richtext') }, ROUTE)
+            fake.select(1, NOTES.length + 1)
+            await nextTick()
+
+            await pick(wrapper, 'rewrite')
+            // shorter than the selection: its old end is past the document's
+            fake.type('Call.')
+            document.body.querySelector<HTMLElement>('[data-ai-writing-replace]')!.click()
+            await flushPromises()
+
+            expect(fake.inserted).toEqual([])
+            expect(wrapper.find('[data-ai-writing-failure]').attributes('aria-label')).toBe('The selected text changed; select it and ask again.')
+            wrapper.unmount()
+        })
+
+        it('an answer to a selection that the document shrank below while it was on its way is offered, and Replace leaves the document as it is', async () => {
+            standaloneApi()
+            let answer: (value: { body: unknown }) => void = () => {}
+            const call = endpoint('/vector/ai/writing/products/description', () => new Promise<{ body: unknown }>((resolve) => {
+                answer = resolve
+            }), 'POST')
+            cleanups.push(call.unregister)
+            useState('vector.schema').value = descriptor(ON)
+            const fake = fakeEditor(NOTES)
+            const wrapper = await shell(VxAiWritingToolbarItem, { editor: fake.editor, field: field('description', 'richtext') }, ROUTE)
+            fake.select(1, NOTES.length + 1)
+            await nextTick()
+
+            await pick(wrapper, 'rewrite', '')
+            await vi.waitFor(() => expect(call.requests).toHaveLength(1))
+            fake.type('Call.')
+            answer({ body: ANSWER })
+            await vi.waitFor(() => expect(document.body.querySelector('[data-ai-writing-result]')).not.toBeNull())
+            document.body.querySelector<HTMLElement>('[data-ai-writing-replace]')!.click()
+            await flushPromises()
+
+            expect(fake.inserted).toEqual([])
+            expect(wrapper.find('[data-ai-writing-failure]').attributes('aria-label')).toBe('The selected text changed; select it and ask again.')
+            wrapper.unmount()
+        })
+
         it('Replace puts the answer in place of the selection, as text', async () => {
             standaloneApi()
             const call = endpoint('/vector/ai/writing/products/description', { body: ANSWER }, 'POST')

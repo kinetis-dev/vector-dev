@@ -106,8 +106,8 @@ async function run(operation: WritingOperation, targetLocale: string | null) {
     if (busy.value || context.resource === undefined) return
     const before = selected(whole, from, to)
     if (before.trim() === '') return
-    // the whole document's text as it was asked about: what Replace finds there must still be this
-    const baseline = whole ? documentText() : null
+    // the text as it was asked about, read now, while the range is the document's own: what Replace finds there must still be this
+    const plain = whole ? documentText() : doc.textBetween(from, to, '\n')
     busy.value = true
     failure.value = null
     result.value = null
@@ -120,8 +120,6 @@ async function run(operation: WritingOperation, targetLocale: string | null) {
             targetLocale,
             recordId: context.recordId ?? null,
         })
-        // the document may have changed while the answer was on its way: the whole one is never read at its old size
-        const plain = baseline ?? props.editor.state.doc.textBetween(from, to, '\n')
         // within one line of text a single line goes in as text; anything wider as paragraphs
         result.value = { from, to, whole, inline: !whole && selection.$from.parent.isTextblock && selection.$to.parent.isTextblock && !plain.includes('\n'), plain, before, answer }
     } catch (error) {
@@ -144,8 +142,10 @@ function replace() {
     const current = result.value
     if (current === null) return
     // the text it was asked about must still be there, where it was — for the whole document, all of it, unchanged since it was sent
-    const to = current.whole ? props.editor.state.doc.content.size : current.to
-    if ((current.whole ? documentText() : props.editor.state.doc.textBetween(current.from, to, '\n')) !== current.plain) {
+    const size = props.editor.state.doc.content.size
+    const to = current.whole ? size : current.to
+    // a document that shrank below the old range no longer holds it: reading there would throw
+    if (to > size || (current.whole ? documentText() : props.editor.state.doc.textBetween(current.from, to, '\n')) !== current.plain) {
         failure.value = t(current.whole ? 'ai.writing.changedDocument' : 'ai.writing.changed')
         result.value = null
         return
