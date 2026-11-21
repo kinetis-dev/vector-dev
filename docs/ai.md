@@ -625,8 +625,9 @@ nothing is selected, on the whole document, and is disabled only while
 the editor holds no text; Replace puts the answer in place of that
 selection, or of the whole document, as text (a paragraph per line;
 Markdown read by the editor's own reader), so the document keeps to the
-field's schema. A whole document changed while the answer was on its
-way is left as it is, and the admin says so. A
+field's schema. A whole document whose text changed in any way since
+it was sent — shorter, longer or retyped — is left as it is, and the
+admin says so. A
 Markdown answer is shown only through the admin's own Markdown
 sanitizer.
 

@@ -85,7 +85,7 @@ onBeforeUnmount(() => props.editor.off('transaction', track))
 
 const busy = ref(false)
 const failure = ref<string | null>(null)
-// whole: asked about the whole document, its range read again at Replace
+// whole: asked about the whole document — plain is then its text as it was sent, and its range is read again at Replace
 const result = ref<{ from: number, to: number, whole: boolean, inline: boolean, plain: string, before: string, answer: WritingAnswer } | null>(null)
 
 /** The selection, or the whole document, as text to send: its Markdown source in a Markdown field, its plain text otherwise. */
@@ -106,6 +106,8 @@ async function run(operation: WritingOperation, targetLocale: string | null) {
     if (busy.value || context.resource === undefined) return
     const before = selected(whole, from, to)
     if (before.trim() === '') return
+    // the whole document's text as it was asked about: what Replace finds there must still be this
+    const baseline = whole ? documentText() : null
     busy.value = true
     failure.value = null
     result.value = null
@@ -118,7 +120,8 @@ async function run(operation: WritingOperation, targetLocale: string | null) {
             targetLocale,
             recordId: context.recordId ?? null,
         })
-        const plain = props.editor.state.doc.textBetween(from, to, '\n')
+        // the document may have changed while the answer was on its way: the whole one is never read at its old size
+        const plain = baseline ?? props.editor.state.doc.textBetween(from, to, '\n')
         // within one line of text a single line goes in as text; anything wider as paragraphs
         result.value = { from, to, whole, inline: !whole && selection.$from.parent.isTextblock && selection.$to.parent.isTextblock && !plain.includes('\n'), plain, before, answer }
     } catch (error) {
@@ -140,9 +143,9 @@ function content(text: string, inline: boolean): unknown {
 function replace() {
     const current = result.value
     if (current === null) return
-    // the text it was asked about must still be there, where it was — for the whole document, all of it as it is now
+    // the text it was asked about must still be there, where it was — for the whole document, all of it, unchanged since it was sent
     const to = current.whole ? props.editor.state.doc.content.size : current.to
-    if (props.editor.state.doc.textBetween(current.from, to, '\n') !== current.plain) {
+    if ((current.whole ? documentText() : props.editor.state.doc.textBetween(current.from, to, '\n')) !== current.plain) {
         failure.value = t(current.whole ? 'ai.writing.changedDocument' : 'ai.writing.changed')
         result.value = null
         return

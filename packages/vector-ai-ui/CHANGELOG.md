@@ -21,8 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in place of all of it; a selection works as before. The button is
   disabled only while the editor holds no text (`ai.writing.emptyEditor`),
   and with nothing selected its title says it works on the whole text
-  (`ai.writing.wholeDocument`); a document changed while the answer was
-  on its way is left alone (`ai.writing.changedDocument`).
+  (`ai.writing.wholeDocument`); a document whose text changed in any way
+  since it was sent is left alone (`ai.writing.changedDocument`).
 - `aiOffered()`, and so `useVectorWriting().offered()`, follows
   `capabilities.ai.noWriting`: no writing help on a field the server has
   it off for — a unique string such as a SKU, or a field with the

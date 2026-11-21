@@ -67,8 +67,12 @@ function fakeEditor(text: string) {
         run: () => true,
     }
     const editor = {
-        // one paragraph: its text runs from 1 to its length + 1, and the document's content is 2 longer than the text
-        state: { selection, doc: { get content() { return { size: doc.length + 2 } }, textBetween: (from: number, to: number) => doc.slice(Math.max(from - 1, 0), Math.min(to - 1, doc.length)), toJSON: () => ({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: doc }] }] }) } },
+        // one paragraph: its text runs from 1 to its length + 1, and the document's content is 2 longer than the text;
+        // a range past the document's end throws, as ProseMirror's textBetween does
+        state: { selection, doc: { get content() { return { size: doc.length + 2 } }, textBetween: (from: number, to: number) => {
+            if (from < 0 || to > doc.length + 2) throw new RangeError(`Position ${to} out of range`)
+            return doc.slice(Math.max(from - 1, 0), Math.min(to - 1, doc.length))
+        }, toJSON: () => ({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: doc }] }] }) } },
         schema: { nodes: { paragraph: {} } },
         on: (_: string, handler: () => void) => handlers.add(handler),
         off: (_: string, handler: () => void) => handlers.delete(handler),
@@ -338,6 +342,34 @@ describe('writing help', () => {
             wrapper.unmount()
         })
 
+        it.each([
+            ['shorter', 'Call first.'],
+            ['the same length', NOTES.toUpperCase()],
+        ])('with nothing selected, an edit made while the answer is on its way, %s, is left as it is', async (_, edited) => {
+            standaloneApi()
+            let answer: (value: { body: unknown }) => void = () => {}
+            const call = endpoint('/vector/ai/writing/products/description', () => new Promise<{ body: unknown }>((resolve) => {
+                answer = resolve
+            }), 'POST')
+            cleanups.push(call.unregister)
+            useState('vector.schema').value = descriptor(ON)
+            const fake = fakeEditor(NOTES)
+            const wrapper = await shell(VxAiWritingToolbarItem, { editor: fake.editor, field: field('description', 'richtext') }, ROUTE)
+
+            await pick(wrapper, 'rewrite', '')
+            await vi.waitFor(() => expect(call.requests).toHaveLength(1))
+            // typed while the request is pending, before the answer arrives
+            fake.type(edited)
+            answer({ body: ANSWER })
+            await vi.waitFor(() => expect(document.body.querySelector('[data-ai-writing-result]')).not.toBeNull())
+            document.body.querySelector<HTMLElement>('[data-ai-writing-replace]')!.click()
+            await flushPromises()
+
+            expect(fake.inserted).toEqual([])
+            expect(wrapper.find('[data-ai-writing-failure]').attributes('aria-label')).toBe('The text changed meanwhile; ask again.')
+            wrapper.unmount()
+        })
+
         it('with nothing selected, Replace leaves a document that changed meanwhile as it is', async () => {
             standaloneApi()
             const call = endpoint('/vector/ai/writing/products/description', { body: ANSWER }, 'POST')
@@ -422,7 +454,8 @@ describe('writing help', () => {
             expect(fake.inserted).toEqual([])
 
             await pick(wrapper, 'rewrite')
-            fake.type('Something else entirely, typed while waiting.')
+            // no shorter than the selection, so the old range is still inside the document
+            fake.type('Something else entirely, typed while waiting for the answer to come back.')
             document.body.querySelector<HTMLElement>('[data-ai-writing-replace]')!.click()
             await flushPromises()
             expect(fake.inserted).toEqual([])
