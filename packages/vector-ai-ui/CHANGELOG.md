@@ -41,6 +41,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   whole answer's `toolCalls`, now `{name, ok}` objects. A whole answer
   from a server that sends bare tool names still shows them, each taken
   as answered.
+- The assistant's conversation follows the answer as it arrives,
+  scrolling to its end at a reading pace rather than jumping. Scrolling
+  up stops following; scrolling back to the end, asking a new question
+  or receiving a new answer follows again.
+- The assistant's page context line has a bookmark icon, and names the
+  admin's home page "Home" rather than its path
+  (`ai.assistant.context.home`).
 
 ### Removed
 

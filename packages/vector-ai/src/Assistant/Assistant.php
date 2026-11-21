@@ -61,8 +61,8 @@ use Psr\Log\LoggerInterface;
  * answer, the model's output or a provider's error body. A failed stream
  * ends with the adapter's neutral "The run failed." frame, and is logged
  * by category, with the exception's class and file:line but never its
- * message; the exception itself is attached only under
- * APP_ENV=development. A departure — the run stopped by the request's
+ * message — its message as a plain string, and the exception itself, are
+ * attached only under APP_ENV=development. A departure — the run stopped by the request's
  * DepartureSignal, or not advanced further because the browser had left —
  * writes no frame and is logged at info as such, not as a failure; any
  * other exception is a failure, even when the browser has also left. Built

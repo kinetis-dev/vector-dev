@@ -72,6 +72,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   override), and the writing endpoint and `ProposeRewrites` refuse such a
   field with the `403` they answer for any other field that is no text
   (*Writing help is off for this field of …*).
+- Under `APP_ENV=development` only, a failed run's log line also carries
+  the exception's message as a plain string, `exception_message`, since
+  a log formatter may print the attached exception's class alone. No
+  other environment logs the message, and the client still gets only
+  "The run failed."
 
 ### Fixed
 

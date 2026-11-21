@@ -110,6 +110,31 @@ describe('followScroll', () => {
         expect(v.el.scrollTop).toBe(2400)
     })
 
+    it('keeps following when the output shrinks under a glide, and settles at the new end', () => {
+        const v = view(5400)
+        const follow = followScroll(v.el, v.frames)
+        follow.grew()
+        v.run(60)
+        v.echo()
+        const at = v.el.scrollTop
+        expect(at).toBeGreaterThan(500)
+
+        // the browser clamps the view to the shorter output's end, and says so with a scroll event
+        v.size.scrollHeight = 700
+        v.el.scrollTop = at
+        v.echo()
+
+        expect(v.el.scrollTop).toBe(300)
+        expect(follow.following).toBe(true)
+        v.run(10)
+        expect(v.el.scrollTop).toBe(300)
+
+        v.size.scrollHeight = 1400
+        follow.grew()
+        v.run(600)
+        expect(v.el.scrollTop).toBe(1000)
+    })
+
     it('stops listening when stopped', () => {
         const v = view(2400)
         const follow = followScroll(v.el, v.frames)

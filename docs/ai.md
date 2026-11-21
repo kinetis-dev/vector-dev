@@ -472,8 +472,8 @@ a warning when the provider failed (its category, {ref}`below
 `error` for a bug, `runaway_tools` for a model that kept calling past
 its budget. It carries the exception's class and the file and line it was thrown at,
 in every environment, so a bug can be traced — never its message, which
-can quote data; the exception itself is attached only under
-`APP_ENV=development`.
+can quote data; its message as a plain string (`exception_message`), and
+the exception itself, are attached only under `APP_ENV=development`.
 
 (ai-approvals)=
 ## The assistant proposing changes

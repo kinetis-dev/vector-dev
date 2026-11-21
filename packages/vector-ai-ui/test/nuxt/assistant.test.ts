@@ -6,6 +6,27 @@ import { VApp } from 'vuetify/components'
 import VxAiAssistant from '#vector-ai/app/components/VxAi/Assistant.vue'
 import { DESCRIPTOR_VERSION } from '#vector/app/composables/useVectorSchema'
 import { endpoint, standaloneApi, type Received } from './endpoints'
+import type * as follow from '../../app/utils/followScroll'
+
+// the real followScroll, watched: the drawer resumes it for a new turn, tells it the answer grew, and stops it
+const scroll = vi.hoisted(() => ({ resume: 0, grew: 0, stop: 0 }))
+vi.mock('../../app/utils/followScroll', async (original) => {
+    const real = await original<typeof follow>()
+    return {
+        ...real,
+        followScroll: (...args: Parameters<typeof real.followScroll>) => {
+            const view = real.followScroll(...args)
+            return {
+                get following() {
+                    return view.following
+                },
+                grew: () => (scroll.grew++, view.grew()),
+                resume: () => (scroll.resume++, view.resume()),
+                stop: () => (scroll.stop++, view.stop()),
+            }
+        },
+    }
+})
 
 // The assistant's drawer, opened from the app bar: a turn streams in, its
 // record references link to the records the admin knows, a failure says
@@ -133,6 +154,24 @@ describe('the assistant', () => {
         expect(links[0]!.text()).toBe('products#3')
         expect(wrapper.find('[data-ai-assistant-tools]').text()).toContain('vector_query')
         wrapper.unmount()
+    })
+
+    it('follows the answer as it streams in, and stops following when it closes', async () => {
+        standaloneApi()
+        const turn = endpoint('/vector/ai/assistant', STREAMED, 'POST')
+        cleanups.push(turn.unregister)
+        const wrapper = await mount()
+        await wrapper.find('[data-ai-assistant-toggle]').trigger('click')
+        await flushPromises()
+        Object.assign(scroll, { resume: 0, grew: 0, stop: 0 })
+
+        await ask(wrapper, 'Which products are low on stock?')
+        expect(scroll.resume).toBeGreaterThan(0)
+        expect(scroll.grew).toBeGreaterThan(0)
+        expect(scroll.stop).toBe(0)
+
+        wrapper.unmount()
+        expect(scroll.stop).toBeGreaterThan(0)
     })
 
     it('replays the conversation, and starts a new one on New conversation', async () => {
