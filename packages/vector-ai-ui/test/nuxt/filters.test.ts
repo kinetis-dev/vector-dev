@@ -8,8 +8,8 @@ import { endpoint, standaloneApi } from './endpoints'
 
 // The plain-language filter in a list's toolbar: shown only when
 // capabilities.ai.filters is on, the resource is not kept from AI and it
-// has a field to filter by; the answer previews as the FilterBar's chips
-// and reaches the list only on Apply, through the list's own events.
+// has a field to filter by; the answer reaches the list at once, through
+// the list's own events, and Undo puts the list back as it was.
 
 function descriptor(ai?: Record<string, unknown>) {
     return { version: DESCRIPTOR_VERSION, resources: {}, menu: [], settings: [], dashboards: [], capabilities: { impersonation: false, queue: false, ...(ai ? { ai } : {}) }, branding: null, ui: { expected: null } }
@@ -62,7 +62,7 @@ describe('the plain-language filter', () => {
         wrapper.unmount()
     })
 
-    it('previews the answer as chips, and applies it through the list\'s events only on Apply', async () => {
+    it('filters the list at once, through the list\'s events, and says what it understood', async () => {
         standaloneApi()
         const ask = endpoint('/vector/ai/filters/orders', {
             body: { filter: { status: { eq: 'paid' }, totalCents: { gt: '50000' } }, groups: [[{ status: { eq: 'shipped' } }]], q: 'express', explanation: 'Paid orders above 500.00.', unresolved: [] },
@@ -74,45 +74,46 @@ describe('the plain-language filter', () => {
         const input = wrapper.find<HTMLInputElement>('[data-ai-filters-input] input')
         await input.setValue('paid orders over 500')
         await input.trigger('keydown', { key: 'Enter' })
-        await vi.waitFor(() => expect(wrapper.find('[data-ai-filters-preview]').exists()).toBe(true))
+        await vi.waitFor(() => expect(wrapper.find('[data-ai-filters-note]').exists()).toBe(true))
 
         expect(ask.requests[0]!.body).toMatchObject({ text: 'paid orders over 500', current: { filter: { status: { ne: 'shipped' } } } })
         expect(typeof (ask.requests[0]!.body as { timezone: unknown }).timezone).toBe('string')
-        const preview = wrapper.find('[data-ai-filters-preview]')
-        expect(preview.find('[data-ai-filters-explanation]').text()).toContain('Paid orders above 500.00.')
-        expect(preview.text()).toContain('Status') // the FilterBar's own chips
-        expect(preview.text()).toContain('Paid')
-        expect(preview.find('[data-ai-filters-search]').text()).toContain('express')
-        expect(wrapper.emitted('update:filters')).toBeUndefined()
-
-        await wrapper.find('[data-ai-filters-apply]').trigger('click')
-
         expect(wrapper.emitted('update:filters')).toEqual([[{ status: { eq: 'paid' }, totalCents: { gt: '50000' } }]])
         expect(wrapper.emitted('update:groups')).toEqual([[[[{ status: { eq: 'shipped' } }]]]])
         expect(wrapper.emitted('update:search')).toEqual([['express']])
-        expect(wrapper.find('[data-ai-filters-preview]').exists()).toBe(false)
+        expect(wrapper.find('[data-ai-filters-explanation]').text()).toContain('Paid orders above 500.00.')
+        // the sentence stays, to be refined and sent again
+        expect(input.element.value).toBe('paid orders over 500')
+
+        await wrapper.find('[data-ai-filters-close]').trigger('click')
+        expect(wrapper.find('[data-ai-filters-note]').exists()).toBe(false)
+        expect(wrapper.emitted('update:filters')).toHaveLength(1)
         wrapper.unmount()
     })
 
-    it('discards a preview without touching the list, and keeps the sentence', async () => {
+    it('puts the list back as it was on Undo, its search included', async () => {
         standaloneApi()
-        cleanups.push(endpoint('/vector/ai/filters/orders', { body: { filter: { status: { eq: 'paid' } }, groups: [], q: null, explanation: 'Paid orders.', unresolved: [] } }, 'POST').unregister)
+        cleanups.push(endpoint('/vector/ai/filters/orders', { body: { filter: { status: { eq: 'paid' } }, groups: [], q: 'express', explanation: 'Paid orders.', unresolved: [] } }, 'POST').unregister)
         useState('vector.schema').value = descriptor(ON)
-        const wrapper = await mountSuspended(VxAiFilterAsk, { props: { ...PROPS, resource: resource() } })
+        const groups = [[{ totalCents: { gt: '100' } }]]
+        const wrapper = await mountSuspended(VxAiFilterAsk, { props: { ...PROPS, filters: { status: { ne: 'shipped' } }, groups, search: 'acme', resource: resource() } })
 
         const input = wrapper.find<HTMLInputElement>('[data-ai-filters-input] input')
         await input.setValue('paid orders')
         await input.trigger('keydown', { key: 'Enter' })
-        await vi.waitFor(() => expect(wrapper.find('[data-ai-filters-preview]').exists()).toBe(true))
-        await wrapper.find('[data-ai-filters-discard]').trigger('click')
+        await vi.waitFor(() => expect(wrapper.find('[data-ai-filters-note]').exists()).toBe(true))
+        await wrapper.setProps({ filters: { status: { eq: 'paid' } }, groups: [], search: 'express' })
 
-        expect(wrapper.find('[data-ai-filters-preview]').exists()).toBe(false)
-        expect(wrapper.emitted('update:filters')).toBeUndefined()
-        expect(input.element.value).toBe('paid orders')
+        await wrapper.find('[data-ai-filters-undo]').trigger('click')
+
+        expect(wrapper.emitted('update:filters')!.at(-1)).toEqual([{ status: { ne: 'shipped' } }])
+        expect(wrapper.emitted('update:groups')!.at(-1)).toEqual([groups])
+        expect(wrapper.emitted('update:search')!.at(-1)).toEqual(['acme'])
+        expect(wrapper.find('[data-ai-filters-note]').exists()).toBe(false)
         wrapper.unmount()
     })
 
-    it('offers the candidates of an ambiguous relation, and applies the one picked', async () => {
+    it('offers the candidates of an ambiguous relation, and adds the one picked to the list\'s filter', async () => {
         standaloneApi()
         cleanups.push(endpoint('/vector/ai/filters/orders', {
             body: {
@@ -127,6 +128,9 @@ describe('the plain-language filter', () => {
         await input.setValue('paid orders of acme')
         await input.trigger('keydown', { key: 'Enter' })
         await vi.waitFor(() => expect(wrapper.find('[data-ai-filters-unresolved="customer"]').exists()).toBe(true))
+        expect(wrapper.emitted('update:filters')).toEqual([[{ status: { eq: 'paid' } }]])
+        // the list page answers update:filters with the new prop
+        await wrapper.setProps({ filters: { status: { eq: 'paid' } } })
 
         const unresolved = wrapper.find('[data-ai-filters-unresolved="customer"]')
         expect(unresolved.text()).toContain('Customer “Acme”: which one?')
@@ -134,14 +138,13 @@ describe('the plain-language filter', () => {
         expect(unresolved.text()).toContain('Acme Ltd')
 
         await unresolved.find('[data-ai-filters-candidate="9"]').trigger('click')
-        expect(wrapper.find('[data-ai-filters-unresolved="customer"]').exists()).toBe(false)
-        await wrapper.find('[data-ai-filters-apply]').trigger('click')
 
-        expect(wrapper.emitted('update:filters')).toEqual([[{ status: { eq: 'paid' }, customer: { eq: '9' } }]])
+        expect(wrapper.find('[data-ai-filters-unresolved="customer"]').exists()).toBe(false)
+        expect(wrapper.emitted('update:filters')!.at(-1)).toEqual([{ status: { eq: 'paid' }, customer: { eq: '9' } }])
         wrapper.unmount()
     })
 
-    it('leaves the list\'s search as it is when the answer has none', async () => {
+    it('leaves the list\'s search as it is when the answer has none, Undo included', async () => {
         standaloneApi()
         const ask = endpoint('/vector/ai/filters/orders', { body: { filter: { status: { eq: 'paid' } }, groups: [], q: null, explanation: 'Paid orders.', unresolved: [] } }, 'POST')
         cleanups.push(ask.unregister)
@@ -151,12 +154,15 @@ describe('the plain-language filter', () => {
         const input = wrapper.find<HTMLInputElement>('[data-ai-filters-input] input')
         await input.setValue('only the paid ones')
         await input.trigger('keydown', { key: 'Enter' })
-        await vi.waitFor(() => expect(wrapper.find('[data-ai-filters-preview]').exists()).toBe(true))
-        await wrapper.find('[data-ai-filters-apply]').trigger('click')
+        await vi.waitFor(() => expect(wrapper.find('[data-ai-filters-note]').exists()).toBe(true))
 
         // the request does not carry the search, so an answer without one does not clear it
         expect((ask.requests[0]!.body as Record<string, unknown>).q).toBeUndefined()
         expect(wrapper.emitted('update:filters')).toEqual([[{ status: { eq: 'paid' } }]])
+        expect(wrapper.emitted('update:search')).toBeUndefined()
+
+        await wrapper.find('[data-ai-filters-undo]').trigger('click')
+        expect(wrapper.emitted('update:filters')!.at(-1)).toEqual([{}])
         expect(wrapper.emitted('update:search')).toBeUndefined()
         wrapper.unmount()
     })
@@ -174,7 +180,8 @@ describe('the plain-language filter', () => {
 
         expect(wrapper.find('[data-ai-filters-failure]').text()).toContain('The AI provider did not answer in time.')
         expect(input.element.value).toBe('paid orders')
-        expect(wrapper.find('[data-ai-filters-preview]').exists()).toBe(false)
+        expect(wrapper.find('[data-ai-filters-note]').exists()).toBe(false)
+        expect(wrapper.emitted('update:filters')).toBeUndefined()
         wrapper.unmount()
     })
 

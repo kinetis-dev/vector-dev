@@ -91,9 +91,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The layer, over `@kinetis/vector-ui` 0.13.0: the plain-language
   filter in every list's toolbar (`defineListToolbarItem`), shown when
   `capabilities.ai.filters` is on and the resource is not kept from AI —
-  the answer previews as the FilterBar's own chips with its explanation,
-  an ambiguous relation offers its candidates, and Apply or Discard
-  decide; and the provider-key panel under the `ai` settings group
+  the answer filters the list at once, and a note says what it
+  understood, offers the candidates of an ambiguous relation, and Undo,
+  which puts the list's filter and search back; and the provider-key panel under the `ai` settings group
   (`GET`, `PUT` and `DELETE /vector/ai/credentials`), rendered only when
   the descriptor carries `capabilities.ai`. Delivered through Nuxt
   `extends` (standalone); hosted (no-build) delivery comes in a later

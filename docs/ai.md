@@ -255,11 +255,12 @@ only through the boundary (`record()`, `page()`, `toolResult()`):
 
 An admin describes the records they want — *orders over $500 from last
 week that haven't shipped* — in a field with a sparkle icon beside a
-list's search. The answer shows as the filter bar's own chips, with one
-sentence saying what it keeps; the admin edits them like any filter,
-then applies or discards them. Nothing reaches the list until it is
-applied, and then through the ordinary list request, which validates
-it again.
+list's search. The answer filters the list at once, through the
+ordinary list request, which validates it again, and shows as the filter
+bar's own chips, to edit like any filter. A note below the field says in
+one sentence what it keeps and offers Undo, which puts the list's filter
+and search back as they were before the sentence; the sentence stays in
+the field, to be refined and sent again.
 
 `POST /vector/ai/filters/{resource}` (in the `vector` middleware group):
 
@@ -290,7 +291,7 @@ groups, each a list of alternatives, as the filter bar keeps them; `q`
 the free-text search. A relation the sentence names in words is looked
 up the way the filter bar's choice list is, under the user's scope: one
 match becomes its id, several become an `unresolved` entry whose
-condition waits for the admin to pick a candidate, none is a `422`.
+condition waits, in the note, for the admin to pick a candidate, none is a `422`.
 
 The model is told the resource as {ref}`the boundary <ai-boundary>`
 lets it be told — per field its name, label, type, filter operators,
