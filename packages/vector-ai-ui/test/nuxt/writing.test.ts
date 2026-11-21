@@ -68,7 +68,7 @@ function fakeEditor(text: string) {
     }
     const editor = {
         // one paragraph: its text runs from 1 to its length + 1, and the document's content is 2 longer than the text;
-        // a range past the document's end throws, as ProseMirror's textBetween does
+        // a range past the document's end throws, as ProseMirror's textBetween does (a TypeError there)
         state: { selection, doc: { get content() { return { size: doc.length + 2 } }, textBetween: (from: number, to: number) => {
             if (from < 0 || to > doc.length + 2) throw new RangeError(`Position ${to} out of range`)
             return doc.slice(Math.max(from - 1, 0), Math.min(to - 1, doc.length))
