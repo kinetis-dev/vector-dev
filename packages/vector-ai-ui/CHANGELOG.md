@@ -16,6 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Writing help in a rich-text or Markdown editor's toolbar works on the
+  whole document while nothing is selected, and Replace puts the answer
+  in place of all of it; a selection works as before. The button is
+  disabled only while the editor holds no text (`ai.writing.emptyEditor`),
+  and with nothing selected its title says it works on the whole text
+  (`ai.writing.wholeDocument`); a document changed while the answer was
+  on its way is left alone (`ai.writing.changedDocument`).
+- `aiOffered()`, and so `useVectorWriting().offered()`, follows
+  `capabilities.ai.noWriting`: no writing help on a field the server has
+  it off for — a unique string such as a SKU, or a field with the
+  `ai.writing` meta false. Against a server without `noWriting`, nothing
+  changes.
 - One helper, `app/utils/aiAvailability.ts` (`aiCapabilities()`,
   `aiOffered()`, `aiStatusOf()`, `aiFailureMessage()`), answers whether
   the admin offers an AI feature and words a failed AI call, a spent
@@ -32,6 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- The `ai.writing.selectFirst` message: the editor's writing help no
+  longer needs a selection.
 - *Ask the assistant…* in the command palette, its `ai.assistant.ask`
   message and `useVectorAssistant().ask()`: the app-bar button and ⌘J
   open the assistant.

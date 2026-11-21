@@ -620,12 +620,32 @@ grammar** and **Translate to…** (a language). The answer shows beside
 the text it was asked about, *Before* and *After*: **Replace** puts it
 in the input, **Discard** drops it. In the toolbar of a rich-text or
 Markdown editor the same menu acts on the selection — its plain text in
-a rich-text field, its Markdown source in a Markdown field — and is
-disabled while nothing is selected; Replace puts the answer in place of
-that selection, as text (a paragraph per line; Markdown read by the
-editor's own reader), so the document keeps to the field's schema. A
+a rich-text field, its Markdown source in a Markdown field — or, while
+nothing is selected, on the whole document, and is disabled only while
+the editor holds no text; Replace puts the answer in place of that
+selection, or of the whole document, as text (a paragraph per line;
+Markdown read by the editor's own reader), so the document keeps to the
+field's schema. A whole document changed while the answer was on its
+way is left as it is, and the admin says so. A
 Markdown answer is shown only through the admin's own Markdown
 sanitizer.
+
+**Which fields.** Writing help works on `string`, `text`, `markdown`
+and `richtext` fields — but not on a `string` field marked `->unique()`,
+which is an identifier (a SKU, a code), not prose. A field's
+`ai.writing` meta overrides that either way:
+
+```php
+Text::make('sku')->unique(),                              // no writing help
+Text::make('code')->unique()->meta('ai.writing', true),   // writing help after all
+Textarea::make('internalRef')->meta('ai.writing', false), // none, though it is text
+```
+
+`ai.writing` never widens the types, and it is independent of `ai.send`
+({ref}`ai-boundary`): a field with writing help off is still sent to the
+model and read by the assistant, and one turned on is still kept back
+when `ai.send` keeps it. Vector itself never reads the key; it is
+`Writing\WritingGuard::META_KEY`, and `WritingGuard::helps()` decides it.
 
 **The server never writes the answer.** It lands in the input; the
 person reviews it and saves the form, through Vector's ordinary write
@@ -654,7 +674,10 @@ Any of these refused is a `422` naming it; a body over 256 KiB is `413`.
 closed: the resource exists (`404`); a `password` field is refused by
 its type before anything else (`403`); the field exists as this user
 sees it — their `viewField` policy hides what it hides (`404`); it is a
-`string`, `text`, `markdown` or `richtext` field (`403`); this user may
+`string`, `text`, `markdown` or `richtext` field (`403`); writing help is
+on for it — not a unique string unless it opts in with `ai.writing`
+true, nor a field with `ai.writing` false (`403`, *Writing help is off
+for this field of …*); this user may
 write it in the view the request is for — without `recordId` a create
 (`ResourceService::permissions()['create']`, the field on the create
 form), with it an update of that record, read as they may read it
@@ -682,7 +705,7 @@ input's length, never more than 20,000 characters. A cut answer says so
 
 | Status | When |
 |---|---|
-| `403` | a password field, a field that is no text or cannot be written by this user, a field or resource kept from the model, or the feature off, unconfigured, out of budget (0) or refused by `canUse()` |
+| `403` | a password field, a field that is no text, writing help is off for or cannot be written by this user, a field or resource kept from the model, or the feature off, unconfigured, out of budget (0) or refused by `canUse()` |
 | `404` | no such resource, field or record |
 | `413` | the body is over 256 KiB |
 | `422` | the body breaks a rule above |
@@ -735,7 +758,8 @@ record's page.
 **Before any call.** The run is writing help's ({ref}`ai-writing`), as
 the admin who started it: a password field (refused by its type first),
 a field they do not see, one that is no `string`, `text`, `markdown` or
-`richtext` field, one not on the update form or read-only, one not on
+`richtext` field, one writing help is off for (a unique string, or
+`ai.writing` false), one not on the update form or read-only, one not on
 the detail view (the records are read as it serializes them, so its text
 would never arrive), a resource or field kept from the model, writing
 help off, unconfigured, unbudgeted or refused to them by `canUse()`, a
@@ -859,7 +883,8 @@ the model has reshaped can fail the import's validation.
 
 ```json
 { "filters": true, "assistant": true, "assistantWrites": false, "writing": true,
-  "excluded": { "profiles": true }, "excludedFields": { "users": ["email", "passwordHash"], "products": ["imageKey"] } }
+  "excluded": { "profiles": true }, "excludedFields": { "users": ["email", "passwordHash"], "products": ["imageKey"] },
+  "noWriting": { "products": ["sku"], "tags": ["name"] } }
 ```
 
 A feature is `true` when it ships in the installed release, a provider
@@ -880,7 +905,13 @@ kept from the model whole, so the admin offers no AI on it.
 `excludedFields` names, for each other resource they may list, the
 fields they see that the boundary keeps back — opted out, outside the
 allow-list, or a password, file or image field — so the admin offers no
-writing help on them; a resource with none is absent. Both are empty
+writing help on them; a resource with none is absent. `noWriting`, in
+the same shape, names for each of those resources the `string`, `text`,
+`markdown` and `richtext` fields they see that writing help is not
+offered on (`WritingGuard::offers()`): a unique string, a field with
+`ai.writing` false, or one kept back — so the admin shows no writing
+menu there. It adds to `excludedFields`, which an older admin reads
+alone; the endpoint refuses those fields either way. All three are empty
 while no feature is offered. The key is absent when `kinetis/vector-ai` is not installed; it
 is published by a shell contributor ({ref}`shell-contributors`).
 

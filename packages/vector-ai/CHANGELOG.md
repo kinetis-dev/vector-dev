@@ -54,6 +54,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Testing\ScriptedReplies` can make the `fake` provider throw for a
   message (`of()`'s `$failures`, `failure()`), as a failing provider
   call would.
+- The `ai.writing` field meta (`WritingGuard::META_KEY`):
+  `->meta('ai.writing', false)` turns writing help off for a field, and
+  `true` turns it on for a unique string. It is independent of
+  `ai.send`: a field with writing help off is still sent to the model.
+- `capabilities.ai.noWriting`, `{slug: [field, …]}` like
+  `excludedFields`: per resource the user may list and the model may be
+  sent, the `string`, `text`, `markdown` and `richtext` fields they see
+  that writing help is not offered on (`WritingGuard::offers()`). It
+  adds to `excludedFields`, which an older admin still reads alone.
+
+### Changed
+
+- Writing help is off by default for a `string` field marked
+  `->unique()`: a unique short string is an identifier — a SKU, a code —
+  not prose. `WritingGuard::helps()` decides it (with the `ai.writing`
+  override), and the writing endpoint and `ProposeRewrites` refuse such a
+  field with the `403` they answer for any other field that is no text
+  (*Writing help is off for this field of …*).
 
 ### Fixed
 

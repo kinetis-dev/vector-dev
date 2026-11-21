@@ -20,7 +20,10 @@ and in the toolbar of a Markdown or rich-text editor, writing help
 rewrites, shortens, corrects or translates the text
 (`POST /vector/ai/writing/{resource}/{field}`); the answer is put in the
 input for the person to review and save as their own edit — the server
-never writes it. Across many records, the queued `ProposeRewrites`
+never writes it. It is offered on `string`, `text`, `markdown` and
+`richtext` fields, but not on a unique string, an identifier such as a
+SKU; `->meta('ai.writing', false)` turns it off for a field, and
+`true` on for a unique one, independently of `ai.send`. Across many records, the queued `ProposeRewrites`
 action a resource lists in its `actions()` leaves a CSV of proposed
 texts on its job, which the admin reviews and imports in update mode;
 it writes no record either. All of them rest on the foundations every feature

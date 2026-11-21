@@ -65,7 +65,8 @@ message.*; with a real provider it is the corrected text ({doc}`ai`).
 Any other question or text gets *No reply is scripted for this
 message.*; with a real provider configured instead
 (VECTOR_AI_PROVIDERS, {doc}`ai`) the assistant answers what is asked,
-and writing help works on any text.
+and writing help works on any text — but not on an identifier such as a
+product's SKU, a unique string, which it leaves alone.
 
 ## Run it
 
