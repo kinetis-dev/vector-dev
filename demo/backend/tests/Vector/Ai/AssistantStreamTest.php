@@ -258,7 +258,7 @@ final class AssistantStreamTest extends AssistantTestCase
         // min(200, 1000 / 3)
         self::assertSame(200, $page['perPage']);
         self::assertCount(200, $page['data']);
-        self::assertSame(['id', 'number', 'totalCents', 'currency'], array_keys($page['data'][0]));
+        self::assertSame(['id', 'number', 'totalCents', 'currency', '_version'], array_keys($page['data'][0]));
     }
 
     public function testAResourceKeptFromTheModelIsAToolErrorAndTheRunGoesOn(): void

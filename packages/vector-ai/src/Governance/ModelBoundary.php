@@ -144,7 +144,8 @@ final readonly class ModelBoundary
     /**
      * One record as a model may be sent it: the fields the rules above let
      * through, and the primary key always — it names the record, as
-     * `resource#id`, and is no data of its own. A belongsTo or hasOne keeps
+     * `resource#id`, and is no data of its own; so are `_trashed` and
+     * `_version`, the lock vector_update checks. A belongsTo or hasOne keeps
      * its id, and its label and carried columns only as far as the target
      * and those of its fields may be sent (reference()). Every string
      * longer than MAX_STRING characters is cut there, with TRUNCATED after it. Nothing
@@ -169,6 +170,15 @@ final readonly class ModelBoundary
 
             if ($name === '_trashed') {
                 $sent[$name] = $value === true;
+
+                continue;
+            }
+
+            if ($name === '_version') {
+                // the optimistic-lock counter vector_update asks for: no data, and without it a model can only guess one
+                if (is_int($value)) {
+                    $sent[$name] = $value;
+                }
 
                 continue;
             }

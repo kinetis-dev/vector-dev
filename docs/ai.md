@@ -193,7 +193,10 @@ Record data reaches a model only through the assistant's tools, and
 only through the boundary (`record()`, `page()`, `toolResult()`):
 
 - **A record** keeps the fields above, and its primary key always — the
-  key names the record (`products#12`) and is no data of its own. A
+  key names the record (`products#12`) and is no data of its own. Its
+  `_trashed` marker and its `_version` stay too: `_version` is the
+  optimistic lock a proposed `vector_update` passes back, so an
+  approval made after someone else changed the record is refused. A
   relation (`{id, label, …}`) always keeps its id, and follows its
   target's own field governance for the rest: the label — the target's
   title field — only when the target may be sent and its title field

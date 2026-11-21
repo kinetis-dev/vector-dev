@@ -47,7 +47,7 @@ final class ModelBoundaryRecordsTest extends AiTestCase
             'createdAt' => '2026-01-01T00:00:00Z', 'notAField' => 'leak', '_version' => 3, '_trashed' => false,
         ]);
 
-        self::assertSame(['id' => 7, 'name' => 'Ada', 'isAdmin' => true, 'createdAt' => '2026-01-01T00:00:00Z', '_trashed' => false], $sent);
+        self::assertSame(['id' => 7, 'name' => 'Ada', 'isAdmin' => true, 'createdAt' => '2026-01-01T00:00:00Z', '_version' => 3, '_trashed' => false], $sent);
     }
 
     public function testALongStringIsCutWithTheMarker(): void
