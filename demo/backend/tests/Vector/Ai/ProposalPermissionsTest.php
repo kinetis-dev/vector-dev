@@ -125,7 +125,8 @@ final class ProposalPermissionsTest extends ApprovalsTestCase
         $approval = $store->propose(self::ACTOR_PREFIX . '01', null, 'c_deep_result', 'vector_update', ['resource' => 'products', 'id' => (string) $this->product, 'values' => ['stock' => 1]], 15);
         self::assertTrue($store->decide($approval->id, ApprovalStatus::Executing));
 
-        $store->settle($approval->id, ApprovalStatus::Executed, ['id' => $this->product, 'meta' => $value]);
+        $stored = $store->settle($approval->id, ApprovalStatus::Executed, ['id' => $this->product, 'meta' => $value]);
+        self::assertSame(ApprovalStore::TOO_DEEP, $stored, 'the approve response answers with what the row holds');
 
         $read = $store->fresh($approval->id);
         self::assertNotNull($read, 'the row is read back, not a 500');

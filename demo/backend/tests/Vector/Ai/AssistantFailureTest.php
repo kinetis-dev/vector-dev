@@ -89,7 +89,7 @@ final class AssistantFailureTest extends AssistantTestCase
 
         $rows = $this->usageRows(5);
         self::assertCount(1, $rows);
-        // cut mid-answer, without an HTTP status: the provider may have billed it, so it is estimated
+        // failed after output streamed: the provider may have billed it, so it is estimated
         self::assertSame('failed:refused' . AssistantLedger::ESTIMATED, $rows[0]['outcome']);
         self::assertGreaterThan(0, (int) $rows[0]['input_tokens']);
         self::assertGreaterThan(0, (int) $rows[0]['output_tokens'], '"Low on" was streamed back');

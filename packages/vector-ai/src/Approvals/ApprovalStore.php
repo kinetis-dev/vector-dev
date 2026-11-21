@@ -182,17 +182,28 @@ final readonly class ApprovalStore
         return self::now()->modify('-' . self::EXECUTING_MINUTES . ' minutes');
     }
 
-    /** Records how an execution ended: `executed` with the result, or `failed` with why. */
-    public function settle(string $id, ApprovalStatus $status, mixed $result): void
+    /**
+     * Records how an execution ended: `executed` with the result, or `failed`
+     * with why. Returns the result as it is stored — TOO_DEEP in place of one
+     * too deep to read back — so the approve response says what every later
+     * read does. The row is written only while it is still `executing`: when
+     * failStale() took it first (an execution past EXECUTING_MINUTES), the
+     * row keeps its unknown-outcome failure and the value returned here is
+     * what would have been stored.
+     */
+    public function settle(string $id, ApprovalStatus $status, mixed $result): mixed
     {
+        $encoded = self::encodeResult($result);
         $this->query()
             ->where('id', '=', $id)
             ->where('status', '=', ApprovalStatus::Executing->value)
             ->update([
                 'status' => $status->value,
-                'result' => self::encodeResult($result),
+                'result' => $encoded,
                 'executed_at' => self::format(self::now()),
             ]);
+
+        return json_decode($encoded, true, self::MAX_DEPTH, JSON_THROW_ON_ERROR);
     }
 
     /** Marks every pending row past its expiry `expired`; how many. */

@@ -78,6 +78,13 @@ final readonly class ApprovalController
     /** What a row naming a tool the assistant may not propose is failed with; nothing is dispatched. */
     public const string UNKNOWN_TOOL = 'This proposal names a tool the assistant may not propose; nothing was changed.';
 
+    /**
+     * How deep a tool's result is decoded: well past ApprovalStore::MAX_DEPTH,
+     * so a result deeper than the store keeps reaches settle() and is stored as
+     * TOO_DEEP; only one deeper than this is mapped to TOO_DEEP here.
+     */
+    private const int DECODE_DEPTH = 512;
+
     public function __construct(
         private CurrentUserInterface $user,
         private AiAvailability $availability,
@@ -102,7 +109,8 @@ final readonly class ApprovalController
         // before anything that writes is resolved: every row Vector writes for this call says where it came from
         $this->scope->instance(ActorContext::class, new ActorContext($this->user, $impersonatorId, self::ORIGIN));
         [$status, $result, $category] = $this->execute($approval);
-        $this->approvals->settle($approval->id, $status, $result);
+        // as stored: a retried approval, and the conversation, read what this response says
+        $result = $this->approvals->settle($approval->id, $status, $result);
 
         $durationMs = intdiv(hrtime(true) - $started, 1_000_000);
         $this->usage->record((string) $this->user->id(), $impersonatorId, Feature::AssistantWrites, '', '', 0, 0, $durationMs, 1, 'approval:' . $status->value);
@@ -261,9 +269,10 @@ final readonly class ApprovalController
         }
 
         try {
-            $decoded = json_decode($result, true, 64, JSON_THROW_ON_ERROR);
-        } catch (\JsonException) {
-            $decoded = null;
+            // past MAX_DEPTH on purpose: settle() stores a result deeper than that as TOO_DEEP
+            $decoded = json_decode($result, true, self::DECODE_DEPTH, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            $decoded = $e->getCode() === JSON_ERROR_DEPTH ? ApprovalStore::TOO_DEEP : null;
         }
 
         return [ApprovalStatus::Executed, $decoded, null];
