@@ -100,7 +100,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onShortcut))
                         <v-btn icon="mdi-close" size="small" variant="text" :aria-label="t('ai.assistant.close')" @click="open = false" />
                     </v-toolbar>
                     <p class="text-caption text-medium-emphasis px-4 mb-2" data-ai-assistant-context>
-                        <v-icon icon="mdi-map-marker-outline" size="x-small" class="me-1" />{{ contextLine }}
+                        <v-icon icon="mdi-bookmark-outline" size="x-small" class="me-1" />{{ contextLine }}
                     </p>
                     <v-divider />
                     <div class="flex-grow-1 overflow-y-auto pa-3" aria-live="polite" data-ai-assistant-conversation>
