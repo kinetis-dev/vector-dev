@@ -142,4 +142,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `/reject` with no body; a decision that stands (also one the
   server reports as already made, 409) is sent back as an `approval`
   message so the assistant says what happened, and an expired (410) or
-  unknown (404) proposal says so on its card.
+  unknown (404) proposal says so on its card. An executed change reloads
+  the open record page and its History; an edit form is left as typed.

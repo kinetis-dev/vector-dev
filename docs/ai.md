@@ -601,7 +601,10 @@ second write.
 **History.** The audit rows an approved change writes carry
 `origin = 'assistant'`, and History shows the entry *via assistant*
 ({doc}`audit`). The approval's id is not stored in Vector's own rows;
-`vector_ai_approvals` links them by actor and time.
+`vector_ai_approvals` links them by actor and time. When the change
+ran, an open show page of the record it changed — or of each record an
+action ran on — reloads, History included; an open edit page does not,
+so what is typed there is kept, and a save from it is refused as stale.
 
 **Logging.** Each decision is one log line — the actor, impersonator,
 approval id, tool and outcome — and an approval is one usage row with

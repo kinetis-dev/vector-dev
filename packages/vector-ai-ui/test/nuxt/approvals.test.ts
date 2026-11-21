@@ -177,6 +177,32 @@ describe('an approval card', () => {
         wrapper.unmount()
     })
 
+    it('an executed change reloads the record\'s show page and history, but not its edit form', async () => {
+        standaloneApi()
+        const approve = endpoint(`/vector/ai/approvals/${ID}/approve`, { body: { status: 'executed', result: { data: { id: 12, stock: 15 } } } }, 'POST')
+        cleanups.push(assistantEndpoint().unregister, approve.unregister)
+        const loads = { show: 0, audit: 0, edit: 0 }
+        const Page = defineComponent({
+            async setup() {
+                await useAsyncData('vector.products.12', async () => ++loads.show)
+                await useAsyncData('vector.audit.products.12', async () => ++loads.audit)
+                await useAsyncData('vector.products.12.edit', async () => ++loads.edit)
+                return () => h('div')
+            },
+        })
+        useState('vector.schema').value = descriptor()
+        const wrapper = await mountSuspended(defineComponent({ render: () => h(VApp, () => [h(Page), h(VxAiAssistant)]) }))
+        await flushPromises()
+        const before = { ...loads }
+
+        await ask(wrapper, 'Set the lamp\'s stock to 15')
+        expect(loads).toEqual(before)
+        await decide(wrapper, 'approve')
+
+        expect(loads).toEqual({ show: before.show + 1, audit: before.audit + 1, edit: before.edit })
+        wrapper.unmount()
+    })
+
     it('keeps an answer that only proposed, with no text, so the outcome does not follow the question directly', async () => {
         standaloneApi()
         const silent = sse(

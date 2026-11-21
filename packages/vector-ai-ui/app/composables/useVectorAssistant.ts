@@ -53,6 +53,22 @@ interface RunReads {
 /** What an answer that proposed changes without saying anything is sent as. */
 export const PROPOSED_ONLY = '(Proposed the changes shown for approval.)'
 
+/**
+ * After an approved change ran, refreshes the pages that show what it
+ * changed: a record's show page and its history, by the keys vector-ui
+ * loads them under. A key no mounted page uses refreshes nothing, and the
+ * edit page's key is left alone, so a form being typed into is kept.
+ */
+export function refreshChanged(frame: ApprovalFrame): Promise<void> {
+    if (frame.resource === null) return Promise.resolve()
+    const ids = new Set<string>()
+    if (frame.recordId !== null) ids.add(frame.recordId)
+    const listed = frame.arguments.ids
+    if (Array.isArray(listed)) listed.forEach(id => (typeof id === 'string' || typeof id === 'number') && ids.add(String(id)))
+    if (ids.size === 0) return Promise.resolve()
+    return refreshNuxtData([...ids].flatMap(id => [`vector.${frame.resource}.${id}`, `vector.audit.${frame.resource}.${id}`]))
+}
+
 function newConversation(): string {
     return `c_${crypto.randomUUID().replaceAll('-', '')}`
 }
@@ -245,6 +261,7 @@ export function useVectorAssistant() {
         approval.state = status === 'executed' || status === 'failed' || status === 'rejected' || status === 'expired' ? status : 'gone'
         approval.result = decided.result ?? null
         if (approval.state === 'expired' || approval.state === 'gone') return
+        if (approval.state === 'executed') void refreshChanged(approval.frame)
 
         if (turns.value.some(turn => turn.role === 'approval' && turn.approvalId === approval.frame.id)) return
         turns.value.push({ id: newId(), role: 'approval', content: '', tools: [], approvals: [], approvalId: approval.frame.id, failed: null, streaming: false })
