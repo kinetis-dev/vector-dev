@@ -44,7 +44,9 @@ export default {
             truncated: 'The answer was longer than this field allows, and was cut.',
             failed: 'Writing help could not answer.',
             changed: 'The selected text changed; select it and ask again.',
-            selectFirst: 'Select the text to work on',
+            changedDocument: 'The text changed meanwhile; ask again.',
+            emptyEditor: 'Write some text first',
+            wholeDocument: 'Writing help: works on the whole text, or on the part you select',
             busy: 'Writing…',
         },
         assistant: {

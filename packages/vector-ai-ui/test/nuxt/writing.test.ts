@@ -10,10 +10,12 @@ import { endpoint, standaloneApi } from './endpoints'
 
 // Writing help: the menu under a text input and in a rich-text or
 // Markdown editor's toolbar, shown only where capabilities.ai.writing is
-// on and neither the resource nor the field is kept from AI. The answer
-// shows before and after; Replace puts it in the input (or in place of
-// the selection), Discard drops it, and a failure leaves the text alone.
-// The toolbar item is disabled while nothing is selected.
+// on, neither the resource nor the field is kept from AI and the field is
+// not one writing help is off for (noWriting). The answer shows before and
+// after; Replace puts it in the input (or in place of the selection, or
+// of the whole document when nothing is selected), Discard drops it, and
+// a failure leaves the text alone. The toolbar item is disabled only
+// while the editor holds no text.
 
 const ON = { filters: false, assistant: false, assistantWrites: false, writing: true, excluded: {}, excludedFields: {} }
 
@@ -65,7 +67,8 @@ function fakeEditor(text: string) {
         run: () => true,
     }
     const editor = {
-        state: { selection, doc: { textBetween: (from: number, to: number) => doc.slice(from - 1, to - 1) } },
+        // one paragraph: its text runs from 1 to its length + 1, and the document's content is 2 longer than the text
+        state: { selection, doc: { get content() { return { size: doc.length + 2 } }, textBetween: (from: number, to: number) => doc.slice(Math.max(from - 1, 0), Math.min(to - 1, doc.length)), toJSON: () => ({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: doc }] }] }) } },
         schema: { nodes: { paragraph: {} } },
         on: (_: string, handler: () => void) => handlers.add(handler),
         off: (_: string, handler: () => void) => handlers.delete(handler),
@@ -119,6 +122,7 @@ describe('writing help', () => {
             ['with writing off', { ...ON, writing: false }, {}, EDIT],
             ['on a resource kept from AI', { ...ON, excluded: { orders: true } }, {}, EDIT],
             ['on a field kept from AI', { ...ON, excludedFields: { orders: ['notes'] } }, {}, EDIT],
+            ['on a field writing help is off for', { ...ON, noWriting: { orders: ['notes'] } }, {}, EDIT],
             ['in a settings form', ON, { resource: '' }, '/settings'],
             // the forms the addon is also mounted under, with a record that has no id
             ['in the list\'s bulk edit', ON, { record: {} }, '/r/orders'],
@@ -228,6 +232,7 @@ describe('writing help', () => {
             ['with writing off', { ...ON, writing: false }],
             ['on a resource kept from AI', { ...ON, excluded: { products: true } }],
             ['on a field kept from AI', { ...ON, excludedFields: { products: ['description'] } }],
+            ['on a field writing help is off for', { ...ON, noWriting: { products: ['description'] } }],
         ])('shows nothing %s', async (_, ai) => {
             useState('vector.schema').value = descriptor(ai)
             const wrapper = await shell(VxAiWritingToolbarItem, { editor: fakeEditor('Hello').editor, field: field('description', 'richtext') }, ROUTE)
@@ -258,19 +263,96 @@ describe('writing help', () => {
             related.unmount()
         })
 
-        it('is disabled while nothing is selected', async () => {
+        it('is enabled with nothing selected while there is text, and disabled only on an empty editor', async () => {
             useState('vector.schema').value = descriptor(ON)
             const fake = fakeEditor(NOTES)
             const wrapper = await shell(VxAiWritingToolbarItem, { editor: fake.editor, field: field('description', 'richtext') }, ROUTE)
             const menu = () => wrapper.find('[data-ai-writing-menu]')
 
-            expect(menu().attributes('disabled')).toBeDefined()
+            // nothing selected: the whole text, and the title says so
+            expect(menu().attributes('disabled')).toBeUndefined()
+            expect(menu().attributes('title')).toBe('Writing help: works on the whole text, or on the part you select')
             fake.select(1, NOTES.length + 1)
             await nextTick()
             expect(menu().attributes('disabled')).toBeUndefined()
+            expect(menu().attributes('title')).toBe('Writing help')
             fake.select(4, 4)
             await nextTick()
+            expect(menu().attributes('disabled')).toBeUndefined()
+
+            fake.type('   ')
+            await nextTick()
             expect(menu().attributes('disabled')).toBeDefined()
+            expect(menu().attributes('title')).toBe('Write some text first')
+            fake.type(NOTES)
+            await nextTick()
+            expect(menu().attributes('disabled')).toBeUndefined()
+            wrapper.unmount()
+
+            const empty = await shell(VxAiWritingToolbarItem, { editor: fakeEditor('').editor, field: field('description', 'richtext') }, ROUTE)
+            expect(empty.find('[data-ai-writing-menu]').attributes('disabled')).toBeDefined()
+            empty.unmount()
+        })
+
+        it('with nothing selected, sends the whole text and Replace puts the answer in place of all of it', async () => {
+            standaloneApi()
+            const call = endpoint('/vector/ai/writing/products/description', { body: ANSWER }, 'POST')
+            cleanups.push(call.unregister)
+            useState('vector.schema').value = descriptor(ON)
+            const fake = fakeEditor(NOTES)
+            const wrapper = await shell(VxAiWritingToolbarItem, { editor: fake.editor, field: field('description', 'richtext') }, ROUTE)
+            fake.select(4, 4)
+            await nextTick()
+
+            await pick(wrapper, 'shorten')
+
+            expect(call.requests[0]!.body).toEqual({ operation: 'shorten', text: NOTES, format: 'plain', targetLocale: null, recordId: '5' })
+            document.body.querySelector<HTMLElement>('[data-ai-writing-replace]')!.click()
+            await flushPromises()
+
+            // the whole document, as paragraphs: not the cursor's position
+            expect(fake.inserted).toEqual([{ range: { from: 0, to: NOTES.length + 2 }, content: [{ type: 'paragraph', content: [{ type: 'text', text: ANSWER.text }] }] }])
+            wrapper.unmount()
+        })
+
+        it('with nothing selected in a Markdown field, sends the whole document\'s Markdown source', async () => {
+            standaloneApi()
+            const call = endpoint('/vector/ai/writing/products/description', { body: { ...ANSWER, text: '**Call** the customer.' } }, 'POST')
+            cleanups.push(call.unregister)
+            useState('vector.schema').value = descriptor(ON)
+            const fake = fakeEditor(NOTES)
+            const PARSED = [{ type: 'paragraph', content: [{ type: 'text', text: 'Call', marks: [{ type: 'bold' }] }, { type: 'text', text: ' the customer.' }] }]
+            const serialize = vi.fn((_: unknown) => `${NOTES}\n`)
+            const parse = vi.fn((_: string) => ({ type: 'doc', content: PARSED }))
+            const editor = { ...fake.editor, markdown: { serialize, parse } }
+            const wrapper = await shell(VxAiWritingToolbarItem, { editor, field: field('description', 'markdown') }, ROUTE)
+
+            await pick(wrapper, 'shorten')
+
+            expect(serialize).toHaveBeenCalledWith(fake.editor.state.doc.toJSON())
+            expect(call.requests[0]!.body).toMatchObject({ text: NOTES, format: 'markdown' })
+            document.body.querySelector<HTMLElement>('[data-ai-writing-replace]')!.click()
+            await flushPromises()
+
+            expect(fake.inserted).toEqual([{ range: { from: 0, to: NOTES.length + 2 }, content: PARSED }])
+            wrapper.unmount()
+        })
+
+        it('with nothing selected, Replace leaves a document that changed meanwhile as it is', async () => {
+            standaloneApi()
+            const call = endpoint('/vector/ai/writing/products/description', { body: ANSWER }, 'POST')
+            cleanups.push(call.unregister)
+            useState('vector.schema').value = descriptor(ON)
+            const fake = fakeEditor(NOTES)
+            const wrapper = await shell(VxAiWritingToolbarItem, { editor: fake.editor, field: field('description', 'richtext') }, ROUTE)
+
+            await pick(wrapper, 'rewrite')
+            fake.type(`${NOTES} And one more thing.`)
+            document.body.querySelector<HTMLElement>('[data-ai-writing-replace]')!.click()
+            await flushPromises()
+
+            expect(fake.inserted).toEqual([])
+            expect(wrapper.find('[data-ai-writing-failure]').attributes('aria-label')).toBe('The text changed meanwhile; ask again.')
             wrapper.unmount()
         })
 

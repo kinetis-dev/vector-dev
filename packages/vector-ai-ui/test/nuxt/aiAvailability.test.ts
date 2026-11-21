@@ -7,7 +7,7 @@ import { aiCapabilities, aiFailureMessage, aiOffered, aiStatusOf } from '#vector
 
 const AI = {
     filters: true, assistant: true, assistantWrites: false, writing: true,
-    excluded: { profiles: true }, excludedFields: { users: ['email'] },
+    excluded: { profiles: true }, excludedFields: { users: ['email'] }, noWriting: { products: ['sku'] },
 }
 
 describe('AI availability in the admin', () => {
@@ -25,6 +25,14 @@ describe('AI availability in the admin', () => {
         expect(aiOffered(AI, 'filters', 'profiles')).toBe(false)
         expect(aiOffered(AI, 'writing', 'users', 'name')).toBe(true)
         expect(aiOffered(AI, 'writing', 'users', 'email')).toBe(false)
+    })
+
+    it('offers no writing help on a field the server says it is off for, and still every other feature', () => {
+        expect(aiOffered(AI, 'writing', 'products', 'sku')).toBe(false)
+        expect(aiOffered(AI, 'writing', 'products', 'name')).toBe(true)
+        expect(aiOffered(AI, 'filters', 'products', 'sku')).toBe(true)
+        // an older server publishes no noWriting
+        expect(aiOffered({ ...AI, noWriting: undefined }, 'writing', 'products', 'sku')).toBe(true)
     })
 
     it('reads the status however the client reports it', () => {

@@ -13,6 +13,12 @@ export interface AiCapabilities {
     excluded?: Record<string, unknown>
     /** The fields kept back of the others, `{slug: [field, …]}`. */
     excludedFields?: Record<string, unknown>
+    /**
+     * The text fields writing help is not offered on, `{slug: [field, …]}`:
+     * kept back, a unique string (an identifier, such as a SKU), or a field
+     * with the `ai.writing` meta false. Absent from an older server.
+     */
+    noWriting?: Record<string, unknown>
 }
 
 /** A feature `capabilities.ai` flags. */
@@ -26,15 +32,18 @@ export function aiCapabilities(schema: { capabilities?: object } | null | undefi
 /**
  * Whether the admin offers $feature: the server's flag for this user and,
  * when given, $resource not kept from the model and $field not one kept
- * back of it. The one check every part of the layer asks; the server
- * refuses anything else anyway.
+ * back of it — nor, for writing help, one of `noWriting`. The one check
+ * every part of the layer asks; the server refuses anything else anyway.
  */
 export function aiOffered(ai: AiCapabilities | undefined, feature: AiFeature, resource?: string, field?: string): boolean {
     if (ai?.[feature] !== true) return false
     if (resource === undefined) return true
     if (ai.excluded?.[resource] !== undefined) return false
+    if (field === undefined) return true
     const kept = ai.excludedFields?.[resource]
-    return field === undefined || !(Array.isArray(kept) && kept.includes(field))
+    if (Array.isArray(kept) && kept.includes(field)) return false
+    const off = feature === 'writing' ? ai.noWriting?.[resource] : undefined
+    return !(Array.isArray(off) && off.includes(field))
 }
 
 /** The HTTP status of a failed API call. */

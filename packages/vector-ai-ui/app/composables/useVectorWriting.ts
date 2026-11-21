@@ -25,8 +25,10 @@ export const WRITING_LANGUAGES = ['en', 'de', 'fr', 'es', 'it', 'nl', 'pt', 'pl'
 /**
  * Writing help for one field: whether the admin offers it there, and the
  * call. Offered when `capabilities.ai.writing` is on, the resource is not
- * kept from AI (`excluded`) and the field is not one of those kept back
- * (`excludedFields`) — the server refuses all three anyway. The answer is
+ * kept from AI (`excluded`), the field is not one of those kept back
+ * (`excludedFields`) and not one writing help is off for (`noWriting`: a
+ * unique string, or `ai.writing` false) — the server refuses all four
+ * anyway. The answer is
  * only ever put in the input, for the person to review and save.
  */
 export function useVectorWriting() {
