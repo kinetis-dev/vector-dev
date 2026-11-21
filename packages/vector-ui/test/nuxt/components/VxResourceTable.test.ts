@@ -84,6 +84,22 @@ describe('VxResourceTable, uncounted and by cursor', () => {
         expect(query(list.requests.at(-1)!).cursor).toBe('')
     })
 
+    it('reloads the page shown when its list key is refreshed, and not for another resource\'s', async () => {
+        let version = 1
+        const list = endpoint('/vector/r/tags', () => ({ body: { data: [{ id: 1, name: `Tag 1 v${version}`, color: '#000000' }], hasMore: false, perPage: 2 } }))
+        const wrapper = await mount({ withoutCount: true }, list)
+        const before = list.requests.length
+
+        version = 2
+        await refreshNuxtData('vector.list.posts')
+        await flushPromises()
+        expect(list.requests).toHaveLength(before)
+
+        await refreshNuxtData('vector.list.tags')
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Tag 1 v2'))
+        wrapper.unmount()
+    })
+
     it('pages an uncounted list by number, without a total, next while another page follows', async () => {
         const list = endpoint('/vector/r/tags', (request) => {
             const page = Number(query(request).page)

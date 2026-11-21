@@ -170,6 +170,12 @@ function onOptions() {
     void load()
 }
 
+// refreshNuxtData('vector.list.<slug>'), or with no keys, reloads the page shown, as it does a useAsyncData page
+const stopRefresh = useNuxtApp().hook('app:data:refresh', async (keys) => {
+    if (!keys || keys.includes(`vector.list.${props.resource.slug}`)) await load()
+})
+onBeforeUnmount(stopRefresh)
+
 // The table resets the page it pages itself on a new sort; an uncounted list pages here, so this does, before the table reports the sort
 watch(sortBy, () => { if (!counted.value) firstPage() }, { deep: true, flush: 'sync' })
 

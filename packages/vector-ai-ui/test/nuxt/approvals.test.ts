@@ -177,13 +177,14 @@ describe('an approval card', () => {
         wrapper.unmount()
     })
 
-    it('an executed change reloads the record\'s show page and history, but not its edit form', async () => {
+    it('an executed change reloads the resource\'s list and the record\'s show page and history, but not its edit form', async () => {
         standaloneApi()
         const approve = endpoint(`/vector/ai/approvals/${ID}/approve`, { body: { status: 'executed', result: { data: { id: 12, stock: 15 } } } }, 'POST')
         cleanups.push(assistantEndpoint().unregister, approve.unregister)
-        const loads = { show: 0, audit: 0, edit: 0 }
+        const loads = { list: 0, show: 0, audit: 0, edit: 0 }
         const Page = defineComponent({
             async setup() {
+                await useAsyncData('vector.list.products', async () => ++loads.list)
                 await useAsyncData('vector.products.12', async () => ++loads.show)
                 await useAsyncData('vector.audit.products.12', async () => ++loads.audit)
                 await useAsyncData('vector.products.12.edit', async () => ++loads.edit)
@@ -199,7 +200,7 @@ describe('an approval card', () => {
         expect(loads).toEqual(before)
         await decide(wrapper, 'approve')
 
-        expect(loads).toEqual({ show: before.show + 1, audit: before.audit + 1, edit: before.edit })
+        expect(loads).toEqual({ list: before.list + 1, show: before.show + 1, audit: before.audit + 1, edit: before.edit })
         wrapper.unmount()
     })
 

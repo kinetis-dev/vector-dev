@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A resource's list reloads the page it shows on
+  `refreshNuxtData('vector.list.<slug>')`, or on `refreshNuxtData()`
+  with no keys, as a page loaded with `useAsyncData` does.
+
 ## [0.13.0] - 2026-11-19
 
 ### Added
