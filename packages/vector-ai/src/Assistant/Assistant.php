@@ -516,8 +516,10 @@ final readonly class Assistant
         ];
 
         if ($this->config->string('APP_ENV', 'production') === 'development') {
-            // the exception itself, message and trace included, only where nothing real is at stake
+            // the exception itself, message and trace included, only where nothing real is at stake;
+            // its message as a plain string too, since a formatter may print the exception's class alone
             $context['exception'] = $e;
+            $context['exception_message'] = $e->getMessage();
         }
 
         // a provider's failure is the provider's; one of the run's own (a bug, a runaway model) is an error

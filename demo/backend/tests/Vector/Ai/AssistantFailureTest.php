@@ -100,11 +100,12 @@ final class AssistantFailureTest extends AssistantTestCase
         self::assertSame(LogLevel::WARNING, $failed['level'], 'a provider\'s failure is a warning');
         self::assertSame('test-fake', $failed['context']['provider']);
         self::assertSame($attached, array_key_exists('exception', $failed['context']), "the exception under {$environment}");
+        self::assertSame($attached, array_key_exists('exception_message', $failed['context']), "the exception's message under {$environment}");
         self::assertNotNull($logger->find('An AI provider call failed.'));
 
         foreach ($logger->records as $record) {
             $context = $record['context'];
-            unset($context['exception']);
+            unset($context['exception'], $context['exception_message']);
             self::assertStringNotContainsString(self::SECRET, $record['message'] . json_encode($context), 'a log line carried the provider\'s words');
             self::assertStringNotContainsString(self::QUESTION, $record['message'] . json_encode($context), 'a log line carried the conversation');
         }
@@ -135,6 +136,7 @@ final class AssistantFailureTest extends AssistantTestCase
         self::assertSame(\LogicException::class, $context['exception_class']);
         self::assertSame(BrokenWidget::THROWN_AT, $context['exception_at']);
         self::assertArrayNotHasKey('exception', $context, 'the exception itself only under APP_ENV=development');
+        self::assertArrayNotHasKey('exception_message', $context, 'its message only under APP_ENV=development');
         self::assertStringNotContainsString(BrokenWidget::SECRET, json_encode($logger->records, JSON_THROW_ON_ERROR), 'a log line carried the exception\'s message');
     }
 
