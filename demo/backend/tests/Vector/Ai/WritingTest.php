@@ -49,6 +49,13 @@ final class WritingTest extends WritingTestCase
         self::assertGreaterThan(0, (int) $rows[0]['input_tokens']);
     }
 
+    public function testReasoningAModelWritesInlineIsNoPartOfTheText(): void
+    {
+        $this->scriptWriting([self::NOTES => "<think>The neighbour's number matters.</think>\n\n" . self::SHORT]);
+
+        $this->write('orders', 'notes', ['operation' => 'shorten', 'text' => self::NOTES])->assertOk()->assertJsonPath('text', self::SHORT);
+    }
+
     public function testTheGuidanceIsInTheUserTurnAndNeverTheSystemPrompt(): void
     {
         $guidance = 'Use a formal tone and keep the house number.';

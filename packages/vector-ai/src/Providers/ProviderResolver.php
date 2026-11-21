@@ -6,6 +6,7 @@ namespace Kinetis\VectorAi\Providers;
 
 use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Neuron\Bedrock\BedrockProvider;
+use Kinetis\Neuron\InlineReasoningProvider;
 use Kinetis\VectorAi\AiTransports;
 use Kinetis\VectorAi\Config\AiConfig;
 use Kinetis\VectorAi\Config\ProviderConfig;
@@ -35,7 +36,12 @@ use NeuronAI\Providers\OpenAILike;
  * make Neuron block the worker on curl) and under the feature's own
  * deadline when it has a shorter one (Feature::timeout(); a Bedrock
  * call keeps its signing client's) — VECTOR_AI_TIMEOUT otherwise — and parallel tool calls, which
- * fork the worker, are never turned on. Built per request — the request
+ * fork the worker, are never turned on. Every provider, the `fake` one
+ * included, is wrapped in Neuron's InlineReasoningProvider: the reasoning
+ * a model writes inline, between `<thinking>` or `<think>` tags, streams
+ * as reasoning and is taken out of the text of every answer — a chat, a
+ * stream or a structured call alike — so no caller sees it as the answer.
+ * Built per request — the request
  * container autowires it, and wipes it with the request — so what
  * resolvable() remembers of each provider's stored key is one request's.
  */
@@ -161,7 +167,7 @@ final readonly class ProviderResolver
             return $shouldStop === null ? $client : new StoppableHttpClient($client, $shouldStop);
         };
 
-        return match ($provider->type) {
+        return new InlineReasoningProvider(match ($provider->type) {
             ProviderType::OpenAi => $provider->baseUrl === ProviderType::OpenAi->defaultBaseUrl()
                 ? new OpenAI($key, $model, ['max_completion_tokens' => $maxTokens], false, $http())
                 : new OpenAILike((string) $provider->baseUrl, $key, $model, ['max_tokens' => $maxTokens], false, $http()),
@@ -170,6 +176,6 @@ final readonly class ProviderResolver
             ProviderType::Ollama => new Ollama((string) $provider->baseUrl, $model, ['options' => ['num_predict' => $maxTokens]], $http()),
             ProviderType::Bedrock => new BedrockProvider($this->transports->bedrock($provider), $model, ['maxTokens' => $maxTokens], $this->config->maxResponseBytes),
             ProviderType::Fake => new ScriptedProvider($this->replies),
-        };
+        });
     }
 }

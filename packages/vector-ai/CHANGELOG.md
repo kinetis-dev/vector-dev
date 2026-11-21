@@ -80,16 +80,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- The assistant no longer shows a model's reasoning written inline as
-  part of its answer: what Amazon Nova and Claude 3 write between
-  `<thinking>` and `</thinking>`, and DeepSeek R1, Qwen3 and QwQ between
-  `<think>` and `</think>`, is taken out of the streamed `text-delta`
-  frames and of the whole answer's `text` (`Assistant\InlineReasoningFilter`,
-  which holds back only what could still be a tag split across chunks),
-  so it is neither shown nor sent back with the conversation. A block
-  left open is reasoning to the end of its text part; blank lines a
-  leading block leaves are dropped; any other `<` is text. It still
-  counts toward the usage estimate of a call the browser left.
+- A model's reasoning written inline is no longer read as its answer:
+  what Amazon Nova and Claude 3 write between `<thinking>` and
+  `</thinking>`, and DeepSeek R1, Qwen3 and QwQ between `<think>` and
+  `</think>`, is taken out by kinetis/neuron's `InlineReasoningProvider`,
+  which `ProviderResolver` wraps every provider it builds in, the `fake`
+  one included. So the assistant's streamed `text-delta` frames and its
+  whole answer's `text`, a filter's structured answer and writing help's
+  text are all the answer alone. The assistant writes no reasoning part
+  to the browser, so reasoning is neither shown nor sent back with the
+  conversation, and it still counts toward the usage estimate of a call
+  the browser left or that failed.
 
 - A proposal left `executing` by a request that never finished is no
   longer stuck: `ApprovalStore::failStale()` marks it `failed` with *The
@@ -208,7 +209,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Requires `kinetis/framework` ^1.29.0 and `kinetis/neuron` ^1.2. The
+- Requires `kinetis/framework` ^1.29.0 and `kinetis/neuron` ^1.3. The
   assistant learns that the browser left from the request's
   `Kinetis\Runtime\ClientConnectionInterface` instead of calling
   `connection_aborted()`, and `Assistant::stream()` takes that

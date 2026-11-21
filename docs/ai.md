@@ -383,13 +383,17 @@ a field the model guessed, a page out of range — has none.
 **Reasoning written inline is not the answer.** Some models write their
 reasoning into the text itself: Amazon Nova and Claude 3 between
 `<thinking>` and `</thinking>`, DeepSeek R1, Qwen3 and QwQ between
-`<think>` and `</think>`. The assistant takes it out of the text it
-streams and answers, whichever chunks the tags arrive split across, so
-it is never shown, never part of the conversation the drawer sends back,
-and never replayed to the model; a block still open when the answer ends
-is reasoning to its end, and the blank lines a leading block leaves are
-dropped. It still counts toward the usage estimate, as reasoning a
-provider streams apart does. Any other `<` — `a < b`, `<b>` — is text.
+`<think>` and `</think>`. Every provider Vector AI builds is wrapped in
+kinetis/neuron's `InlineReasoningProvider`, which takes it out of the
+text of every answer, whichever chunks the tags arrive split across: the
+assistant's, a filter's structured answer and writing help's alike. A
+block still open when the answer ends is reasoning to its end, the blank
+lines a leading block leaves are dropped, and any other `<` — `a < b`,
+`<b>` — is text. The assistant's stream gets the reasoning as reasoning
+parts, which it never writes: it is never shown, never part of the
+conversation the drawer sends back, and never replayed to the model. It
+still counts toward the usage estimate, as reasoning a provider streams
+apart does.
 
 **Tools.** The model has five reads: `vector_resources`,
 `vector_describe`, `vector_query`, `vector_get` and `vector_widget`,

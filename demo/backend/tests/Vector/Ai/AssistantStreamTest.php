@@ -157,7 +157,10 @@ final class AssistantStreamTest extends AssistantTestCase
     public function testReasoningAModelWritesInlineIsTakenOutOfTheStreamedAnswer(): void
     {
         $answer = "<thinking>The admin asks about stock; products#9 looks odd.</thinking>\n\nLow on stock: products#3. <think>Should I say more?</think>That is all.";
-        $this->script([self::QUESTION => self::rounds([[['name' => 'vector_resources']]], $answer)]);
+        $this->script([self::QUESTION => [
+            ['text' => '<thinking>I will list the resources first, products#7.</thinking>', 'toolCalls' => [['name' => 'vector_resources']]],
+            ['text' => $answer],
+        ]]);
 
         $turn = $this->turn();
 
@@ -166,9 +169,25 @@ final class AssistantStreamTest extends AssistantTestCase
         self::assertSame('Low on stock: products#3. That is all.', self::text($frames));
         self::assertGreaterThan(2, count(self::ofType($frames, 'text-delta')), 'the answer streamed in chunks that split its tags');
         self::assertSame('finish', self::last($frames)['type']);
+        self::assertSame([], array_values(array_filter($frames, static fn (array $f): bool => str_starts_with((string) $f['type'], 'reasoning'))), 'no reasoning part is written');
 
-        foreach (['thinking', 'think>', 'products#9', 'Should I'] as $reasoning) {
+        foreach (['thinking', 'think>', 'products#9', 'products#7', 'Should I'] as $reasoning) {
             self::assertStringNotContainsString($reasoning, $turn['body'], "{$reasoning} reached the browser");
+        }
+
+        // nor is it in the run's own history: the call after the tool's sees the tool call without it
+        self::assertCount(2, $this->calls());
+        self::assertStringNotContainsString('products#7', self::everything($this->calls()[1]));
+
+        // the conversation the browser replays is the answer alone, and the model is sent nothing else
+        $this->script(['And the rest?' => 'Nothing else.']);
+        $next = $this->turn([self::QUESTION, self::text($frames), 'And the rest?']);
+        self::assertSame('Nothing else.', self::text($next['frames']));
+        $sent = self::everything($this->calls()[0]);
+        self::assertStringContainsString('Low on stock: products#3. That is all.', $sent);
+
+        foreach (['thinking', 'think>', 'products#9', 'products#7', 'Should I'] as $reasoning) {
+            self::assertStringNotContainsString($reasoning, $sent, "{$reasoning} was replayed");
         }
     }
 

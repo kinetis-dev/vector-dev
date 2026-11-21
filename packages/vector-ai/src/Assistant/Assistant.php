@@ -182,9 +182,11 @@ final readonly class Assistant
     /**
      * The run as Server-Sent Events in the Vercel AI SDK data-stream
      * protocol, each proposal announced in a `data-approval` frame right
-     * after the tool result that stored it, and the reasoning a model writes
-     * inline taken out of its text (InlineReasoningFilter): only the answer
-     * reaches the browser, and so the conversation it replays. It starts when the response is
+     * after the tool result that stored it. Only the answer reaches the
+     * browser, and so the conversation it replays: a reasoning part — the
+     * reasoning a model writes inline, which ProviderResolver's
+     * InlineReasoningProvider streams as reasoning, or a provider's own — is
+     * counted toward the usage estimate but never written. It starts when the response is
      * emitted. $connection is the request's, and decides only whether a
      * frame is written; $signal is the one the provider's stream asks
      * whether to stop (AssistantController builds both from the same
@@ -204,8 +206,9 @@ final readonly class Assistant
     }
 
     /**
-     * The run answered whole: its final text, without the reasoning a model
-     * writes inline (InlineReasoningFilter); the tools it called, in order,
+     * The run answered whole: its final text — without the reasoning a model
+     * writes inline, which ProviderResolver's InlineReasoningProvider takes
+     * out of it; the tools it called, in order,
      * each with whether it answered (`ok`) or was an error the model was
      * told of — as the stream tells them apart by `tool-output-available`
      * and `tool-output-error`; and the changes it proposed, each as its
@@ -231,10 +234,9 @@ final readonly class Assistant
         $ledger->settle('answered');
         $this->ended($provider, $ledger, $budget, $started);
         $text = $state->getMessage()?->getContent();
-        $reasoning = new InlineReasoningFilter();
 
         return [
-            'text' => is_string($text) ? $reasoning->feed($text) . $reasoning->finish() : '',
+            'text' => is_string($text) ? $text : '',
             'toolCalls' => $budget->calls(),
             'approvals' => array_map(static fn (Approval $a): array => $a->frame(), $proposals->all()),
         ];
@@ -330,7 +332,6 @@ final readonly class Assistant
         $started = hrtime(true);
         $steps = 0;
         $finished = false;
-        $reasoning = new InlineReasoningFilter();
 
         try {
             while (!self::left($connection)) {
@@ -350,16 +351,12 @@ final readonly class Assistant
                 $event = $events->current();
 
                 if ($event instanceof ProtocolEvent) {
-                    foreach (self::withoutReasoning($event, $reasoning) as $frame) {
-                        $ledger->streamed(self::streamedText($frame));
+                    // reasoning is streamed back as much as the answer is, but only the answer is the browser's
+                    $ledger->streamed(self::streamedText($event));
 
-                        if (!self::left($connection)) {
-                            yield $frame;
-                        }
+                    if (!self::isReasoning($event) && !self::left($connection)) {
+                        yield $event;
                     }
-
-                    // reasoning written inline is streamed back as much as a reasoning frame is
-                    $ledger->streamed($reasoning->reasoning());
                 }
 
                 yield from self::unlessGone(self::announced($adapter, $proposals), $connection);
@@ -413,29 +410,10 @@ final readonly class Assistant
         $this->ended($provider, $ledger, $budget, $started);
     }
 
-    /**
-     * $event as the browser is sent it: a `text-delta` with only its visible
-     * part (InlineReasoningFilter), and none when nothing of it is visible;
-     * a `text-end` after the text held back until its part ended, if any.
-     *
-     * @return list<ProtocolEvent>
-     */
-    private static function withoutReasoning(ProtocolEvent $event, InlineReasoningFilter $reasoning): array
+    /** Whether $event is part of a reasoning part — `reasoning-start`, `-delta` or `-end` — which no browser is sent. */
+    private static function isReasoning(ProtocolEvent $event): bool
     {
-        if ($event->type === 'text-delta') {
-            $delta = $event->data['delta'] ?? '';
-            $visible = $reasoning->feed(is_string($delta) ? $delta : '');
-
-            return $visible === '' ? [] : [new ProtocolEvent('text-delta', array_replace($event->data, ['delta' => $visible]))];
-        }
-
-        if ($event->type === 'text-end') {
-            $held = $reasoning->finish();
-
-            return $held === '' ? [$event] : [new ProtocolEvent('text-delta', ['id' => $event->data['id'] ?? null, 'delta' => $held]), $event];
-        }
-
-        return [$event];
+        return str_starts_with($event->type, 'reasoning-');
     }
 
     /** The text $event streams back from the model — its answer, reasoning or a tool call's arguments — for the ledger's estimate. */

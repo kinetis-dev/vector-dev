@@ -9,6 +9,7 @@ use App\Vector\Widgets\LowStockTable;
 use Generator;
 use Kinetis\Container\RequestScope;
 use Kinetis\Http\CurrentUserInterface;
+use Kinetis\Neuron\InlineReasoningProvider;
 use Kinetis\Runtime\ClientConnectionInterface;
 use Kinetis\Runtime\UnobservableClientConnection;
 use Kinetis\Vector\Registry\VectorRegistry;
@@ -109,6 +110,30 @@ final class AssistantFailureTest extends AssistantTestCase
             self::assertStringNotContainsString(self::SECRET, $record['message'] . json_encode($context), 'a log line carried the provider\'s words');
             self::assertStringNotContainsString(self::QUESTION, $record['message'] . json_encode($context), 'a log line carried the conversation');
         }
+    }
+
+    public function testReasoningWrittenInlineCountsTowardTheEstimateButIsNeverWritten(): void
+    {
+        [$assistant, $scope] = $this->assistant(new RecordingLogger(), 15);
+
+        try {
+            // as ProviderResolver builds every provider: wrapped in InlineReasoningProvider
+            $provider = new InlineReasoningProvider(new ReasoningThenFailing());
+            $body = self::emit($assistant->stream(new ResolvedProvider($provider, 'test-fake', 'fake', 100), new UnobservableClientConnection(), 'Be brief.', 'c_think', [['role' => 'user', 'content' => self::QUESTION]]));
+        } finally {
+            $scope->dispose();
+        }
+
+        $frames = self::frames($body);
+        self::assertSame('Low on', self::text($frames));
+        self::assertSame(['type' => 'error', 'errorText' => 'The run failed.'], self::last($frames));
+        self::assertStringNotContainsString(ReasoningThenFailing::REASONING, $body, 'the reasoning reached the browser');
+        self::assertStringNotContainsString('reasoning-', $body, 'a reasoning part was written');
+
+        $rows = $this->usageRows(15);
+        self::assertCount(1, $rows);
+        self::assertSame('failed:refused' . AssistantLedger::ESTIMATED, $rows[0]['outcome']);
+        self::assertGreaterThanOrEqual((int) ceil(strlen(ReasoningThenFailing::REASONING . 'Low on') / AssistantLedger::ESTIMATE_BYTES), (int) $rows[0]['output_tokens'], 'the reasoning streamed back is counted');
     }
 
     public function testABugInAToolIsLoggedWithItsClassAndPlaceButNeverItsMessage(): void
@@ -551,6 +576,24 @@ final class FailingMidStream extends FakeAIProvider
     public function stream(Message ...$messages): Generator
     {
         yield new TextChunk('msg_1', 'Low ');
+        yield new TextChunk('msg_1', 'on');
+
+        throw new ProviderException('the provider quoted the prompt: Which products are low on stock?');
+    }
+}
+
+/** A provider whose stream reasons inline at length, writes a little, then fails as a refusing provider does. */
+final class ReasoningThenFailing extends FakeAIProvider
+{
+    public const string REASONING = 'The admin wants the products low on stock, so I should read the products sorted by stock and name the lowest few of them.';
+
+    /** @return Generator<int, TextChunk, mixed, never> */
+    #[\Override]
+    public function stream(Message ...$messages): Generator
+    {
+        yield new TextChunk('msg_1', '<thin');
+        yield new TextChunk('msg_1', 'king>' . self::REASONING);
+        yield new TextChunk('msg_1', '</thinking>Low ');
         yield new TextChunk('msg_1', 'on');
 
         throw new ProviderException('the provider quoted the prompt: Which products are low on stock?');

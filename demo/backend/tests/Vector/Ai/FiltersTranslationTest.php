@@ -62,6 +62,18 @@ final class FiltersTranslationTest extends FiltersTestCase
         }
     }
 
+    public function testReasoningAModelWritesInlineBeforeItsAnswerIsTakenOutBeforeItIsRead(): void
+    {
+        $answer = json_encode(self::answer([['field' => 'status', 'op' => 'eq', 'value' => 'paid']], [], null, 'Paid orders.'), JSON_THROW_ON_ERROR);
+        $this->script(['the paid orders' => "<thinking>They mean status {\"paid\"}.</thinking>\n" . $answer]);
+
+        $body = $this->ask('orders', 'the paid orders')->assertOk()->json();
+
+        self::assertSame(['status' => ['eq' => 'paid']], $body['filter']);
+        self::assertSame('Paid orders.', $body['explanation']);
+        self::assertCount(1, $this->calls(), 'read on the first answer, with no repair turn');
+    }
+
     public function testAnInventedFieldGetsOneRepairTurnQuotingTheRefusal(): void
     {
         // first, find the refusal the model is shown: the repair turn is not scripted yet
