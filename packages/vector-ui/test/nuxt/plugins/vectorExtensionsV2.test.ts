@@ -63,13 +63,18 @@ describe('window.Vector version 2', () => {
         const r = useVectorExtensions()
         expect(r.shellActions.get('test-action')).toBe(component)
         expect(r.listToolbar.get('test-toolbar')).toBe(component)
-        expect(r.inputAddons.get('test-addon')).toEqual({ types: ['string'], component })
+        expect(r.inputAddons.get('test-addon')).toEqual({ types: ['string'], component, placement: 'below' })
         expect(r.editorToolbar.get('test-editor')).toBe(component)
         expect(r.paletteCommands.get('test-command')?.run).toBe(run)
         expect(r.settingsAddons.get('test-group')).toBe(component)
 
         expect(() => vector.defineShellAction('Not ok', component)).toThrow('lowercase letters')
         expect(() => vector.defineInputAddon('test-x', { types: 'string' as unknown as string[], component })).toThrow('types')
+        // placement: below by default, inner on request, nothing else
+        vector.defineInputAddon('test-inner', { types: ['string'], component, placement: 'inner' })
+        expect(r.inputAddons.get('test-inner')).toEqual({ types: ['string'], component, placement: 'inner' })
+        expect(() => vector.defineInputAddon('test-z', { types: ['string'], component, placement: 'side' as unknown as 'inner' })).toThrow('placement: below | inner')
+        expect(r.inputAddons.has('test-z')).toBe(false)
         expect(() => vector.definePaletteCommand('test-y', { title: 'x', run: undefined as unknown as () => void })).toThrow('run(query)')
     })
 
@@ -110,6 +115,7 @@ describe('the shell slots render where promised', () => {
         cleanups.splice(0).forEach(cleanup => cleanup())
         const r = useVectorExtensions()
         r.inputAddons.delete('test-addon')
+        r.inputAddons.delete('test-inner')
         r.paletteCommands.delete('test-command')
         r.settingsAddons.delete('store')
     })
@@ -135,9 +141,39 @@ describe('the shell slots render where promised', () => {
     })
 
     it('renders nothing extra without addons', async () => {
-        const wrapper = await mountSuspended(VxFieldsForm, { props: { fields: [field({ name: 'name', type: 'string' })], values: { name: '' }, serverErrors: {} } })
+        const wrapper = await mountSuspended(VxFieldsForm, { props: { fields: [field({ name: 'name', type: 'string', nullable: false }), field({ name: 'notes', type: 'text', nullable: false })], values: { name: '', notes: '' }, serverErrors: {} } })
 
         expect(wrapper.find('.vx-input-addons').exists()).toBe(false)
+        // no inner addon (and nothing to clear): the fields have no append-inner slot at all
+        expect(wrapper.find('.v-field__append-inner').exists()).toBe(false)
+        wrapper.unmount()
+    })
+
+    it('puts an inner addon inside the text and textarea inputs at their end, not under them, and its value reaches the form', async () => {
+        useVectorExtend().defineInputAddon('test-inner', { types: ['string', 'text'], component: Marker('inner'), placement: 'inner' })
+        useVectorExtend().defineInputAddon('test-addon', { types: ['string'], component: Marker('addon') })
+        const values: Record<string, unknown> = { name: 'Widget', notes: 'Some notes', stock: 3 }
+        const wrapper = await mountSuspended(VxFieldsForm, {
+            props: { fields: [field({ name: 'name', type: 'string' }), field({ name: 'notes', type: 'text' }), field({ name: 'stock', type: 'number' })], values, serverErrors: {}, resource: 'products' },
+        })
+
+        const inner = wrapper.findAll('.v-field__append-inner [data-input-addons="inner"] .marker-inner')
+        expect(inner).toHaveLength(2)
+        expect(wrapper.findAll('.marker-inner')).toHaveLength(2)
+        expect(inner[0]!.element.closest('.v-text-field')).not.toBeNull()
+        expect(inner[1]!.element.closest('.v-textarea')).not.toBeNull()
+        // the below row holds the below addon only
+        expect(wrapper.findAll('.vx-input-addons:not(.vx-input-addons--inner) .marker-inner')).toHaveLength(0)
+        expect(wrapper.findAll('.vx-input-addons:not(.vx-input-addons--inner) .marker-addon')).toHaveLength(1)
+        expect(wrapper.findAll('.v-field__append-inner .marker-addon')).toHaveLength(0)
+
+        const props = JSON.parse(inner[1]!.attributes('data-props')!)
+        expect([props.field.name, props.resource, props.modelValue, props.disabled, props.record]).toEqual(['notes', 'products', 'Some notes', false, values])
+
+        await inner[1]!.trigger('click')
+        expect(values.notes).toBe('from the addon')
+        await inner[0]!.trigger('click')
+        expect(values.name).toBe('from the addon')
         wrapper.unmount()
     })
 

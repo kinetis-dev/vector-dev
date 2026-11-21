@@ -77,7 +77,7 @@ declare global {
             definePage: (name: string, page: { title: VectorPageLabel, icon?: string, group?: VectorPageLabel, component: vue.Component }) => void
             defineShellAction: (name: string, component: vue.Component) => void
             defineListToolbarItem: (name: string, component: vue.Component) => void
-            defineInputAddon: (name: string, addon: { types: string[], component: vue.Component }) => void
+            defineInputAddon: (name: string, addon: { types: string[], component: vue.Component, placement?: 'below' | 'inner' }) => void
             defineEditorToolbarItem: (name: string, component: vue.Component) => void
             definePaletteCommand: (name: string, command: VectorPaletteCommand) => void
             defineSettingsAddon: (group: string, component: vue.Component) => void

@@ -6,7 +6,7 @@ import {
     VSkeletonLoader, VSwitch, VTab, VTable, VTabs, VTabsWindow, VTabsWindowItem, VTextField, VTextarea, VToolbar, VTooltip,
 } from 'vuetify/components'
 import type { VectorSchema } from '../types/vector'
-import type { VectorPageLabel, VectorPaletteCommand } from './useVectorExtensions'
+import { INPUT_ADDON_PLACEMENTS, type VectorInputAddonPlacement, type VectorPageLabel, type VectorPaletteCommand } from './useVectorExtensions'
 import { markdownHtml, sanitizeHtml } from '../utils/richtext'
 
 /**
@@ -126,13 +126,16 @@ export function useVectorExtend() {
             registries.listToolbar.set(name, markRaw(component))
         },
         /**
-         * A component under every form input of the given field types: props `{ field, resource, record, modelValue,
-         * disabled }`, emitting `update:modelValue` to change the field's value.
+         * A component with every form input of the given field types: props `{ field, resource, record, modelValue,
+         * disabled }`, emitting `update:modelValue` to change the field's value. `placement` is `below` (the default),
+         * in a row under the input, or `inner`, inside a text or textarea input at its inline end.
          */
-        defineInputAddon: (name: string, addon: { types: string[], component: Component }) => {
+        defineInputAddon: (name: string, addon: { types: string[], component: Component, placement?: VectorInputAddonPlacement }) => {
             checkName('input addon', name)
             if (!Array.isArray(addon.types) || addon.types.some(t => typeof t !== 'string')) throw new Error(`Vector input addon "${name}" needs types: string[].`)
-            registries.inputAddons.set(name, { types: [...addon.types], component: markRaw(addon.component) })
+            const placement = addon.placement ?? 'below'
+            if (!INPUT_ADDON_PLACEMENTS.includes(placement)) throw new Error(`Vector input addon "${name}" needs placement: ${INPUT_ADDON_PLACEMENTS.join(' | ')}.`)
+            registries.inputAddons.set(name, { types: [...addon.types], component: markRaw(addon.component), placement })
         },
         /** A component in the toolbar of the rich-text and Markdown editors: props `{ editor, field }`, the live Tiptap editor. */
         defineEditorToolbarItem: (name: string, component: Component) => {

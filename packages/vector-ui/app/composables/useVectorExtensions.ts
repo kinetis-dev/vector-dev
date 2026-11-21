@@ -24,11 +24,23 @@ export function pageLabel(label: VectorPageLabel | undefined): string | undefine
     return typeof label === 'function' ? label() : label
 }
 
-/** An addon rendered under every form input of the listed field types. */
+/** Where an input addon renders: in a row under the input, or inside the input at its inline end. */
+export type VectorInputAddonPlacement = 'below' | 'inner'
+
+/** The placements defineInputAddon() accepts. */
+export const INPUT_ADDON_PLACEMENTS: readonly VectorInputAddonPlacement[] = ['below', 'inner']
+
+/** An addon rendered with every form input of the listed field types. */
 export interface VectorInputAddon {
     /** Field types (`string`, `text`, `richtext`, …) whose inputs get the addon. */
     types: string[]
     component: Component
+    /**
+     * `below` (the default): in a row under the input, in the record form and a loose field list.
+     * `inner`: inside the input itself, at its inline end (Vuetify's `append-inner`) — only the
+     * text and textarea inputs render it.
+     */
+    placement: VectorInputAddonPlacement
 }
 
 /** A command palette entry under "Commands": run() is given what was typed. */
@@ -79,11 +91,13 @@ export function useVectorExtensions() {
     }
 }
 
-/** The input addons for one field type, in registration order. */
-export function useVectorInputAddons(type: () => string) {
+/** The input addons for one field type at one placement (`below` by default), in registration order. */
+export function useVectorInputAddons(type: () => string, placement: () => VectorInputAddonPlacement = () => 'below') {
     const { inputAddons } = useVectorExtensions()
 
-    return computed(() => [...inputAddons.entries()].filter(([, addon]) => addon.types.includes(type())).map(([name, addon]) => ({ name, component: addon.component })))
+    return computed(() => [...inputAddons.entries()]
+        .filter(([, addon]) => addon.types.includes(type()) && addon.placement === placement())
+        .map(([name, addon]) => ({ name, component: addon.component })))
 }
 
 /**
