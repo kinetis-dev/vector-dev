@@ -86,6 +86,7 @@ export default {
                 inProgress: 'This change is being made in another window. Try again in a moment to see the outcome.',
             },
             context: {
+                home: 'Home',
                 page: 'On {path}',
                 list: '{label} list',
                 record: '{label} #{id}',

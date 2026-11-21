@@ -88,6 +88,29 @@ describe('the assistant', () => {
         wrapper.unmount()
     })
 
+    it('names the home page "Home" rather than its path', async () => {
+        standaloneApi()
+        const auth = useVectorAuthStore()
+        auth.$patch({ user: { id: 1, name: 'Ada' }, token: 'token', expiresAt: Date.now() + 3_600_000 })
+        cleanups.push(() => auth.$patch({ user: null, token: null, expiresAt: 0 }))
+        const router = useRouter()
+        const before = router.currentRoute.value.fullPath
+        const base = useAppConfig().vector.basePath
+        // the home page renders the admin's own shell, with a drawer of its own: leave it afterwards
+        await router.push(base === '' ? '/' : base)
+        try {
+            const wrapper = await mount()
+            cleanups.push(() => wrapper.unmount())
+            await wrapper.find('[data-ai-assistant-toggle]').trigger('click')
+            await flushPromises()
+
+            expect(wrapper.find('[data-ai-assistant-context]').text()).toBe('Home')
+        } finally {
+            await router.push(before)
+            await flushPromises()
+        }
+    })
+
     it('streams an answer, and links the records the admin knows', async () => {
         standaloneApi()
         const turn = endpoint('/vector/ai/assistant', STREAMED, 'POST')
