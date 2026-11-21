@@ -30,8 +30,8 @@ use Kinetis\VectorAi\Settings\DataDefault;
  * sense inverts: only a resource, and within it only a field, that opts
  * in with `ai.send` true is sent. Built per request: the user and the
  * settings are this request's, and so is what it remembers of how each
- * resource looks to the user (visible(); forgetVisible() lets a job that
- * runs in one scope ask again).
+ * resource looks to the user (visible()) — a queued action's chunk runs
+ * on a scope of its own, so that is one chunk's.
  */
 final readonly class ModelBoundary
 {
@@ -517,21 +517,20 @@ final readonly class ModelBoundary
     }
 
     /**
-     * Forgets how each resource looked to this user (visible()), so the
-     * next question asks their `viewField` policy again: what a long job
-     * that runs in one scope — each chunk of ProposeRewrites — calls
-     * before a chunk, so a field hidden since the last one is hidden in
-     * the next.
+     * Takes $visible as how this user sees its resource: a descriptor
+     * ResourceService::visible() already answered for this request's user
+     * — VisibleResources::all()'s, which GET /vector/schema decided — so
+     * visible() asks no `viewField` policy of it again.
      */
-    public function forgetVisible(): void
+    public function rememberVisible(ResourceDescriptor $visible): void
     {
-        $this->seen->exchangeArray([]);
+        $this->seen[$visible->slug()] = $visible;
     }
 
     /**
      * $resource as this user sees it — ResourceService::visible(), which
      * drops the fields their `viewField` policy hides — asked once per
-     * resource for the life of this boundary (or until forgetVisible()),
+     * resource for the life of this boundary — one request's, or one chunk's —
      * however many rows, search columns and references read it. Asking it again of a resource it
      * answered for hides nothing more, so any descriptor of the same slug
      * shares the answer.

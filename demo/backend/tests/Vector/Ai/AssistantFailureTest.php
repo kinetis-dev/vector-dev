@@ -16,14 +16,19 @@ use Kinetis\Vector\Widgets\VectorWidget;
 use Kinetis\Vector\Widgets\WidgetRequest;
 use Kinetis\Vector\Widgets\WidgetResult;
 use Kinetis\VectorAi\Assistant\Assistant;
+use Kinetis\VectorAi\Assistant\AssistantLedger;
 use Kinetis\VectorAi\Assistant\RunawayToolCallsException;
 use Kinetis\VectorAi\Assistant\ToolBudget;
 use Kinetis\VectorAi\Providers\ResolvedProvider;
 use Kinetis\VectorAi\Testing\ScriptedProvider;
 use Kinetis\VectorAi\Testing\ScriptedReplies;
+use NeuronAI\Chat\Messages\AssistantMessage;
 use NeuronAI\Chat\Messages\Message;
+use NeuronAI\Chat\Messages\Usage;
 use NeuronAI\Chat\Messages\Stream\Chunks\TextChunk;
 use NeuronAI\Exceptions\ProviderException;
+use NeuronAI\HttpClient\StoppableHttpClient;
+use NeuronAI\Providers\ProviderResponse;
 use NeuronAI\Testing\FakeAIProvider;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Psr\Log\AbstractLogger;
@@ -37,7 +42,8 @@ use Psr\Log\LogLevel;
  * provider failed, an error when the run itself did — never the
  * provider's words, which can quote the prompt. The exception itself is
  * attached to the log line only under APP_ENV=development. Once the
- * browser has gone, a failure writes no error frame and is logged at info.
+ * browser has gone, a failure writes no error frame; the stop its leaving
+ * caused is logged at info, any other failure as before.
  */
 final class AssistantFailureTest extends AssistantTestCase
 {
@@ -80,7 +86,10 @@ final class AssistantFailureTest extends AssistantTestCase
 
         $rows = $this->usageRows(5);
         self::assertCount(1, $rows);
-        self::assertSame('failed:refused', $rows[0]['outcome']);
+        // cut mid-answer, without an HTTP status: the provider may have billed it, so it is estimated
+        self::assertSame('failed:refused' . AssistantLedger::ESTIMATED, $rows[0]['outcome']);
+        self::assertGreaterThan(0, (int) $rows[0]['input_tokens']);
+        self::assertGreaterThan(0, (int) $rows[0]['output_tokens'], '"Low on" was streamed back');
 
         $failed = $logger->find('An assistant run failed.');
         self::assertNotNull($failed);
@@ -126,16 +135,43 @@ final class AssistantFailureTest extends AssistantTestCase
         self::assertStringNotContainsString(BrokenWidget::SECRET, json_encode($logger->records, JSON_THROW_ON_ERROR), 'a log line carried the exception\'s message');
     }
 
-    public function testAFailureAfterTheBrowserLeftWritesNoErrorFrameAndIsNotLoggedAsAnError(): void
+    public function testABugAfterTheBrowserLeftWritesNoErrorFrameButIsStillLoggedAsAnError(): void
     {
         $logger = new RecordingLogger();
         [$assistant, $scope] = $this->assistant($logger, 9);
         $replies = ScriptedReplies::of([self::QUESTION => self::rounds([[['name' => 'vector_widget', 'arguments' => ['widget' => $this->lowStockWidget(), 'dashboard' => 'main']]]], 'Never answered.')]);
+        $connection = new SwitchableClientConnection();
 
         try {
-            // the same bug that is an error while the browser reads, after it left
-            $scope->instance(LowStockTable::class, new BrokenWidget());
-            $body = self::emit($assistant->stream(new ResolvedProvider(new ScriptedProvider($replies), 'test-fake', 'fake', 100), new GoneClientConnection(), 'Be brief.', 'c_gone', [['role' => 'user', 'content' => self::QUESTION]]));
+            // the browser leaves while the widget runs, and the widget has a bug
+            $scope->instance(LowStockTable::class, new BrokenAfterLeaving($connection));
+            $body = self::emit($assistant->stream(new ResolvedProvider(new ScriptedProvider($replies), 'test-fake', 'fake', 100), $connection, 'Be brief.', 'c_gone', [['role' => 'user', 'content' => self::QUESTION]]));
+        } finally {
+            $scope->dispose();
+        }
+
+        self::assertTrue($connection->gone);
+        self::assertSame([], self::ofType(self::frames($body), 'error'), 'no error frame is written to a browser that left');
+        self::assertNull($logger->find('An assistant run ended after the browser left.'), 'a bug is no stop the browser caused');
+
+        $failed = $logger->find('An assistant run failed.');
+        self::assertNotNull($failed);
+        self::assertSame(LogLevel::ERROR, $failed['level'], 'a bug is an error, whoever is left to see it');
+        self::assertSame('error', $failed['context']['category']);
+        self::assertSame(\LogicException::class, $failed['context']['exception_class']);
+        self::assertStringNotContainsString(BrokenWidget::SECRET, json_encode($logger->records, JSON_THROW_ON_ERROR));
+    }
+
+    public function testTheStopTheBrowserLeavingCausedIsLoggedAtInfo(): void
+    {
+        $logger = new RecordingLogger();
+        [$assistant, $scope] = $this->assistant($logger, 10);
+        $connection = new SwitchableClientConnection();
+        $provider = new StoppedByLeaving();
+        $provider->connection = $connection;
+
+        try {
+            $body = self::emit($assistant->stream(new ResolvedProvider($provider, 'test-fake', 'fake', 100), $connection, 'Be brief.', 'c_stop', [['role' => 'user', 'content' => self::QUESTION]]));
         } finally {
             $scope->dispose();
         }
@@ -143,17 +179,125 @@ final class AssistantFailureTest extends AssistantTestCase
         self::assertSame([], self::ofType(self::frames($body), 'error'), 'no error frame is written to a browser that left');
         self::assertNull($logger->find('An assistant run failed.'));
 
-        foreach ($logger->records as $record) {
-            self::assertNotContains($record['level'], [LogLevel::ERROR, LogLevel::CRITICAL, LogLevel::ALERT, LogLevel::EMERGENCY, LogLevel::WARNING], "logged at {$record['level']}: {$record['message']}");
-        }
-
         $gone = $logger->find('An assistant run ended after the browser left.');
         self::assertNotNull($gone);
         self::assertSame(LogLevel::INFO, $gone['level']);
         self::assertSame('client_gone', $gone['context']['outcome']);
-        self::assertSame(\LogicException::class, $gone['context']['exception_class']);
+        self::assertSame(ProviderException::class, $gone['context']['exception_class']);
         self::assertArrayNotHasKey('exception', $gone['context']);
-        self::assertStringNotContainsString(BrokenWidget::SECRET, json_encode($logger->records, JSON_THROW_ON_ERROR));
+
+        foreach ($logger->records as $record) {
+            self::assertNotContains($record['level'], [LogLevel::ERROR, LogLevel::CRITICAL, LogLevel::ALERT, LogLevel::EMERGENCY], "logged at {$record['level']}: {$record['message']}");
+        }
+    }
+
+    public function testARunTheBrowserLeftThatEndsCleanlyIsLoggedAsClientGoneNotAnswered(): void
+    {
+        $logger = new RecordingLogger();
+        [$assistant, $scope] = $this->assistant($logger, 11);
+        $connection = new SwitchableClientConnection();
+        $provider = new StoppedCleanlyByLeaving();
+        $provider->connection = $connection;
+
+        try {
+            self::emit($assistant->stream(new ResolvedProvider($provider, 'test-fake', 'fake', 100), $connection, 'Be brief.', 'c_clean', [['role' => 'user', 'content' => self::QUESTION]]));
+        } finally {
+            $scope->dispose();
+        }
+
+        self::assertNull($logger->find('An assistant run ended.'), 'nobody was there to be answered');
+        self::assertNull($logger->find('An assistant run failed.'));
+        $gone = $logger->find('An assistant run ended after the browser left.');
+        self::assertNotNull($gone);
+        self::assertSame(LogLevel::INFO, $gone['level']);
+        self::assertSame('client_gone', $gone['context']['outcome']);
+        self::assertArrayNotHasKey('exception_class', $gone['context'], 'nothing failed');
+
+        // the stopped stream's usage never arrived: one row, estimated from what was sent and streamed back
+        $rows = $this->usageRows(11);
+        self::assertCount(1, $rows);
+        self::assertSame('client_gone' . AssistantLedger::ESTIMATED, $rows[0]['outcome']);
+        self::assertGreaterThanOrEqual((int) ceil(strlen('Be brief.' . self::QUESTION) / AssistantLedger::ESTIMATE_BYTES), (int) $rows[0]['input_tokens']);
+        self::assertSame(1, (int) $rows[0]['output_tokens'], '"Low " streamed back: 4 bytes');
+    }
+
+    public function testAStoppedCallWhoseUsageArrivedIsRecordedAsReportedNotEstimatedToo(): void
+    {
+        $logger = new RecordingLogger();
+        [$assistant, $scope] = $this->assistant($logger, 12);
+        $connection = new SwitchableClientConnection();
+        $provider = new StoppedCleanlyByLeaving();
+        $provider->connection = $connection;
+        // as Anthropic reports it: the input up front, the output so far
+        $provider->usage = new Usage(321, 7);
+
+        try {
+            self::emit($assistant->stream(new ResolvedProvider($provider, 'test-fake', 'fake', 100), $connection, 'Be brief.', 'c_reported', [['role' => 'user', 'content' => self::QUESTION]]));
+        } finally {
+            $scope->dispose();
+        }
+
+        $rows = $this->usageRows(12);
+        self::assertCount(1, $rows, 'one row a call, never an estimate beside it');
+        self::assertSame('client_gone', $rows[0]['outcome']);
+        self::assertSame([321, 7], [(int) $rows[0]['input_tokens'], (int) $rows[0]['output_tokens']]);
+    }
+
+    public function testACallInFlightWhenTheBrowserLeftIsEstimated(): void
+    {
+        $logger = new RecordingLogger();
+        [$assistant, $scope] = $this->assistant($logger, 13);
+        $written = '';
+        // the browser leaves once it has been sent the first words; this provider, unlike a stoppable one, talks on
+        $connection = new LeavesOnceItSaw(static function () use (&$written): bool {
+            return str_contains($written, 'text-delta');
+        });
+
+        try {
+            $response = $assistant->stream(new ResolvedProvider(new KeepsTalking(), 'test-fake', 'fake', 100), $connection, 'Be brief.', 'c_inflight', [['role' => 'user', 'content' => self::QUESTION]]);
+            ob_start(static function (string $chunk) use (&$written): string {
+                $written .= $chunk;
+
+                return '';
+            });
+
+            try {
+                ($response->getEmitter())();
+            } finally {
+                ob_end_flush();
+            }
+        } finally {
+            $scope->dispose();
+        }
+
+        self::assertStringNotContainsString('word 50', $written, 'the run was read no further');
+        $rows = $this->usageRows(13);
+        self::assertCount(1, $rows);
+        self::assertSame('client_gone' . AssistantLedger::ESTIMATED, $rows[0]['outcome']);
+        self::assertGreaterThan(0, (int) $rows[0]['input_tokens']);
+        self::assertGreaterThan(0, (int) $rows[0]['output_tokens']);
+        self::assertSame('client_gone', $logger->find('An assistant run ended after the browser left.')['context']['outcome'] ?? null);
+    }
+
+    public function testACallWhoseUsageWasReportedIsNeverEstimated(): void
+    {
+        $this->script([self::QUESTION => self::rounds([[['name' => 'vector_resources']]], 'There are products#1.')]);
+        [$assistant, $scope] = $this->assistant(new RecordingLogger(), 14);
+
+        try {
+            $resolver = $scope->get(\Kinetis\VectorAi\Providers\ProviderResolver::class);
+            self::assertInstanceOf(\Kinetis\VectorAi\Providers\ProviderResolver::class, $resolver);
+            $user = $scope->get(CurrentUserInterface::class);
+            self::assertInstanceOf(CurrentUserInterface::class, $user);
+            self::emit($assistant->stream($resolver->for(\Kinetis\VectorAi\Feature::Assistant, $user), new UnobservableClientConnection(), 'Be brief.', 'c_real', [['role' => 'user', 'content' => self::QUESTION]]));
+        } finally {
+            $scope->dispose();
+        }
+
+        $rows = $this->usageRows(14);
+        self::assertSame(['answered', 'answered'], array_column($rows, 'outcome'), 'one row a call, as reported');
+        self::assertCount(count($this->calls()), $rows);
+        self::assertGreaterThan(0, (int) $rows[0]['input_tokens']);
     }
 
     public function testAModelCallingPastItsBudgetIsLoggedAsAnError(): void
@@ -277,13 +421,103 @@ final class BrokenWidget extends VectorWidget
     }
 }
 
-/** A connection whose browser has already left. */
-final class GoneClientConnection implements ClientConnectionInterface
+/** A connection whose browser leaves when a test says so. */
+final class SwitchableClientConnection implements ClientConnectionInterface
 {
+    public bool $gone = false;
+
     #[\Override]
     public function isGone(): bool
     {
-        return true;
+        return $this->gone;
+    }
+}
+
+/** A provider whose stream writes a little, then is stopped by the browser leaving, as StoppableHttpClient stops it before any text. */
+final class StoppedByLeaving extends FakeAIProvider
+{
+    public ?SwitchableClientConnection $connection = null;
+
+    /** @return Generator<int, TextChunk, mixed, never> */
+    #[\Override]
+    public function stream(Message ...$messages): Generator
+    {
+        yield new TextChunk('msg_1', 'Low ');
+
+        if ($this->connection !== null) {
+            $this->connection->gone = true;
+        }
+
+        throw new ProviderException('The stream was stopped before the answer started.');
+    }
+}
+
+/** A provider whose stream StoppableHttpClient stops when the browser leaves: it ends cleanly, with the text so far and no usage. */
+final class StoppedCleanlyByLeaving extends FakeAIProvider
+{
+    public ?SwitchableClientConnection $connection = null;
+
+    /** What the provider reported before it was stopped, if anything. */
+    public ?Usage $usage = null;
+
+    /** @return Generator<int, TextChunk, mixed, ProviderResponse> */
+    #[\Override]
+    public function stream(Message ...$messages): Generator
+    {
+        yield new TextChunk('msg_1', 'Low ');
+
+        if ($this->connection !== null) {
+            $this->connection->gone = true;
+        }
+
+        $message = (new AssistantMessage('Low '))->setStopReason(StoppableHttpClient::STOP_REASON)->setId('msg_1');
+
+        if ($this->usage !== null) {
+            $message->setUsage($this->usage);
+        }
+
+        return new ProviderResponse(message: $message);
+    }
+}
+
+/** A provider that streams fifty words and would go on, as a call no stop reaches does. */
+final class KeepsTalking extends FakeAIProvider
+{
+    /** @return Generator<int, TextChunk, mixed, ProviderResponse> */
+    #[\Override]
+    public function stream(Message ...$messages): Generator
+    {
+        for ($i = 1; $i <= 50; $i++) {
+            yield new TextChunk('msg_1', "word {$i} ");
+        }
+
+        return new ProviderResponse(message: (new AssistantMessage('…'))->setId('msg_1'));
+    }
+}
+
+/** A widget with a bug, run while the browser leaves. */
+final class BrokenAfterLeaving extends VectorWidget
+{
+    public function __construct(private readonly SwitchableClientConnection $connection) {}
+
+    #[\Override]
+    public function label(): string
+    {
+        return 'Broken';
+    }
+
+    #[\Override]
+    public function type(): string
+    {
+        return self::TABLE;
+    }
+
+    #[\Override]
+    public function calculate(WidgetRequest $request): WidgetResult
+    {
+        $this->connection->gone = true;
+
+        throw new \LogicException(BrokenWidget::SECRET);
     }
 }
 

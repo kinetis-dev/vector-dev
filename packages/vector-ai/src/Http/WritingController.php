@@ -13,6 +13,7 @@ use Kinetis\Validation\Violation;
 use Kinetis\Vector\Exception\RecordNotFoundException;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Registry\ResourceDescriptor;
+use Kinetis\VectorAi\Auth\AiAvailability;
 use Kinetis\VectorAi\Writing\WritingAssistant;
 use Kinetis\VectorAi\Writing\WritingGuard;
 use Kinetis\VectorAi\Writing\WritingOperation;
@@ -51,6 +52,7 @@ final readonly class WritingController
         private ResourceService $resources,
         private WritingGuard $guard,
         private WritingAssistant $writing,
+        private AiAvailability $availability,
     ) {}
 
     #[Post('/writing/{resource}/{field}')]
@@ -62,7 +64,7 @@ final readonly class WritingController
         $this->guard->sendable($visible, $field);
         $provider = $this->guard->provider();
 
-        if (($spent = $this->guard->budgetSpent()) !== null) {
+        if (($spent = $this->availability->budgetSpent()) !== null) {
             return $spent;
         }
 

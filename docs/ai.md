@@ -348,8 +348,10 @@ last the user's or an approval; `context` the page the
 person is on, each value at most 200 (`path`) or 64 characters. The body
 is at most 64 KiB (65,536 bytes). Any of these refused is a `422` naming it.
 
-The drawer keeps within those caps itself: it sends the last 40
-messages, cuts any earlier answer of the assistant's longer than 8,000
+The drawer keeps within those caps itself: it does not send a message
+of the person's own longer than 8,000 characters — typed, or asked from
+the palette — but leaves it in the input to shorten and says why, so it
+never enters the conversation; it sends the last 40 messages, cuts any earlier answer of the assistant's longer than 8,000
 characters (code points, as the server counts them) to that length,
 ending it with `…` — an answer near the model's output cap can be
 longer, and cutting it rather than dropping it keeps the turns
@@ -723,8 +725,8 @@ help off, unconfigured, unbudgeted or refused to them by `canUse()`, a
 translation without a language tag, or guidance over 300 characters
 fails the **whole job**, with that reason, before the model is asked
 anything. These are asked again at the start of every chunk, with the
-`ai` settings read anew (a job runs all its chunks in one request
-scope): should one stop holding once a chunk has run — writing help
+`ai` settings read anew and the fields as the admin sees them then
+(Vector runs each chunk on a request scope of its own): should one stop holding once a chunk has run — writing help
 switched off, the key removed — the rest of the selection is not sent
 (`unavailable`), and the job still ends with the CSV of what was
 proposed.
@@ -872,6 +874,18 @@ impersonator, the feature, the provider and model, the tokens in and
 out, the duration, the tool calls and the outcome. The daily budget is
 summed from it per actor since midnight UTC. The numbers come from each
 answer, never from a counter kept in the worker.
+
+An assistant call that ends with no tokens reported — its stream
+stopped because the browser left (the usage a provider sends at the end
+never arrives), cut or failed without an HTTP status, or still in
+flight when the run was abandoned — is recorded with an estimate
+instead, so it still counts against the budget: one token for every 4
+bytes of the instructions, the conversation, each call's newest message
+and the text streamed back. Its outcome ends in `:estimated`
+(`client_gone:estimated`, `failed:refused:estimated`). A call refused
+with an HTTP status generated nothing and is recorded with none; one
+whose usage was reported is recorded as reported, never estimated as
+well — each call is one row.
 
 (ai-failures)=
 A failed call is reported by category — `timeout`, `too_large`,

@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace Kinetis\VectorAi\Shell;
 
+use Kinetis\Container\AppScope;
 use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Logging\SafeLogger;
 use Kinetis\Vector\Attributes\ShellContributor;
 use Kinetis\Vector\Http\ShellContributorInterface;
-use Kinetis\Vector\Query\ResourceService;
+use Kinetis\Vector\Http\VisibleResources;
 use Kinetis\VectorAi\Auth\AiAvailability;
 use Kinetis\VectorAi\Feature;
 use Kinetis\VectorAi\Governance\ModelBoundary;
@@ -53,20 +54,47 @@ final readonly class AiShellContributor implements ShellContributorInterface
     public function __construct(
         private AiAvailability $availability,
         private LoggerInterface $logger,
-        private ResourceService $resources,
+        private VisibleResources $visible,
         private ModelBoundary $boundary,
+        private CurrentUserInterface $user,
+        private AppScope $app,
     ) {}
 
-    /** @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object, excludedFields: object} */
+    /**
+     * The flags for $user. For this request's user — whom SchemaController
+     * passes — from this request's services, reusing the resources and
+     * permissions the descriptor already decided (VisibleResources). For
+     * anyone else, from a request scope of their own, so that every answer
+     * — the access policy, the budget, the resources they may list, the
+     * fields they see — is theirs, not this request's user's.
+     *
+     * @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object, excludedFields: object}
+     */
     #[\Override]
     public function capabilities(CurrentUserInterface $user): array
     {
-        // $user is the request's, as SchemaController passes it: the one AiAvailability and ModelBoundary already hold
-        return $this->offering(self::shipped());
+        if ($user === $this->user) {
+            return $this->offering(self::shipped());
+        }
+
+        $scope = $this->app->createRequestScope();
+
+        try {
+            $scope->instance(CurrentUserInterface::class, $user);
+            $theirs = $scope->get(self::class);
+
+            if (!$theirs instanceof self) {
+                throw new \LogicException(self::class . ' did not resolve.');
+            }
+
+            return $theirs->offering(self::shipped());
+        } finally {
+            $scope->dispose();
+        }
     }
 
     /**
-     * The flags for this request's user when $features are the ones that ship. Whether a
+     * The flags for this contributor's user — the request's — when $features are the ones that ship. Whether a
      * feature ships is asked first, so an unshipped one costs no settings,
      * ledger, resolver or key lookup. Any failure on the way — a missing
      * table, a transport that was not built, a policy that throws — turns
@@ -124,10 +152,9 @@ final readonly class AiShellContributor implements ShellContributorInterface
         $excluded = [];
         $fields = [];
 
-        foreach ($this->resources->registry()->resources() as $slug => $resource) {
-            if ($this->resources->permissions($resource)['viewAny'] !== true) {
-                continue;
-            }
+        // the resources the descriptor lists, as it decided them: no policy is asked a second time
+        foreach ($this->visible->all() as $slug => ['descriptor' => $resource]) {
+            $this->boundary->rememberVisible($resource);
 
             if (!$this->boundary->allows($resource)) {
                 $excluded[$slug] = true;

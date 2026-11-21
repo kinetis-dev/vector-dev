@@ -1,5 +1,5 @@
 import { approvalFrame, approvalOf, readDataStream, recordOfToolOutput, type ApprovalFrame, type DataStreamFrame } from '../utils/assistantStream'
-import { fitAssistantMessages, type AssistantMessage } from '../utils/assistantBody'
+import { ASSISTANT_MAX_MESSAGE_CHARS, fitAssistantMessages, messageChars, type AssistantMessage } from '../utils/assistantBody'
 
 /**
  * Where a proposed change stands, as the drawer shows it: the server's
@@ -75,6 +75,8 @@ export function useVectorAssistant() {
     const turns = useState<AssistantTurn[]>('vector-ai.assistant.turns', () => [])
     const conversationId = useState('vector-ai.assistant.conversation', newConversation)
     const busy = useState('vector-ai.assistant.busy', () => false)
+    /** Why the last message was not sent, to show above the input; null when it was. */
+    const refused = useState<string | null>('vector-ai.assistant.refused', () => null)
     const api = useVectorApi()
     const host = useVectorHost()
     const { t } = useVectorT()
@@ -171,10 +173,23 @@ export function useVectorAssistant() {
         }
     }
 
-    /** Sends $text as the user's next message. */
+    /**
+     * Sends $text as the user's next message. One longer than the server
+     * takes (ASSISTANT_MAX_MESSAGE_CHARS, counted in code points as the
+     * server counts it) is not sent and not added to the conversation —
+     * every later turn would replay it and be refused — but left in the
+     * input to shorten, saying why: from the drawer, and from the
+     * palette's "Ask the assistant…", which has no length limit of its own.
+     */
     async function send(text: string) {
         const content = text.trim()
         if (content === '' || busy.value) return
+        if (messageChars(content) > ASSISTANT_MAX_MESSAGE_CHARS) {
+            draft.value = content
+            refused.value = t('ai.assistant.tooLong', { max: ASSISTANT_MAX_MESSAGE_CHARS.toLocaleString() })
+            return
+        }
+        refused.value = null
         turns.value.push({ id: newId(), role: 'user', content, tools: [], approvals: [], failed: null, streaming: false })
         draft.value = ''
         await run()
@@ -240,6 +255,7 @@ export function useVectorAssistant() {
         if (busy.value) return
         turns.value = []
         draft.value = ''
+        refused.value = null
         conversationId.value = newConversation()
     }
 
@@ -252,6 +268,7 @@ export function useVectorAssistant() {
     function forget() {
         turns.value = []
         draft.value = ''
+        refused.value = null
         conversationId.value = newConversation()
         open.value = false
     }
@@ -277,5 +294,5 @@ export function useVectorAssistant() {
         return aiFailureMessage(error, t('ai.assistant.failed'), data)
     }
 
-    return { open, draft, turns, busy, conversationId, send, retry, reset, forget, ask, decide }
+    return { open, draft, turns, busy, refused, conversationId, send, retry, reset, forget, ask, decide }
 }

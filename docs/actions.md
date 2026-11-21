@@ -105,7 +105,11 @@ with no records and the same `jobId`: return
 file on the job — the **Jobs** page offers it for download, as an
 export's — `danger()` to fail the job, or null (the default) for
 nothing. `finish()` flushes nothing. Keep what it needs from the chunks
-somewhere keyed by `jobId`, since each chunk is a fresh request.
+somewhere keyed by `jobId`, since each chunk is a fresh request: every
+chunk, and `finish()`, runs on a request scope of its own, as the admin
+who started the job, so nothing a request-scoped service remembered in
+one chunk — a cache, settings it read, which fields the admin sees — is
+what the next one sees.
 
 ## See also
 

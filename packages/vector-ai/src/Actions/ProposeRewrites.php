@@ -10,9 +10,9 @@ use Kinetis\Vector\Actions\VectorAction;
 use Kinetis\Vector\Fields\Field;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Store\JobStore;
+use Kinetis\VectorAi\Auth\AiAvailability;
 use Kinetis\VectorAi\Failure\AiFailure;
 use Kinetis\VectorAi\Failure\AiFailureMapper;
-use Kinetis\VectorAi\Governance\ModelBoundary;
 use Kinetis\VectorAi\Http\AiRequestException;
 use Kinetis\VectorAi\Providers\ResolvedProvider;
 use Kinetis\VectorAi\Settings\AiSettingsReader;
@@ -94,7 +94,7 @@ abstract class ProposeRewrites extends VectorAction
         private readonly RewriteStore $store,
         private readonly AiFailureMapper $failures,
         private readonly AiSettingsReader $settings,
-        private readonly ModelBoundary $boundary,
+        private readonly AiAvailability $availability,
     ) {}
 
     /** The field whose text is rewritten: a string, text, Markdown or rich-text field. */
@@ -172,10 +172,8 @@ abstract class ProposeRewrites extends VectorAction
             return ActionResponse::danger('Rewrite proposals run only as a background job.');
         }
 
-        // a job runs every chunk in one scope: a switch-off saved since the last chunk must be seen by this one,
-        // and so must a field the user's viewField policy has hidden since
+        // a switch-off saved since the last chunk must be seen by this one, whatever scope it runs in
         $this->settings->refresh();
-        $this->boundary->forgetVisible();
 
         try {
             [$visible, $field, $provider, $instructions] = $this->configured($request->resource);
@@ -201,7 +199,7 @@ abstract class ProposeRewrites extends VectorAction
         // the records done in an earlier delivery of this chunk, read once; this chunk's own are added as it goes
         $done = $this->store->doneAmong($request->jobId, self::keys($request));
         // today's budget left, read once; every call this chunk makes is counted off it
-        $budget = $this->guard->remaining();
+        $budget = $this->availability->remaining();
 
         foreach ($request->records as $record) {
             $id = $record[$key] ?? null;

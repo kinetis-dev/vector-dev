@@ -11,7 +11,6 @@ use Kinetis\VectorAi\Feature;
 use Kinetis\VectorAi\Governance\ModelBoundary;
 use Kinetis\VectorAi\Http\AiRequestException;
 use Kinetis\VectorAi\Providers\ResolvedProvider;
-use Psr\Http\Message\ResponseInterface;
 
 /**
  * What decides whether a field's text may be sent for writing help, as
@@ -25,9 +24,11 @@ use Psr\Http\Message\ResponseInterface;
  *   and the view's permission (`create`, or `update`) on the resource;
  * - mayUpdate(): that record's own `update`;
  * - sendable(): what ModelBoundary lets a model be sent;
- * - provider(): writing on, configured, budgeted and this user's to use;
- * - remaining() and budgetSpent(): today's token budget, and the 429 a
- *   spent one is answered with — AiAvailability's, as every AI endpoint's.
+ * - provider(): writing on, configured, budgeted and this user's to use.
+ *
+ * Today's token budget is AiAvailability's to answer (remaining(),
+ * budgetSpent()), asked by the writing endpoint and ProposeRewrites
+ * directly, as by every AI endpoint.
  *
  * Refusals are AiRequestExceptions with the status the endpoint answers.
  * Built per request.
@@ -118,17 +119,5 @@ final readonly class WritingGuard
     public function provider(): ResolvedProvider
     {
         return $this->availability->provider(Feature::Writing);
-    }
-
-    /** How many of today's tokens this user has left. */
-    public function remaining(): int
-    {
-        return $this->availability->remaining();
-    }
-
-    /** The 429 this user's spent budget is answered with, or null while tokens are left: AiAvailability::budgetSpent(). */
-    public function budgetSpent(): ?ResponseInterface
-    {
-        return $this->availability->budgetSpent();
     }
 }

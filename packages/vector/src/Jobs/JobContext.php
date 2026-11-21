@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kinetis\Vector\Jobs;
 
 use Kinetis\Authorization\Exception\AuthorizationException;
+use Kinetis\Container\AppScope;
 use Kinetis\Container\RequestScope;
 use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Validation\Exception\ValidationException;
@@ -35,6 +36,7 @@ final readonly class JobContext
         public JobStore $jobs,
         public NotificationStore $notifications,
         private LoggerInterface $log,
+        private AppScope $app,
     ) {}
 
     /**
@@ -61,6 +63,45 @@ final readonly class JobContext
         $service = $this->scope->get($class);
 
         return is_object($service) ? $service : throw new \LogicException("{$class} did not resolve to an object.");
+    }
+
+    /**
+     * Runs $body on a request scope of its own — created as the worker
+     * creates the job's, with the job's actor registered on it as actAs()
+     * registered it here — and disposes of it after: what each chunk of a
+     * queued action runs in (RunActionJob), so nothing a request-scoped
+     * service remembered during one chunk — a cache, the settings it read,
+     * how a resource looked to the admin — is what the next one sees.
+     * $body is given the JobContext of that scope.
+     *
+     * @template T
+     * @param \Closure(JobContext): T $body
+     * @return T
+     */
+    public function inFreshScope(\Closure $body): mixed
+    {
+        $user = $this->scope->get(CurrentUserInterface::class);
+        $actor = $this->scope->get(ActorContext::class);
+
+        if (!$user instanceof CurrentUserInterface || !$actor instanceof ActorContext) {
+            throw new \LogicException('inFreshScope() runs after actAs() registered the job\'s actor.');
+        }
+
+        $scope = $this->app->createRequestScope();
+
+        try {
+            $scope->instance(CurrentUserInterface::class, $user);
+            $scope->instance(ActorContext::class, $actor);
+            $context = $scope->get(self::class);
+
+            if (!$context instanceof self) {
+                throw new \LogicException('JobContext did not resolve.');
+            }
+
+            return $body($context);
+        } finally {
+            $scope->dispose();
+        }
     }
 
     /**

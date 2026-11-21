@@ -24,7 +24,7 @@ const host = useVectorHost()
 const appConfig = useAppConfig()
 const route = useRoute()
 const { t } = useVectorT()
-const { open, draft, turns, busy, send, retry, reset, decide } = useVectorAssistant()
+const { open, draft, turns, busy, refused, send, retry, reset, decide } = useVectorAssistant()
 
 const shown = computed(() => aiOffered(aiCapabilities(host.schema.value), 'assistant'))
 const writes = computed(() => aiOffered(aiCapabilities(host.schema.value), 'assistantWrites'))
@@ -113,6 +113,9 @@ onMounted(() => {
                     </div>
                     <v-divider />
                     <div class="pa-3">
+                        <v-alert v-if="refused" type="warning" variant="tonal" density="compact" class="mb-2" data-ai-assistant-refused>
+                            {{ refused }}
+                        </v-alert>
                         <v-textarea
                             v-model="draft"
                             :placeholder="t('ai.assistant.placeholder')"

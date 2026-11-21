@@ -186,6 +186,23 @@ final class AssistantApprovalsTest extends ApprovalsTestCase
         self::assertSame('required', $errors['errors'][0]['code']);
     }
 
+    public function testArgumentsNestedTooDeepToBeReadBackAreRefusedAndNothingIsStored(): void
+    {
+        // one level past what a stored row is read back with: approving or rejecting it could never read it
+        $value = 7;
+
+        for ($i = 0; $i < ApprovalStore::MAX_DEPTH; $i++) {
+            $value = [$value];
+        }
+
+        $run = $this->propose(['resource' => 'products', 'id' => (string) $this->product, 'values' => ['stock' => $value]]);
+
+        self::assertSame(200, $run['status']);
+        self::assertSame([], $run['approvals']);
+        self::assertSame([], $this->rows());
+        self::assertSame([ProposingTool::TOO_DEEP], self::toolErrors($this->calls()[1]));
+    }
+
     public function testAResourceOrFieldKeptFromTheModelIsRefused(): void
     {
         $profiles = $this->propose(['resource' => 'profiles', 'id' => '1', 'values' => ['name' => 'Ada']]);

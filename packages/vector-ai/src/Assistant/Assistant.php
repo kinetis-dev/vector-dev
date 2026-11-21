@@ -35,6 +35,7 @@ use NeuronAI\Chat\Messages\AssistantMessage;
 use NeuronAI\Chat\Messages\ContentBlocks\TextContent;
 use NeuronAI\Chat\Messages\Message;
 use NeuronAI\Chat\Messages\UserMessage;
+use NeuronAI\Exceptions\ProviderException;
 use NeuronAI\Observability\ObservabilityEvent;
 use NeuronAI\Tools\ToolInterface;
 use NeuronAI\Workflow\Streaming\ProtocolEvent;
@@ -183,14 +184,15 @@ final readonly class Assistant
      * after the tool result that stored it. It starts when the response is
      * emitted. $connection is the request's: once the browser has gone, a
      * failure writes no error frame — nobody reads it, and the connection
-     * is closed — and is logged at info as the run's end after the browser
-     * left, not as a failure (told()).
+     * is closed — and the stop their leaving caused is logged at info as
+     * the run's end after the browser left; any other failure is logged as
+     * one (told()).
      *
      * @param list<array{role: 'user'|'assistant', content: string}|array{role: 'approval', id: string}> $conversation
      */
     public function stream(ResolvedProvider $provider, ClientConnectionInterface $connection, string $instructions, string $conversationId, array $conversation): StreamedResponse
     {
-        [$agent, $ledger, $budget, $proposals] = $this->agent($provider, $instructions, $conversationId);
+        [$agent, $ledger, $budget, $proposals] = $this->agent($provider, $instructions, $conversationId, self::promptBytes($instructions, $conversation));
         $adapter = new VercelAIAdapter();
         $agent->setStreamAdapter(static fn (): VercelAIAdapter => $adapter);
 
@@ -207,7 +209,7 @@ final readonly class Assistant
      */
     public function answer(ResolvedProvider $provider, string $instructions, string $conversationId, array $conversation): array
     {
-        [$agent, $ledger, $budget, $proposals] = $this->agent($provider, $instructions, $conversationId);
+        [$agent, $ledger, $budget, $proposals] = $this->agent($provider, $instructions, $conversationId, self::promptBytes($instructions, $conversation));
         $started = hrtime(true);
 
         try {
@@ -229,12 +231,23 @@ final readonly class Assistant
     }
 
     /**
+     * The bytes of $instructions and $conversation as sent: what the
+     * ledger's estimate of a first call's input starts from.
+     *
+     * @param list<array{role: 'user'|'assistant', content: string}|array{role: 'approval', id: string}> $conversation
+     */
+    private static function promptBytes(string $instructions, array $conversation): int
+    {
+        return strlen($instructions) + array_sum(array_map(static fn (array $m): int => strlen($m['role'] === 'approval' ? $m['id'] : $m['content']), $conversation));
+    }
+
+    /**
      * A new agent for one run, with its tools, its budget, its ledger and
      * the proposals its write tools store.
      *
      * @return array{Agent, AssistantLedger, ToolBudget, Proposals}
      */
-    private function agent(ResolvedProvider $provider, string $instructions, string $conversationId): array
+    private function agent(ResolvedProvider $provider, string $instructions, string $conversationId, int $promptBytes): array
     {
         $limit = max(1, $this->settings->int('maxToolCallsPerRun', 8));
         $budget = new ToolBudget($limit);
@@ -256,7 +269,7 @@ final readonly class Assistant
             }
         }
 
-        $ledger = new AssistantLedger($this->usage, $this->actor, $this->failures, $provider);
+        $ledger = new AssistantLedger($this->usage, $this->actor, $this->failures, $provider, $promptBytes);
 
         $agent = Agent::make()
             ->setAiProvider($provider->provider)
@@ -275,11 +288,16 @@ final readonly class Assistant
      * frame follows the event during which its tool stored it. A failure
      * ends the stream with the adapter's neutral error frame and is logged
      * by category, never rethrown — the framework would log its message.
-     * Once $connection reports the browser gone, nothing more is written —
-     * the run's own error frame neither — and a failure — a Bedrock call,
-     * which cannot be stopped mid-stream, failing after the person left,
-     * or the stop their leaving caused — is logged at info (gone()), not
-     * as a failure: nobody is left to read either.
+     * Once $connection reports the browser gone, the run is read no
+     * further — its generator is dropped where it stands, so the model is
+     * not called again and no tool runs or proposal is stored for nobody —
+     * and nothing more is written, the run's own error frame neither.
+     * A run the browser left — read no further, stopped by the
+     * departure (stoppedByLeaving()), or ended cleanly with nobody there,
+     * as a stopped stream usually ends — is logged at info as outcome
+     * `client_gone` (gone()), never as `answered` and not as a failure;
+     * any other failure is still logged by failed(), as an error when it
+     * is the run's own.
      *
      * @param Generator<int, object, mixed, mixed> $events
      * @return Generator<int, ProtocolEvent, mixed, void>
@@ -289,26 +307,57 @@ final readonly class Assistant
         $started = hrtime(true);
 
         try {
-            foreach ($events as $event) {
-                // once the browser has gone nothing is written — the run's own error frame neither — but the run goes on being read
-                if ($event instanceof ProtocolEvent && !$connection->isGone()) {
+            // driven by hand, not foreach: the connection is asked before the run is advanced, since advancing
+            // it is what calls the model again and runs the next tool — once the browser has gone, neither happens
+            $finished = false;
+
+            while (!self::left($connection)) {
+                if (!$events->valid()) {
+                    $finished = true;
+
+                    break;
+                }
+
+                $event = $events->current();
+
+                if ($event instanceof ProtocolEvent) {
+                    $ledger->streamed(self::streamedText($event));
+
                     yield $event;
                 }
 
                 yield from self::unlessGone(self::announced($adapter, $proposals), $connection);
+
+                if (self::left($connection)) {
+                    break;
+                }
+
+                $events->next();
             }
 
-            yield from self::unlessGone(self::announced($adapter, $proposals), $connection);
+            if ($finished) {
+                yield from self::unlessGone(self::announced($adapter, $proposals), $connection);
+            } else {
+                // a failing run sends its closing and error frames before it rethrows: read on through those alone —
+                // never a model call or a tool — so the failure itself reaches the catch below and is told apart
+                while ($events->valid() && self::closing($events->current())) {
+                    $events->next();
+                }
+            }
         } catch (\Throwable $e) {
-            if ($connection->isGone()) {
+            $left = $connection->isGone();
+
+            if ($left && self::stoppedByLeaving($e)) {
                 $this->gone($e, $provider, $ledger, $budget, $started);
 
                 return;
             }
 
-            // empty when the run already sent its error frame
-            foreach ($adapter->error($e) as $frame) {
-                yield $frame;
+            // empty when the run already sent its error frame; nobody reads one once the browser has gone
+            if (!$left) {
+                foreach ($adapter->error($e) as $frame) {
+                    yield $frame;
+                }
             }
 
             $this->failed($e, $provider, $ledger, $budget, $started);
@@ -316,7 +365,62 @@ final readonly class Assistant
             return;
         }
 
+        // the browser left: the run was read no further, or — a stream stopped by the departure (StoppableHttpClient)
+        // ends cleanly — it ended with nobody there to read the answer
+        if ($connection->isGone()) {
+            $this->gone(null, $provider, $ledger, $budget, $started);
+
+            return;
+        }
+
         $this->ended($provider, $ledger, $budget, $started);
+    }
+
+    /** The text $event streams back from the model — its answer, reasoning or a tool call's arguments — for the ledger's estimate. */
+    private static function streamedText(ProtocolEvent $event): string
+    {
+        $text = match ($event->type) {
+            'text-delta', 'reasoning-delta' => $event->data['delta'] ?? '',
+            'tool-input-delta' => $event->data['inputTextDelta'] ?? '',
+            default => '',
+        };
+
+        return is_string($text) ? $text : '';
+    }
+
+    /**
+     * Whether $event only closes what the run already sent — a text or
+     * reasoning part's end, or its error — which a failing run yields
+     * before it rethrows. Reading past one starts no model call and no
+     * tool: the next event is of the same response, or the failure.
+     */
+    private static function closing(mixed $event): bool
+    {
+        return $event instanceof ProtocolEvent && in_array($event->type, ['text-end', 'reasoning-end', 'error'], true);
+    }
+
+    /**
+     * Whether $e is what the browser's leaving makes of a provider call:
+     * the stream it stopped (StoppableHttpClient) or the connection it cut
+     * ending before the answer did, which Neuron raises as a bare
+     * ProviderException. Anything else — a tool's bug, a runaway model, a
+     * database failure, a provider's HTTP refusal — is a failure whether
+     * or not anyone is left to see it.
+     */
+    private static function stoppedByLeaving(\Throwable $e): bool
+    {
+        return $e instanceof ProviderException;
+    }
+
+    /**
+     * Whether the browser has left by now: asked anew on every call, since
+     * it can leave while the run is being written to it.
+     *
+     * @phpstan-impure
+     */
+    private static function left(ClientConnectionInterface $connection): bool
+    {
+        return $connection->isGone();
     }
 
     /**
@@ -341,22 +445,28 @@ final readonly class Assistant
     }
 
     /**
-     * A run that failed after the browser left: an info line, as a run's
-     * end is, with what failed by class and place but no exception — the
-     * departure, or a failure nobody saw, is no server failure to alert on.
+     * A run that ended because the browser left — read no further, or
+     * stopped by the departure ($e) — as an info line, as a run's end is,
+     * with what stopped it by class and place but no exception: the
+     * departure is no server failure to alert on.
      */
-    private function gone(\Throwable $e, ResolvedProvider $provider, AssistantLedger $ledger, ToolBudget $budget, int $started): void
+    private function gone(?\Throwable $e, ResolvedProvider $provider, AssistantLedger $ledger, ToolBudget $budget, int $started): void
     {
+        // a call left in flight still counts against the budget, estimated
+        $ledger->settle();
         $this->logger->info('An assistant run ended after the browser left.', $this->context($provider, $ledger, $budget, $started) + [
             'outcome' => 'client_gone',
             'category' => $ledger->failure()?->category->value,
+        ] + ($e === null ? [] : [
             'exception_class' => $e::class,
             'exception_at' => $e->getFile() . ':' . $e->getLine(),
-        ]);
+        ]));
     }
 
     private function failed(\Throwable $e, ResolvedProvider $provider, AssistantLedger $ledger, ToolBudget $budget, int $started): void
     {
+        // a call in flight that the provider's own failure event did not record is the run's
+        $ledger->settle('failed:error');
         $failure = $ledger->failure();
         $context = $this->context($provider, $ledger, $budget, $started) + [
             'outcome' => 'failed',

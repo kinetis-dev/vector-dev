@@ -26,7 +26,6 @@ use Kinetis\VectorAi\Actions\ProposeRewrites;
 use Kinetis\VectorAi\Actions\RewriteStore;
 use Kinetis\VectorAi\Auth\AiAccessInterface;
 use Kinetis\VectorAi\Feature;
-use Kinetis\VectorAi\Governance\ModelBoundary;
 use Kinetis\VectorAi\Writing\WritingAssistant;
 use Kinetis\VectorAi\Writing\WritingOperation;
 use NeuronAI\Exceptions\ProviderException;
@@ -52,9 +51,6 @@ final class ProposeRewritesTest extends WritingTestCase
     /** @var array<int, ?string> order id => its notes before the test */
     private array $notes = [];
 
-    /** The orders' policy here, to hide a field mid-run. */
-    private ?LockedNotesPolicy $policy = null;
-
     #[\Override]
     protected function registerTestDoubles(AppScope $app, Config $config): void
     {
@@ -62,8 +58,7 @@ final class ProposeRewritesTest extends WritingTestCase
         $resolver = $app->get(ActorResolverInterface::class);
         self::assertInstanceOf(ActorResolverInterface::class, $resolver);
         $app->instance(ActorResolverInterface::class, new TestActors($resolver));
-        $this->policy = new LockedNotesPolicy();
-        $app->instance(AllowAllPolicy::class, $this->policy);
+        $app->instance(AllowAllPolicy::class, new LockedNotesPolicy());
         $app->instance(AiAccessInterface::class, new NoWritingFor(self::ACTOR_PREFIX . str_pad((string) self::NO_WRITING, 2, '0', STR_PAD_LEFT)));
 
         $registry = $app->get(VectorRegistry::class);
@@ -360,33 +355,6 @@ final class ProposeRewritesTest extends WritingTestCase
         $left = $this->vectorQuery()->table(RewriteStore::TABLE)->select('record_key', 'reason')->where('job_id', '=', $jobId)
             ->where('status', '=', RewriteStore::BUDGET)->orderBy('record_key', 'ASC')->get();
         self::assertSame([(string) $ids[1] => 'unavailable', (string) $ids[2] => 'unavailable'], array_column($left, 'reason', 'record_key'));
-    }
-
-    public function testAFieldHiddenBetweenChunksOfOneScopeIsHiddenInTheNextChunk(): void
-    {
-        $ids = $this->orders(3);
-        $this->scriptTidy($ids);
-        $jobId = $this->job('tidy-order-notes');
-        $policy = $this->policy;
-        self::assertNotNull($policy);
-
-        // as RunActionJob runs them: every chunk in the one scope of the job, its boundary included
-        [$sendsBefore, $second, $sendsAfter] = $this->inJob(function (ActionRunner $runner, ResourceDescriptor $orders, JobContext $context) use ($ids, $jobId, $policy): array {
-            $runner->runNow($orders, 'tidy-order-notes', [$ids[0]], [], $jobId);
-            $boundary = $context->get(ModelBoundary::class);
-            self::assertInstanceOf(ModelBoundary::class, $boundary);
-            $before = $boundary->sends($orders, 'notes');
-
-            $policy->hiddenFields = ['notes'];
-            $second = $runner->runNow($orders, 'tidy-order-notes', [$ids[1], $ids[2]], [], $jobId);
-
-            return [$before, $second, $boundary->sends($orders, 'notes')];
-        });
-
-        self::assertTrue($sendsBefore, 'the first chunk sent the notes');
-        self::assertSame('Writing help is no longer available to this run: 2 record(s) in this chunk were not sent.', $second->message);
-        self::assertFalse($sendsAfter, 'the job\'s boundary still saw the field as the first chunk did');
-        self::assertCount(1, $this->calls());
     }
 
     public function testAChunkAuditsAndCountsOnlyTheRecordsItProposedFor(): void
@@ -792,18 +760,9 @@ final readonly class TestActors implements ActorResolverInterface
     }
 }
 
-/** Everything allowed, except updating an order whose notes are LOCKED, and seeing a field in $hiddenFields. */
+/** Everything allowed, except updating an order whose notes are LOCKED. */
 final class LockedNotesPolicy extends ResourcePolicy
 {
-    /** @var list<string> */
-    public array $hiddenFields = [];
-
-    #[\Override]
-    public function viewField(CurrentUserInterface $user, string $field): bool
-    {
-        return !in_array($field, $this->hiddenFields, true);
-    }
-
     #[\Override]
     public function update(CurrentUserInterface $user, array $record): bool
     {

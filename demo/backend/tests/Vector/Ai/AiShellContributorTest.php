@@ -123,19 +123,19 @@ final class AiShellContributorTest extends AiTestCase
         $settings = $scope->get(AiSettingsReader::class);
         $usage = $scope->get(UsageLedger::class);
         $resolver = $scope->get(ProviderResolver::class);
-        $resources = $scope->get(\Kinetis\Vector\Query\ResourceService::class);
+        $visible = $scope->get(\Kinetis\Vector\Http\VisibleResources::class);
         $boundary = $scope->get(\Kinetis\VectorAi\Governance\ModelBoundary::class);
         self::assertInstanceOf(AiConfig::class, $config);
         self::assertInstanceOf(AiSettingsReader::class, $settings);
         self::assertInstanceOf(UsageLedger::class, $usage);
         self::assertInstanceOf(ProviderResolver::class, $resolver);
-        self::assertInstanceOf(\Kinetis\Vector\Query\ResourceService::class, $resources);
+        self::assertInstanceOf(\Kinetis\Vector\Http\VisibleResources::class, $visible);
         self::assertInstanceOf(\Kinetis\VectorAi\Governance\ModelBoundary::class, $boundary);
 
         $user = $scope->get(CurrentUserInterface::class);
         self::assertInstanceOf(CurrentUserInterface::class, $user);
 
-        return new AiShellContributor(new AiAvailability($user, $access, $config, $settings, $usage, $resolver), $logger ?? new RecordingLogger(), $resources, $boundary);
+        return new AiShellContributor(new AiAvailability($user, $access, $config, $settings, $usage, $resolver), $logger ?? new RecordingLogger(), $visible, $boundary, $user, $this->app);
     }
 
     /**

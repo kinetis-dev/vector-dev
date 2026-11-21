@@ -59,6 +59,7 @@ export default {
             send: 'Send',
             retry: 'Retry',
             failed: 'The assistant could not answer.',
+            tooLong: 'This message is longer than the assistant takes ({max} characters): shorten it and send it again.',
             tool: 'Read with {name}',
             proposingTool: 'Proposed with {name}',
             approval: {

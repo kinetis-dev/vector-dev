@@ -9,6 +9,7 @@ use Kinetis\Container\AppScope;
 use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Vector\Auth\AllowAllPolicy;
 use Kinetis\Vector\Auth\ResourcePolicy;
+use Kinetis\VectorAi\Approvals\ApprovalStore;
 use Kinetis\VectorAi\Assistant\ProposingTool;
 use NeuronAI\Chat\Messages\ToolResultMessage;
 use NeuronAI\Testing\RequestRecord;
@@ -88,6 +89,37 @@ final class ProposalPermissionsTest extends ApprovalsTestCase
 
         self::assertSame([], $run['approvals']);
         self::assertSame([ProposingTool::NOT_PERMITTED], self::toolErrors($this->calls()[1]));
+    }
+
+    public function testTheStoreRefusesArgumentsItCouldNotReadBack(): void
+    {
+        $value = 'deep';
+
+        for ($i = 0; $i < ApprovalStore::MAX_DEPTH; $i++) {
+            $value = [$value];
+        }
+
+        $store = $this->app->get(ApprovalStore::class);
+        self::assertInstanceOf(ApprovalStore::class, $store);
+        $this->expectException(\InvalidArgumentException::class);
+
+        try {
+            $store->propose(self::ACTOR_PREFIX . '01', null, 'c_deep', 'vector_update', ['values' => $value], 15);
+        } finally {
+            self::assertSame([], $this->rows());
+        }
+    }
+
+    public function testArgumentsJustWithinTheLimitAreStorable(): void
+    {
+        // the object and its values list, then nested lists: as deep as a row is read back with
+        $value = 'deep';
+
+        for ($i = 0; $i < ApprovalStore::MAX_DEPTH - 3; $i++) {
+            $value = [$value];
+        }
+
+        self::assertTrue(ApprovalStore::storable(['values' => $value]));
     }
 
     /** @return list<string> the error texts of the tool results a recorded call carried */

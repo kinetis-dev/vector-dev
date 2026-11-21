@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Http\VisibleResources::all()` — the resources this request's user may
+  list, as they see them, with their permissions — is decided once per
+  request: the descriptor, the OpenAPI document and a shell contributor
+  that injects it share one pass of the resource and field policies.
+
+- `JobContext::inFreshScope()` runs a closure on a request scope of its
+  own, created as the worker creates a job's, with the job's actor
+  registered on it.
+
 - A queued action knows its job and can leave it a file:
   `ActionRequest::$jobId` names the job every chunk (and the run's
   `finish()`) runs in, null on the synchronous path, and
@@ -27,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Requires `kinetis/framework` `^1.29.0`.
+- A queued action's every chunk, and its `finish()`, now run on a request
+  scope of their own (`RunActionJob`, through `JobContext::inFreshScope()`),
+  the resource read anew as the admin sees it: a request-scoped cache
+  filled during one chunk is no longer what the next one sees.
 
 ## [0.16.0] - 2026-11-19
 

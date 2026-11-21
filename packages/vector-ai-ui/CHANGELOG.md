@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replayed whole; one long answer no longer makes every later message,
   Retry or approval a 422. It is cut rather than dropped so the turns
   still alternate.
+- A message of the person's own longer than that limit — typed, or asked
+  from the palette's "Ask the assistant…", which has no limit of its
+  own — is not sent and not added to the conversation, where every later
+  turn would replay it and be refused: the drawer opens with it left in
+  the input to shorten and says why (`ai.assistant.tooLong`).
 - A trimmed conversation opens with the person's own message: the
   answers and decisions before it are dropped, so a provider such as
   Bedrock does not refuse it.

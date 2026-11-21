@@ -31,6 +31,11 @@ export function jsonBytes(value: unknown): number {
     return new TextEncoder().encode(JSON.stringify(value)).length
 }
 
+/** The characters of $text as the server counts them (`mb_strlen`): Unicode code points, not UTF-16 units. */
+export function messageChars(text: string): number {
+    return Array.from(text).length
+}
+
 /**
  * $message within ASSISTANT_MAX_MESSAGE_CHARS: an assistant's answer
  * longer than that — one near the model's output cap can be — is cut,
@@ -40,8 +45,8 @@ export function jsonBytes(value: unknown): number {
  */
 export function withinMessageLimit(message: AssistantMessage): AssistantMessage {
     if (message.role !== 'assistant') return message
+    if (messageChars(message.content) <= ASSISTANT_MAX_MESSAGE_CHARS) return message
     const chars = Array.from(message.content)
-    if (chars.length <= ASSISTANT_MAX_MESSAGE_CHARS) return message
     return { role: 'assistant', content: chars.slice(0, ASSISTANT_MAX_MESSAGE_CHARS - 1).join('') + TRUNCATED_MARK }
 }
 

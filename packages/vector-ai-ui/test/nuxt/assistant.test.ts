@@ -175,6 +175,39 @@ describe('the assistant', () => {
         wrapper.unmount()
     })
 
+    it('refuses a message longer than the server takes, in code points, without sending it or keeping it', async () => {
+        standaloneApi()
+        const turn = endpoint('/vector/ai/assistant', STREAMED, 'POST')
+        cleanups.push(turn.unregister)
+        const wrapper = await mount()
+        const assistant = useVectorAssistant()
+        assistant.open.value = true
+        await flushPromises()
+        // astral characters: one code point each as the server counts them, two UTF-16 units
+        const long = '😀'.repeat(ASSISTANT_MAX_MESSAGE_CHARS + 1)
+
+        await assistant.send(long)
+        await flushPromises()
+
+        expect(turn.requests).toHaveLength(0)
+        expect(assistant.turns.value).toEqual([])
+        expect(assistant.draft.value).toBe(long)
+        expect(wrapper.find('[data-ai-assistant-refused]').text()).toContain('8,000 characters')
+
+        // exactly at the limit is sent, and the refusal goes
+        await assistant.send('😀'.repeat(ASSISTANT_MAX_MESSAGE_CHARS))
+        await vi.waitFor(() => expect(assistant.busy.value).toBe(false))
+        await flushPromises()
+        expect(turn.requests).toHaveLength(1)
+        expect(wrapper.find('[data-ai-assistant-refused]').exists()).toBe(false)
+
+        // and the next turn replays nothing that was refused
+        await ask(wrapper, 'And now?')
+        const messages = (turn.requests[1]!.body as { messages: { role: string, content: string }[] }).messages
+        for (const message of messages) expect(Array.from(message.content).length).toBeLessThanOrEqual(ASSISTANT_MAX_MESSAGE_CHARS)
+        wrapper.unmount()
+    })
+
     it('sends a conversation trimmed to its last 40 messages opening with the user\'s', async () => {
         standaloneApi()
         const turn = endpoint('/vector/ai/assistant', STREAMED, 'POST')
@@ -317,6 +350,26 @@ describe('the assistant', () => {
         expect(useVectorAssistant().open.value).toBe(true)
         expect((turn.requests[0]!.body as { messages: unknown[] }).messages).toEqual([{ role: 'user', content: 'Which products are low on stock?' }])
         await vi.waitFor(() => expect(wrapper.find('[data-ai-assistant-answer]').exists()).toBe(true))
+        wrapper.unmount()
+    })
+
+    it('opens the drawer on a palette question longer than the server takes, sending nothing and saying why', async () => {
+        standaloneApi()
+        const turn = endpoint('/vector/ai/assistant', STREAMED, 'POST')
+        cleanups.push(turn.unregister)
+        const wrapper = await mount()
+        await nextTick()
+        const long = 'x'.repeat(ASSISTANT_MAX_MESSAGE_CHARS + 50)
+
+        await useVectorExtensions().paletteCommands.get('ai-ask')!.run(long)
+        await flushPromises()
+
+        const assistant = useVectorAssistant()
+        expect(assistant.open.value).toBe(true)
+        expect(turn.requests).toHaveLength(0)
+        expect(assistant.turns.value).toEqual([])
+        expect(assistant.draft.value).toBe(long)
+        expect(wrapper.find('[data-ai-assistant-refused]').exists()).toBe(true)
         wrapper.unmount()
     })
 })

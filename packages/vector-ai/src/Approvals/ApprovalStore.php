@@ -26,17 +26,47 @@ final readonly class ApprovalStore
      */
     public const int EXECUTING_MINUTES = 10;
 
+    /**
+     * How deep stored arguments and results may nest, as json_decode()
+     * counts it: what reading a row back allows, and so what storable()
+     * lets a proposal be saved with — one that read could not decode
+     * could never be approved or rejected.
+     */
+    public const int MAX_DEPTH = 64;
+
     public function __construct(private VectorDatabase $db) {}
+
+    /**
+     * Whether $arguments can be stored and read back: encoded as propose()
+     * encodes them, then decoded as a row is read, at MAX_DEPTH.
+     *
+     * @param array<array-key, mixed> $arguments
+     */
+    public static function storable(array $arguments): bool
+    {
+        try {
+            json_decode(self::encode($arguments), true, self::MAX_DEPTH, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return false;
+        }
+
+        return true;
+    }
 
     /**
      * Stores a pending proposal that expires $minutes from now.
      *
      * @param array<string, mixed> $arguments
+     * @throws \InvalidArgumentException when $arguments are not storable(): nesting deeper than MAX_DEPTH
      */
     public function propose(string $actorId, ?string $impersonatorId, string $conversationId, string $tool, array $arguments, int $minutes): Approval
     {
+        if (!self::storable($arguments)) {
+            throw new \InvalidArgumentException('The arguments nest deeper than ' . self::MAX_DEPTH . ' levels: a stored proposal could not be read back.');
+        }
+
         $now = self::now();
-        $encoded = json_encode((object) $arguments, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION);
+        $encoded = self::encode($arguments);
         $approval = new Approval(
             ApprovalId::generate(),
             $actorId,
@@ -188,8 +218,8 @@ final readonly class ApprovalStore
     /** @param array<string, mixed> $row */
     private static function approval(array $row): Approval
     {
-        $arguments = json_decode((string) $row['arguments'], true, 64, JSON_THROW_ON_ERROR);
-        $result = $row['result'] === null ? null : json_decode((string) $row['result'], true, 64, JSON_THROW_ON_ERROR);
+        $arguments = json_decode((string) $row['arguments'], true, self::MAX_DEPTH, JSON_THROW_ON_ERROR);
+        $result = $row['result'] === null ? null : json_decode((string) $row['result'], true, self::MAX_DEPTH, JSON_THROW_ON_ERROR);
         $utc = new DateTimeZone('UTC');
 
         return new Approval(
@@ -204,6 +234,12 @@ final readonly class ApprovalStore
             new DateTimeImmutable((string) $row['created_at'], $utc),
             new DateTimeImmutable((string) $row['expires_at'], $utc),
         );
+    }
+
+    /** @param array<array-key, mixed> $arguments */
+    private static function encode(array $arguments): string
+    {
+        return json_encode((object) $arguments, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION);
     }
 
     private static function format(DateTimeImmutable $at): string

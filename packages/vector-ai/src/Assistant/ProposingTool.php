@@ -21,7 +21,8 @@ use NeuronAI\Tools\ToolOutput;
  * MCP tool's own name, description and input schema.
  *
  * execute() never dispatches. In order: the run's ToolBudget is asked;
- * the arguments are checked as the MCP dispatcher checks them
+ * arguments nesting deeper than a stored proposal can be read back with
+ * (ApprovalStore::MAX_DEPTH) are refused (TOO_DEEP); the arguments are checked as the MCP dispatcher checks them
  * (ToolArguments), so a malformed call gets the same `{"errors": [...]}`
  * feedback; a resource ModelBoundary keeps from the model is refused, and
  * so are values for a field it keeps back; a change Vector's own
@@ -44,6 +45,9 @@ final class ProposingTool extends Tool
 
     /** The refusal of values for a field kept from the model; it does not name the field. */
     public const string FIELD_REFUSED = 'this change writes a field that is not available to the assistant; propose only the fields vector_describe lists';
+
+    /** What a proposal too deeply nested to be stored and read back (ApprovalStore::storable()) is answered with. */
+    public const string TOO_DEEP = 'these arguments nest too deeply to be stored for approval; propose the change with plain values';
 
     /** The refusal of a change this user may not make (ModelBoundary::permits()): nothing is proposed. */
     public const string NOT_PERMITTED = 'the admin may not make this change: their permissions do not allow it, or there is no such record they can see; do not propose it, tell them instead';
@@ -76,6 +80,13 @@ final class ProposingTool extends Tool
 
         if (!$this->budget->take($this->name)) {
             $this->setResult(ToolOutput::error(GovernedTool::EXHAUSTED));
+
+            return;
+        }
+
+        // before anything else reads them: a proposal stored too deep could never be decided on
+        if (!ApprovalStore::storable($arguments)) {
+            $this->setResult(ToolOutput::error(self::TOO_DEEP));
 
             return;
         }
