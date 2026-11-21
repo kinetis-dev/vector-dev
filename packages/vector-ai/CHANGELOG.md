@@ -246,7 +246,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The package, with its first feature, plain-language filters:
   `POST /vector/ai/filters/{resource}` turns a sentence into the list's
   own filter grammar (`filter`, `groups`, `q`), validated by Vector's
-  list validator with one repair turn, with a relation named in words
+  list validator with one repair turn, with dates read as days in the
+  admin's time zone (the request's `timezone`, written with its offset),
+  an `anyOf` of one alternative joined to the conditions, a relation named in words
   looked up under the user's scope (`unresolved` when several records
   match), a 30-second deadline per provider call, and a usage row per
   call; `Governance\ModelBoundary`, the one place that decides what a

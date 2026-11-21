@@ -53,7 +53,7 @@ final readonly class FilterTranslator
     /** How many records a lookup offers when the words match several. */
     private const int CANDIDATES = 5;
 
-    public const string SYSTEM_PROMPT = "You translate an admin's request into a filter for one resource. Answer only with the JSON object described. Today is %s in %s; write absolute dates.";
+    public const string SYSTEM_PROMPT = "You translate an admin's request into a filter for one resource. Answer only with the JSON object described. Today is %s in %s; write absolute dates. A day or a time the admin names is one in %s, not in UTC: write a date-time bound with the offset that zone has on that date (now %s), such as %sT00:00:00%s for the start of today.";
 
     public const string REPAIR_PROMPT = 'The list refused that filter: %s Answer again with the whole JSON object, corrected.';
 
@@ -87,7 +87,8 @@ final readonly class FilterTranslator
             new TextContent("The resource, and the list's current filter:\n" . json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\nYour filter replaces the current one: keep what of it the request does not change. The admin's request follows."),
             new TextContent($text),
         ])];
-        $system = sprintf(self::SYSTEM_PROMPT, (new DateTimeImmutable('now', $zone))->format('l, Y-m-d H:i'), $zone->getName());
+        $now = new DateTimeImmutable('now', $zone);
+        $system = sprintf(self::SYSTEM_PROMPT, $now->format('l, Y-m-d H:i'), $zone->getName(), $zone->getName(), $now->format('P'), $now->format('Y-m-d'), $now->format('P'));
         $answer = FilterSchema::for($filterable);
 
         $reply = $this->call($provider, $system, $messages, $answer);
@@ -185,7 +186,12 @@ final readonly class FilterTranslator
                 $alternatives[] = $conditions;
             }
 
-            if ($alternatives !== []) {
+            // "any of" one alternative is that alternative: its conditions join
+            // the others, unless one would take the place of a condition already there
+            if (count($alternatives) === 1 && array_all($alternatives[0], static fn (array $ops, string $name): bool => array_intersect_key($ops, $filter[$name] ?? []) === []
+                && !array_any($unresolved, static fn (array $u): bool => $u['field'] === $name && isset($ops[$u['op']])))) {
+                $filter = array_merge_recursive($filter, $alternatives[0]);
+            } elseif ($alternatives !== []) {
                 $groups[] = $alternatives;
             }
         }

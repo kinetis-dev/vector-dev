@@ -208,7 +208,39 @@ final class FiltersTranslationTest extends FiltersTestCase
 
         $this->ask('orders', 'paid orders', ['timezone' => $timezone])->assertOk();
 
-        self::assertStringContainsString(" in {$read}; write absolute dates.", (string) $this->calls()[0]->systemPrompt?->getContent());
+        $prompt = (string) $this->calls()[0]->systemPrompt?->getContent();
+        self::assertStringContainsString(" in {$read}; write absolute dates.", $prompt);
+
+        // a day the admin names is theirs: the model is given the zone's offset to write it with
+        $now = new \DateTimeImmutable('now', new \DateTimeZone($read));
+        self::assertStringContainsString("one in {$read}, not in UTC", $prompt);
+        self::assertStringContainsString("(now {$now->format('P')}), such as {$now->format('Y-m-d')}T00:00:00{$now->format('P')} for the start of today.", $prompt);
+    }
+
+    public function testAnAnyOfOfOneAlternativeJoinsTheConditions(): void
+    {
+        $this->script(["today's orders" => self::answer(
+            [['field' => 'status', 'op' => 'eq', 'value' => 'paid']],
+            [[[['field' => 'placedAt', 'op' => 'between', 'value' => '2026-11-21T00:00:00+02:00,2026-11-21T23:59:59+02:00']]]],
+        )]);
+
+        $body = $this->ask('orders', "today's orders")->assertOk()->json();
+
+        self::assertSame(['status' => ['eq' => 'paid'], 'placedAt' => ['between' => '2026-11-21T00:00:00+02:00,2026-11-21T23:59:59+02:00']], $body['filter']);
+        self::assertSame([], $body['groups']);
+    }
+
+    public function testAnAnyOfOfOneAlternativeThatWouldReplaceAConditionStaysAGroup(): void
+    {
+        $this->script(['paid, or paid' => self::answer(
+            [['field' => 'status', 'op' => 'eq', 'value' => 'paid']],
+            [[[['field' => 'status', 'op' => 'eq', 'value' => 'pending']]]],
+        )]);
+
+        $body = $this->ask('orders', 'paid, or paid')->assertOk()->json();
+
+        self::assertSame(['status' => ['eq' => 'paid']], $body['filter']);
+        self::assertSame([[['status' => ['eq' => 'pending']]]], $body['groups']);
     }
 
     public function testABodyOverSixteenKibibytesIsRefusedBeforeTheModelIsAsked(): void
