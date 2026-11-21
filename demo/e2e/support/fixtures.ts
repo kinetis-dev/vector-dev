@@ -65,7 +65,7 @@ export class Api {
     }
 
     /** The descriptor's `capabilities.ai` for this account; undefined without kinetis/vector-ai. */
-    async aiCapabilities(): Promise<{ filters?: boolean, assistant?: boolean, writing?: boolean, excluded?: Record<string, unknown>, excludedFields?: Record<string, unknown> } | undefined> {
+    async aiCapabilities(): Promise<{ filters?: boolean, assistant?: boolean, writing?: boolean, excluded?: Record<string, unknown>, excludedFields?: Record<string, unknown>, noWriting?: Record<string, unknown> } | undefined> {
         const response = await this.request.get(`${API}/vector/schema`, { headers: this.headers })
         expect(response.ok()).toBeTruthy()
         return (await response.json()).capabilities.ai

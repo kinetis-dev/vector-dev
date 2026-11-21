@@ -30,7 +30,9 @@ use Psr\Http\Message\ServerRequestInterface;
  * The body is read first (422). Then, as this request's user and failing
  * closed: the resource (404); a password field, refused by its type
  * before anything else (403); the field as this user sees it (404); a
- * text, Markdown or rich-text field (403); one they may write in the
+ * text, Markdown or rich-text field (403); one writing help is on for —
+ * not a unique string unless it opts in with `ai.writing` true, nor one
+ * with `ai.writing` false (WritingGuard::helps(), 403); one they may write in the
  * view the request is for — `create` without `recordId`, `update` with
  * it, the record read as they may read it and its own `update` decided
  * (403, or 404 for no such record); one ModelBoundary lets a model be

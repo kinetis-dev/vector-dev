@@ -14,7 +14,9 @@ use Kinetis\VectorAi\Writing\WritingAssistant;
  * Writing help against the `fake` provider (FiltersTestCase's setup),
  * over the demo's registry with two changes a test needs and the demo
  * does not have: products' SKU is read-only, and tags' name opts out of
- * AI (`ai.send` false). scriptWriting() binds the answer to a text.
+ * AI (`ai.send` false). Both are unique strings, which writing help is
+ * off for by default: they opt in (`ai.writing` true), so what refuses
+ * them is what each test names. scriptWriting() binds the answer to a text.
  */
 abstract class WritingTestCase extends FiltersTestCase
 {
@@ -29,12 +31,13 @@ abstract class WritingTestCase extends FiltersTestCase
         foreach ($data['resources']['products']['fields'] as $i => $field) {
             if (is_array($field) && ($field['name'] ?? null) === 'sku') {
                 $data['resources']['products']['fields'][$i]['readonly'] = true;
+                $data['resources']['products']['fields'][$i]['meta'] = ['ai.writing' => true];
             }
         }
 
         foreach ($data['resources']['tags']['fields'] as $i => $field) {
             if (is_array($field) && ($field['name'] ?? null) === 'name') {
-                $data['resources']['tags']['fields'][$i]['meta'] = ['ai.send' => false];
+                $data['resources']['tags']['fields'][$i]['meta'] = ['ai.send' => false, 'ai.writing' => true];
             }
         }
 

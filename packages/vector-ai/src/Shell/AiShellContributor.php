@@ -15,6 +15,7 @@ use Kinetis\Vector\Http\VisibleResources;
 use Kinetis\VectorAi\Auth\AiAvailability;
 use Kinetis\VectorAi\Feature;
 use Kinetis\VectorAi\Governance\ModelBoundary;
+use Kinetis\VectorAi\Writing\WritingGuard;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 
@@ -26,7 +27,12 @@ use Psr\Log\LogLevel;
  * resource this user may list that ModelBoundary keeps back whole, as
  * `{slug: true}`; and `excludedFields`, for each other resource they may
  * list, the fields they see that ModelBoundary keeps back, as
- * `{slug: [field, …]}` — a resource with none is absent. A feature is
+ * `{slug: [field, …]}` — a resource with none is absent; and
+ * `noWriting`, in the same shape, the `string`, `text`, `markdown` or
+ * `richtext` fields they see on those resources that writing help is not
+ * offered on (WritingGuard::offers(): kept back as above, a unique string,
+ * or `ai.writing` false), so the admin shows no writing menu there — it
+ * adds to excludedFields, which an older admin reads alone. A feature is
  * offered when it ships in this release and AiAvailability::availableNow()
  * lists it: what its own endpoint asks (offered(): the operator
  * configured a provider, the `ai` settings turn it on, the access policy
@@ -60,6 +66,7 @@ final readonly class AiShellContributor implements ShellContributorInterface
         private ModelBoundary $boundary,
         private CurrentUserInterface $user,
         private ActorScope $scopes,
+        private WritingGuard $writing,
     ) {}
 
     /**
@@ -70,7 +77,7 @@ final readonly class AiShellContributor implements ShellContributorInterface
      * — the access policy, the budget, the resources they may list, the
      * fields they see — is theirs, not this request's user's.
      *
-     * @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object, excludedFields: object}
+     * @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object, excludedFields: object, noWriting: object}
      */
     #[\Override]
     public function capabilities(CurrentUserInterface $user): array
@@ -103,7 +110,7 @@ final readonly class AiShellContributor implements ShellContributorInterface
      * every feature off rather than failing GET /vector/schema.
      *
      * @param list<Feature> $features
-     * @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object, excludedFields: object}
+     * @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object, excludedFields: object, noWriting: object}
      */
     public function offering(array $features): array
     {
@@ -111,6 +118,7 @@ final readonly class AiShellContributor implements ShellContributorInterface
         $offered = [];
         $excluded = [];
         $excludedFields = [];
+        $noWriting = [];
 
         try {
             // only what ships is asked about: an unshipped feature costs no lookup
@@ -121,7 +129,7 @@ final readonly class AiShellContributor implements ShellContributorInterface
             }
 
             if (in_array(true, $offered, true)) {
-                [$excluded, $excludedFields] = $this->excluded();
+                [$excluded, $excludedFields, $noWriting] = $this->excluded();
             }
         } catch (\Throwable $e) {
             return $this->off($e);
@@ -134,6 +142,7 @@ final readonly class AiShellContributor implements ShellContributorInterface
             'writing' => $offered['writing'],
             'excluded' => $excluded === [] ? new \stdClass() : (object) $excluded,
             'excludedFields' => $excludedFields === [] ? new \stdClass() : (object) $excludedFields,
+            'noWriting' => $noWriting === [] ? new \stdClass() : (object) $noWriting,
         ];
     }
 
@@ -142,27 +151,29 @@ final readonly class AiShellContributor implements ShellContributorInterface
      * only — a message could carry a provider's detail — and a throwing
      * logger must not fail the schema either.
      *
-     * @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object, excludedFields: object}
+     * @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object, excludedFields: object, noWriting: object}
      */
     private function off(\Throwable $e): array
     {
         SafeLogger::log($this->logger, LogLevel::WARNING, 'Computing the AI capabilities failed with ' . $e::class . '; every AI feature is off for this request.', ['exception_class' => $e::class]);
 
-        return ['filters' => false, 'assistant' => false, 'assistantWrites' => false, 'writing' => false, 'excluded' => new \stdClass(), 'excludedFields' => new \stdClass()];
+        return ['filters' => false, 'assistant' => false, 'assistantWrites' => false, 'writing' => false, 'excluded' => new \stdClass(), 'excludedFields' => new \stdClass(), 'noWriting' => new \stdClass()];
     }
 
     /**
      * The resources this user may list that are kept from the model whole,
      * so the admin offers no AI on them; and, of the others they may list,
      * the fields they see that are kept back, so the admin offers no AI on
-     * those fields — writing help, for one.
+     * those fields — writing help, for one; and the text fields of those
+     * others that writing help is not offered on (WritingGuard::offers()).
      *
-     * @return array{array<string, true>, array<string, list<string>>}
+     * @return array{array<string, true>, array<string, list<string>>, array<string, list<string>>}
      */
     private function excluded(): array
     {
         $excluded = [];
         $fields = [];
+        $noWriting = [];
 
         // the resources the descriptor lists, as it decided them: no policy is asked a second time
         foreach ($this->visible->all() as $slug => ['descriptor' => $resource]) {
@@ -177,8 +188,20 @@ final readonly class AiShellContributor implements ShellContributorInterface
             if ($kept !== []) {
                 $fields[$slug] = $kept;
             }
+
+            $off = [];
+
+            foreach ($resource->fields() as $name => $field) {
+                if (in_array($field['type'] ?? null, WritingGuard::TYPES, true) && !$this->writing->offers($resource, $field)) {
+                    $off[] = (string) $name;
+                }
+            }
+
+            if ($off !== []) {
+                $noWriting[$slug] = $off;
+            }
         }
 
-        return [$excluded, $fields];
+        return [$excluded, $fields, $noWriting];
     }
 }

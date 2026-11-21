@@ -67,7 +67,7 @@ final class ProposeRewritesTest extends WritingTestCase
 
         foreach ([
             'orders' => [RewriteOrderStatus::class, LongGuidance::class, TranslateWithoutLocale::class, TidyIntoSmallFile::class, TidyIntoTinyCsv::class],
-            'products' => [RewriteProductDescriptions::class],
+            'products' => [RewriteProductDescriptions::class, RewriteProductSkus::class],
             'users' => [RewritePasswords::class],
             'tags' => [RewriteTagNames::class],
             'profiles' => [RewriteProfileNames::class],
@@ -81,10 +81,15 @@ final class ProposeRewritesTest extends WritingTestCase
             }
         }
 
-        // products' description on the update form but not the detail view, whose serialization the records come from
+        // products' description on the update form but not the detail view, whose serialization the records come from;
+        // products' SKU a unique string again, without WritingTestCase's opt-in
         foreach ($data['resources']['products']['fields'] as $i => $field) {
             if (is_array($field) && ($field['name'] ?? null) === 'description') {
                 $data['resources']['products']['fields'][$i]['views'] = array_values(array_diff($field['views'], ['show']));
+            }
+
+            if (is_array($field) && ($field['name'] ?? null) === 'sku') {
+                unset($data['resources']['products']['fields'][$i]['meta']);
             }
         }
 
@@ -212,6 +217,14 @@ final class ProposeRewritesTest extends WritingTestCase
         $this->runAction('rewrite-tag-names', [$tag], 'tags')->assertJsonPath('data.status', 'failed')->assertJsonPath('data.failure', 'This field of Tags is kept from AI.');
         $user = (int) $this->shop()->table('users')->orderBy('id', 'ASC')->value('id');
         $this->runAction('rewrite-profile-names', [$user], 'profiles')->assertJsonPath('data.status', 'failed')->assertJsonPath('data.failure', 'This field of Profiles is kept from AI.');
+
+        self::assertSame([], $this->calls());
+    }
+
+    public function testAUniqueStringRefusesTheRunBeforeAnyCall(): void
+    {
+        $this->runAction('rewrite-product-skus', [(int) $this->productId()], 'products')->assertJsonPath('data.status', 'failed')
+            ->assertJsonPath('data.failure', 'Writing help is off for this field of Products.');
 
         self::assertSame([], $this->calls());
     }
@@ -832,6 +845,21 @@ final class RewriteProductDescriptions extends ProposeRewrites
     public function field(): string
     {
         return 'description';
+    }
+
+    #[\Override]
+    public function operation(): WritingOperation
+    {
+        return WritingOperation::Rewrite;
+    }
+}
+
+final class RewriteProductSkus extends ProposeRewrites
+{
+    #[\Override]
+    public function field(): string
+    {
+        return 'sku';
     }
 
     #[\Override]

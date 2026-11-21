@@ -50,7 +50,7 @@ final class AiShellContributorTest extends AiTestCase
     {
         $ai = $this->client->get('/vector/schema', headers: $this->adminHeaders())->assertOk()->json()['capabilities']['ai'] ?? null;
 
-        self::assertSame(['filters' => false, 'assistant' => false, 'assistantWrites' => false, 'writing' => false, 'excluded' => [], 'excludedFields' => []], $ai);
+        self::assertSame(['filters' => false, 'assistant' => false, 'assistantWrites' => false, 'writing' => false, 'excluded' => [], 'excludedFields' => [], 'noWriting' => []], $ai);
     }
 
     public function testAThrowingDependencyTurnsEveryFeatureOff(): void
@@ -149,17 +149,19 @@ final class AiShellContributorTest extends AiTestCase
 
         $scopes = $scope->get(\Kinetis\Vector\Auth\ActorScope::class);
         self::assertInstanceOf(\Kinetis\Vector\Auth\ActorScope::class, $scopes);
+        $writing = $scope->get(\Kinetis\VectorAi\Writing\WritingGuard::class);
+        self::assertInstanceOf(\Kinetis\VectorAi\Writing\WritingGuard::class, $writing);
 
-        return new AiShellContributor(new AiAvailability($user, $access, $config, $settings, $usage, $resolver), $logger ?? new RecordingLogger(), $visible, $boundary, $user, $scopes);
+        return new AiShellContributor(new AiAvailability($user, $access, $config, $settings, $usage, $resolver), $logger ?? new RecordingLogger(), $visible, $boundary, $user, $scopes, $writing);
     }
 
     /**
-     * @param array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object, excludedFields: object} $capabilities
+     * @param array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object, excludedFields: object, noWriting: object} $capabilities
      * @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool}
      */
     private static function flags(array $capabilities): array
     {
-        unset($capabilities['excluded'], $capabilities['excludedFields']);
+        unset($capabilities['excluded'], $capabilities['excludedFields'], $capabilities['noWriting']);
 
         return $capabilities;
     }

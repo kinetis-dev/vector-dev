@@ -18,13 +18,17 @@ use Kinetis\VectorAi\Providers\ResolvedProvider;
  * endpoint and the bulk ProposeRewrites action both ask, failing closed:
  *
  * - field(): a password field is refused by its type before anything
- *   else; then the field as this user sees it; then a text, Markdown or
- *   rich-text field only;
+ *   else; then the field as this user sees it; then a field writing help
+ *   is on for (helps()): a text, Markdown or rich-text field, not a
+ *   unique string unless it opts in;
  * - writable(): the field on the view's form, not read-only or computed,
  *   and the view's permission (`create`, or `update`) on the resource;
  * - mayUpdate(): that record's own `update`;
  * - sendable(): what ModelBoundary lets a model be sent;
  * - provider(): writing on, configured, budgeted and this user's to use.
+ *
+ * helps() and offers() answer the same rules as a yes or no, for the
+ * admin: offers() is what `capabilities.ai.noWriting` publishes.
  *
  * Today's token budget is AiAvailability's to answer (remaining(),
  * budgetSpent()), asked by the writing endpoint and ProposeRewrites
@@ -37,6 +41,15 @@ final readonly class WritingGuard
 {
     /** The field types writing help works on. */
     public const array TYPES = ['string', 'text', 'markdown', 'richtext'];
+
+    /**
+     * The field meta key that turns writing help off (false) or on (true)
+     * for one field, whatever its uniqueness: `->meta('ai.writing', false)`.
+     * Only TYPES are ever helped, and it is independent of
+     * ModelBoundary::META_KEY — a field with writing help off may still be
+     * sent to the model, and one turned on is still kept back by `ai.send`.
+     */
+    public const string META_KEY = 'ai.writing';
 
     public function __construct(
         private AiAvailability $availability,
@@ -64,7 +77,53 @@ final readonly class WritingGuard
             throw new AiRequestException('Writing help works on text, Markdown and rich-text fields only.', 403);
         }
 
+        if (!self::helps($compiled)) {
+            throw new AiRequestException("Writing help is off for this field of {$visible->label()}.", 403);
+        }
+
         return [$visible, $compiled];
+    }
+
+    /**
+     * Whether writing help is on for $field, by its own definition: one of
+     * TYPES; then its META_KEY, true or false, when it has one; otherwise
+     * not a `string` field marked unique — a unique short string is an
+     * identifier (a SKU, a code), not prose. Asks nothing of the user or
+     * the model boundary: field() and offers() add those.
+     *
+     * @param array<string, mixed> $field a compiled field
+     */
+    public static function helps(array $field): bool
+    {
+        if (!in_array($field['type'] ?? null, self::TYPES, true)) {
+            return false;
+        }
+
+        $override = is_array($field['meta'] ?? null) ? ($field['meta'][self::META_KEY] ?? null) : null;
+
+        if (is_bool($override)) {
+            return $override;
+        }
+
+        return !($field['type'] === 'string' && ($field['unique'] ?? false) === true);
+    }
+
+    /**
+     * Whether the admin offers writing help on $field of $visible, as this
+     * user sees it: helps() and ModelBoundary lets the model be sent it
+     * (sendable()'s rules). Whether this user may write the field on a
+     * given form is writable()'s, asked per request by the endpoint.
+     *
+     * @param array<string, mixed> $field a compiled field of $visible
+     */
+    public function offers(ResourceDescriptor $visible, array $field): bool
+    {
+        $name = $field['name'] ?? null;
+
+        return self::helps($field)
+            && is_string($name)
+            && $this->boundary->allows($visible)
+            && $this->boundary->sends($visible, $name);
     }
 
     /**

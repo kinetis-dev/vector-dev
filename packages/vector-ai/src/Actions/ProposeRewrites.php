@@ -41,7 +41,8 @@ use Kinetis\VectorAi\Writing\WritingOperation;
  * The run is writing help's (WritingGuard), as the admin who started it,
  * asked again at the start of every chunk with the `ai` settings read
  * anew (Vector runs each chunk on a request scope of its own):
- * a password, non-text, hidden, read-only or AI-kept field, one not on
+ * a password, non-text, hidden, read-only or AI-kept field, one writing
+ * help is off for (a unique string, or `ai.writing` false), one not on
  * the detail view (the records are read as it serializes them), writing
  * help off, unconfigured or not theirs, a translation without a language
  * tag or guidance over WritingAssistant::MAX_INSTRUCTIONS characters
@@ -95,7 +96,7 @@ abstract class ProposeRewrites extends VectorAction
         private readonly AiAvailability $availability,
     ) {}
 
-    /** The field whose text is rewritten: a string, text, Markdown or rich-text field. */
+    /** The field whose text is rewritten: a string, text, Markdown or rich-text field writing help is on for (WritingGuard::helps()). */
     abstract public function field(): string;
 
     /** What is done to each text. */

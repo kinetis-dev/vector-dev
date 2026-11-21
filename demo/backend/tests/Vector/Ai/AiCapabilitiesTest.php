@@ -16,9 +16,10 @@ final class AiCapabilitiesTest extends AiTestCase
         $response = $this->client->get('/vector/schema', headers: $this->adminHeaders())->assertOk();
         $ai = $response->json()['capabilities']['ai'] ?? null;
 
-        self::assertSame(['filters' => false, 'assistant' => false, 'assistantWrites' => false, 'writing' => false, 'excluded' => [], 'excludedFields' => []], $ai);
+        self::assertSame(['filters' => false, 'assistant' => false, 'assistantWrites' => false, 'writing' => false, 'excluded' => [], 'excludedFields' => [], 'noWriting' => []], $ai);
         self::assertStringContainsString('"excluded":{}', $response->body(), 'excluded is an object');
         self::assertStringContainsString('"excludedFields":{}', $response->body(), 'excludedFields is an object');
+        self::assertStringContainsString('"noWriting":{}', $response->body(), 'noWriting is an object');
     }
 
     public function testTheAiSettingsGroupIsListedForWhoeverMayConfigureIt(): void
