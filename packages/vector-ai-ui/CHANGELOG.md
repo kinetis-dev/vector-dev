@@ -116,7 +116,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Writing help: under the `string` and `text` inputs of a resource's
   create page and of a record's edit page, and not in a list's bulk edit
   or an action's dialog (`defineInputAddon`), a menu — Rewrite, Shorten, Fix grammar, Translate
-  to… — whose answer shows beside the text, Before and After, with
+  to… (every language the UI ships, and any other the descriptor lets
+  the user choose) — whose answer shows beside the text, Before and After, with
   Replace (into the input, for the person to save) and Discard; and the
   same menu in the rich-text and Markdown editors' toolbars
   (`defineEditorToolbarItem`), acting on the selection (its plain text,

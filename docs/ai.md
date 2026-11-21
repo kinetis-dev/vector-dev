@@ -642,7 +642,8 @@ agent ends with the request, and an approval is a fresh request.
 Under a text input — a `string` or `text` field on a resource's create
 page or on a record's edit page, and nowhere else: not in a list's bulk
 edit, an action's dialog or a settings form — a *Writing help* menu offers **Rewrite**, **Shorten**, **Fix
-grammar** and **Translate to…** (a language). The answer shows beside
+grammar** and **Translate to…** (any language the UI ships, and any other the
+descriptor lets the user choose). The answer shows beside
 the text it was asked about, *Before* and *After*: **Replace** puts it
 in the input, **Discard** drops it. In the toolbar of a rich-text or
 Markdown editor the same menu acts on the selection — its plain text in

@@ -212,6 +212,10 @@ describe('writing help', () => {
             const wrapper = await shell(VxAiWritingAddon, props(), EDIT)
 
             await pick(wrapper, 'translate', '')
+            // every language the UI ships, Hebrew and Brazilian Portuguese among them
+            const offered = [...document.body.querySelectorAll<HTMLElement>('[data-ai-writing-language]')].map(item => item.dataset.aiWritingLanguage)
+            expect(offered).toEqual(expect.arrayContaining(['en', 'de', 'he', 'ar', 'pt-BR', 'zh-Hans']))
+            expect(offered).toHaveLength(17)
             const german = document.body.querySelector<HTMLElement>('[data-ai-writing-language="de"]')
             expect(german).not.toBeNull()
             german!.click()

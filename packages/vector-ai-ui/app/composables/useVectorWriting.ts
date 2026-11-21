@@ -1,3 +1,5 @@
+import { bundledMessages } from '#vector/app/i18n'
+
 /** What writing help does to a text. */
 export type WritingOperation = 'rewrite' | 'shorten' | 'grammar' | 'translate'
 
@@ -19,8 +21,6 @@ export interface WritingRequest {
     recordId?: string | null
 }
 
-/** The languages "Translate to…" offers, as BCP 47 tags. */
-export const WRITING_LANGUAGES = ['en', 'de', 'fr', 'es', 'it', 'nl', 'pt', 'pl', 'sv', 'ja', 'zh'] as const
 
 /**
  * Writing help for one field: whether the admin offers it there, and the
@@ -62,5 +62,11 @@ export function useVectorWriting() {
         }
     }
 
-    return { offered, write, describe, languageName }
+    /**
+     * The languages "Translate to…" offers, as BCP 47 tags: every language
+     * the UI ships, then any other the descriptor lets this user choose.
+     */
+    const languages = computed(() => [...new Set([...Object.keys(bundledMessages), ...language.locales.value.map(l => l.code)])])
+
+    return { offered, write, describe, languageName, languages }
 }

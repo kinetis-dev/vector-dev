@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { WRITING_LANGUAGES, type WritingOperation } from '../../composables/useVectorWriting'
+import type { WritingOperation } from '../../composables/useVectorWriting'
 
 // Writing help's menu, under a text input and in an editor's toolbar:
 // Rewrite, Shorten, Fix grammar, and Translate to… which lists the
@@ -17,7 +17,7 @@ const props = defineProps<{
 const emit = defineEmits<{ run: [operation: WritingOperation, targetLocale: string | null] }>()
 
 const { t } = useVectorT()
-const { languageName } = useVectorWriting()
+const { languageName, languages: languageTags } = useVectorWriting()
 const open = ref(false)
 const languages = ref(false)
 
@@ -80,7 +80,7 @@ const operations: { operation: Exclude<WritingOperation, 'translate'>, label: st
         <v-list v-else density="compact" data-ai-writing-languages>
             <v-list-item prepend-icon="mdi-chevron-left" :title="t('ai.writing.back')" @click.stop="languages = false" />
             <v-list-item
-                v-for="tag in WRITING_LANGUAGES"
+                v-for="tag in languageTags"
                 :key="tag"
                 :data-ai-writing-language="tag"
                 :title="languageName(tag)"
