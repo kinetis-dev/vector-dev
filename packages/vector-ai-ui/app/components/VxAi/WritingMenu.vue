@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { WritingOperation } from '../../composables/useVectorWriting'
 
-// Writing help's menu, under a text input and in an editor's toolbar:
+// Writing help's menu, inside a text input and in an editor's toolbar:
 // Rewrite, Shorten, Fix grammar, and Translate to… which lists the
 // languages. Emits the operation chosen, with the language for a
 // translation.
 const props = defineProps<{
     disabled?: boolean
     busy?: boolean
-    /** The activator as an icon button, for an editor's toolbar. */
+    /** The activator as an icon button, for an editor's toolbar and inside a text input. */
     icon?: boolean
     /** Why the menu cannot be opened now, shown as the activator's title. */
     hint?: string

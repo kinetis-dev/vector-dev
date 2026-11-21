@@ -28,7 +28,7 @@ export default defineNuxtPlugin({
         const extend = useVectorExtend()
         extend.defineSettingsAddon('ai', VxAiCredentials)
         extend.defineListToolbarItem('ai-filters', VxAiFilterAsk)
-        extend.defineInputAddon('ai-writing', { types: ['string', 'text'], component: VxAiWritingAddon })
+        extend.defineInputAddon('ai-writing', { types: ['string', 'text'], component: VxAiWritingAddon, placement: 'inner' })
         extend.defineEditorToolbarItem('ai-writing', VxAiWritingToolbarItem)
         extend.defineShellAction('ai-assistant', VxAiAssistant)
 

@@ -3,12 +3,13 @@ import { defineComponent, h, nextTick } from 'vue'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
 import { VApp } from 'vuetify/components'
-import VxAiWritingAddon from '#vector-ai/app/components/VxAi/WritingAddon.vue'
+import VxInputText from '#vector/app/components/Vx/Input/Text.vue'
+import VxInputTextarea from '#vector/app/components/Vx/Input/Textarea.vue'
 import VxAiWritingToolbarItem from '#vector-ai/app/components/VxAi/WritingToolbarItem.vue'
 import { DESCRIPTOR_VERSION } from '#vector/app/composables/useVectorSchema'
 import { endpoint, standaloneApi } from './endpoints'
 
-// Writing help: the menu under a text input and in a rich-text or
+// Writing help: the menu inside a text input (its answer in a popover) and in a rich-text or
 // Markdown editor's toolbar, shown only where capabilities.ai.writing is
 // on, neither the resource nor the field is kept from AI and the field is
 // not one writing help is off for (noWriting). The answer shows before and
@@ -47,7 +48,7 @@ async function pick(wrapper: Awaited<ReturnType<typeof shell>>, operation: strin
     const item = document.body.querySelector<HTMLElement>(`[data-ai-writing-operation="${operation}"]`)
     expect(item).not.toBeNull()
     item!.click()
-    // the addon's answer is in the input's own markup; the toolbar item's, in a dialog on the body
+    // the addon's answer is in a popover on the body; the toolbar item's, in a dialog on the body
     if (settled !== '') await vi.waitFor(() => expect(wrapper.find(settled).exists() || document.body.querySelector(settled) !== null).toBe(true))
     await flushPromises()
 }
@@ -110,16 +111,21 @@ describe('writing help', () => {
         document.body.querySelectorAll('.v-overlay-container').forEach(container => container.replaceChildren())
     })
 
-    it('registers under text inputs and in the editors\' toolbars, through the admin\'s extension points', () => {
+    it('registers inside text inputs and in the editors\' toolbars, through the admin\'s extension points', () => {
         const { inputAddons, editorToolbar } = useVectorExtensions()
         expect(inputAddons.get('ai-writing')?.types).toEqual(['string', 'text'])
+        expect(inputAddons.get('ai-writing')?.placement).toBe('inner')
         expect(editorToolbar.get('ai-writing')).toBeDefined()
     })
 
-    describe('under a text input', () => {
+    describe('inside a text input', () => {
         const EDIT = '/r/orders/7/edit'
         const CREATE = '/r/orders/create'
-        const props = (extra: Record<string, unknown> = {}) => ({ field: field('notes', 'text'), resource: 'orders', record: { id: 7 }, modelValue: NOTES, ...extra })
+        const props = (extra: Record<string, unknown> = {}) => ({ field: field('notes', 'text'), resource: 'orders', record: { id: 7 }, modelValue: NOTES, rules: [], errorMessages: [], ...extra })
+        /** The input the admin renders for the field: the addon is registered inside it, at its inline end. */
+        const input = (type = 'text') => (type === 'text' ? VxInputTextarea : VxInputText)
+        /** The popover the answer or the failure opens in, on the body. */
+        const popover = () => document.body.querySelector<HTMLElement>('[data-ai-writing-popover]')
 
         it.each([
             ['without capabilities.ai', undefined, {}, EDIT],
@@ -128,44 +134,62 @@ describe('writing help', () => {
             ['on a field kept from AI', { ...ON, excludedFields: { orders: ['notes'] } }, {}, EDIT],
             ['on a field writing help is off for', { ...ON, noWriting: { orders: ['notes'] } }, {}, EDIT],
             ['in a settings form', ON, { resource: '' }, '/settings'],
-            // the forms the addon is also mounted under, with a record that has no id
+            // the forms the addon is also mounted in, with a record that has no id
             ['in the list\'s bulk edit', ON, { record: {} }, '/r/orders'],
             ['in an action\'s dialog on a record\'s page', ON, { record: {} }, '/r/orders/7'],
             ['in a form for another resource than the page\'s', ON, { record: {} }, '/r/customers/3/edit'],
             ['in a form for another resource than the create page\'s', ON, { record: {} }, '/r/customers/create'],
         ])('shows nothing %s', async (_, ai, extra, route) => {
             useState('vector.schema').value = descriptor(ai)
-            const wrapper = await shell(VxAiWritingAddon, props(extra), route)
+            const wrapper = await shell(input(), props(extra), route)
+            expect(wrapper.find('textarea').exists()).toBe(true)
             expect(wrapper.find('[data-ai-writing]').exists()).toBe(false)
             wrapper.unmount()
         })
 
         it('shows on a field another field of the resource is kept back beside', async () => {
             useState('vector.schema').value = descriptor({ ...ON, excludedFields: { orders: ['number'] } })
-            const wrapper = await shell(VxAiWritingAddon, props(), EDIT)
+            const wrapper = await shell(input(), props(), EDIT)
             expect(wrapper.find('[data-ai-writing]').exists()).toBe(true)
             wrapper.unmount()
         })
 
-        it('Replace puts the answer in the input, after showing it beside the text; the record is the edit page\'s', async () => {
+        it.each([['text', 'textarea'], ['string', 'input']])('sits inside a %s field at its inline end, as an icon, and nowhere under it', async (type, control) => {
+            useState('vector.schema').value = descriptor(ON)
+            const wrapper = await shell(input(type), props({ field: field('notes', type) }), EDIT)
+
+            expect(wrapper.find(control).exists()).toBe(true)
+            const menu = wrapper.find('.v-field__append-inner [data-input-addons="inner"] [data-ai-writing] [data-ai-writing-menu]')
+            expect(menu.exists()).toBe(true)
+            expect(menu.attributes('aria-label')).toBe('Writing help')
+            expect(menu.text()).toBe('')
+            // one writing addon, and it is the one in the field
+            expect(wrapper.findAll('[data-ai-writing]')).toHaveLength(1)
+            wrapper.unmount()
+        })
+
+        it('Replace puts the answer in the input, after showing it beside the text in a popover; the record is the edit page\'s', async () => {
             standaloneApi()
             const call = endpoint('/vector/ai/writing/orders/notes', { body: ANSWER }, 'POST')
             cleanups.push(call.unregister)
             useState('vector.schema').value = descriptor(ON)
             const changed = vi.fn()
             // the record the form holds says nothing about which record it is: the page does
-            const wrapper = await shell(VxAiWritingAddon, props({ 'record': {}, 'onUpdate:modelValue': changed }), EDIT)
+            const wrapper = await shell(input(), props({ 'record': {}, 'onUpdate:modelValue': changed }), EDIT)
 
             await pick(wrapper, 'shorten')
 
             expect(call.requests[0]!.body).toEqual({ operation: 'shorten', text: NOTES, format: 'plain', targetLocale: null, recordId: '7' })
-            expect(wrapper.find('[data-ai-writing-before]').text()).toBe(NOTES)
-            expect(wrapper.find('[data-ai-writing-after]').text()).toBe(ANSWER.text)
+            // the answer is in the popover on the body, not in the field
+            expect(wrapper.find('[data-ai-writing-result]').exists()).toBe(false)
+            expect(popover()?.querySelector('[data-ai-writing-before]')?.textContent).toBe(NOTES)
+            expect(popover()?.querySelector('[data-ai-writing-after]')?.textContent).toBe(ANSWER.text)
             expect(changed).not.toHaveBeenCalled()
 
-            await wrapper.find('[data-ai-writing-replace]').trigger('click')
+            popover()!.querySelector<HTMLElement>('[data-ai-writing-replace]')!.click()
+            await flushPromises()
             expect(changed).toHaveBeenCalledWith(ANSWER.text)
-            expect(wrapper.find('[data-ai-writing-result]').exists()).toBe(false)
+            await vi.waitFor(() => expect(document.body.querySelector('[data-ai-writing-result]')).toBeNull())
             wrapper.unmount()
         })
 
@@ -175,31 +199,34 @@ describe('writing help', () => {
             cleanups.push(call.unregister)
             useState('vector.schema').value = descriptor(ON)
             const changed = vi.fn()
-            const wrapper = await shell(VxAiWritingAddon, props({ 'record': {}, 'onUpdate:modelValue': changed }), CREATE)
+            const wrapper = await shell(input(), props({ 'record': {}, 'onUpdate:modelValue': changed }), CREATE)
 
             expect(wrapper.find('[data-ai-writing]').exists()).toBe(true)
             await pick(wrapper, 'rewrite')
             expect((call.requests[0]!.body as { recordId: unknown }).recordId).toBeNull()
-            expect(wrapper.find('[data-ai-writing-truncated]').exists()).toBe(true)
+            expect(popover()?.querySelector('[data-ai-writing-truncated]')).not.toBeNull()
 
-            await wrapper.find('[data-ai-writing-discard]').trigger('click')
-            expect(wrapper.find('[data-ai-writing-result]').exists()).toBe(false)
+            popover()!.querySelector<HTMLElement>('[data-ai-writing-discard]')!.click()
+            await flushPromises()
+            await vi.waitFor(() => expect(document.body.querySelector('[data-ai-writing-result]')).toBeNull())
             expect(changed).not.toHaveBeenCalled()
             wrapper.unmount()
         })
 
-        it('a failure says why and leaves the input as it was', async () => {
+        it('a failure says why in the popover and leaves the input as it was', async () => {
             standaloneApi()
             const call = endpoint('/vector/ai/writing/orders/notes', { status: 502, body: { error: 'The AI provider refused the request.' } }, 'POST')
             cleanups.push(call.unregister)
             useState('vector.schema').value = descriptor(ON)
             const changed = vi.fn()
-            const wrapper = await shell(VxAiWritingAddon, props({ 'onUpdate:modelValue': changed }), EDIT)
+            const wrapper = await shell(input(), props({ 'onUpdate:modelValue': changed }), EDIT)
 
             await pick(wrapper, 'grammar')
 
-            expect(wrapper.find('[data-ai-writing-failure]').text()).toBe('The AI provider refused the request.')
-            expect(wrapper.find('[data-ai-writing-result]').exists()).toBe(false)
+            const failure = popover()?.querySelector<HTMLElement>('[data-ai-writing-failure]')
+            expect(failure?.textContent).toBe('The AI provider refused the request.')
+            expect(failure?.getAttribute('role')).toBe('alert')
+            expect(document.body.querySelector('[data-ai-writing-result]')).toBeNull()
             expect(changed).not.toHaveBeenCalled()
             wrapper.unmount()
         })
@@ -209,7 +236,7 @@ describe('writing help', () => {
             const call = endpoint('/vector/ai/writing/orders/notes', { body: { ...ANSWER, operation: 'translate' } }, 'POST')
             cleanups.push(call.unregister)
             useState('vector.schema').value = descriptor(ON)
-            const wrapper = await shell(VxAiWritingAddon, props(), EDIT)
+            const wrapper = await shell(input(), props(), EDIT)
 
             await pick(wrapper, 'translate', '')
             // every language the UI ships, Hebrew and Brazilian Portuguese among them

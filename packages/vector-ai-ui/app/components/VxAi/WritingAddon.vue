@@ -4,15 +4,17 @@ import type { WritingAnswer, WritingOperation } from '../../composables/useVecto
 import WritingMenu from './WritingMenu.vue'
 import WritingResult from './WritingResult.vue'
 
-// Writing help under a text input (defineInputAddon, `string` and
-// `text`): the menu, then the answer beside the text it was asked about,
-// with Replace — which puts it in the input, for the person to review and
-// save as their own edit — and Discard. A failure keeps the text as it
-// was and says why. Shown only where writing help is offered for this
-// field (useVectorWriting().offered()), and only on that resource's own
-// create or edit page: the record comes from the page, as it does for the
-// editor toolbar item, so a settings form, a bulk edit and an action's
-// dialog — forms the addon is also mounted under — show nothing.
+// Writing help inside a text input (defineInputAddon, `string` and
+// `text`, placement `inner`): an icon at the field's inline end opens the
+// menu; the answer opens in a popover anchored to the field, beside the
+// text it was asked about, with Replace — which puts it in the input, for
+// the person to review and save as their own edit — and Discard; Escape
+// or a click outside it discards too. A failure keeps the text as it was
+// and says why, in the same popover. Shown only where writing help is
+// offered for this field (useVectorWriting().offered()), and only on that
+// resource's own create or edit page: the record comes from the page, as
+// it does for the editor toolbar item, so a settings form, a bulk edit and
+// an action's dialog — forms the addon is also mounted in — show nothing.
 const props = defineProps<{
     field: VectorField
     /** The resource's slug; empty in a settings group. */
@@ -71,23 +73,55 @@ function replace() {
 
 function discard() {
     result.value = null
+    failure.value = null
 }
+
+// the popover hangs from the field the addon sits in (from the addon itself outside one), as wide as
+// the field up to 480px; it is open while there is an answer or a failure to show
+const root = ref<HTMLElement | null>(null)
+const anchor = ref<HTMLElement | null>(null)
+const width = ref(0)
+const popover = computed({
+    get: () => result.value !== null || failure.value !== null,
+    set: (opened: boolean) => {
+        if (!opened) discard()
+    },
+})
+
+watch(root, (element) => {
+    anchor.value = element?.closest<HTMLElement>('.v-input') ?? element
+})
+watch(popover, (opened) => {
+    if (opened) width.value = Math.min(anchor.value?.getBoundingClientRect().width ?? 0, 480)
+})
 </script>
 
 <template>
-    <div v-if="shown" class="vx-ai-writing w-100" data-ai-writing>
-        <WritingMenu :disabled="props.disabled || text.trim() === ''" :busy="busy" @run="run" />
-        <span v-if="failure" class="text-caption text-error ml-2" role="alert" data-ai-writing-failure>{{ failure }}</span>
-        <WritingResult
-            v-if="result"
-            class="mt-1"
-            :before="result.before"
-            :after="result.answer.text"
-            format="plain"
-            :truncated="result.answer.truncated"
-            @replace="replace"
-            @discard="discard"
-        />
+    <div v-if="shown" ref="root" class="vx-ai-writing d-inline-flex align-center" data-ai-writing>
+        <WritingMenu icon :disabled="props.disabled || text.trim() === ''" :busy="busy" @run="run" />
+        <v-menu
+            v-if="anchor"
+            v-model="popover"
+            :activator="anchor"
+            :open-on-click="false"
+            :close-on-content-click="false"
+            location="bottom end"
+            :min-width="width || undefined"
+            max-width="480"
+        >
+            <v-card class="pa-2" data-ai-writing-popover>
+                <div v-if="failure" class="text-body-2 text-error pa-1" role="alert" data-ai-writing-failure>{{ failure }}</div>
+                <WritingResult
+                    v-if="result"
+                    :before="result.before"
+                    :after="result.answer.text"
+                    format="plain"
+                    :truncated="result.answer.truncated"
+                    @replace="replace"
+                    @discard="discard"
+                />
+            </v-card>
+        </v-menu>
         <span class="d-sr-only" aria-live="polite">{{ busy ? t('ai.writing.busy') : '' }}</span>
     </div>
 </template>
