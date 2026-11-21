@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { linkRecords } from '../../utils/recordLinks'
 import { toolChips } from '../../utils/assistantTools'
+import { followScroll, type FollowScroll } from '../../utils/followScroll'
 import ApprovalCard from './ApprovalCard.vue'
 
 // The assistant: a sparkle button in the app bar (a shell action) and the
@@ -13,7 +14,10 @@ import ApprovalCard from './ApprovalCard.vue'
 // shows as an approval card under its answer: approving or rejecting it
 // sends the decision, and the assistant then says what happened. Above an
 // answer, a chip for each tool it read or proposed with, a repeated one
-// once with how many times; a call that was a tool error has none. ⌘J
+// once with how many times; a call that was a tool error has none. The
+// conversation scrolls after an answer as it arrives, gliding rather than
+// jumping when much arrives at once; scrolling up stops that until the next
+// question or answer, or until the reader is back at the end. ⌘J
 // (Ctrl+J elsewhere) opens or closes the drawer from anywhere, its own
 // input included; nothing on screen says so. Shown, and the shortcut
 // heard, only when capabilities.ai.assistant is on.
@@ -80,13 +84,27 @@ function onShortcut(event: KeyboardEvent) {
     open.value = !open.value
 }
 
+// the conversation follows the answer as it arrives, unless the reader scrolled up;
+// a new question or a new answer follows it again
+const conversation = ref<HTMLElement | null>(null)
+let scroller: FollowScroll | null = null
+watch(conversation, (el) => {
+    scroller?.stop()
+    scroller = el === null ? null : followScroll(el)
+}, { flush: 'post' })
+watch(() => turns.value.at(-1)?.id, () => scroller?.resume(), { flush: 'post' })
+watch(turns, () => scroller?.grew(), { deep: true, flush: 'post' })
+
 // the drawer lives in the application's layout, beside the page, wherever the shell action is rendered
 const target = ref<string | null>(null)
 onMounted(() => {
     target.value = document.querySelector('.v-application') ? '.v-application' : null
     window.addEventListener('keydown', onShortcut)
 })
-onBeforeUnmount(() => window.removeEventListener('keydown', onShortcut))
+onBeforeUnmount(() => {
+    window.removeEventListener('keydown', onShortcut)
+    scroller?.stop()
+})
 </script>
 
 <template>
@@ -103,7 +121,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onShortcut))
                         <v-icon icon="mdi-bookmark-outline" size="x-small" class="me-1" />{{ contextLine }}
                     </p>
                     <v-divider />
-                    <div class="flex-grow-1 overflow-y-auto pa-3" aria-live="polite" data-ai-assistant-conversation>
+                    <div ref="conversation" class="flex-grow-1 overflow-y-auto pa-3" aria-live="polite" data-ai-assistant-conversation>
                         <p v-if="turns.length === 0" class="text-body-2 text-medium-emphasis" data-ai-assistant-empty>{{ t(writes ? 'ai.assistant.emptyWrites' : 'ai.assistant.empty') }}</p>
                         <div v-for="turn in shownTurns" :key="turn.id" class="mb-3" :data-ai-assistant-turn="turn.role">
                             <v-sheet v-if="turn.role === 'user'" color="primary" variant="tonal" rounded class="pa-2 ms-8 text-body-2 vx-ai-assistant__user">{{ turn.content }}</v-sheet>
