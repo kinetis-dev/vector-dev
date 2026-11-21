@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The MCP tool `vector_aggregate`: counts, sums, averages, minimums and
+  maximums (1 to 6 metrics) over every record a `filter` and `q` match —
+  read by the list's own grammar, under its scope, trash predicate and
+  `viewAny` — grouped by up to three keys: a value, a belongsTo's key
+  (`{id, label}`) or a date or datetime by `day`, `week`, `month`,
+  `quarter` or `year` in UTC, on MySQL and PostgreSQL; sorted by a metric
+  or key, at most 100 groups, with `groupCount` and `truncated`. A field
+  is eligible when the user's descriptor publishes it, its list or record
+  view shows it, and it is no
+  computed, rich-text, key-value or collection field. Money stays in
+  minor units, and a field priced in a currency field of its record is
+  grouped by that currency too. `Query\AggregateRequest` validates the
+  request and `ResourceService::aggregate()` runs it.
+
+- `vector_query` takes `fields`, a list of field names: each row then
+  carries only those, its key, and the `_version` and `_trashed` it
+  carries anyway. Without it a page is unchanged.
+
 - `Http\VisibleResources::all()` — the resources this request's user may
   list, as they see them, with their permissions — is decided once per
   request: the descriptor, the OpenAPI document and a shell contributor
@@ -47,6 +65,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scope of their own (`RunActionJob`, through `JobContext::inFreshScope()`),
   the resource read anew as the admin sees it: a request-scoped cache
   filled during one chunk is no longer what the next one sees.
+
+### Fixed
+
+- `vector_aggregate` refuses a field neither the list nor the record view shows — as a group key, metric, sort or a money metric's currency — as a list's `columns` does.
 
 ## [0.16.0] - 2026-11-19
 

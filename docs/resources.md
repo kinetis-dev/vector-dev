@@ -245,7 +245,7 @@ others are matched with `LIKE`. The application creates the index; see
 
 The same match applies wherever `q` does: the list and its cursor pages,
 inline and queued exports, an `all` selection for a batch or an action,
-`vector_query`, and global search.
+`vector_query`, `vector_aggregate`, and global search.
 
 ## Global search
 

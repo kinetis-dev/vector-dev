@@ -48,8 +48,14 @@ final readonly class ModelBoundary
     /** What follows a string cut at MAX_STRING. */
     public const string TRUNCATED = '… [truncated]';
 
-    /** The most rows of one page sent. */
+    /** The most rows of one page sent, when the query names no `fields`. */
     public const int MAX_ROWS = 25;
+
+    /** The most rows of one page sent when the query projects `fields`, however few. */
+    public const int MAX_PROJECTED_ROWS = 200;
+
+    /** The cells (rows × fields) a projected page may carry: fewer fields, more rows. */
+    public const int PROJECTED_CELLS = 1000;
 
     /** What a model is told of a write Vector refused for any reason but validation (writeFailure()). */
     public const string REFUSED = 'Vector refused the change: its policy, a hook or a changed record stopped it. Its reason is not available to the assistant; the admin sees it on the proposal.';
@@ -180,20 +186,35 @@ final readonly class ModelBoundary
     }
 
     /**
+     * The most rows one page of vector_query may carry to a model: MAX_ROWS
+     * without a projection, and with `fields` naming n fields
+     * min(MAX_PROJECTED_ROWS, floor(PROJECTED_CELLS / n)). A `fields` that
+     * is no list of names counts as none: the dispatcher refuses it.
+     */
+    public static function maxRows(mixed $fields): int
+    {
+        if (!is_array($fields) || $fields === [] || array_filter($fields, static fn (mixed $f): bool => !is_string($f)) !== []) {
+            return self::MAX_ROWS;
+        }
+
+        return min(self::MAX_PROJECTED_ROWS, intdiv(self::PROJECTED_CELLS, count(array_unique($fields))));
+    }
+
+    /**
      * One page of a list as a model may be sent it: record() on each row,
-     * at most MAX_ROWS of them, and the page's position — no summaries,
-     * which could total a field kept back. `omittedRows` counts the rows
-     * left out.
+     * at most $maxRows of them (MAX_ROWS unless said), and the page's
+     * position — no summaries, which could total a field kept back.
+     * `omittedRows` counts the rows left out.
      *
      * @param array<array-key, mixed> $page a page as ResourceService::list() answers it
      * @return array<string, mixed>
      */
-    public function page(ResourceDescriptor $visible, array $page): array
+    public function page(ResourceDescriptor $visible, array $page, int $maxRows = self::MAX_ROWS): array
     {
         $rows = is_array($page['data'] ?? null) ? array_values($page['data']) : [];
         $sent = ['data' => array_map(
             fn (mixed $row): array => is_array($row) ? $this->record($visible, $row) : [],
-            array_slice($rows, 0, self::MAX_ROWS),
+            array_slice($rows, 0, $maxRows),
         )];
 
         foreach (['currentPage', 'perPage', 'total', 'lastPage', 'hasMore', 'nextCursor'] as $position) {
@@ -202,8 +223,8 @@ final readonly class ModelBoundary
             }
         }
 
-        if (count($rows) > self::MAX_ROWS) {
-            $sent['omittedRows'] = count($rows) - self::MAX_ROWS;
+        if (count($rows) > $maxRows) {
+            $sent['omittedRows'] = count($rows) - $maxRows;
         }
 
         return $sent;
@@ -213,7 +234,9 @@ final readonly class ModelBoundary
      * What a model is sent of one tool's answer, by the tool's name:
      *
      * - `vector_describe`: the description for reading, its fields cut as record() cuts them;
-     * - `vector_query`: page(); `vector_get`: record() of its `data`;
+     * - `vector_query`: page(), as many rows as maxRows() lets its `fields`
+     *   through; `vector_get`: record() of its `data`;
+     * - `vector_aggregate`: aggregate();
      * - `vector_widget`: the widget's data, strings cut and a table's
      *   columns withheld by its linked resource left out — refused for a
      *   resource widget of a resource kept from the model, a widget whose
@@ -245,7 +268,7 @@ final readonly class ModelBoundary
             return $this->widget($arguments, $result);
         }
 
-        if (!in_array($tool, ['vector_describe', 'vector_query', 'vector_get', 'vector_create', 'vector_update', 'vector_delete', 'vector_run_action'], true)) {
+        if (!in_array($tool, ['vector_describe', 'vector_query', 'vector_aggregate', 'vector_get', 'vector_create', 'vector_update', 'vector_delete', 'vector_run_action'], true)) {
             return self::refusal();
         }
 
@@ -257,7 +280,8 @@ final readonly class ModelBoundary
 
         return match ($tool) {
             'vector_describe' => $this->description($visible, $result),
-            'vector_query' => $this->page($visible, $result),
+            'vector_query' => $this->page($visible, $result, self::maxRows($arguments['fields'] ?? null)),
+            'vector_aggregate' => $this->aggregate($visible, $result),
             'vector_create', 'vector_update' => ['data' => is_array($result['data'] ?? null) ? $this->record($visible, $result['data']) : null],
             'vector_delete' => ['deleted' => is_scalar($result['deleted'] ?? null) ? (string) $result['deleted'] : null],
             'vector_run_action' => $this->truncated(array_intersect_key($result, ['type' => true, 'message' => true])),
@@ -582,6 +606,52 @@ final readonly class ModelBoundary
         $described = $this->truncated($described);
 
         return is_array($described) ? $described : [];
+    }
+
+    /**
+     * vector_aggregate's answer as a model may be sent it: refused whole
+     * when a group key or metric names a field sends() refuses — which
+     * GovernedTool keeps from being asked; each belongsTo key through
+     * reference(), so its label goes when the related resource's title
+     * field may not be sent; every string cut.
+     *
+     * @param array<array-key, mixed> $result
+     */
+    private function aggregate(ResourceDescriptor $visible, array $result): mixed
+    {
+        $visible = $this->visible($visible);
+        $fields = $visible->fields();
+        $groups = [];
+
+        foreach (is_array($result['groups'] ?? null) ? $result['groups'] : [] as $group) {
+            $key = is_array($group) && is_array($group['key'] ?? null) ? $group['key'] : [];
+            $metrics = is_array($group) && is_array($group['metrics'] ?? null) ? $group['metrics'] : [];
+            $sent = [];
+
+            foreach ($key as $name => $value) {
+                $name = (string) $name;
+
+                if (!$this->sends($visible, $name)) {
+                    return self::refusal();
+                }
+
+                $sent[$name] = ($fields[$name]['type'] ?? null) === 'belongsTo' && is_array($value) ? $this->value($fields[$name], $value) : $value;
+            }
+
+            foreach (array_keys($metrics) as $metric) {
+                $field = preg_match('/^(?:sum|avg|min|max)_(.+)$/D', (string) $metric, $m) === 1 ? $m[1] : null;
+
+                if ((string) $metric !== 'count' && ($field === null || !$this->sends($visible, $field))) {
+                    return self::refusal();
+                }
+            }
+
+            $groups[] = ['key' => $sent, 'metrics' => $metrics];
+        }
+
+        $result['groups'] = $groups;
+
+        return $this->truncated(array_intersect_key($result, array_flip(['groups', 'groupCount', 'truncated', 'timezone', 'money'])));
     }
 
     /**

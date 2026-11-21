@@ -761,6 +761,195 @@ final readonly class ResourceService
     }
 
     /**
+     * The groups of the rows a list of $request matches — the same
+     * scope, soft-delete predicate, filters and search, under the same
+     * `viewAny` — with each group's metrics, in one grouped statement, and
+     * one more counting the groups when there are more than the limit.
+     * Each belongsTo key is the related record's id and title, read as a
+     * list reads it: one statement per relation key. A date key is the
+     * first day of its bucket, `YYYY-MM-DD`, in UTC; a money amount is in
+     * minor units, as a list and its summaries write it.
+     *
+     * @return array{groups: list<array{key: array<string, mixed>, metrics: array<string, int|float|string|null>}>, groupCount: int, truncated: bool, timezone: string, money?: array<string, array<string, string|null>>}
+     */
+    public function aggregate(ResourceDescriptor $resource, ListRequest $request, AggregateRequest $aggregate): array
+    {
+        $this->gate->authorize($this->user, $this->policy($resource)->viewAny(...));
+
+        $dialect = $this->dialect($resource);
+        $query = $this->constrained($resource, null, $request, null);
+        $select = [];
+        $grouped = [];
+        $aliases = [];
+
+        foreach ($aggregate->groups as $i => $group) {
+            $expression = self::groupExpression($dialect, $group);
+            $select[] = $expression . ' AS ' . Sql::quote($dialect, "g{$i}");
+            $grouped[] = $expression;
+            $aliases[$group['field']] = "g{$i}";
+        }
+
+        foreach ($aggregate->metrics as $i => $metric) {
+            $select[] = ($metric['column'] === null ? 'COUNT(*)' : strtoupper($metric['fn']) . '(' . Sql::quote($dialect, $metric['column']) . ')') . ' AS ' . Sql::quote($dialect, "m{$i}");
+            $aliases[$metric['key']] = "m{$i}";
+        }
+
+        $query->selectRaw(implode(', ', $select));
+
+        if ($grouped !== []) {
+            $query->groupByRaw(implode(', ', $grouped));
+        }
+
+        $counted = clone $query;
+        $query->orderByRaw(Sql::quote($dialect, $aliases[$aggregate->sort['key']]) . ' ' . strtoupper($aggregate->sort['order']));
+
+        // ties in a stable order: by the group keys
+        foreach (array_keys($aggregate->groups) as $i) {
+            $query->orderByRaw(Sql::quote($dialect, "g{$i}") . ' ASC');
+        }
+
+        /** @var list<array<string, mixed>> $rows one past the limit tells a truncated answer from a full one */
+        $rows = $query->limit($aggregate->limit + 1)->get();
+        $truncated = count($rows) > $aggregate->limit;
+        $rows = array_slice($rows, 0, $aggregate->limit);
+        $labels = $this->groupLabels($aggregate, $rows);
+        $groups = [];
+
+        foreach ($rows as $row) {
+            $key = [];
+
+            foreach ($aggregate->groups as $i => $group) {
+                $key[$group['field']] = self::groupValue($group, $row["g{$i}"] ?? null, $labels[$group['field']] ?? []);
+            }
+
+            $metrics = [];
+
+            foreach ($aggregate->metrics as $i => $metric) {
+                $metrics[$metric['key']] = self::metricValue($metric, $row["m{$i}"] ?? null);
+            }
+
+            $groups[] = ['key' => $key, 'metrics' => $metrics];
+        }
+
+        $answer = [
+            'groups' => $groups,
+            'groupCount' => $truncated ? $this->query($resource)->fromSub($counted, 'vector_groups')->count() : count($groups),
+            'truncated' => $truncated,
+            'timezone' => AggregateRequest::TIMEZONE,
+        ];
+
+        if ($aggregate->money !== []) {
+            $answer['money'] = $aggregate->money;
+        }
+
+        return $answer;
+    }
+
+    /**
+     * A group key as SQL over a descriptor column: the column itself, or
+     * the first day of its bucket as `YYYY-MM-DD` — weeks start on Monday.
+     * Instants are stored in UTC, so the buckets are UTC days.
+     *
+     * @param 'mysql'|'pgsql' $dialect
+     * @param array{column: string, bucket: string|null} $group
+     */
+    private static function groupExpression(string $dialect, array $group): string
+    {
+        $column = Sql::quote($dialect, $group['column']);
+
+        if ($group['bucket'] === null) {
+            return $column;
+        }
+
+        if ($dialect === Connections::PGSQL) {
+            return "to_char(date_trunc('{$group['bucket']}', CAST({$column} AS TIMESTAMP)), 'YYYY-MM-DD')";
+        }
+
+        return match ($group['bucket']) {
+            'day' => "DATE_FORMAT({$column}, '%Y-%m-%d')",
+            'week' => "DATE_FORMAT(DATE_SUB({$column}, INTERVAL WEEKDAY({$column}) DAY), '%Y-%m-%d')",
+            'month' => "DATE_FORMAT({$column}, '%Y-%m-01')",
+            'quarter' => "CONCAT(YEAR({$column}), '-', LPAD(QUARTER({$column}) * 3 - 2, 2, '0'), '-01')",
+            default => "DATE_FORMAT({$column}, '%Y-01-01')",
+        };
+    }
+
+    /**
+     * The id and title of every related record a belongsTo key names on
+     * these rows, by field: one statement per relation key, as a list
+     * loads its labels. A title this user may not see fell back to the key.
+     *
+     * @param list<array<string, mixed>> $rows
+     * @return array<string, array<int|string, array<string, string|null>>>
+     */
+    private function groupLabels(AggregateRequest $aggregate, array $rows): array
+    {
+        $labels = [];
+
+        foreach ($aggregate->groups as $i => $group) {
+            if ($group['target'] === null) {
+                continue;
+            }
+
+            $target = $this->resource($group['target']);
+            $ids = array_values(array_unique(array_filter(array_column($rows, "g{$i}"), static fn (mixed $v): bool => $v !== null)));
+            $labels[$group['field']] = $this->labels($target, $ids);
+        }
+
+        return $labels;
+    }
+
+    /**
+     * @param array{kind: string, valueType: string} $group
+     * @param array<int|string, array<string, string|null>> $labels
+     */
+    private static function groupValue(array $group, mixed $value, array $labels): mixed
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return match ($group['kind']) {
+            'bucket' => (string) $value,
+            'relation' => ['id' => $id = $group['valueType'] === 'int' ? (int) $value : (string) $value, 'label' => (string) ($labels[$id]['label'] ?? $id)],
+            default => match ($group['valueType']) {
+                'int' => (int) $value,
+                'float' => (float) $value,
+                'bool' => Sql::bool($value),
+                default => is_scalar($value) ? (string) $value : null,
+            },
+        };
+    }
+
+    /**
+     * A metric as a list writes its field: a count or an integer column's
+     * sum as an integer — money in minor units — an average rounded as a
+     * summary is, and a date's minimum or maximum as the record shows it.
+     *
+     * @param array{fn: string, type: string|null, valueType: string|null} $metric
+     */
+    private static function metricValue(array $metric, mixed $value): int|float|string|null
+    {
+        if ($value === null) {
+            return $metric['fn'] === 'count' ? 0 : null;
+        }
+
+        if ($metric['fn'] === 'count') {
+            return (int) $value;
+        }
+
+        if ($metric['fn'] === 'avg' || $metric['valueType'] === 'float') {
+            return round((float) $value, 4);
+        }
+
+        return match ($metric['type']) {
+            'datetime' => (new \DateTimeImmutable((string) $value, new \DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.v\Z'),
+            'date' => substr((string) $value, 0, 10),
+            default => (int) $value,
+        };
+    }
+
+    /**
      * One record, for a user who may list the resource and view that
      * record: a resource the policy hides from the list is not reachable
      * by identifier either.

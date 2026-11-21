@@ -209,6 +209,58 @@ final class AssistantStreamTest extends AssistantTestCase
         self::assertStringContainsString('"perPage":25', $result);
     }
 
+    public function testTheTopSpendersAreAggregatedByTheDatabaseAndTheModelIsToldToAskForThem(): void
+    {
+        $this->script([self::QUESTION => self::rounds(
+            [[['name' => 'vector_aggregate', 'arguments' => ['resource' => 'orders', 'groupBy' => [['field' => 'customer']], 'metrics' => [['fn' => 'sum', 'field' => 'totalCents']], 'limit' => 10]]]],
+            'Done.',
+        )]);
+
+        $frames = $this->turn()['frames'];
+
+        self::assertSame([], self::ofType($frames, 'tool-output-error'));
+        self::assertSame('vector_aggregate', self::ofType($frames, 'tool-input-start')[0]['toolName']);
+        $result = self::toolResults($this->calls()[1])[0];
+        self::assertStringStartsWith(GovernedTool::PREAMBLE . "\n", $result);
+        $answer = json_decode(substr($result, strlen(GovernedTool::PREAMBLE) + 1), true, 64, JSON_THROW_ON_ERROR);
+        self::assertIsArray($answer);
+
+        // one call answers what nine pages of vector_query could not: every order, added up by the database
+        $link = $this->app->get(\Kinetis\Persistence\Contract\MysqlLink::class);
+        self::assertInstanceOf(\Kinetis\Persistence\Contract\MysqlLink::class, $link);
+        $top = new \Kinetis\QueryBuilder\Query($link)->table('orders')
+            ->selectRaw('customer_id, currency, SUM(total_cents) AS spent')
+            ->groupBy('customer_id', 'currency')
+            ->orderByRaw('spent DESC, customer_id ASC, currency ASC')
+            ->limit(10)
+            ->get();
+        self::assertSame(
+            array_map(static fn (array $row): array => [(int) $row['customer_id'], (string) $row['currency'], (int) $row['spent']], $top),
+            array_map(static fn (array $g): array => [$g['key']['customer']['id'], $g['key']['currency'], $g['metrics']['sum_totalCents']], $answer['groups']),
+        );
+        self::assertIsString($answer['groups'][0]['key']['customer']['label']);
+        self::assertSame(['sum_totalCents' => ['unit' => 'minor', 'currencyGroup' => 'currency']], $answer['money']);
+
+        $system = (string) $this->calls()[0]->systemPrompt?->getContent();
+        self::assertStringContainsString('call vector_aggregate. Never add up or count vector_query rows yourself.', $system);
+        self::assertStringContainsString('call vector_query with fields', $system);
+    }
+
+    public function testAProjectedQueryReadsAsManyRowsAsItsFieldsAllow(): void
+    {
+        $this->script([self::QUESTION => self::rounds([[['name' => 'vector_query', 'arguments' => ['resource' => 'orders', 'fields' => ['number', 'totalCents', 'currency'], 'perPage' => 500]]]], 'Done.')]);
+
+        $frames = $this->turn()['frames'];
+
+        self::assertSame([], self::ofType($frames, 'tool-output-error'));
+        $page = json_decode(substr(self::toolResults($this->calls()[1])[0], strlen(GovernedTool::PREAMBLE) + 1), true, 64, JSON_THROW_ON_ERROR);
+        self::assertIsArray($page);
+        // min(200, 1000 / 3)
+        self::assertSame(200, $page['perPage']);
+        self::assertCount(200, $page['data']);
+        self::assertSame(['id', 'number', 'totalCents', 'currency'], array_keys($page['data'][0]));
+    }
+
     public function testAResourceKeptFromTheModelIsAToolErrorAndTheRunGoesOn(): void
     {
         $this->script([self::QUESTION => self::rounds(

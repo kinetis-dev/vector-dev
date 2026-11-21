@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace App\Tests\Vector\Ai;
 
 use App\Auth\DemoActor;
+use Kinetis\Config\Config;
+use Kinetis\Container\AppScope;
 use Kinetis\Container\RequestScope;
 use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Vector\Exception\InvalidListRequestException;
+use Kinetis\Vector\Registry\VectorRegistry;
+use Kinetis\VectorAi\Assistant\Assistant;
 use Kinetis\VectorAi\Assistant\GovernedTool;
 use Kinetis\VectorAi\Assistant\RunawayToolCallsException;
 use Kinetis\VectorAi\Assistant\ToolBudget;
@@ -26,6 +30,42 @@ use PHPUnit\Framework\Attributes\DataProvider;
 final class GovernedToolTest extends AiTestCase
 {
     private ?RequestScope $scope = null;
+
+    #[\Override]
+    protected function registerTestDoubles(AppScope $app, Config $config): void
+    {
+        parent::registerTestDoubles($app, $config);
+
+        if ($this->name() === 'testAProjectionNamingNoPageSizeGetsNoMoreThanItsResourcesMaximum') {
+            // products page at most 40 rows, fewer than a one-field projection's 200
+            $registry = $app->get(VectorRegistry::class);
+            self::assertInstanceOf(VectorRegistry::class, $registry);
+            $data = $registry->toArray();
+            $data['resources']['products']['table_view']['maxPerPage'] = 40;
+            $app->instance(VectorRegistry::class, VectorRegistry::fromArray($data));
+
+            return;
+        }
+
+        if ($this->name() !== 'testAnAggregateKeepsBackARelationsTitleAndAMoneyFieldsCurrencyKeptFromTheModel') {
+            return;
+        }
+
+        // categories' name and orders' currency are kept from the model
+        $registry = $app->get(VectorRegistry::class);
+        self::assertInstanceOf(VectorRegistry::class, $registry);
+        $data = $registry->toArray();
+
+        foreach (['categories' => 'name', 'orders' => 'currency'] as $slug => $kept) {
+            foreach ($data['resources'][$slug]['fields'] as $i => $field) {
+                if ($field['name'] === $kept) {
+                    $data['resources'][$slug]['fields'][$i]['meta']['ai.send'] = false;
+                }
+            }
+        }
+
+        $app->instance(VectorRegistry::class, VectorRegistry::fromArray($data));
+    }
 
     #[\Override]
     protected function tearDown(): void
@@ -119,6 +159,171 @@ final class GovernedToolTest extends AiTestCase
         $tool->execute();
         self::assertNull($inner->received);
         self::assertEquals(ToolOutput::error(GovernedTool::SEARCH_REFUSED), $tool->getResult());
+    }
+
+    /** @return array<string, array{array<string, mixed>, string}> */
+    public static function aggregatesOnAFieldKeptBack(): array
+    {
+        return [
+            'group' => [['groupBy' => [['field' => 'email']], 'metrics' => [['fn' => 'count']]], GovernedTool::FIELD_REFUSED],
+            'second group' => [['groupBy' => [['field' => 'isAdmin'], ['field' => 'email']], 'metrics' => [['fn' => 'count']]], GovernedTool::FIELD_REFUSED],
+            'metric' => [['metrics' => [['fn' => 'count'], ['fn' => 'min', 'field' => 'email']]], GovernedTool::FIELD_REFUSED],
+            'filter' => [['metrics' => [['fn' => 'count']], 'filter' => ['or' => [['email' => ['like' => 'gmail']]]]], GovernedTool::FIELD_REFUSED],
+            'sort' => [['groupBy' => [['field' => 'isAdmin']], 'metrics' => [['fn' => 'count']], 'sort' => '-email'], GovernedTool::FIELD_REFUSED],
+            'sort by a metric of it' => [['metrics' => [['fn' => 'count']], 'sort' => '-max_email'], GovernedTool::FIELD_REFUSED],
+            'password' => [['metrics' => [['fn' => 'max', 'field' => 'passwordHash']]], GovernedTool::FIELD_REFUSED],
+            'search' => [['metrics' => [['fn' => 'count']], 'q' => '@gmail.com'], GovernedTool::SEARCH_REFUSED],
+        ];
+    }
+
+    /** @param array<string, mixed> $arguments */
+    #[DataProvider('aggregatesOnAFieldKeptBack')]
+    public function testAnAggregateNamingOrSearchingAFieldKeptFromTheModelIsNotDispatched(array $arguments, string $refusal): void
+    {
+        $inner = new RecordingTool('vector_aggregate', ['groups' => []]);
+        $tool = $this->governed($inner, new ToolBudget(8));
+
+        $tool->setInputs(['resource' => 'users', ...$arguments]);
+        $tool->execute();
+
+        self::assertNull($inner->received, 'the aggregate reached the dispatcher');
+        self::assertEquals(ToolOutput::error($refusal), $tool->getResult());
+    }
+
+    public function testAProjectionNamingAFieldKeptFromTheModelIsNotDispatched(): void
+    {
+        $inner = new RecordingTool('vector_query', ['data' => []]);
+        $tool = $this->governed($inner, new ToolBudget(8));
+
+        $tool->setInputs(['resource' => 'users', 'fields' => ['name', 'email']]);
+        $tool->execute();
+
+        self::assertNull($inner->received);
+        self::assertEquals(ToolOutput::error(GovernedTool::FIELD_REFUSED), $tool->getResult());
+    }
+
+    /** @return array<string, array{array<string, mixed>, int}> */
+    public static function pageSizes(): array
+    {
+        $fields = ['id', 'sku', 'name', 'slug', 'status', 'stock', 'isFeatured', 'releasedAt', 'createdAt', 'updatedAt'];
+
+        return [
+            'no fields, asked for more' => [['perPage' => 500], 25],
+            'no fields, none asked' => [[], 25],
+            'empty fields' => [['fields' => [], 'perPage' => 100], 25],
+            'one field' => [['fields' => ['name'], 'perPage' => 500], 200],
+            'five fields: 1000 / 5' => [['fields' => array_slice($fields, 0, 5), 'perPage' => 500], 200],
+            'six fields: 1000 / 6' => [['fields' => array_slice($fields, 0, 6), 'perPage' => 500], 166],
+            'seven fields: 1000 / 7' => [['fields' => array_slice($fields, 0, 7), 'perPage' => 500], 142],
+            'fields, fewer asked' => [['fields' => ['name'], 'perPage' => 30], 30],
+            'ten fields, none asked' => [['fields' => $fields], 100],
+        ];
+    }
+
+    /** @param array<string, mixed> $arguments */
+    #[DataProvider('pageSizes')]
+    public function testAQuerysPageIsClampedByHowManyFieldsItProjects(array $arguments, int $perPage): void
+    {
+        $inner = new RecordingTool('vector_query', ['data' => array_fill(0, 250, ['id' => 1, 'name' => 'Ada'])]);
+        $tool = $this->governed($inner, new ToolBudget(8));
+
+        $tool->setInputs(['resource' => 'products', ...$arguments]);
+        $tool->execute();
+
+        self::assertNotNull($inner->received, (string) json_encode($tool->getResult()));
+        self::assertSame($perPage, $inner->received['perPage']);
+
+        // the boundary sends no more rows than the rule lets through, whatever the tool answered
+        $sent = json_decode(substr((string) $tool->getResult(), strlen(GovernedTool::PREAMBLE) + 1), true, 64, JSON_THROW_ON_ERROR);
+        self::assertIsArray($sent);
+        $most = ($arguments['fields'] ?? []) === [] ? 25 : min(200, intdiv(1000, count($arguments['fields'])));
+        self::assertSame($most, ModelBoundary::maxRows($arguments['fields'] ?? null));
+        self::assertCount($most, $sent['data']);
+        self::assertSame(250 - $most, $sent['omittedRows']);
+    }
+
+    public function testAProjectionNamingNoPageSizeGetsNoMoreThanItsResourcesMaximum(): void
+    {
+        $inner = new RecordingTool('vector_query', ['data' => [['id' => 1, 'name' => 'Ada']]]);
+        $tool = $this->governed($inner, new ToolBudget(8));
+
+        $tool->setInputs(['resource' => 'products', 'fields' => ['name']]);
+        $tool->execute();
+
+        // the size rule would allow 200; products allow 40, and the list would refuse more
+        self::assertSame(['resource' => 'products', 'fields' => ['name'], 'perPage' => 40], $inner->received);
+    }
+
+    public function testAnAggregatesAnswerIsCutAfterThePreamble(): void
+    {
+        $answer = [
+            'groups' => [['key' => ['category' => ['id' => 3, 'label' => 'Lamps'], 'status' => 'active'], 'metrics' => ['sum_stock' => 42, 'count' => 2]]],
+            'groupCount' => 1,
+            'truncated' => false,
+            'timezone' => 'UTC',
+            'unexpected' => 'dropped',
+        ];
+        $inner = new RecordingTool('vector_aggregate', $answer);
+        $tool = $this->governed($inner, new ToolBudget(8));
+        $arguments = ['resource' => 'products', 'groupBy' => [['field' => 'category'], ['field' => 'status']], 'metrics' => [['fn' => 'sum', 'field' => 'stock'], ['fn' => 'count']]];
+
+        $tool->setInputs($arguments);
+        $tool->execute();
+
+        self::assertSame($arguments, $inner->received, 'an aggregate is dispatched as written');
+        self::assertSame(
+            GovernedTool::PREAMBLE . "\n" . '{"groups":[{"key":{"category":{"id":3,"label":"Lamps"},"status":"active"},"metrics":{"sum_stock":42,"count":2}}],"groupCount":1,"truncated":false,"timezone":"UTC"}',
+            $tool->getResult(),
+        );
+
+        // an answer naming a field kept back is not sent, whatever asked for it
+        $leaking = $this->governed(new RecordingTool('vector_aggregate', ['groups' => [['key' => ['email' => 'ada@example.com'], 'metrics' => ['count' => 1]]]]), new ToolBudget(8));
+        $leaking->setInputs(['resource' => 'users', 'metrics' => [['fn' => 'count']]]);
+        $leaking->execute();
+        self::assertSame(GovernedTool::PREAMBLE . "\n" . '{"error":"' . ModelBoundary::UNAVAILABLE . '"}', $leaking->getResult());
+    }
+
+    public function testAnAggregateKeepsBackARelationsTitleAndAMoneyFieldsCurrencyKeptFromTheModel(): void
+    {
+        $inner = new RecordingTool('vector_aggregate', ['groups' => [['key' => ['category' => ['id' => 3, 'label' => 'Lamps']], 'metrics' => ['count' => 2]]], 'groupCount' => 1, 'truncated' => false, 'timezone' => 'UTC']);
+        $tool = $this->governed($inner, new ToolBudget(8));
+
+        $tool->setInputs(['resource' => 'products', 'groupBy' => [['field' => 'category']], 'metrics' => [['fn' => 'count']]]);
+        $tool->execute();
+        self::assertSame(GovernedTool::PREAMBLE . "\n" . '{"groups":[{"key":{"category":{"id":3}},"metrics":{"count":2}}],"groupCount":1,"truncated":false,"timezone":"UTC"}', $tool->getResult());
+
+        // a sum of order totals would group by their currency, which is kept back
+        $money = new RecordingTool('vector_aggregate', ['groups' => []]);
+        $orders = $this->governed($money, new ToolBudget(8));
+        $orders->setInputs(['resource' => 'orders', 'metrics' => [['fn' => 'sum', 'field' => 'totalCents']]]);
+        $orders->execute();
+        self::assertNull($money->received);
+        self::assertEquals(ToolOutput::error(GovernedTool::FIELD_REFUSED), $orders->getResult());
+
+        // counted, nothing of the currency is read
+        $orders->setInputs(['resource' => 'orders', 'groupBy' => [['field' => 'status']], 'metrics' => [['fn' => 'count']]]);
+        $orders->execute();
+        self::assertNotNull($money->received);
+    }
+
+    public function testAnAggregateIsOneOfTheAssistantsToolsAndSpendsTheBudget(): void
+    {
+        self::assertContains('vector_aggregate', Assistant::TOOLS);
+
+        $budget = new ToolBudget(1);
+        $inner = new RecordingTool('vector_aggregate', ['groups' => []]);
+        $tool = $this->governed($inner, $budget);
+
+        $tool->setInputs(['resource' => 'products', 'metrics' => [['fn' => 'count']]]);
+        $tool->execute();
+        self::assertNotNull($inner->received);
+
+        $inner->received = null;
+        $tool->setInputs(['resource' => 'products', 'metrics' => [['fn' => 'count']]]);
+        $tool->execute();
+        self::assertNull($inner->received);
+        self::assertEquals(ToolOutput::error(GovernedTool::EXHAUSTED), $tool->getResult());
+        self::assertSame([['name' => 'vector_aggregate', 'ok' => true]], $budget->calls());
     }
 
     public function testNothingIsDispatchedForAResourceKeptFromTheModelOrPastTheBudget(): void

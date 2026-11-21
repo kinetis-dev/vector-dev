@@ -77,7 +77,7 @@ Installing this package auto-registers, via `extra.kinetis`:
   `vector:install-ui`, `vector:list`, `vector:jobs:reap` and
   `vector:files:prune`.
 - **MCP tools** `vector_resources`, `vector_describe`, `vector_query`,
-  `vector_get`, `vector_create`, `vector_update`, `vector_delete`,
+  `vector_aggregate`, `vector_get`, `vector_create`, `vector_update`, `vector_delete`,
   `vector_run_action` and `vector_widget`, and the resource
   `vector://schema`.
 - **The registry**: every `#[Resource]`, `#[Settings]` and `#[Dashboard]`

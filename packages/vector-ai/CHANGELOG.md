@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The assistant has `vector_aggregate` among its reads, governed like
+  the others: refused when its `groupBy`, a metric, its `filter`, `sort`
+  or `q` touches a field kept from the model — a money metric's currency
+  field included — its answer sent after the preamble through
+  `ModelBoundary::toolResult()`, with a belongsTo key's label left out
+  when the related resource's title field may not be sent. The system
+  prompt tells the model to aggregate rather than add up or count rows,
+  and to list with `fields`.
+
 - Bulk rewrite proposals: `Actions\ProposeRewrites`, a queued Vector
   action a resource opts into by listing a subclass (naming the field
   and a `WritingOperation`, with optional `targetLocale()` and
@@ -66,6 +75,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `vector_query`'s page size follows its projection: 25 rows without
+  `fields`, and with n fields at most min(200, ⌊1000 / n⌋)
+  (`ModelBoundary::maxRows()`), for `perPage` and for the rows the
+  boundary sends. A projection naming a field kept from the model is
+  refused.
+
 - Writing help is off by default for a `string` field marked
   `->unique()`: a unique short string is an identifier — a SKU, a code —
   not prose. `WritingGuard::helps()` decides it (with the `ai.writing`
@@ -79,6 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "The run failed."
 
 ### Fixed
+
+- A projected `vector_query` naming no `perPage` is given at most its resource's own `maxPerPage()`, not a size the list would refuse.
 
 - A model's reasoning written inline is no longer read as its answer:
   what Amazon Nova and Claude 3 write between `<thinking>` and

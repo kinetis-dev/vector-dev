@@ -206,7 +206,7 @@ conditions, and `trashed` belongs to the outermost object. The words
 `or`, `and` and `trashed` cannot name a filterable field. Groups work
 wherever a filter goes: lists and counts, summaries and grouping,
 exports, an "all matching" selection, saved views, badges and the MCP
-`vector_query` tool. The UI's filter bar edits "any of" groups beside
+`vector_query` and `vector_aggregate` tools. The UI's filter bar edits "any of" groups beside
 the plain conditions; a saved view nested deeper than that shows as one
 advanced condition that can be removed.
 
