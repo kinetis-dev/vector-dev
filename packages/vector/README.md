@@ -120,9 +120,9 @@ vendor/bin/kinetis migrate
 vendor/bin/kinetis vector:install-ui    # the hosted admin UI, then restart the workers
 ```
 
-Requires PHP 8.4+ with `ext-zlib` and `ext-openssl`, and
-[`kinetis/framework`](https://github.com/kinetis-dev/framework) 1.28 or
-later.
+Requires PHP 8.4 or 8.5 with `ext-zlib` and `ext-openssl`, and
+[`kinetis/framework`](https://github.com/kinetis-dev/framework) 1.29.1
+or later.
 `vector:install-ui` downloads the `@kinetis/vector-ui` release this
 package pins (`resources/ui.json`) from the npm registry and checks it
 against the registry's sha512 integrity; `--from=<tgz>

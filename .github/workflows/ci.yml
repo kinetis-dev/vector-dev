@@ -86,10 +86,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # composer.json requires ^8.4; demo/docker/Dockerfile defaults to
-        # 8.4 and builds on 8.5 with the same extension recipe. php-image
-        # is the patch release each job builds on: at least 8.4.27 and
-        # 8.5.12, raised with the Dockerfile's default.
+        # composer.json requires >=8.4 <8.6; demo/docker/Dockerfile
+        # defaults to 8.4 and builds on 8.5 with the same extension recipe.
+        # php-image is the patch release each job builds on: at least
+        # 8.4.27 and 8.5.12, raised with the Dockerfile's default.
         include:
           - php-version: '8.4'
             php-image: '8.4.27'

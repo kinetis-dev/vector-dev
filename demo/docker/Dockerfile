@@ -7,8 +7,9 @@
 #
 # The PHP release, the FrankenPHP release and the PIE release are set
 # here and nowhere else. PHP is pinned to a patch release, never a
-# floating minor tag, so a build cannot fall back to an older patch:
-# at least 8.4.27 on 8.4 and 8.5.12 on 8.5 (the CI matrix builds both).
+# floating minor tag, so a build cannot fall back to an older patch.
+# Composer requires PHP >=8.4 <8.6, so 8.4 and 8.5 are supported: at
+# least 8.4.27 on 8.4 and 8.5.12 on 8.5 (the CI matrix builds both).
 ARG PHP_VERSION=8.4.27
 ARG FRANKENPHP_VERSION=1.13.5
 ARG PIE_VERSION=1.5.5
@@ -31,7 +32,8 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/local/bin/pie \
     --mount=type=secret,id=github_token,required=false \
     php-extensions.sh
 
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+# Composer images after 2.11 ship PHP 8.6, which the PHP range excludes.
+COPY --from=composer:2.11 /usr/bin/composer /usr/bin/composer
 COPY docker/kinetis.ini /usr/local/etc/php/conf.d/zz-kinetis.ini
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
@@ -47,7 +49,7 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/local/bin/pie \
     --mount=type=secret,id=github_token,required=false \
     php-extensions.sh
 
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.11 /usr/bin/composer /usr/bin/composer
 COPY docker/kinetis.ini /usr/local/etc/php/conf.d/zz-kinetis.ini
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY docker/Caddyfile /etc/frankenphp/Caddyfile

@@ -90,6 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Reads descriptor version 6 (`DESCRIPTOR_VERSION`), the one
   `kinetis/vector` 0.16.0 publishes, and refuses version 5.
+- Depends on Tiptap 3.35, DOMPurify 3.5 and vue-i18n 11.4.23.
 
 ## [0.12.5] - 2026-11-16
 

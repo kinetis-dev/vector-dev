@@ -348,3 +348,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   which now governs the write tools' results too.
   `vector-ai:approvals:prune` expires stale proposals and deletes those
   decided more than `--days` (30) ago.
+
+### Changed
+
+- Requires PHP 8.4 or 8.5 (`>=8.4 <8.6`), `kinetis/framework` 1.29.1,
+  `kinetis/neuron` 1.3.2 and `neuron-core/neuron-ai` 4.1.27. Every other
+  Kinetis requirement is raised to its latest release.

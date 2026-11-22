@@ -100,6 +100,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compiled at version 5 is refused and rebuilt, and the UI must be
   @kinetis/vector-ui 0.13.0 or later.
 - `vector:install-ui` installs `@kinetis/vector-ui` 0.13.0 by default.
+- Requires PHP 8.4 or 8.5 (`>=8.4 <8.6`). Every Kinetis requirement is
+  raised to its latest release: `kinetis/framework` 1.29.1 and the rest
+  of the Kinetis packages one patch release up.
 
 ## [0.15.1] - 2026-11-16
 
