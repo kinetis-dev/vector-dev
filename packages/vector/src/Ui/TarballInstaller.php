@@ -63,8 +63,8 @@ final readonly class TarballInstaller
     ) {}
 
     /**
-     * Whether the Composer package $composerPackage is a dev install — a
-     * path repository, a branch, or not installed through Composer — on
+     * Whether the Composer package $composerPackage is a dev install (a
+     * path repository, a branch, or not installed through Composer), on
      * which a dev build of its UI (`dev-<sha>`) is accepted in place of
      * the pinned release.
      */
@@ -81,7 +81,7 @@ final readonly class TarballInstaller
 
     /**
      * The release an installed version names, without its leading "v",
-     * or null for a dev install — a path repository or a branch.
+     * or null for a dev install: a path repository or a branch.
      */
     public static function release(?string $prettyVersion): ?string
     {

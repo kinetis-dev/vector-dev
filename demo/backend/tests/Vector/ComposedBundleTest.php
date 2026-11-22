@@ -14,8 +14,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * A composed bundle — another package's, built from @kinetis/vector-ui
- * plus its own layer — names the @kinetis/vector-ui release it includes
+ * A composed bundle (another package's, built from @kinetis/vector-ui
+ * plus its own layer) names the @kinetis/vector-ui release it includes
  * in its manifest's `includes`. HostedBundle reads and verifies that
  * member, and kinetis/vector holds what a composed bundle includes, not
  * its own version, to the pin.

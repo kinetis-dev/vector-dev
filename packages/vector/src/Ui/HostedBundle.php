@@ -123,10 +123,10 @@ final readonly class HostedBundle
     }
 
     /**
-     * The manifest in $file, checked for shape only — every member present
+     * The manifest in $file, checked for shape only (every member present
      * with its type and format, every listed path inside the bundle, every
      * hash a sha256 and, when `includes` is there, an object of package
-     * names and versions — or null when it is missing or malformed. No
+     * names and versions), or null when it is missing or malformed. No
      * file is hashed.
      */
     public static function read(string $file): ?self

@@ -14,9 +14,9 @@ use Kinetis\Vector\Ui\UiPin;
 use Kinetis\Vector\Ui\UiTarballSource;
 
 /**
- * Installs the hosted admin with AI — the bundle @kinetis/vector-ai-ui
- * ships in `dist/static`, built from @kinetis/vector-ui plus the AI layer
- * — into the served directory, in place of Vector's plain one, through
+ * Installs the hosted admin with AI (the bundle @kinetis/vector-ai-ui
+ * ships in `dist/static`, built from @kinetis/vector-ui plus the AI layer)
+ * into the served directory, in place of Vector's plain one, through
  * kinetis/vector's TarballInstaller: the same options, checks and exit
  * codes as `vector:install-ui`. The bundle must be the release
  * `resources/ui.json` pins and include the @kinetis/vector-ui release
