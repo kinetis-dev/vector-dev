@@ -13,7 +13,7 @@ use Kinetis\Vector\Queues\Metrics\JobMetricsStore;
 /**
  * A policy whose view() says no: the dashboard is not there for this
  * caller, so the metrics are the Kernel's own 404 before the query is
- * validated, and before the metrics store — or the link it is built on —
+ * validated, and before the metrics store (or the link it is built on)
  * is even constructed: for a watched queue, an unwatched one and a
  * malformed window alike. The store's factory counts its calls and
  * fails, as a database whose configuration is broken would.

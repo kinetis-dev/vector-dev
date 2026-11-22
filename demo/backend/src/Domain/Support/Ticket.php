@@ -15,7 +15,7 @@ use Kinetis\Orm\Attributes\Version;
 
 /**
  * A support ticket, on PostgreSQL. The customer is referenced by value
- * — an e-mail and the MySQL customer's id — because a relationship never
+ *(an e-mail and the MySQL customer's id) because a relationship never
  * spans two connections.
  */
 #[Entity(table: 'tickets', connection: 'support')]

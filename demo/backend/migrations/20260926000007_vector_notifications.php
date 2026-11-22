@@ -7,7 +7,7 @@ use Kinetis\Persistence\Contract\MysqlLink;
 use Kinetis\Persistence\Contract\PostgresLink;
 
 // Published by `kinetis vector:install`. The inbox: one row per message
-// to one admin — a finished job, an action's notice — read or not.
+// to one admin (a finished job, an action's notice) read or not.
 return new class implements Migration
 {
     #[\Override]

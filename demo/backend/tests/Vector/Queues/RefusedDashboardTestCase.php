@@ -21,7 +21,7 @@ use Kinetis\Vector\Queues\Metrics\JobMetricsStore;
  * backend that is down would: the failed-jobs link, the store, the
  * browser, the retrier, the queue and the metrics store. A refused caller
  * must get its 403 (or, refused even a look, its 404) without any of them
- * being built — before, a route that took one as a
+ * being built, before, a route that took one as a
  * method parameter built it before the policy was asked, so a refused
  * caller got a 500 during an outage. It extends VectorTestCase, not
  * QueuesTestCase, whose setUp() reads the real store.

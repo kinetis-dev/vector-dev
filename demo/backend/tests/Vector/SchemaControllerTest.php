@@ -63,8 +63,8 @@ final class SchemaControllerTest extends VectorTestCase
 
     /**
      * Validity alone lets a key the schema never names slip through: every
-     * key the demo's descriptor publishes — at the top, on each resource,
-     * field, action and widget, and in the capabilities — is declared.
+     * key the demo's descriptor publishes (at the top, on each resource,
+     * field, action and widget, and in the capabilities) is declared.
      */
     public function testTheJsonSchemaNamesEveryKeyTheDescriptorPublishes(): void
     {

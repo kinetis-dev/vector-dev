@@ -13,7 +13,7 @@ use Kinetis\VectorAi\Shell\AiShellContributor;
  * proposing changes is offered once its own switch is on; `excluded` names
  * the resources kept from the model (the demo's profiles opt out), and
  * `excludedFields` the fields kept back of the others, and `noWriting`
- * the text fields writing help is off for — the demo's unique strings,
+ * the text fields writing help is off for; the demo's unique strings,
  * products' SKU, tags' name and tickets' number. Computed per user, so it follows
  * the switch and the budget too.
  */

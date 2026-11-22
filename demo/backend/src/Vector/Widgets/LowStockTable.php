@@ -15,7 +15,7 @@ use Kinetis\Vector\Widgets\VectorWidget;
 use Kinetis\Vector\Widgets\WidgetRequest;
 use Kinetis\Vector\Widgets\WidgetResult;
 
-/** The active products at or below the store's low-stock threshold — a settings value read at request time. */
+/** The active products at or below the store's low-stock threshold; a settings value read at request time. */
 final class LowStockTable extends VectorWidget
 {
     public function __construct(

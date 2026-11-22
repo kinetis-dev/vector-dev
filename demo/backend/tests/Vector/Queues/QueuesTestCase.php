@@ -62,7 +62,7 @@ abstract class QueuesTestCase extends VectorTestCase
     }
 
     /**
-     * @param string $class a job class — or the name of one that no longer exists
+     * @param string $class a job class, or the name of one that no longer exists
      * @param array<string, mixed> $args
      */
     protected function recordFailure(string $queue, int $failedAt, string $class = Fixtures\SendInvoiceJob::class, array $args = ['invoiceId' => 7, 'apiToken' => 'sk_live_TOP_SECRET']): string

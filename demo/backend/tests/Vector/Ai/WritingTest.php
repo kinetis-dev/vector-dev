@@ -15,7 +15,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  * cap and flagged), what is refused before any call (a password, a field
  * that is no text, that cannot be written, or that is kept from AI; a
  * body that breaks a rule; the feature off; the budget spent), the usage
- * row of each call — and that the text, saved through the ordinary
+ * row of each call, and that the text, saved through the ordinary
  * update, is the person's own edit.
  */
 final class WritingTest extends WritingTestCase

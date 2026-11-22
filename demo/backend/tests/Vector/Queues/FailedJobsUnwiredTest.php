@@ -18,7 +18,7 @@ use Kinetis\Vector\Queues\QueueDashboard;
  * missing. The overview's `failed` is null on every queue rather than a
  * count, the permissions name no failed-job action although the demo's
  * policy allows them all, and every /failed route is the Kernel's own
- * 404 — even for a record that exists — before the failed-jobs link or
+ * 404 (even for a record that exists) before the failed-jobs link or
  * the browser is built. Clearing and the metrics, which need nothing of
  * that package, still answer.
  */

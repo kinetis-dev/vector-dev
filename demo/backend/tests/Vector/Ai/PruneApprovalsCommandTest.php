@@ -17,7 +17,7 @@ use Kinetis\VectorAi\Console\PruneApprovalsCommand;
 /**
  * vector-ai:approvals:prune marks stale pending proposals expired, fails
  * those whose execution never finished with the unknown outcome, and
- * deletes those decided more than --days ago — and leaves a fresh
+ * deletes those decided more than --days ago, and leaves a fresh
  * pending one, a recently decided one and one executing for less than
  * ApprovalStore::EXECUTING_MINUTES alone.
  */

@@ -11,8 +11,8 @@ use Nyholm\Psr7\ServerRequest;
 /**
  * The demo's sign-in hardening, on the application cache (Redis): five
  * failed attempts lock one e-mail from one client address for fifteen
- * minutes, on the API and on the HTML form alike — never the account
- * itself, which its owner can still reach from their own address — and
+ * minutes, on the API and on the HTML form alike (never the account
+ * itself, which its owner can still reach from their own address) and
  * twenty lock the address; a success clears the count. The API's access
  * token lasts fifteen minutes and a single-use refresh token renews it.
  */

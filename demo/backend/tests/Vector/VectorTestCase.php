@@ -72,8 +72,8 @@ abstract class VectorTestCase extends ApplicationTestCase
      * The demo is a live database that a person may be using in a browser
      * meanwhile: the Languages settings are global, and the seeded admin
      * (user 1, as adminHeaders() signs in) may have chosen a language.
-     * Every test starts from the stock defaults — all languages on,
-     * English, no choice — and what was there is put back afterwards.
+     * Every test starts from the stock defaults (all languages on,
+     * English, no choice) and what was there is put back afterwards.
      */
     protected function setUp(): void
     {
@@ -150,8 +150,8 @@ abstract class VectorTestCase extends ApplicationTestCase
     }
 
     /**
-     * Headers of a viewer of the tests' own — never the seeded admin a
-     * person may be using in a browser meanwhile — who has chosen `$locale`
+     * Headers of a viewer of the tests' own (never the seeded admin a
+     * person may be using in a browser meanwhile) who has chosen `$locale`
      * (null: no choice) as their language. Their choice is cleared after
      * the test.
      *

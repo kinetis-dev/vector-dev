@@ -25,7 +25,7 @@ use NeuronAI\Testing\FakeAIProvider;
  * A field the user may not write is refused though it is a text field
  * the model may be sent: the resources without a policy of their own
  * (orders among them) here let nobody create, and let nobody update any
- * record — so a request with no record (the create form) and one with a
+ * record; so a request with no record (the create form) and one with a
  * record (the update form, whose recordPermissions deny update) are both
  * 403, and the model is asked nothing. A field this user's viewField
  * hides (the users' `name`, for one actor) is no field to them: 404, and

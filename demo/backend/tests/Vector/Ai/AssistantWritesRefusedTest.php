@@ -16,7 +16,7 @@ use Kinetis\VectorAi\Feature;
 /**
  * `assistantWrites` on, and an access policy that lets everyone use the
  * assistant but nobody have it write: the model is given none of the
- * write tools, and an approval is 403 — even of a proposal stored before.
+ * write tools, and an approval is 403, even of a proposal stored before.
  */
 final class AssistantWritesRefusedTest extends ApprovalsTestCase
 {

@@ -21,7 +21,7 @@ use Kinetis\Vector\Write\WriteContext;
  * field is on the edit form alone, hashed by the application's bound
  * hasher, and left as stored when the form sends it empty. The hooks
  * keep the admin reachable: nobody demotes themself, and the last admin
- * is neither demoted nor deleted — both would lock everyone out until
+ * is neither demoted nor deleted; both would lock everyone out until
  * someone reaches the database.
  *
  * ProfileResource is a second resource over the same entity; this one is

@@ -11,7 +11,7 @@
     // which every worker would share.
     //
     // Measured 2026-10-06 (--threads=1 --only-covering-test-cases):
-    // 665 mutants, 500 killed, 165 escaped, 0 skipped — MSI 75.19%,
+    // 665 mutants, 500 killed, 165 escaped, 0 skipped, MSI 75.19%,
     // covered MSI 75.19% (mutation coverage 100%). The same mutants run
     // with whole covering test classes killed 5 more, so the floors sit
     // two points under the measurement.

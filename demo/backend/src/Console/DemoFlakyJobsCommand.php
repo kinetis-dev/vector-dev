@@ -11,7 +11,7 @@ use Kinetis\Queue\QueueInterface;
 
 /**
  * Pushes `--count=<n>` (20) SyncWarehouseStockJob onto the `default`
- * queue — one VECTOR_QUEUES watches and the worker serves — each
+ * queue (one VECTOR_QUEUES watches and the worker serves) each
  * failing `--failure=<percent>` (40) of its attempts, with up to
  * MAX_ATTEMPTS attempts, and none runnable before `--delay=<seconds>`
  * (0) from now, so the dashboard shows them waiting first. The worker then fills the queue dashboard: a

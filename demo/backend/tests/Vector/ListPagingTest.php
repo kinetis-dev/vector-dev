@@ -19,7 +19,7 @@ use PHPUnit\Framework\AssertionFailedError;
 /**
  * How a list pages. Orders are withoutCount(): an offset page carries
  * `total` and `lastPage` null and a `hasMore` read from one row past the
- * page, in one statement — no COUNT — under the same policy, scope and
+ * page, in one statement (no COUNT) under the same policy, scope and
  * trash predicate as a counted page. Order lines are cursorPaging(),
  * which only the admin reads: their REST pages are as every resource's.
  * Every other resource's page is as it was. Expected rows are read from
@@ -97,7 +97,7 @@ final class ListPagingTest extends VectorTestCase
             $this->client->get('/vector/r/orders', query: $query, headers: $this->adminHeaders())->assertOk();
         });
 
-        // the page alone — a counted list of the same shape is the COUNT and the page
+        // the page alone; a counted list of the same shape is the COUNT and the page
         self::assertSame(1, $page(['perPage' => 5, 'columns' => 'number']));
         self::assertSame(2, $this->countStatements(function (): void {
             $this->client->get('/vector/r/customers', query: ['perPage' => 5, 'columns' => 'name'], headers: $this->adminHeaders())->assertOk();

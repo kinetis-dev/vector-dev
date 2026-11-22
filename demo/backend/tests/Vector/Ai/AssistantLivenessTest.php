@@ -20,7 +20,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  * An assistant run lets the event loop turn while it waits on the
  * provider: a provider that waits by suspending, as one over the Kinetis
  * HTTP client does, leaves the loop turning. The same run over a provider
- * that blocks reports that it did not, which shows the proof can fail —
+ * that blocks reports that it did not, which shows the proof can fail:
  * so the run has nothing else to wait on, no tool call (whose database
  * reads yield on their own, LoopLivenessTest).
  */

@@ -15,7 +15,7 @@
     // Measured 2026-11-03 (four threads, local, this config's 60 s
     // timeout), over packages/vector/src/Queues after the move and
     // QueueDashboard's gates: 759 mutants, 599 killed, 160 escaped,
-    // 0 errored, 0 timed out, 0 not covered — MSI and covered MSI 78.9%
+    // 0 errored, 0 timed out, 0 not covered, MSI and covered MSI 78.9%
     // (mutation coverage 100%). The floors sit about two points under it.
     "$schema": "vendor/infection/infection/resources/schema.json",
     "source": {

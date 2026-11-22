@@ -10,9 +10,9 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * HttpsTarballSource's fetch on a fake transport: a redirect to a path
- * stays on the origin, and every way the registry can fail — a status
+ * stays on the origin, and every way the registry can fail (a status
  * other than 200, too many redirects, a redirect without a Location, a
- * body over the cap — is a UiInstallException, which is a
+ * body over the cap) is a UiInstallException, which is a
  * \RuntimeException, with the URL shown without its query.
  */
 final class HttpsTarballSourceTest extends TestCase

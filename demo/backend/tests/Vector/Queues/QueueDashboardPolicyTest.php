@@ -8,7 +8,7 @@ use App\Tests\Vector\Queues\Fixtures\SendInvoiceJob;
 
 /**
  * Who may do what. The demo binds DemoQueueDashboardPolicy: an admin may
- * mutate, anyone else is refused — and in the demo, anyone else is
+ * mutate, anyone else is refused, and in the demo, anyone else is
  * already refused at Vector's own door. QueueDashboardDefaultPolicyTest
  * covers an admitted user the policy itself refuses.
  */

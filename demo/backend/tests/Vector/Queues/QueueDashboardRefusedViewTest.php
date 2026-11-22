@@ -9,7 +9,7 @@ use App\Tests\Vector\Queues\Fixtures\FixedPolicy;
 /**
  * A caller Vector admits but the policy may not even let look: for them
  * the dashboard is not there (`capabilities.queues` is false), so every
- * route — a read or a mutation, whatever the policy says of it — is the
+ * route (a read or a mutation, whatever the policy says of it) is the
  * Kernel's own 404, and nothing behind it is built.
  */
 final class QueueDashboardRefusedViewTest extends RefusedDashboardTestCase

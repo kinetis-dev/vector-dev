@@ -10,8 +10,8 @@ use Kinetis\VectorAi\Writing\WritingAssistant;
 
 /**
  * What the demo's `fake` AI provider answers (VECTOR_AI_<NAME>_TYPE=fake,
- * docs/ai.md), so plain-language filters and the assistant can be tried —
- * and the end-to-end suite can drive them — without a model: the filter
+ * docs/ai.md), so plain-language filters and the assistant can be tried
+ * (and the end-to-end suite can drive them) without a model: the filter
  * sentence below, typed on the orders list, gets the filter a model would
  * answer; the assistant question reads the low-stock products with
  * vector_query, then answers naming a product as `products#id`; with

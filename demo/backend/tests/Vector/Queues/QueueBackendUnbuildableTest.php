@@ -8,7 +8,7 @@ use Kinetis\Config\Config;
 use Kinetis\Container\AppScope;
 use Kinetis\Queue\QueueInterface;
 
-/** A queue backend whose factory throws — a broker it cannot reach while connecting: the overview lists every queue with no size and no clear, rather than a 500. */
+/** A queue backend whose factory throws; a broker it cannot reach while connecting: the overview lists every queue with no size and no clear, rather than a 500. */
 final class QueueBackendUnbuildableTest extends QueuesTestCase
 {
     protected function registerTestDoubles(AppScope $app, Config $config): void

@@ -37,7 +37,7 @@ final class ResourceControllerTest extends VectorTestCase
             $this->client->get('/vector/r/products', query: ['perPage' => 50], headers: $this->adminHeaders())->assertOk();
         });
 
-        // COUNT, the page, the category labels, the tag counts — never one per row.
+        // COUNT, the page, the category labels, the tag counts, never one per row.
         self::assertLessThanOrEqual(4, $statements);
         self::assertGreaterThanOrEqual(2, $statements);
 

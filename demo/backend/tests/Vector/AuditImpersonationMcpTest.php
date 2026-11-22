@@ -58,7 +58,7 @@ final class AuditImpersonationMcpTest extends VectorTestCase
         self::assertIsArray($started);
         $asEditor = ['Authorization' => 'Bearer ' . $started['accessToken']];
 
-        // the impersonated editor is not an admin: the admin is refused too, exactly as the editor would be —
+        // the impersonated editor is not an admin: the admin is refused too, exactly as the editor would be,
         // except for stopping, which must always be reachable
         $this->client->get('/vector/schema', headers: $asEditor)->assertStatus(403);
         $back = $this->client->delete('/vector/impersonate', headers: $asEditor)->assertOk()->json();

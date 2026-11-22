@@ -13,9 +13,9 @@ use Kinetis\VectorAi\Governance\ModelBoundary;
 
 /**
  * ModelBoundary::record(), page() and toolResult(): what a model is sent
- * of the admin's data — never a password, file or image field or one
+ * of the admin's data (never a password, file or image field or one
  * that opts out, nothing of a resource that opts out, long strings cut,
- * at most 25 rows — and under the allow-list only what opts in; and
+ * at most 25 rows) and under the allow-list only what opts in; and
  * keptFields(), the fields sends() refuses, which the shell's
  * excludedFields lists.
  */
@@ -155,7 +155,7 @@ final class ModelBoundaryRecordsTest extends AiTestCase
         self::assertSameAsSends($boundary, $resources);
     }
 
-    /** keptFields() of every resource is the fields of it, as this user sees it, that sends() refuses — in the same order. */
+    /** keptFields() of every resource is the fields of it, as this user sees it, that sends() refuses, in the same order. */
     private static function assertSameAsSends(ModelBoundary $boundary, ResourceService $resources): void
     {
         foreach ($resources->registry()->resources() as $slug => $resource) {

@@ -42,8 +42,8 @@ use Psr\Log\LogLevel;
 /**
  * A provider that fails after the stream has begun: the browser gets the
  * text so far and the adapter's neutral error frame, the failed call is a
- * usage row, and the failure is logged by category — a warning when the
- * provider failed, an error when the run itself did — never the
+ * usage row, and the failure is logged by category (a warning when the
+ * provider failed, an error when the run itself did) never the
  * provider's words, which can quote the prompt. The exception itself is
  * attached to the log line only under APP_ENV=development. Once the
  * browser has gone, a failure writes no error frame; the stop its leaving
@@ -642,7 +642,7 @@ final class SwitchableClientConnection implements ClientConnectionInterface
  * A provider stream as StoppableHttpClient reads one: before every chunk it
  * asks the run's DepartureSignal, as StoppableStream::eof() asks
  * $shouldStop, and once that answers true it ends as
- * HandleEarlyStreamEnd::earlyEndResponse() ends a stopped stream — with
+ * HandleEarlyStreamEnd::earlyEndResponse() ends a stopped stream, with
  * the text so far and the usage reported so far, or, before any text, the
  * ProviderException it raises. The browser leaves after $leaveAfter
  * chunks, while the stream is being read.
@@ -721,7 +721,7 @@ final class StoppableFake extends FakeAIProvider
     }
 }
 
-/** A Bedrock call refused while the browser happens to be gone: it never asks a signal — Bedrock is never stopped — and its refusal is a ProviderException. */
+/** A Bedrock call refused while the browser happens to be gone: it never asks a signal (Bedrock is never stopped) and its refusal is a ProviderException. */
 final class RefusesLikeBedrock extends FakeAIProvider
 {
     public ?SwitchableClientConnection $connection = null;

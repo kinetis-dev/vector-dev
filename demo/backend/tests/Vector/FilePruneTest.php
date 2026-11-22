@@ -12,7 +12,7 @@ use Kinetis\Vector\Files\VectorStorage;
 /**
  * `vector:files:prune` deletes an upload no record uses once it is older
  * than the grace period, and keeps everything else: a recent upload, a
- * key a file column holds — on a trashed row too —, an image a rich-text
+ * key a file column holds (on a trashed row too), an image a rich-text
  * document shows, a value the audit trail can revert to, a key outside
  * `vector/` and a folder no field declares. The test's own rows are put
  * back and its files removed.
@@ -130,7 +130,7 @@ final class FilePruneTest extends VectorTestCase
      * More than one batch of candidates in one folder: each batch is
      * checked against the file columns, and documents' images never enter
      * one, so a key used on either side of the boundary is kept and every
-     * other one is deleted — or, on a dry run, only listed.
+     * other one is deleted, or, on a dry run, only listed.
      */
     public function testAFolderOfMoreThanOneBatchIsPrunedWholeWithTheKeysInUseOnEitherSideKept(): void
     {

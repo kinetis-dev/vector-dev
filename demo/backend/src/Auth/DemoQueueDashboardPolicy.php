@@ -9,8 +9,8 @@ use Kinetis\Vector\Queues\Auth\QueueDashboardPolicyInterface;
 
 /**
  * The demo's queue dashboard: anyone Vector admits may look, and only an
- * admin — DemoActor::$isAdmin, set from the users table's is_admin column
- * — may retry, forget, prune or clear.
+ * admin (DemoActor::$isAdmin, set from the users table's is_admin column)
+ *may retry, forget, prune or clear.
  */
 final readonly class DemoQueueDashboardPolicy implements QueueDashboardPolicyInterface
 {

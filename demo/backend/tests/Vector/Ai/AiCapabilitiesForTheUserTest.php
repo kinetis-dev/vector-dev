@@ -15,8 +15,8 @@ use Kinetis\VectorAi\Feature;
 use Kinetis\VectorAi\Shell\AiShellContributor;
 
 /**
- * capabilities.ai reuses what GET /vector/schema already decided — the
- * resources this user may list and the fields they see — so offering AI
+ * capabilities.ai reuses what GET /vector/schema already decided (the
+ * resources this user may list and the fields they see) so offering AI
  * asks no resource or field policy a second time; and it answers for the
  * user it is given, not for whoever made the request.
  */

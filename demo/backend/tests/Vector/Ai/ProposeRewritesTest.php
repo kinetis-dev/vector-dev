@@ -505,7 +505,7 @@ final class ProposeRewritesTest extends WritingTestCase
     public function testAProposalEndingInABackslashIsLeftOutCountedAndTheOthersSurviveTheImport(): void
     {
         $ids = $this->orders(3);
-        // C:\dir\ — the importer would read the closing quote as escaped and swallow the next rows
+        // C:\dir\; the importer would read the closing quote as escaped and swallow the next rows
         $this->scriptWriting([self::note($ids[0]) => self::tidy($ids[0]), self::note($ids[1]) => 'Saved under C:\\dir\\', self::note($ids[2]) => self::tidy($ids[2])]);
 
         $job = $this->runAction('tidy-order-notes', $ids)->assertJsonPath('data.status', 'done')->json();

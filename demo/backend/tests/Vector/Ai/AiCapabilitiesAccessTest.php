@@ -14,7 +14,7 @@ use Kinetis\VectorAi\Feature;
  * capabilities.ai offers a feature exactly when its endpoint would serve
  * it (AiAvailability): proposing changes is the assistant's, so it is not
  * offered to someone the access policy refuses the assistant, even with
- * its own switch on and Feature::AssistantWrites allowed — the approve
+ * its own switch on and Feature::AssistantWrites allowed; the approve
  * endpoint would refuse them.
  */
 final class AiCapabilitiesAccessTest extends AiTestCase

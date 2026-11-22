@@ -16,7 +16,7 @@ use Kinetis\Vector\Exception\ForbiddenOperationException;
  * Impersonation in both modes. Bearer mode re-issues a short token for
  * the target that carries `impersonator`; cookie mode swaps the session
  * identity and remembers the impersonator in the session. Either way the
- * impersonated user's own admission applies — an admin acting as an
+ * impersonated user's own admission applies; an admin acting as an
  * editor sees what the editor sees.
  */
 final readonly class DemoImpersonation implements ImpersonationInterface

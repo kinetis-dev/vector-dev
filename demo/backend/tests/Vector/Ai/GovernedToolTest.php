@@ -418,7 +418,7 @@ final class GovernedToolTest extends AiTestCase
     }
 }
 
-/** A tool that records the arguments it ran with, and answers $answer as JSON — or throws it. */
+/** A tool that records the arguments it ran with, and answers $answer as JSON, or throws it. */
 final class RecordingTool extends Tool
 {
     /** @var array<array-key, mixed>|null */

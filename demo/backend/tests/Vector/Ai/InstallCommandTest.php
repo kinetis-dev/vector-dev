@@ -12,9 +12,9 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * vector-ai:install publishes kinetis/vector-ai's migrations — exactly the
+ * vector-ai:install publishes kinetis/vector-ai's migrations (exactly the
  * ones named here, so a stub that goes missing or is renamed fails rather
- * than passing as "already present" — into migrations/ for the default
+ * than passing as "already present") into migrations/ for the default
  * connection or migrations/<name>/ for a named one, and a second run
  * writes nothing. A package that ships no stubs at all is an error. No
  * database: the command touches files only, in a temporary project root.

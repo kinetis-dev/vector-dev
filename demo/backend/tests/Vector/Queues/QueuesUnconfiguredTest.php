@@ -16,8 +16,8 @@ use Kinetis\Vector\Queues\Metrics\JobMetricsStore;
  * connection whose QUEUE_<NAME>_CONNECTION is unset, so kinetis/queue
  * binds no QueueInterface, and no test double binds one either. The
  * queue dashboard is not there: the descriptor says so, every
- * /vector/queues route is the Kernel's own 404 — before the failed-jobs
- * link or the metrics store is built — and the queues card is left off
+ * /vector/queues route is the Kernel's own 404 (before the failed-jobs
+ * link or the metrics store is built) and the queues card is left off
  * the main dashboard, even for the demo's admin, whom the demo's policy
  * lets do everything.
  */

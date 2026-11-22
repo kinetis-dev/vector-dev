@@ -20,7 +20,7 @@ use Kinetis\Vector\Queues\Metrics\RecordJobMetrics;
 
 /**
  * A metrics database that refuses every write: the listener swallows
- * the failure, logs it as a warning — once a minute per worker — and
+ * the failure, logs it as a warning (once a minute per worker) and
  * every job still settles exactly as it would have.
  */
 final class QueueMetricsStoreFailureTest extends MetricsTestCase

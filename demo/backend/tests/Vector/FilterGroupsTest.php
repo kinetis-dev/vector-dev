@@ -15,7 +15,7 @@ use Kinetis\Vector\Testing\InteractsWithVector;
 /**
  * `or` and `and` groups in the list grammar: `filter[or][i]` holds
  * alternatives, any one of which may hold, and `filter[and][i]` combines
- * several filter objects — on both dialects, everywhere a filter goes.
+ * several filter objects, on both dialects, everywhere a filter goes.
  */
 final class FilterGroupsTest extends VectorTestCase
 {

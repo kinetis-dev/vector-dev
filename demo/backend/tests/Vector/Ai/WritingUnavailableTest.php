@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Vector\Ai;
 
-/** Without a provider — the demo as it ships — POST /vector/ai/writing is 403, and the flag is off. */
+/** Without a provider (the demo as it ships) POST /vector/ai/writing is 403, and the flag is off. */
 final class WritingUnavailableTest extends AiTestCase
 {
     public function testWithoutAProviderItIsForbidden(): void

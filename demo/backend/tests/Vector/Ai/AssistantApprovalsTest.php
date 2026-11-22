@@ -18,7 +18,7 @@ use NeuronAI\Chat\Messages\ToolResultMessage;
 
 /**
  * The assistant proposes a write, which changes nothing until the admin
- * approves it — then exactly the stored arguments run, as
+ * approves it; then exactly the stored arguments run, as
  * the admin, recorded `origin = 'assistant'`. Decisions are idempotent
  * (409), bound to the actor and the impersonator (404), and expire (410).
  */
@@ -81,7 +81,7 @@ final class AssistantApprovalsTest extends ApprovalsTestCase
         self::assertSame('assistant', $latest['origin']);
         self::assertSame(['from' => $this->stock, 'to' => $this->stock + 5], $latest['changes']['stock']);
 
-        // one usage row for the approval: who, the feature and the outcome — no tokens
+        // one usage row for the approval: who, the feature and the outcome; no tokens
         $usage = array_values(array_filter($this->usageRows(1), static fn (array $r): bool => $r['feature'] === 'assistant-writes'));
         self::assertCount(1, $usage);
         self::assertSame('approval:executed', $usage[0]['outcome']);

@@ -15,7 +15,7 @@ use Kinetis\Persistence\Contract\PostgresLink;
 // `queue` and `job_class` byte-exactly, which the .mysql. sibling stub has
 // to ask for. Both are VARCHAR, as `queue` and `class` are in
 // kinetis/queue-failed-jobs' stub, so a class name must be valid in the
-// database's encoding — PHP admits non-UTF-8 bytes in a name, and a write
+// database's encoding, PHP admits non-UTF-8 bytes in a name, and a write
 // for such a class is refused (and logged, never failing the job). bytea
 // is not a way round it: the drivers bind parameters as text, and bytea's
 // text input reads the backslashes of every namespaced class name as

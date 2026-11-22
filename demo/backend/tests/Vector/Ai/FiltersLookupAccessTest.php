@@ -14,8 +14,8 @@ use Kinetis\Vector\Query\ResourceService;
 /**
  * A user who may list orders but not customers asks for orders of a
  * customer named in words: the lookup is not theirs to make, so the
- * answer is refused like any other unusable one — one repair turn, then
- * the admin's 422 — and never the target's 403 mid-translation. Every
+ * answer is refused like any other unusable one (one repair turn, then
+ * the admin's 422) and never the target's 403 mid-translation. Every
  * call is still a usage row.
  */
 final class FiltersLookupAccessTest extends FiltersTestCase

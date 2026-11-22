@@ -12,7 +12,7 @@ use Kinetis\Vector\Registry\VectorRegistry;
  * Which text fields writing help is on for (WritingGuard::helps()), as
  * POST /vector/ai/writing/{resource}/{field} decides it and
  * `capabilities.ai.noWriting` tells the admin: products' SKU as the demo
- * defines it — a writable unique string, an identifier — is refused;
+ * defines it (a writable unique string, an identifier) is refused;
  * tags' name, a unique string that opts in with `ai.writing` true, is
  * helped; products' name, opted out with `ai.writing` false, is refused
  * yet still sent to the model (`ai.send` true), so excludedFields does

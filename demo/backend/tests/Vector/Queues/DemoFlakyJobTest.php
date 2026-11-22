@@ -14,7 +14,7 @@ use Kinetis\Queue\JobSerializer;
  * The demo's flaky job, which fills the queue dashboard: it fails the
  * share of attempts it is told to, `demo:queue-flaky` queues it on a
  * watched queue with retries, and its #[Sensitive] API key never leaves
- * the server — not through JobSerializer::redact(), nor the failed-job
+ * the server, not through JobSerializer::redact(), nor the failed-job
  * detail built on it.
  */
 final class DemoFlakyJobTest extends QueuesTestCase

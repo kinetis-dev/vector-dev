@@ -294,8 +294,8 @@ final readonly class DemoSeedCommand
     }
 
     /**
-     * Stores a product image — a 96-pixel gradient in its category's
-     * colour — under the key an upload of it would get, or none without
+     * Stores a product image (a 96-pixel gradient in its category's
+     * colour) under the key an upload of it would get, or none without
      * storage.
      *
      * @param array{int, int, int} $rgb

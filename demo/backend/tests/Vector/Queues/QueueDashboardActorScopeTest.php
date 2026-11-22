@@ -13,7 +13,7 @@ use Kinetis\Vector\Queues\Auth\QueueDashboardPolicyInterface;
 /**
  * The controller is built per request, with that request's ActorContext:
  * two callers Vector both admits, in turn on one application, are each
- * judged — and audited — as themselves. The policy tells them apart by
+ * judged (and audited) as themselves. The policy tells them apart by
  * actor id alone, so a stale actor would answer both alike.
  */
 final class QueueDashboardActorScopeTest extends QueuesTestCase

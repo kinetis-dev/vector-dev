@@ -17,7 +17,7 @@ use NeuronAI\Testing\RequestRecord;
 /**
  * Plain-language filters against the `fake` provider: script() binds what
  * it answers to each sentence (and to each repair turn), and calls() is
- * every request it was sent — messages, system prompt and the structured
+ * every request it was sent, messages, system prompt and the structured
  * call's schema. The `ai` settings start and end at their defaults.
  */
 abstract class FiltersTestCase extends AiTestCase
@@ -60,7 +60,7 @@ abstract class FiltersTestCase extends AiTestCase
     /**
      * What the fake provider answers from now on: the sentence (or the
      * repair turn's text, repair()) => the answer, an array being sent as
-     * JSON — or, a list, the turns of a run that calls tools (ScriptedReplies::of());
+     * JSON, or, a list, the turns of a run that calls tools (ScriptedReplies::of());
      * and what it throws instead for each message in $failures.
      *
      * @param array<string, string|array<array-key, mixed>> $replies

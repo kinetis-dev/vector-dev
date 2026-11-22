@@ -17,7 +17,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * The framework's CSRF check for the demo's own HTML pages, with an
  * answer a person can read. A sign-in page left open longer than the
  * session lives posts a token its new session never issued, and
- * CsrfMiddleware refuses that with a JSON 403 — right for an API, a dead
+ * CsrfMiddleware refuses that with a JSON 403, right for an API, a dead
  * end in a browser. This runs that same check, unchanged; when it
  * refuses before the page's handler ran, the browser is sent back to the
  * sign-in form (303) with a notice and the e-mail it typed, and the form

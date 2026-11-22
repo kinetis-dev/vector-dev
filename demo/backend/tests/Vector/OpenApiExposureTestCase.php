@@ -15,7 +15,7 @@ use Nyholm\Psr7\Uri;
  * serves its own `/openapi.json`: OPENAPI_ENVIRONMENTS naming APP_ENV.
  * Each subclass boots under one setting. Where it is closed, the path
  * answers what a path no route matches answers, byte for byte, for
- * every method and with or without credentials — so never a 401.
+ * every method and with or without credentials; so never a 401.
  *
  * The Router compares the request path, trimmed of its leading and
  * trailing slashes, against the route's literal template: case-sensitive,

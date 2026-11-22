@@ -7,7 +7,7 @@ use Kinetis\Persistence\Contract\MysqlLink;
 use Kinetis\Persistence\Contract\PostgresLink;
 
 // Published by `kinetis vector-ai:install`. The usage ledger: one row per
-// AI call, with the tokens its answer reported — or, for an assistant
+// AI call, with the tokens its answer reported, or, for an assistant
 // call that ended without reporting them (stopped when the browser left,
 // or failed after streaming some text), an estimate, its outcome marked
 // `:estimated`. The actor index serves

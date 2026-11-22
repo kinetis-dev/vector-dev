@@ -18,8 +18,8 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * vector:install-ui, every flag and every exit code, against a fake
- * registry: 0 installed or in sync, 1 refused or failed — with nothing
- * written into the served directory — and 2 a usage error. The token
+ * registry: 0 installed or in sync, 1 refused or failed (with nothing
+ * written into the served directory) and 2 a usage error. The token
  * scoping runs through HttpsTarballSource itself, on a fake transport.
  */
 final class InstallUiCommandTest extends TestCase

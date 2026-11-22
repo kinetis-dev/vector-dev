@@ -16,9 +16,9 @@ use Kinetis\Vector\Jobs\VectorQueue;
 /**
  * Where Vector's jobs go. The demo runs them on the application's queue,
  * which is Redis (VectorRedisQueueTest); this class switches to a queue
- * connection of Vector's own — the SQL backend on the default database,
+ * connection of Vector's own (the SQL backend on the default database,
  * built by Vector from VECTOR_QUEUE_CONNECTION and QUEUE_CONNECTION rather
- * than taken from the container — under a queue name no running worker
+ * than taken from the container) under a queue name no running worker
  * watches, so the jobs it pushes stay in the table for it to read and
  * remove. QUEUE_CONNECTION is pinned to sql here, since the default
  * connection's type is that key. The application's own queue is a

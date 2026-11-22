@@ -17,9 +17,9 @@ use Psr\SimpleCache\CacheInterface;
  *
  * Failures are never counted per e-mail alone: anyone could then lock
  * a victim out by typing their address with wrong passwords. They are
- * counted per e-mail *from one client address* — five in fifteen
+ * counted per e-mail *from one client address* (five in fifteen
  * minutes lock that pair, so an attacker locks only themselves while the
- * account's owner signs in from their own address — and per client
+ * account's owner signs in from their own address) and per client
  * address, more loosely (twenty), so one address cannot work through
  * many accounts, yet one office behind a shared address is not locked
  * out by a few typos. A success clears both. The throttles are built on

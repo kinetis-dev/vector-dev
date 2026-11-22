@@ -78,7 +78,7 @@ final class ActionsAndSettingsTest extends VectorTestCase
         self::assertIsArray($draft);
         $id = (int) $draft['id'];
 
-        // every adjustment below lands on draft products — put every product back afterwards, should a broken filter widen it
+        // every adjustment below lands on draft products, put every product back afterwards, should a broken filter widen it
         $touched = (new Query($link))->table('products')->select('id', 'stock')->get();
 
         try {

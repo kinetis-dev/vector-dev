@@ -13,7 +13,7 @@ use Kinetis\Vector\Auth\ResourcePolicy;
 /**
  * A forced delete is proposed when the policy's forceDelete allows it,
  * asked of the record itself as Vector's own forced delete asks it: of a
- * live record as of one in the trash — not the trash button's
+ * live record as of one in the trash, not the trash button's
  * recordPermissions()['forceDelete'], which is false for a live record.
  * Delete itself is refused here, so only forceDelete can let it through.
  * ProposalPermissionsTest covers the other side: delete alone does not.

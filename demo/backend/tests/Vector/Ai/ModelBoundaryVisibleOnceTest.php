@@ -17,7 +17,7 @@ use Kinetis\VectorAi\Governance\ModelBoundary;
 /**
  * ModelBoundary reads a resource as the user sees it once, not once a
  * row: a page of 25 products asks the `viewField` policy once per field.
- * Each boundary asks for itself — a new one, a new request, asks again.
+ * Each boundary asks for itself; a new one, a new request, asks again.
  */
 final class ModelBoundaryVisibleOnceTest extends AiTestCase
 {
