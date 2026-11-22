@@ -110,8 +110,11 @@ with pydata's `only-light` and `only-dark` classes, so the docs show the
 one matching their own theme. The spec is skipped unless
 `VECTOR_SCREENSHOTS=1`, so the normal run captures nothing.
 
-To regenerate them, start from the stock data set and the queue
-dashboard's failed jobs, then capture:
+The AI captures ask the demo's scripted `fake` provider, so each run
+shows the same answers: configure it in `backend/.env`
+(`VECTOR_AI_PROVIDERS=demo` and `VECTOR_AI_DEMO_TYPE=fake`, {doc}`demo`).
+To regenerate the screenshots, start from the stock data set and the
+queue dashboard's failed jobs, then capture:
 
 ```console
 docker compose exec --user www-data app vendor/bin/kinetis demo:seed --fresh
@@ -128,6 +131,10 @@ the admin API as `e2e@vector.local` (`demo/e2e/support/screenshot-data.ts`):
 - a finished Excel export of the products, and a tags import with one
   refused row, with their notifications.
 
+The capture of the assistant proposing a change turns *Assistant may
+propose changes* on through the same API, and puts the AI settings back
+after it.
+
 Each of these is made only when it is missing, so a second run adds
 nothing; `demo:seed --fresh` removes them again. Run the capture after
 the flaky jobs have failed, so the *Failed jobs* tab has rows.
@@ -137,8 +144,11 @@ as `e2e@vector.local`. Both images of a pair come from one prepared page:
 the spec switches the emulated `prefers-color-scheme` in place. This
 relies on **Settings → Branding → Default theme** staying *System*. The
 capture saves nothing: it cancels every dialog and form, and aborts and
-fails on any request from the page that is not a read. Review the
-changed images before committing them.
+fails on any request from the page that is not a read, except the
+assistant's, the plain-language filter's and writing help's own
+requests, which change no record. The assistant's proposal stays
+pending: deciding it would be aborted. Review the changed images before
+committing them.
 
 ## Static analysis and builds
 

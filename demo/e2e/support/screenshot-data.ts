@@ -20,6 +20,15 @@ export async function prepareScreenshotData(api: Api): Promise<void> {
 /** The product whose History the docs show: SKU-00014, a draft in the seed. */
 export const HISTORY_PRODUCT = 14
 
+/**
+ * The order the AI captures show: ORD-000184, paid and not shipped in
+ * the seed, which App\Vector\Ai\DemoAiReplies proposes shipped.
+ */
+export const SHIPPED_ORDER = 184
+
+/** The delivery note typed into its notes, which DemoAiReplies translates into French. */
+export const DELIVERY_NOTE = 'Leave the parcel with the neighbour at number 12 if nobody is home.'
+
 /** Three changes, oldest first: a price edit, publishing it, and an action run. */
 async function history(api: Api) {
     const product = await api.show('products', HISTORY_PRODUCT)
