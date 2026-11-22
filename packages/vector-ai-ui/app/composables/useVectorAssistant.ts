@@ -80,7 +80,7 @@ function newId(): string {
 /**
  * The assistant's conversation: the browser's own, replayed to POST
  * /vector/ai/assistant on every turn (the user's and the assistant's text
- * only), and kept in shared state so the drawer survives navigation —
+ * only), and kept in shared state so the drawer survives navigation,
  * for one signed-in user: the layer
  * forgets it when the user changes or signs out. A turn streams in the Vercel AI SDK
  * data-stream protocol; where the runtime cannot stream (501) the same
@@ -100,8 +100,8 @@ export function useVectorAssistant() {
 
     /**
      * The conversation as the server takes it: settled text, and the
-     * proposals decided on — by id only: the server reads the outcome
-     * from its own row — newest last. An answer that only
+     * proposals decided on, by id only: the server reads the outcome
+     * from its own row, newest last. An answer that only
      * proposed changes, with no text, is kept with PROPOSED_ONLY in its
      * place, so its proposals' outcomes do not follow the question directly.
      */
@@ -202,8 +202,8 @@ export function useVectorAssistant() {
     /**
      * Sends $text as the user's next message. One longer than the server
      * takes (ASSISTANT_MAX_MESSAGE_CHARS, counted in code points as the
-     * server counts it) is not sent and not added to the conversation —
-     * every later turn would replay it and be refused — but left in the
+     * server counts it) is not sent and not added to the conversation
+     * (every later turn would replay it and be refused) but left in the
      * input to shorten, saying why.
      */
     async function send(text: string) {
@@ -222,7 +222,7 @@ export function useVectorAssistant() {
 
     /**
      * Approves or rejects a proposal: POST /vector/ai/approvals/{id}/{verb},
-     * with no body — the server executes its own stored arguments. A
+     * with no body; the server executes its own stored arguments. A
      * decision that stands (executed, failed or rejected, also when the
      * server answers 409 with a decision made before) is appended to the
      * conversation, once, and the next turn is sent so the assistant says

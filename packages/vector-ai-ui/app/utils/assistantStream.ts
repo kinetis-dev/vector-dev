@@ -77,7 +77,7 @@ export async function readDataStream(body: ReadableStream<Uint8Array>, onFrame: 
 }
 
 /**
- * A change the assistant proposed, as the server announces it — a
+ * A change the assistant proposed, as the server announces it; a
  * `data-approval` frame of the stream (the protocol's custom data part,
  * its `data`), or an entry of the JSON answer's `approvals`. Everything
  * the admin is shown of the change comes from here, never from the
@@ -101,7 +101,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
-/** The approval a value describes — a frame's `data`, or a JSON answer's entry — or null when it is not one. */
+/** The approval a value describes (a frame's `data`, or a JSON answer's entry) or null when it is not one. */
 export function approvalOf(value: unknown): ApprovalFrame | null {
     if (!isRecord(value) || value.type !== 'approval') return null
     const { id, tool, arguments: args, resource, recordId, expiresAt } = value

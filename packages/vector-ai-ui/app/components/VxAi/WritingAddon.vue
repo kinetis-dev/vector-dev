@@ -7,14 +7,14 @@ import WritingResult from './WritingResult.vue'
 // Writing help inside a text input (defineInputAddon, `string` and
 // `text`, placement `inner`): an icon at the field's inline end opens the
 // menu; the answer opens in a popover anchored to the field, beside the
-// text it was asked about, with Replace — which puts it in the input, for
-// the person to review and save as their own edit — and Discard; Escape
+// text it was asked about, with Replace (which puts it in the input, for
+// the person to review and save as their own edit) and Discard; Escape
 // or a click outside it discards too. A failure keeps the text as it was
 // and says why, in the same popover. Shown only where writing help is
 // offered for this field (useVectorWriting().offered()), and only on that
 // resource's own create or edit page: the record comes from the page, as
 // it does for the editor toolbar item, so a settings form, a bulk edit and
-// an action's dialog — forms the addon is also mounted in — show nothing.
+// an action's dialog (forms the addon is also mounted in) show nothing.
 const props = defineProps<{
     field: VectorField
     /** The resource's slug; empty in a settings group. */

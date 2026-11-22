@@ -1,7 +1,7 @@
 // The tools an assistant answer called, as its chips show them: only the
-// calls that answered — a call that was a tool error (a `tool-output-error`
+// calls that answered; a call that was a tool error (a `tool-output-error`
 // frame, or `ok: false` in the whole answer's `toolCalls`) is the model's
-// own detour, not something it read — each tool once, in the order first
+// own detour, not something it read; each tool once, in the order first
 // called, with how many times.
 
 /** One tool call of an answer: its tool, and whether it answered; null while its outcome has not arrived. */

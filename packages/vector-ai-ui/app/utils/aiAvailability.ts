@@ -1,7 +1,7 @@
 /**
  * `capabilities.ai` as GET /vector/schema publishes it for the signed-in
  * user (kinetis/vector-ai's AiShellContributor): which AI features the
- * admin offers them — each flag the very check its endpoint makes — and
+ * admin offers them (each flag the very check its endpoint makes) and
  * what is kept from the model.
  */
 export interface AiCapabilities {
@@ -33,7 +33,7 @@ export function aiCapabilities(schema: { capabilities?: object } | null | undefi
 /**
  * Whether the admin offers $feature: the server's flag for this user and,
  * when given, $resource not kept from the model and $field not one kept
- * back of it — nor, for writing help, one of `noWriting`. The one check
+ * back of it, nor, for writing help, one of `noWriting`. The one check
  * every part of the layer asks; the server refuses anything else anyway.
  */
 export function aiOffered(ai: AiCapabilities | undefined, feature: AiFeature, resource?: string, field?: string): boolean {
@@ -55,8 +55,8 @@ export function aiStatusOf(error: unknown): number | undefined {
 
 /**
  * A failed AI call in words. A spent daily budget (429) says when it
- * renews, when Retry-After can be read — cross-origin, only when the
- * API's CORS exposes it — and otherwise what the server said, or that it
+ * renews, when Retry-After can be read (cross-origin, only when the
+ * API's CORS exposes it) and otherwise what the server said, or that it
  * is spent. Any other failure is what the server said ($data's `error`,
  * the response body by default), or $fallback.
  */

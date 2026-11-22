@@ -2,8 +2,8 @@
 import type { VectorFilterGroup, VectorFilterQuery, VectorFilters, VectorOperator, VectorResource } from '#vector/app/types/vector'
 
 // Plain-language filters: a list-toolbar item beside the search. The
-// sentence goes to POST /vector/ai/filters/{resource}; the answer — the
-// list's own grammar, validated by the server — reaches the list at once,
+// sentence goes to POST /vector/ai/filters/{resource}; the answer (the
+// list's own grammar, validated by the server) reaches the list at once,
 // through its update:filters, update:groups and update:search, and a note
 // below says what it understood and offers Undo, which puts back the
 // list's filter and search as they were before. A relation the sentence
@@ -88,7 +88,7 @@ async function ask() {
 
 /**
  * The answer reaches the list at once. The list as it was is kept for
- * Undo — from before the first of several sentences in a row, so Undo
+ * Undo, from before the first of several sentences in a row, so Undo
  * goes back to the list the admin started from. The request carries no
  * search, so a null q leaves the list's own search as it is. The sentence
  * stays in the field, to be refined and sent again.
@@ -104,7 +104,7 @@ function apply(answer: Translation) {
 }
 
 /**
- * The server's reason; for a spent budget, when it renews — when the
+ * The server's reason; for a spent budget, when it renews; when the
  * response lets Retry-After be read. Cross-origin it can only be read when
  * the API's CORS exposes it; without it, the server's own words.
  */

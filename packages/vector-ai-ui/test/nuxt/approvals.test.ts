@@ -10,8 +10,8 @@ import { DESCRIPTOR_VERSION } from '#vector/app/composables/useVectorSchema'
 import { endpoint, standaloneApi, type Received } from './endpoints'
 
 // A change the assistant proposed: the `data-approval` frame is parsed,
-// rendered as a card from its structured arguments — never the model's
-// prose — with each field's value before where a vector_get of the run
+// rendered as a card from its structured arguments (never the model's
+// prose) with each field's value before where a vector_get of the run
 // read the record; Approve and Reject post to the approval endpoints with
 // no body and continue the conversation, and an already decided (409),
 // expired (410) or unknown (404) proposal says so on its card.

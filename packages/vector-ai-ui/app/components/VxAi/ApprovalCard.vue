@@ -2,9 +2,9 @@
 import type { ApprovalCard } from '../../composables/useVectorAssistant'
 
 // One change the assistant proposed, for the admin to approve or reject.
-// Everything it shows is the server's structured proposal — the tool, the
+// Everything it shows is the server's structured proposal (the tool, the
 // resource, the record and each argument field by field, with the value
-// before the change where a vector_get of the same run read the record —
+// before the change where a vector_get of the same run read the record)
 // and never the model's prose about it. Approving runs the server's own
 // stored arguments; the card only says which.
 

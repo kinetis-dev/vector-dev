@@ -6,18 +6,18 @@ import WritingResult from './WritingResult.vue'
 
 // Writing help in the toolbar of a rich-text or Markdown editor
 // (defineEditorToolbarItem): the same menu, acting on the editor's
-// selection — its plain text in a rich-text field, its Markdown source in
-// a Markdown field — or, while nothing is selected, on the whole
+// selection (its plain text in a rich-text field, its Markdown source in
+// a Markdown field) or, while nothing is selected, on the whole
 // document; disabled only while the editor holds no text. The answer
 // shows beside the text it was asked about; Replace puts it in place of
 // that selection, or of the whole document, as text (paragraphs for its
-// lines), so the document keeps to the field's own schema — a Markdown
-// answer is parsed by the editor's own Markdown reader — and the person
+// lines), so the document keeps to the field's own schema (a Markdown
+// answer is parsed by the editor's own Markdown reader) and the person
 // saves it as their own edit. The resource and the record come from the page the editor is
 // on, so it is shown only on that resource's own create or edit page, for
-// one of that resource's own fields — as the input addon is: an editor is
+// one of that resource's own fields, as the input addon is: an editor is
 // also mounted in a bulk edit, an action's dialog and a relation's inline
-// create, where the page names no record of this field's resource — and
+// create, where the page names no record of this field's resource, and
 // only where writing help is offered for this field.
 
 /** The part of a Tiptap editor this item uses; the layer does not depend on Tiptap itself. */
@@ -85,7 +85,7 @@ onBeforeUnmount(() => props.editor.off('transaction', track))
 
 const busy = ref(false)
 const failure = ref<string | null>(null)
-// whole: asked about the whole document — plain is then its text as it was sent, and its range is read again at Replace
+// whole: asked about the whole document, plain is then its text as it was sent, and its range is read again at Replace
 const result = ref<{ from: number, to: number, whole: boolean, inline: boolean, plain: string, before: string, answer: WritingAnswer } | null>(null)
 
 /** The selection, or the whole document, as text to send: its Markdown source in a Markdown field, its plain text otherwise. */
@@ -130,7 +130,7 @@ async function run(operation: WritingOperation, targetLocale: string | null) {
     }
 }
 
-/** The answer as content for this editor: parsed Markdown, or text — a paragraph per line where the schema has paragraphs. */
+/** The answer as content for this editor: parsed Markdown, or text; a paragraph per line where the schema has paragraphs. */
 function content(text: string, inline: boolean): unknown {
     if (markdown.value && props.editor.markdown) return props.editor.markdown.parse(text).content ?? []
     const lines = text.split('\n')
@@ -141,7 +141,7 @@ function content(text: string, inline: boolean): unknown {
 function replace() {
     const current = result.value
     if (current === null) return
-    // the text it was asked about must still be there, where it was — for the whole document, all of it, unchanged since it was sent
+    // the text it was asked about must still be there, where it was, for the whole document, all of it, unchanged since it was sent
     const size = props.editor.state.doc.content.size
     const to = current.whole ? size : current.to
     // a document that shrank below the old range no longer holds it: reading there would throw

@@ -10,7 +10,7 @@ import en from '../i18n/en'
  * points: its messages, the provider-key panel under the `ai` settings
  * group, the plain-language filter in every list's toolbar, writing help
  * under every text input and in the rich-text and Markdown editors'
- * toolbars, and the assistant — its app-bar button and the drawer it
+ * toolbars, and the assistant; its app-bar button and the drawer it
  * opens, which ⌘J (Ctrl+J) also toggles. Every
  * part renders nothing until the descriptor carries `capabilities.ai`
  * (the filter, until `capabilities.ai.filters`; writing help, until
