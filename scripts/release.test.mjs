@@ -1,4 +1,4 @@
-// node --test scripts/*.test.mjs — the release rules, and the mirror push
+// node --test scripts/*.test.mjs; the release rules, and the mirror push
 // on throwaway git repositories (skipped where git is not installed, as in
 // the demo's node container).
 import assert from 'node:assert/strict'

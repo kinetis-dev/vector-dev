@@ -1,7 +1,7 @@
 // The one version-transition policy every release tool here shares:
 // scripts/bump.mjs writes a bump, scripts/validate-versions.mjs holds the
 // manifest to it, and scripts/release.mjs reads a product's published line
-// through it — so a bump the tool writes is exactly a bump the checks
+// through it; so a bump the tool writes is exactly a bump the checks
 // accept. After tools/version-policy.php in kinetis.
 //
 // Vector stays on the 0.x line for now. Within it a product moves one step
@@ -27,8 +27,8 @@ const VERSION = new RegExp(`^${COMPONENT}\\.${COMPONENT}\\.${COMPONENT}$`)
  * The one parser: canonical X.Y.Z, no prerelease, no build metadata. A
  * component is decimal without a leading zero and at most nine digits, so
  * `01` or `1.0.00` is rejected rather than meaning what its canonical
- * spelling means — versions are compared as strings and published
- * verbatim — and no arithmetic here can overflow.
+ * spelling means (versions are compared as strings and published
+ * verbatim) and no arithmetic here can overflow.
  *
  * @returns {{ major: number, minor: number, patch: number } | null}
  */

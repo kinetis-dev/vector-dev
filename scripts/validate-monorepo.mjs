@@ -32,7 +32,7 @@ export async function appReferences(dir, base = dir) {
                 // App\ as a namespace root, written plainly (use App\X), fully
                 // qualified (\App\X) or with its backslash escaped in a string
                 // ("\\App\\X"): up to two backslashes before it, and before
-                // those neither a word character nor another backslash — so
+                // those neither a word character nor another backslash; so
                 // not the tail of Kinetis\App\ or MyApp\.
                 if (/(^|[^\w\\])\\{0,2}App\\/.test(line)) {
                     found.push(`${path.relative(base, file).split(path.sep).join('/')}:${index + 1}`)

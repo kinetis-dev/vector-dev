@@ -5,8 +5,8 @@
 # server without PHP or Composer existing on the host. Configured in
 # .mcp.json, .codex/config.toml and .gemini/settings.json.
 #
-# The Compose project lives in demo/ and the Kinetis application — the
-# Orbitron project — in demo/backend; both are derived from this
+# The Compose project lives in demo/ and the Kinetis application (the
+# Orbitron project) in demo/backend; both are derived from this
 # script's own location, so the checked-in configuration works in any
 # clone, at any path, from any client working directory. The Compose
 # file fixes the project name, which selects the image and the vendor
@@ -34,8 +34,8 @@
 # --no-deps starts only this one container, not the rest of the stack.
 # --entrypoint sh bypasses the demo entrypoint, whose unconditional
 # `composer install` would run on every launch. This container installs
-# only when the shared vendor volume has never been populated — a fresh
-# clone — under the same `vendor/.install.lock` the entrypoint takes, so
+# only when the shared vendor volume has never been populated (a fresh
+# clone) under the same `vendor/.install.lock` the entrypoint takes, so
 # it never writes the tree while the `app` container's own install does.
 # Composer's output goes to stderr, and --progress quiet keeps
 # Compose's own, including an image build's, off stdout: stdout carries

@@ -55,7 +55,7 @@ jobs:
 
       # A destination prefix, not the bucket root: `aws s3 sync --delete`
       # only ever deletes keys under the given destination, so this never
-      # touches anything outside vector/docs/ — the rest of kinetis.dev,
+      # touches anything outside vector/docs/; the rest of kinetis.dev,
       # Kinetis's own docs/ included, belongs to other deployments.
       - name: Sync to S3
         run: |

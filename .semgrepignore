@@ -4,7 +4,7 @@
 # output (node_modules/, vendor/, .nuxt/, dist/) is never a target.
 
 # Mirrors Furo's own upstream footer template (see the file's own header
-# comment) — Sphinx renders this into static HTML at build time, with no
+# comment), Sphinx renders this into static HTML at build time, with no
 # request handling involved. next.link/prev.link/path/icon_dict.url are
 # Sphinx's own navigation values, never request-controlled input, so the
 # var-in-href rule's XSS concern doesn't apply here.

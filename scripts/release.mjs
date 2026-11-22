@@ -2,7 +2,7 @@
 // The release logic .github/workflows/release.yml runs on every push to
 // main: each product whose version in packages.manifest.json is not yet
 // published goes out. A Composer product goes to a mirror of its own,
-// which Packagist serves under its name — packages/vector to
+// which Packagist serves under its name, packages/vector to
 // kinetis-dev/vector (kinetis/vector); MIRRORS lists them.
 // packages/vector-ui and packages/vector-ai-ui go to npm (@kinetis/vector-ui,
 // @kinetis/vector-ai-ui; NPM_PRODUCTS lists them). Every product versions
@@ -20,7 +20,7 @@
 // The mirror's history rule. A mirror's main is the pure subtree split
 // S of its product's path: `git subtree split` derives every commit from the
 // monorepo commit it comes from, metadata included, so S is a function of
-// the source history and each release's S descends from the last one's —
+// the source history and each release's S descends from the last one's,
 // main only ever fast-forwards. The version tag v<version> points at that
 // same S, and is the only tag a release makes. The hosted admin bundle is
 // not in the mirror at all: it ships inside @kinetis/vector-ui, and
@@ -48,7 +48,7 @@
 // The mirror credential arrives in RELEASE_DEPLOY_TOKEN, leaves this
 // process's environment before any child starts, and reaches git only
 // through an askpass helper (owner-only, removed afterwards) passed to
-// the push alone — never in a URL, an argument or a config value, all of
+// the push alone, never in a URL, an argument or a config value, all of
 // which git can echo. The username is GitHub's x-access-token.
 import { execFileSync, spawnSync } from 'node:child_process'
 import { appendFileSync, chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -130,7 +130,7 @@ export function changelogSection(markdown, version, file = 'CHANGELOG.md') {
  * feed it are in plan().
  *
  * A published version is done. An unpublished one must be one legal step
- * above the highest published version — its predecessor is out — or, when
+ * above the highest published version (its predecessor is out) or, when
  * nothing is published yet, the product's first release. GitHub keeps at
  * most one pending run of release.yml, so a version merged while an
  * earlier one's run was still waiting can lose its run entirely; the
@@ -294,8 +294,8 @@ export function mirrorOf(product, mirrors = MIRRORS) {
  *
  * A real run publishes only from main: run from refs/heads/main, which
  * the npm-release environment admits and npm's provenance names, at a
- * commit origin/main contains. A rehearsal may run from any branch — a
- * pull request's, before it merges — and reports a commit not on
+ * commit origin/main contains. A rehearsal may run from any branch (a
+ * pull request's, before it merges) and reports a commit not on
  * origin/main instead of refusing it. Every other refusal throws on a
  * rehearsal too, and any refusal stops the whole round: nothing is
  * published for one product while another is refused.
@@ -419,11 +419,11 @@ function credential(mirror, token) {
  * With a tag trigger, the guard was that the source tag still resolved to
  * the commit the run released: a moved tag was a different release. A
  * push to main has no tag to re-read, so the guard is what makes a source
- * commit a release here — main contains it, and its manifest names this
+ * commit a release here, main contains it, and its manifest names this
  * version. origin's main is read again, now: a main that no longer
  * contains the source (force-pushed past it) has withdrawn this release.
- * A main that moved on to a newer version has not — the newer version
- * needs this one published as its predecessor — so main's own current
+ * A main that moved on to a newer version has not (the newer version
+ * needs this one published as its predecessor) so main's own current
  * manifest is deliberately not compared. The manifest at the source binds
  * the version this run builds to the commit it builds from, as the tag
  * bound the two before.
@@ -457,7 +457,7 @@ export function sourceProblem(repo, { source, version, product = PRODUCTS.vector
 /**
  * Reads the mirror (unauthenticated: it is public), decides with
  * publicationPlan(), re-checks the source with sourceProblem(), and
- * writes what is left in one atomic push — or, on a dry run, says what it
+ * writes what is left in one atomic push, or, on a dry run, says what it
  * would push. It does not ask npm for the UI the source pins: npm's
  * registry can take minutes to serve a version it has accepted, and the
  * workflow already runs this only after the npm publish succeeded or had
@@ -492,8 +492,8 @@ export function publishMirror(repo, { version, source, split: splitCommit, produ
         return plan
     }
 
-    // Only while the source is still this release. A rehearsal — from a
-    // branch not merged yet, say — says so and writes nothing.
+    // Only while the source is still this release. A rehearsal (from a
+    // branch not merged yet, say) says so and writes nothing.
     const problem = sourceProblem(repo, { source, version, product })
 
     if (problem !== null && dryRun) {

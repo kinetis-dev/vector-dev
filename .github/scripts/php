@@ -17,8 +17,8 @@
 # its own install step.
 #
 # The container joins the job's service network, $VECTOR_CI_NETWORK,
-# where GitHub names each service container after its key — mysql,
-# postgres, redis — the host names docker-compose.yml gives the same
+# where GitHub names each service container after its key (mysql,
+# postgres, redis) the host names docker-compose.yml gives the same
 # services. So backend/.env.example's hosts resolve as they do in the
 # stack, and so do the tests that name a server themselves. Uploads go
 # to a scratch directory, the stack's storage volume being absent.

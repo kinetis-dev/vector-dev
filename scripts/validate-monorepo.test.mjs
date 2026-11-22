@@ -1,4 +1,4 @@
-// node --test scripts/*.test.mjs — the monorepo checks on fixtures.
+// node --test scripts/*.test.mjs; the monorepo checks on fixtures.
 import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
