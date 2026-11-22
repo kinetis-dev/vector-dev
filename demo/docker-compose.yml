@@ -199,7 +199,6 @@ services:
       - ..:/workspace
       - node_modules:/workspace/node_modules
       - node_modules_ui:/workspace/packages/vector-ui/node_modules
-      - node_modules_ai_ui:/workspace/packages/vector-ai-ui/node_modules
       - node_modules_admin:/workspace/demo/frontend/node_modules
       - node_modules_e2e:/workspace/demo/e2e/node_modules
     ports:
@@ -252,6 +251,5 @@ volumes:
   redis:
   node_modules:
   node_modules_ui:
-  node_modules_ai_ui:
   node_modules_admin:
   node_modules_e2e:

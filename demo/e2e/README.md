@@ -14,11 +14,11 @@ project only; every other spec runs in both.
 ## Running it
 
 From `demo/`, with the stack up, migrated and seeded (see the root
-README), and the hosted admin with AI built and installed once:
+README), and the hosted bundle built and installed once:
 
 ```sh
-docker compose exec node pnpm --filter @kinetis/vector-ai-ui generate:hosted
-docker compose exec app vendor/bin/kinetis vector-ai:install-ui --from=/workspace/packages/vector-ai-ui/dist/static
+docker compose exec node pnpm generate:hosted
+docker compose exec app vendor/bin/kinetis vector:install-ui --from=/workspace/packages/vector-ui/dist/static
 docker compose restart app
 ```
 
@@ -55,8 +55,8 @@ report is in `playwright-report/`, served with:
 docker compose run --rm -p 9323:9323 e2e show-report --host 0.0.0.0
 ```
 
-The hosted project tests the bundle last installed, not the layers'
-current source: build and install it again after changing either UI.
+The hosted project tests the bundle last installed, not the layer's
+current source: build and install it again after changing the UI.
 
 ## Documentation screenshots
 

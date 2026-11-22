@@ -4,9 +4,9 @@ import { expect, test } from '../support/fixtures'
 // kinetis/vector-ai installed and, as the demo ships, unconfigured: the
 // `AI assistant` settings group is there with its provider-key panel,
 // which says no provider is configured, and no other AI UI shows.
-// In both projects: the demo frontend extends @kinetis/vector-ai-ui, and
-// the hosted admin is the bundle `vector-ai:install-ui` installs, under
-// the shell's strict CSP without a violation.
+// In both projects: the demo frontend extends @kinetis/vector-ui, and
+// the hosted admin is the bundle `vector:install-ui` installs, under the
+// shell's strict CSP without a violation.
 test.describe('AI, unconfigured', () => {
     // a stack configured with a provider (ai-filters.spec.ts) is not the demo as it ships
     test.beforeEach(async ({ api }) => {
