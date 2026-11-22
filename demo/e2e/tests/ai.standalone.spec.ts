@@ -4,8 +4,7 @@ import { expect, test } from '../support/fixtures'
 // `AI assistant` settings group is there with its provider-key panel,
 // which says no provider is configured, and no other AI UI shows.
 // Standalone only: the demo frontend extends @kinetis/vector-ai-ui, while
-// the hosted bundle is plain @kinetis/vector-ui (hosted delivery of the
-// AI layer comes in a later release).
+// the hosted bundle is plain @kinetis/vector-ui.
 test.describe('AI, unconfigured', () => {
     // a stack configured with a provider (ai-filters.standalone.spec.ts) is not the demo as it ships
     test.beforeEach(async ({ api }) => {
