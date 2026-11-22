@@ -115,6 +115,30 @@ final class InstallCommandTest extends TestCase
         self::assertStringEndsWith("Note: Vector's own tables are on the \"default\" connection (VECTOR_DB_CONNECTION); kinetis/vector-ai's tables belong beside them.\n", $output);
     }
 
+    /** @return iterable<string, array{list<string>}> */
+    public static function helpRequests(): iterable
+    {
+        yield '--help' => [['--help']];
+        yield '-h' => [['-h']];
+        yield '--help beside an option' => [['--connection=admin', '--help']];
+    }
+
+    /**
+     * @param list<string> $argv
+     */
+    #[DataProvider('helpRequests')]
+    public function testHelpPrintsUsageAndPublishesNothing(array $argv): void
+    {
+        $env = ['DB_CONNECTION' => 'mysql', Config::scopedKey('DB_CONNECTION', 'admin') => 'mysql'];
+        [$status, $output, $errors] = $this->install($argv, $env);
+
+        self::assertSame(0, $status);
+        self::assertSame('', $errors);
+        self::assertStringStartsWith("Usage:\n  kinetis vector-ai:install [--connection=<name>]\n", $output);
+        self::assertStringNotContainsString('Published', $output);
+        self::assertSame([], self::listing($this->root));
+    }
+
     /**
      * @param list<string> $argv
      * @param array<string, string> $env
