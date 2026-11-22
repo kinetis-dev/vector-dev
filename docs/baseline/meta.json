@@ -9,7 +9,7 @@
   },
   "audit.html": {
    "canonical": "https://kinetis.dev/vector/docs/audit.html",
-   "description": "The audit trail: Every write through Vector — create, update, delete, restore, attach, detach, actions, bulk and inline edits, imports, repeater rows — is recorded in vector_audit with the actor, a...",
+   "description": "The audit trail: Every write through Vector (create, update, delete, restore, attach, detach, actions, bulk and inline edits, imports, repeater rows) is recorded in vector_audit with the actor, and...",
    "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
    "og:url": "https://kinetis.dev/vector/docs/audit.html",
    "title": "Audit trail and impersonation - Kinetis Vector"
@@ -44,7 +44,7 @@
   },
   "contributing.html": {
    "canonical": "https://kinetis.dev/vector/docs/contributing.html",
-   "description": "Vector is developed in one repository: the packages — kinetis/vector and@kinetis/vector-ui, and the AI companion kinetis/vector-ai and@kinetis/vector-ai-ui — and the demo application ( The demo app...",
+   "description": "Vector is developed in one repository: the packages ( kinetis/vector and@kinetis/vector-ui, and the AI companion kinetis/vector-ai and@kinetis/vector-ai-ui) and the demo application ( The demo appl...",
    "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
    "og:url": "https://kinetis.dev/vector/docs/contributing.html",
    "title": "Working on Vector - Kinetis Vector"
@@ -135,7 +135,7 @@
   },
   "jobs.html": {
    "canonical": "https://kinetis.dev/vector/docs/jobs.html",
-   "description": "Some work is too large for a request. Vector runs it as a job on your application’s queue: queued actions — an action that declares queued(), run in chunks of chunkSize();, large exports — above th...",
+   "description": "Some work is too large for a request. Vector runs it as a job on your application’s queue: queued actions: an action that declares queued(), run in chunks of chunkSize();, large exports: above the ...",
    "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
    "og:url": "https://kinetis.dev/vector/docs/jobs.html",
    "title": "Background jobs - Kinetis Vector"
