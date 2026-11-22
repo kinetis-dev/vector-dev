@@ -136,27 +136,6 @@ final class InstallCommandTest extends TestCase
         self::assertDirectoryDoesNotExist($this->root . '/migrations');
     }
 
-    /** @return iterable<string, array{list<string>}> */
-    public static function helpRequests(): iterable
-    {
-        yield '--help' => [['--help']];
-        yield '-h' => [['-h']];
-    }
-
-    /**
-     * @param list<string> $argv
-     */
-    #[DataProvider('helpRequests')]
-    public function testHelpPrintsUsageAndPublishesNothing(array $argv): void
-    {
-        [$status, $output, $errors] = $this->install($argv);
-
-        self::assertSame(0, $status);
-        self::assertSame('', $errors);
-        self::assertStringStartsWith("Usage:\n  kinetis vector:install [--connection=<name>]\n", $output);
-        self::assertSame(['.', '..'], scandir($this->root));
-    }
-
     public function testAFreshApplicationGetsItsMigrationsDirectoryCreated(): void
     {
         self::assertDirectoryDoesNotExist($this->root . '/migrations');

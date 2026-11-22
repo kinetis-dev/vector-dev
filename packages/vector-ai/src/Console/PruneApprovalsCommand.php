@@ -7,7 +7,6 @@ namespace Kinetis\VectorAi\Console;
 use Kinetis\Console\Attributes\Command;
 use Kinetis\Console\CommandArguments;
 use Kinetis\Console\Output;
-use Kinetis\Vector\Console\CommandHelp;
 use Kinetis\Vector\Store\JobStore;
 use Kinetis\VectorAi\Actions\RewriteStore;
 use Kinetis\VectorAi\Approvals\ApprovalStore;
@@ -47,10 +46,6 @@ final readonly class PruneApprovalsCommand
     #[Command('vector-ai:approvals:prune', description: 'Expires stale assistant proposals, fails those whose execution never finished, deletes those decided more than --days=<n> (30) ago, and the rewrite proposal rows of jobs that ended.')]
     public function run(CommandArguments $arguments): int
     {
-        if (CommandHelp::requested($arguments)) {
-            return CommandHelp::print($this->output, self::class, 'run', ['[--days=<n>]']);
-        }
-
         $days = $arguments->hasOption('days') ? ($arguments->option('days') ?? '') : (string) self::DEFAULT_DAYS;
 
         if (preg_match('/^[1-9]\d{0,4}$/D', $days) !== 1 || (int) $days > self::MAX_DAYS) {

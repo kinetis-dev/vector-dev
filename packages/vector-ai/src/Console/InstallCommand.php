@@ -9,7 +9,6 @@ use Kinetis\Console\Attributes\Command;
 use Kinetis\Console\CommandArguments;
 use Kinetis\Console\Output;
 use Kinetis\Runtime\ProjectRoot;
-use Kinetis\Vector\Console\CommandHelp;
 use Kinetis\Vector\Database\VectorDatabase;
 
 /**
@@ -47,10 +46,6 @@ final readonly class InstallCommand
      */
     public function run(CommandArguments $arguments, Config $config, string $root, ?string $stubDirectory = null): int
     {
-        if (CommandHelp::requested($arguments)) {
-            return CommandHelp::print($this->output, self::class, 'install', ['[--connection=<name>]']);
-        }
-
         try {
             $connection = VectorDatabase::validated(
                 $arguments->hasOption('connection')

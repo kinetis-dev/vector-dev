@@ -101,20 +101,6 @@ final class InstallUiCommandTest extends TestCase
         self::assertDirectoryDoesNotExist($this->target);
     }
 
-    public function testHelpPrintsUsageAndTouchesNeitherTheRegistryNorTheTarget(): void
-    {
-        $source = $this->registry();
-
-        foreach (['--help', '-h'] as $flag) {
-            self::assertSame(0, $this->command([$flag, '--force'], $source), $this->stderr());
-        }
-
-        self::assertStringStartsWith("Usage:\n  kinetis vector:install-ui [--version=X.Y.Z] [--force]\n", $this->stdout());
-        self::assertSame('', $this->stderr());
-        self::assertSame([], $source->calls);
-        $this->assertNothingInstalled();
-    }
-
     public function testThePinnedVersionIsInstalledFromTheRegistry(): void
     {
         $source = $this->registry();

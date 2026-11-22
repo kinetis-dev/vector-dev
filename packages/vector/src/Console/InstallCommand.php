@@ -46,10 +46,6 @@ final readonly class InstallCommand
     #[Command('vector:install', description: "Publishes Vector's migrations. --connection=<name> puts Vector's tables on a named connection.", bootstrap: false)]
     public function install(CommandArguments $arguments): int
     {
-        if (CommandHelp::requested($arguments)) {
-            return CommandHelp::print($this->output, self::class, 'install', ['[--connection=<name>]']);
-        }
-
         $root = ProjectRoot::detect(dirname(__DIR__));
         $config = Config::fromEnvironment();
 
