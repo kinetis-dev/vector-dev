@@ -96,8 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   which puts the list's filter and search back; and the provider-key panel under the `ai` settings group
   (`GET`, `PUT` and `DELETE /vector/ai/credentials`), rendered only when
   the descriptor carries `capabilities.ai`. Delivered through Nuxt
-  `extends` (standalone); hosted (no-build) delivery comes in a later
-  release.
+  `extends` (standalone).
 - The assistant: a sparkle button in the app bar (`defineShellAction`)
   opening an end-side drawer with the conversation, a composer, *New
   conversation* and a line naming the page the questions are about; it

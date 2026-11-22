@@ -274,9 +274,8 @@ docker compose restart app frankenphp
 labelled with `packages/vector-ui/package.json`'s version, which is the
 one `kinetis/vector` pins. `vector:install-ui --check` then exits 0.
 
-The hosted admin is the plain one: the AI layer reaches the standalone
-admin only, through `extends` (hosted delivery of it comes in a later
-release), so the end-to-end suite's AI specs run standalone:
+The hosted admin does not include the AI layer ({doc}`ai`), so the
+end-to-end suite's AI specs run standalone:
 `ai.standalone.spec.ts` against the demo as it ships, and
 `ai-filters.standalone.spec.ts`, `ai-assistant.standalone.spec.ts`,
 `ai-approval.standalone.spec.ts` (which turns *Assistant may propose

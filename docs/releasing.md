@@ -54,9 +54,10 @@ entry lists under `includes`. `kinetis/vector` includes
 release, and the admin warns when it runs another. A change to the UI
 therefore releases `kinetis/vector` too, naming the new UI release.
 `kinetis/vector-ai` pins no UI: `@kinetis/vector-ai-ui` reaches an
-application through Nuxt `extends` only (hosted delivery of it comes in a
-later release), so the two release independently.
+application through Nuxt `extends` only, so the two release
+independently.
 
+(release-pairing)=
 ### The vector-ui/vector-ai-ui pairing
 
 `@kinetis/vector-ai-ui` depends on exactly one `@kinetis/vector-ui`

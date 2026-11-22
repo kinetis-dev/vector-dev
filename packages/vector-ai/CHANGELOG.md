@@ -269,8 +269,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Testing\ScriptedProvider` (the `fake` provider type, chat, stream and
   structured calls alike, with `ScriptedCalls` to read what it was sent)
   and `vector-ai:install`. The UI half,
-  `@kinetis/vector-ai-ui`, is delivered through Nuxt `extends`; hosted
-  (no-build) delivery of it comes in a later release.
+  `@kinetis/vector-ai-ui`, is delivered through Nuxt `extends`.
 - The read-only assistant: `POST /vector/ai/assistant` runs one agent
   turn over Vector's five read tools (`vector_resources`,
   `vector_describe`, `vector_query`, `vector_get`, `vector_widget`) as

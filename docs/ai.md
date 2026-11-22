@@ -1,23 +1,19 @@
 # AI
 
-`kinetis/vector-ai` adds AI to the admin: plain-language filters, an
-in-admin assistant, and writing help in text fields. It is a companion
-product — the Composer package `kinetis/vector-ai` and the Nuxt layer
-`@kinetis/vector-ai-ui` — built on
+`kinetis/vector-ai` adds AI to the admin: **plain-language filters**
+({ref}`ai-filters`), the **assistant** ({ref}`ai-assistant`) — which
+reads, and, where an administrator allows it, **proposes changes a
+person approves** ({ref}`ai-approvals`) — **writing help**
+({ref}`ai-writing`), and **bulk rewrite proposals** as a CSV to review
+and import ({ref}`ai-bulk`). Every feature rests on the same
+foundations: the operator configuration, the sealed provider keys, the
+`ai` settings group, the access policy, the model boundary, the usage
+ledger and the AI layer's provider-key panel.
+
+It is a companion product — the Composer package `kinetis/vector-ai`
+and the Nuxt layer `@kinetis/vector-ai-ui` — built on
 [`kinetis/neuron`](https://kinetis.dev/docs/neuron.html), so every
 provider call suspends the calling Fiber instead of blocking the worker.
-
-```{important}
-This release offers **plain-language filters** ({ref}`ai-filters`),
-the **assistant** ({ref}`ai-assistant`) — which reads, and, where an
-administrator allows it, **proposes changes a person approves**
-({ref}`ai-approvals`) — **writing help** ({ref}`ai-writing`), and
-**bulk rewrite proposals** as a CSV to review and import
-({ref}`ai-bulk`), on the
-foundations every feature shares: the operator configuration, the
-sealed provider keys, the `ai` settings group, the access policy, the
-model boundary, the usage ledger and the AI layer's provider-key panel.
-```
 
 ## Installing
 
@@ -36,9 +32,8 @@ package needs `ext-sodium`.
 
 The AI layer reaches the admin in standalone mode ({doc}`deployment`):
 your Nuxt app extends `@kinetis/vector-ai-ui` instead of
-`@kinetis/vector-ui`: `extends: ['@kinetis/vector-ai-ui']`. Hosted
-(no-build) delivery of the AI layer comes in a later release; until then
-the hosted admin `vector:install-ui` installs is the plain one.
+`@kinetis/vector-ui`: `extends: ['@kinetis/vector-ai-ui']`. The hosted
+admin that `vector:install-ui` installs does not include the AI layer.
 
 The standalone admin is on another origin, so add `Retry-After` to your
 `CorsMiddleware`'s `exposedHeaders`: a browser hides any header CORS does
@@ -46,7 +41,8 @@ not expose, and without it the admin can say only that today's budget is
 spent, not when it renews.
 
 Each `@kinetis/vector-ai-ui` release depends on exactly the
-`@kinetis/vector-ui` release `kinetis/vector` pins. Against a backend
+`@kinetis/vector-ui` release `kinetis/vector` pins
+({ref}`release-pairing`). Against a backend
 without `kinetis/vector-ai`, the layer renders nothing of its own.
 
 ## Operator configuration
@@ -926,8 +922,7 @@ the model has reshaped can fail the import's validation.
   "noWriting": { "products": ["sku"], "tags": ["name"] } }
 ```
 
-A feature is `true` when it ships in the installed release, a provider
-is configured, its switch is on, the access policy lets this user use
+A feature is `true` when a provider is configured, its switch is on, the access policy lets this user use
 it, their daily budget has tokens left, and a provider, model and key
 resolve for it — and, for `assistantWrites`, the assistant's switch is
 on and the policy lets them use the assistant too. That is the same
@@ -939,7 +934,7 @@ builds no provider and opens no key, since it runs on every `GET
 /vector/schema` — a `304` included, as the ETag covers it. A stored key
 altered in the database therefore still shows the feature, and its
 endpoint answers `403` *… is not configured*.
-This release ships all four. `excluded` names each resource this user may list that is
+`excluded` names each resource this user may list that is
 kept from the model whole, so the admin offers no AI on it.
 `excludedFields` names, for each other resource they may list, the
 fields they see that the boundary keeps back — opted out, outside the
@@ -949,8 +944,8 @@ the same shape, names for each of those resources the `string`, `text`,
 `markdown` and `richtext` fields they see that writing help is not
 offered on (`WritingGuard::offers()`): a unique string, a field with
 `ai.writing` false, or one kept back — so the admin shows no writing
-menu there. It adds to `excludedFields`, which an older admin reads
-alone; the endpoint refuses those fields either way. All three are empty
+menu there. The admin reads both; the endpoint refuses those fields
+either way. All three are empty
 while no feature is offered. The key is absent when `kinetis/vector-ai` is not installed; it
 is published by a shell contributor ({ref}`shell-contributors`).
 
