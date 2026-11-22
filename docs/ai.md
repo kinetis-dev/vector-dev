@@ -242,7 +242,7 @@ answer passes the boundary (`record()`, `page()`, `toolResult()`)
 before the model sees it. Writing help and bulk rewrites check the field
 against the boundary before they send it ({ref}`ai-writing`).
 
-Each kind of answer is cut as follows.
+Each kind of answer is handled as follows.
 
 **A record** keeps the fields the rules above allow, plus three that
 carry no data of their own:
