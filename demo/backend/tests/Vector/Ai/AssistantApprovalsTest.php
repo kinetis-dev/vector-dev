@@ -341,6 +341,29 @@ final class AssistantApprovalsTest extends ApprovalsTestCase
         self::assertSame(DemoAiReplies::DECIDED_ANSWER, self::text($after['frames']));
     }
 
+    public function testTheDemosShippingRequestProposesTheOrderShippedAndChangesNothing(): void
+    {
+        $order = $this->shop()->table('orders')->select('status')->where('id', '=', (int) DemoAiReplies::SHIPPED)->first();
+        self::assertSame('paid', is_array($order) ? $order['status'] : null, 'the seeded order is paid');
+        $demo = DemoAiReplies::replies();
+        $turns = [$demo->turn(DemoAiReplies::SHIP, 0), $demo->turn(DemoAiReplies::SHIP, 1), $demo->turn(DemoAiReplies::SHIP, 2)];
+        self::assertNotContains(null, $turns);
+        self::assertNull($demo->turn(DemoAiReplies::SHIP, 3));
+        $this->script([DemoAiReplies::SHIP => $turns]);
+
+        $frames = $this->turn([DemoAiReplies::SHIP])['frames'];
+        $approvals = self::ofType($frames, 'data-approval');
+        self::assertCount(1, $approvals);
+        self::assertSame(['resource' => 'orders', 'id' => DemoAiReplies::SHIPPED, 'values' => ['status' => 'shipped']], $approvals[0]['data']['arguments']);
+        self::assertSame(DemoAiReplies::SHIP_ANSWER, self::text($frames));
+        self::assertSame('vector_get', self::ofType($frames, 'tool-input-start')[0]['toolName']);
+        self::assertSame('pending', $this->row($approvals[0]['data']['id'])['status'] ?? null);
+
+        $this->decide($approvals[0]['data']['id'], 'reject')->assertOk();
+        $order = $this->shop()->table('orders')->select('status')->where('id', '=', (int) DemoAiReplies::SHIPPED)->first();
+        self::assertSame('paid', is_array($order) ? $order['status'] : null);
+    }
+
     public function testAStaleExecutingRowIsAnsweredFailedWithTheUnknownOutcomeNotExecuting(): void
     {
         $approval = $this->proposed($this->update($this->stock + 5));

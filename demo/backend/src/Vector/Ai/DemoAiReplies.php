@@ -18,8 +18,10 @@ use Kinetis\VectorAi\Writing\WritingAssistant;
  * `assistantWrites` on, the two restocking requests read products#9 with
  * vector_get and propose its stock (vector_update), which the admin
  * approves or rejects, and the assistant then acknowledges the decision;
- * and writing help shortens the two texts below, an order's notes and a
- * product description's paragraph. Any other sentence gets no filter,
+ * the shipping request reads orders#184 the same way and proposes it
+ * shipped; and writing help shortens the two texts below, an order's
+ * notes and a product description's paragraph, and translates a delivery
+ * note into French. Any other sentence gets no filter,
  * or "No reply is scripted for this message.".
  * Unused while no fake provider is configured.
  */
@@ -46,6 +48,15 @@ final class DemoAiReplies
     /** What the assistant answers once it proposed a restock. */
     public const string RESTOCK_ANSWER = 'I proposed the new stock of products#9; it changes once you approve it.';
 
+    /** The seeded order the shipping request is about: paid, not shipped (demo:seed). */
+    public const string SHIPPED = '184';
+
+    /** A request the assistant answers with a proposal: orders#184's status to shipped. */
+    public const string SHIP = 'Mark order ORD-000184 as shipped.';
+
+    /** What the assistant answers once it proposed the shipment. */
+    public const string SHIP_ANSWER = 'I proposed marking orders#184 as shipped; its status changes once you approve it.';
+
     /** What the assistant answers once the admin decided on a proposal. */
     public const string DECIDED_ANSWER = 'Noted: your decision on the change I proposed is recorded above.';
 
@@ -60,6 +71,12 @@ final class DemoAiReplies
 
     /** What writing help shortens it to. */
     public const string SHORT_DESCRIPTION = 'A warm reading lamp for quiet evenings.';
+
+    /** The delivery note the docs screenshots ask writing help to translate. */
+    public const string DELIVERY_NOTE = 'Leave the parcel with the neighbour at number 12 if nobody is home.';
+
+    /** Its French translation. */
+    public const string DELIVERY_NOTE_FR = 'Laissez le colis chez le voisin du numéro 12 s\'il n\'y a personne.';
 
     public static function replies(): ScriptedReplies
     {
@@ -84,11 +101,17 @@ final class DemoAiReplies
             ],
             self::RESTOCK => self::restock(42),
             self::RESTOCK_AGAIN => self::restock(7),
+            self::SHIP => [
+                ['toolCalls' => [['name' => 'vector_get', 'arguments' => ['resource' => 'orders', 'id' => self::SHIPPED]]]],
+                ['toolCalls' => [['name' => 'vector_update', 'arguments' => ['resource' => 'orders', 'id' => self::SHIPPED, 'values' => ['status' => 'shipped']]]]],
+                ['text' => self::SHIP_ANSWER],
+            ],
             // the turn that tells the model how the admin decided ends with these words, whatever the decision
             Assistant::OUTCOME_PROMPT => self::DECIDED_ANSWER,
             // writing help keys by the delimited text, whatever the operation
             WritingAssistant::content(self::LONG_NOTES) => self::SHORT_NOTES,
             WritingAssistant::content(self::LONG_DESCRIPTION) => self::SHORT_DESCRIPTION,
+            WritingAssistant::content(self::DELIVERY_NOTE) => self::DELIVERY_NOTE_FR,
         ]);
     }
 
