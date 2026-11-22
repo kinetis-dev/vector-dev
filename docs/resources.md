@@ -69,7 +69,7 @@ final class CustomerResource extends VectorResource
 ```
 
 A resource or field that declares no meta publishes no `meta` key at
-all, so its descriptor, and `vector_describe`'s answer, are unchanged.
+all, in the descriptor or in `vector_describe`'s answer.
 A policy that hides fields keeps the meta of the fields it keeps.
 `kinetis/vector-ai` reads `ai.send` ({doc}`ai`).
 

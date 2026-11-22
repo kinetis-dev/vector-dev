@@ -31,8 +31,8 @@ lowercase token of at most 40 characters) on the request scope before
 anything that writes is resolved. `origin` is null for every other
 write, and `GET /vector/r/{resource}/{id}/audit` returns it on each
 entry. The column comes with the `vector_write_origin` migration
-`vector:install` publishes; until it is applied, writes without an
-origin are recorded as before.
+`vector:install` publishes; a write without an origin is recorded
+whether or not it has been applied.
 
 ## Revert
 
