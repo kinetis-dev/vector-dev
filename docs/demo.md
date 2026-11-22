@@ -30,9 +30,8 @@ Then try the assistant, in the standalone admin (`localhost:3000`):
    naming `products#1`.
 3. Click `products#1`: the record opens, and the drawer and its
    conversation stay, now about *Product #1*.
-4. Press ⌘K (Ctrl+K), type the same question and choose *Ask the
-   assistant…*: the drawer opens and asks it. *New conversation* starts
-   afresh.
+4. Press ⌘J (Ctrl+J) to close the drawer, and again to open it: the
+   conversation is still there. *New conversation* starts afresh.
 
 And the assistant proposing changes: turn *Assistant may propose
 changes* on in the AI settings, open *Product #9* and ask *Set the stock
