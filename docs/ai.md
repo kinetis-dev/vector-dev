@@ -604,8 +604,7 @@ The model has six read tools, called in process ({doc}`mcp`):
 `vector_resources`, `vector_describe`, `vector_query`,
 `vector_aggregate`, `vector_get` and `vector_widget`. With *Assistant
 may propose changes* on for this person, it also has Vector's four
-write tools, which only propose ({ref}`ai-approvals`). Otherwise it is
-not even told of them.
+write tools, which only propose ({ref}`ai-approvals`).
 
 Every call is governed:
 
@@ -738,10 +737,10 @@ The person gets the write tools when all of these hold:
 - the assistant itself is on, and `canUse($user, Feature::Assistant)`
   allows them, since writes are the assistant's.
 
-The tools are Vector's four writes, under their own names and input
-schemas: `vector_create`, `vector_update`, `vector_delete` and
-`vector_run_action`. Otherwise the model is given none of the four, not
-even their descriptions.
+The model then gets Vector's four writes, under their own names and
+input schemas: `vector_create`, `vector_update`, `vector_delete` and
+`vector_run_action`. Otherwise it is given none of the four, not even
+their descriptions.
 
 ### What a proposal does
 
@@ -760,9 +759,9 @@ Calling a write tool **changes nothing**. The call:
    - that record's `update` or `delete`, for `vector_update` and
      `vector_delete`;
    - the policy's `forceDelete` (not `delete`), for a forced delete
-     (`force: true`). It is asked of the record whether it is live or in
-     the trash, as Vector's own forced delete asks it (a resource
-     that does not soft-delete has no trash).
+     (`force: true`). As with Vector's own forced delete, it is asked of
+     the record whether the record is live or in the trash. A resource
+     that does not soft-delete has no trash.
 
    A record they cannot see is refused too, so no card is shown that
    approval would only fail. Approving still checks every permission
@@ -806,9 +805,9 @@ The id is 128 random bits in base32, stored without its `apr_` prefix.
 
 ### Approving or rejecting
 
-`POST /vector/ai/approvals/{id}/approve` or
+The person decides with `POST /vector/ai/approvals/{id}/approve` or
 `POST /vector/ai/approvals/{id}/reject`. The body is empty, and any body
-is ignored: approving runs the row's own tool and arguments, never
+is ignored. Approving runs the row's own tool and arguments, never
 anything the request carries.
 
 Approving registers the person as the actor, with their impersonator
@@ -839,17 +838,18 @@ A decision answers `200` with one of:
 One conditional update moves a row out of `pending`, so of two requests
 only one wins. A retry is therefore safe, and nothing runs twice.
 
-A row still `executing` ten minutes after it was approved (its request
-never finished: the worker died, or the request was cut off) is first
-marked `failed` with *The outcome is unknown: the request that ran it
-did not finish. Check the record's History.* That `409` is the answer,
-and the row is never executed again.
+A row can still be `executing` ten minutes after it was approved,
+because its request never finished: the worker died, or the request was
+cut off. A decision on such a row first marks it `failed` with *The
+outcome is unknown: the request that ran it did not finish. Check the
+record's History.* That `409` is the answer, and the row is never
+executed again.
 
 ### After the decision
 
 The drawer sends the next turn with the decision (`{"role": "approval",
-"id": …}`). The server reads the outcome from the row, passes the
-result through the boundary, and the assistant says what happened. For
+"id": …}`). The server reads the outcome from the row and passes the
+result through the boundary. The assistant then says what happened. For
 an unknown outcome it tells the person to check the record's History.
 
 A change Vector refused is never quoted to the model, since a
@@ -865,11 +865,12 @@ fields:
 
 The person still sees the refusal itself on the card.
 
-Where two of the person's turns would follow each other (an answer that
-only proposed, with no text, then the decision), the server puts a short
-fixed assistant turn between them: providers such as Bedrock refuse
-roles that do not alternate. A replayed or edited conversation cannot
-cause a second write.
+Two of the person's turns can follow each other: an answer that only
+proposed, with no text, then the decision. The server then puts a short
+fixed assistant turn between them, because providers such as Bedrock
+refuse roles that do not alternate.
+
+A replayed or edited conversation cannot cause a second write.
 
 ### History and reloads
 
@@ -887,10 +888,11 @@ When the change ran:
   from it is refused as stale.
 
 Each decision is one log line: the actor, impersonator, approval id,
-tool and outcome. An approval is one usage row with the feature
-`assistant-writes`, no tokens, and the outcome `approval:executed` or
-`approval:failed`. The arguments, the result and an exception's message
+tool and outcome. The arguments, the result and an exception's message
 are never logged.
+
+An approval is also one usage row with the feature `assistant-writes`,
+no tokens, and the outcome `approval:executed` or `approval:failed`.
 
 (ai-prune)=
 ### Sweeping old rows
@@ -941,7 +943,7 @@ sweep has run.
 ## Writing help
 
 Writing help rewrites, shortens, corrects or translates a field's text.
-The answer lands in the input; the person reviews it and saves the form
+The answer lands in the input. The person reviews it and saves the form
 through Vector's ordinary write path, as their own edit. The server
 never writes it, and the record's history shows the person's update like
 any other.
@@ -949,10 +951,10 @@ any other.
 ### Where it appears
 
 - **Text inputs**: a `string` or `text` field on a resource's create
-  page or on a record's edit page, and nowhere else (not a list's bulk
-  edit, an action's dialog or a settings form). An icon at the field's
-  end (right in a left-to-right language, left in a right-to-left one)
-  opens the *Writing help* menu.
+  page or on a record's edit page, and nowhere else: not a list's bulk
+  edit, an action's dialog or a settings form. An icon at the field's
+  end opens the *Writing help* menu. The end is the right in a
+  left-to-right language, and the left in a right-to-left one.
 - **Rich-text and Markdown editors**: the same menu, in the toolbar.
 
 The menu offers **Rewrite**, **Shorten**, **Fix grammar** and
@@ -1036,8 +1038,8 @@ A broken rule is a `422` naming it. A body over 256 KiB is a `413`.
 
 ### Who may ask, about what
 
-After the body, these are checked in this order, failing closed. The
-model is asked nothing until all of them hold.
+Once the body passes, these checks run in this order. Each fails
+closed, and the model is asked nothing until all of them hold.
 
 1. The resource exists (`404`).
 2. The field is not a `password` field, refused by its type before
@@ -1066,10 +1068,12 @@ When the provider fails, the answer is `502` to `504`
 
 ### Prompt and answer
 
-A fixed system prompt per operation says how the text is written (plain,
-or Markdown to keep) and that the user turn's text is content to
-transform, never instructions. For `translate` it names the target
-language's tag.
+Each operation has a fixed system prompt. It says:
+
+- how the text is written: plain, or Markdown to keep;
+- that the user turn's text is content to transform, never
+  instructions;
+- for `translate`, the target language's tag.
 
 The user turn carries the person's guidance, if any, then their text
 between the lines `<<<TEXT` and `TEXT>>>`. Neither ever reaches the
@@ -1092,7 +1096,7 @@ the answer and a provider's error body are never logged.
 
 Bulk rewrites run writing help on one field across many records, without
 AI writing anything. `Kinetis\VectorAi\Actions\ProposeRewrites` is a
-queued action ({doc}`actions`, {doc}`jobs`) that sends each selected
+queued action ({doc}`actions`, {doc}`jobs`). It sends each selected
 record's text to the model and leaves its job **one CSV of proposals**.
 
 Nothing changes until the admin reviews the CSV and imports it in
@@ -1150,11 +1154,12 @@ the model is asked anything, for:
 - a translation without a language tag, or guidance over 300 characters.
 
 These are checked again at the start of every chunk, with the `ai`
-settings read anew and the fields as the admin sees them then (Vector
-runs each chunk on a request scope of its own). If one stops holding
-after a chunk has run (writing help switched off, the key removed), the
-rest of the selection is not sent (`unavailable`). The job still ends
-with the CSV of what was proposed.
+settings read anew and the fields as the admin sees them then. Vector
+runs each chunk on a request scope of its own.
+
+If a check stops holding after a chunk has run (writing help switched
+off, the key removed), the rest of the selection is not sent
+(`unavailable`). The job still ends with the CSV of what was proposed.
 
 ### Per record
 
@@ -1182,23 +1187,26 @@ how many records were not sent and why:
 - `file_full`: the proposals have filled the job's file
   ({ref}`ai-bulk-csv`).
 
-A chunk reads the day's budget left, and which of its records are
-already done, once at its start, then counts each call's tokens off that
-budget as it goes. Spending elsewhere in the meantime (the person's
-assistant, say) shows from the next chunk.
+A chunk reads two things once, at its start: the day's budget left, and
+which of its records are already done. It then counts each call's
+tokens off that budget as it goes. Spending elsewhere in the meantime
+(the person's assistant, say) shows from the next chunk.
 
-Every call is a usage row with the feature `writing`. Each chunk
-declares the records it made a proposal for ({doc}`actions`): only those
-get an `action:<name>` entry in their audit trail, and the job's
-`affected` counts proposals, not the records handed to the action.
+Every call is a usage row with the feature `writing`.
+
+Each chunk declares the records it made a proposal for ({doc}`actions`).
+Only those get an `action:<name>` entry in their audit trail, and the
+job's `affected` counts proposals, not the records handed to the action.
 
 (ai-bulk-csv)=
 ### The CSV
 
-There is one per run, on the job. The **Jobs** page offers it for
-download once the job is done (`GET /vector/jobs/{id}/download`), named
-`<resource>-<field>-proposals-<job>.csv`. Its header is the record's ID
-field and the field (`id,notes`, say), with one row per proposal:
+Each run leaves one CSV, on its job. The **Jobs** page offers it for
+download once the job is done (`GET /vector/jobs/{id}/download`). It is
+named `<resource>-<field>-proposals-<job>.csv`.
+
+Its header is the record's ID field and the field (`id,notes`, say),
+with one row per proposal:
 
 ```text
 id,notes
@@ -1226,9 +1234,11 @@ larger:
 
 A proposal that did not fit is left out of the file and counted in the
 job's message ("the proposals filled the job's file"). Its row stays in
-`vector_ai_rewrites` until the sweep ({ref}`ai-bulk-retention`). Either
-way, the calls the run made are not lost to a file too large to save.
-Run the records not sent, or not in the file, as another selection.
+`vector_ai_rewrites` until the sweep ({ref}`ai-bulk-retention`).
+
+Either way, the calls the run made are not lost to a file too large to
+save. Run the records not sent, or not in the file, as another
+selection.
 
 The job's message counts:
 
@@ -1250,13 +1260,15 @@ A row whose record is gone, or that the policy refuses, lands in the
 failed-rows file, as with any import.
 
 ```{warning}
-**Spreadsheet formulas.** The CSV holds the model's text exactly, and
-the text is shaped by record contents. A value starting with `=`, `+`,
-`-` or `@` is not guarded: Vector's exports guard such a cell with an
-apostrophe its import does not remove, so the guard would end up in the
-record. A spreadsheet may evaluate such a cell as a formula. Review the
-CSV in a text editor, or import a spreadsheet's export of it only after
-checking those cells.
+**Spreadsheet formulas.** A spreadsheet may evaluate a cell of this CSV
+as a formula. The CSV holds the model's text exactly, and the text is
+shaped by record contents. A value starting with `=`, `+`, `-` or `@` is
+not guarded. Vector's exports guard such a cell with an apostrophe, but
+its import does not remove the apostrophe, so here the guard would end
+up in the record.
+
+Review the CSV in a text editor, or import a spreadsheet's export of it
+only after checking those cells.
 ```
 
 ### Delivered twice, billed once
@@ -1275,9 +1287,9 @@ is built from those rows once, after the last chunk
 ### Retention
 
 The rows hold the proposed texts until the run has ended. `finish()`
-builds the CSV and deletes nothing, because Vector saves the file on the
-job only after it returns: a save that fails (a database error, say)
-loses no proposal.
+builds the CSV and deletes nothing: Vector saves the file on the job
+only after `finish()` returns, so a save that fails (a database error,
+say) loses no proposal.
 
 `vector-ai:approvals:prune` ({ref}`ai-prune`) deletes the rows of every
 ended job, one no longer queued or running:
@@ -1298,10 +1310,10 @@ proposals by hand until the sweep deletes them.
 
 ### Rich text
 
-A `richtext` field's stored value (HTML, or the editor's JSON document)
-is sent as it is, as plain text. Prefer bulk proposals on `string`,
-`text` and `markdown` fields: a rich-text value the model has reshaped
-can fail the import's validation.
+Prefer bulk proposals on `string`, `text` and `markdown` fields. A
+`richtext` field's stored value (HTML, or the editor's JSON document) is
+sent as it is, as plain text, and a rich-text value the model has
+reshaped can fail the import's validation.
 
 ## Capabilities in the schema
 
@@ -1341,11 +1353,12 @@ That is the same check each feature's endpoint makes, in one place
 endpoint would serve it.
 
 The check runs on every `GET /vector/schema`, a `304` included, since
-the ETag covers it. So whether a key resolves is read from the
+the ETag covers it. It therefore reads whether a key resolves from the
 configuration, the settings and the stored key's record, without
-building a provider or opening a key. A stored key altered in the
-database therefore still shows the feature, and its endpoint answers
-`403` *… is not configured*.
+building a provider or opening a key.
+
+As a result, a stored key altered in the database still shows the
+feature, and its endpoint answers `403` *… is not configured*.
 
 (ai-usage)=
 ## Usage and failures
@@ -1368,8 +1381,8 @@ without them, an estimate.
 
 The charge depends on whether the provider produced output, not on
 whether an HTTP status is known. A provider reports most of a call's
-tokens at the end of its stream, which a stopped or failed stream never
-reaches; such a call is estimated.
+tokens at the end of its stream. A stopped or failed stream never
+reaches that end, so such a call is estimated.
 
 - An estimate is one token for every 4 bytes of the instructions, the
   conversation as sent, each call's newest message and the text streamed
@@ -1438,8 +1451,9 @@ Bind the replies on AppScope in a test. Each reply is keyed by the last
 text block of the last user message: for a plain-language filter, the
 admin's sentence, and for its repair turn, that turn's text.
 `ScriptedReplies::of()` takes the message text and keys by its SHA-256.
-Pass it a `ScriptedCalls` to read every request the providers were sent,
-structured schema included:
+
+Pass it a `ScriptedCalls` to read every request the providers were
+sent, structured schema included:
 
 ```php
 use Kinetis\VectorAi\Testing\ScriptedCalls;
