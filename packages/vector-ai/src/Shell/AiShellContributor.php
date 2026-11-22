@@ -20,37 +20,22 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 
 /**
- * `capabilities.ai` in GET /vector/schema: per user, which AI features
- * the admin offers — `filters`, `assistant`, `assistantWrites`,
- * `writing` — and what is kept from the model, once a feature that sends
- * to a model is offered (empty objects until then): `excluded`, each
- * resource this user may list that ModelBoundary keeps back whole, as
- * `{slug: true}`; and `excludedFields`, for each other resource they may
- * list, the fields they see that ModelBoundary keeps back, as
- * `{slug: [field, …]}` — a resource with none is absent; and
- * `noWriting`, in the same shape, the `string`, `text`, `markdown` or
- * `richtext` fields they see on those resources that writing help is not
- * offered on (WritingGuard::offers(): kept back as above, a unique string,
- * or `ai.writing` false), so the admin shows no writing menu there — it
- * adds to excludedFields, which an older admin reads alone. A feature is
- * offered when it ships in this release and AiAvailability::availableNow()
- * lists it: what its own endpoint asks (offered(): the operator
- * configured a provider, the `ai` settings turn it on, the access policy
- * lets this user use it — for `assistantWrites`, the assistant's switch
- * and policy too), their daily token budget has tokens left, and the
- * resolver would find a provider, a model and a key for it, building no
- * provider and opening no key: this runs on every GET /vector/schema, a
- * 304 included, since the ETag covers it. Any failure computing it
- * leaves every feature off and logs a warning naming the exception's
- * class — never its message, which could carry a provider's detail. The key is absent altogether where
- * kinetis/vector-ai is not installed.
+ * `capabilities.ai` in GET /vector/schema, per user (docs/ai.md, "What the
+ * admin is told"): a flag for each feature shipped() lists, true when
+ * AiAvailability::availableNow() lists it, and, once one is offered, what
+ * is kept from the model — `excluded` and `excludedFields`
+ * (ModelBoundary), and `noWriting` (WritingGuard::offers()). It runs on
+ * every GET /vector/schema, a 304 included, so it builds no provider and
+ * opens no key. Any failure computing it leaves every feature off and logs
+ * a warning naming the exception's class — never its message, which could
+ * carry a provider's detail.
  */
 #[ShellContributor(name: 'ai')]
 final readonly class AiShellContributor implements ShellContributorInterface
 {
     /**
-     * The features this release implements; a flag stays false until its
-     * feature is listed here.
+     * The features whose flags may be true; a feature not listed here is
+     * never offered.
      *
      * @return list<Feature>
      */
@@ -103,8 +88,8 @@ final readonly class AiShellContributor implements ShellContributorInterface
     }
 
     /**
-     * The flags for this contributor's user — the request's — when $features are the ones that ship. Whether a
-     * feature ships is asked first, so an unshipped one costs no settings,
+     * The flags for this contributor's user — the request's — offering at
+     * most $features (shipped()). A feature outside them costs no settings,
      * ledger, resolver or key lookup. Any failure on the way — a missing
      * table, a transport that was not built, a policy that throws — turns
      * every feature off rather than failing GET /vector/schema.

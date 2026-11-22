@@ -20,44 +20,22 @@ use Kinetis\VectorAi\Writing\WritingGuard;
 use Kinetis\VectorAi\Writing\WritingOperation;
 
 /**
- * Writing help across many records, as proposals the admin reviews: a
- * queued action that sends one field of each selected record to AI —
- * one single-shot writing call per record, its text delimited and
- * labelled as content (WritingAssistant), so no record steers another —
- * and leaves its job one CSV, `<key field>,<field>`, of the proposed
- * texts. It writes nothing to a record: the admin imports the CSV in
- * `update` mode, keyed by the key field, and every change is an
- * ordinary, validated and audited import row of theirs.
+ * Writing help across many records, as proposals the admin reviews
+ * (docs/ai.md, "Bulk rewrite proposals"): a queued action that sends one
+ * field of each selected record to AI — one single-shot writing call per
+ * record, its text delimited and labelled as content (WritingAssistant),
+ * so no record steers another — and leaves its job one CSV,
+ * `<key field>,<field>`, of the proposed texts. It writes nothing to a
+ * record. A resource opts in by listing a subclass, which names field()
+ * and operation(), in its `actions()`.
  *
- * Nothing registers it. A resource opts in by listing a subclass, which
- * names the field and the operation, in its `actions()`:
- *
- *     final class TidyOrderNotes extends ProposeRewrites
- *     {
- *         public function field(): string { return 'notes'; }
- *         public function operation(): WritingOperation { return WritingOperation::Grammar; }
- *     }
- *
- * The run is writing help's (WritingGuard), as the admin who started it,
- * asked again at the start of every chunk with the `ai` settings read
- * anew (Vector runs each chunk on a request scope of its own):
- * a password, non-text, hidden, read-only or AI-kept field, one writing
- * help is off for (a unique string, or `ai.writing` false), one not on
- * the detail view (the records are read as it serializes them), writing
- * help off, unconfigured or not theirs, a translation without a language
- * tag or guidance over WritingAssistant::MAX_INSTRUCTIONS characters
- * fails the whole job before any provider call. Should one of those stop
- * holding after a chunk has run, the rest are not sent (`unavailable`)
- * and finish() still delivers what was made. Per record, one they may
- * not update, an empty text or one over WritingAssistant::MAX_TEXT is
- * left out and counted, never sent; a call that fails, whatever it
- * throws, is counted by its category (AiFailureMapper) and an empty answer as `empty_answer`, and the
- * run goes on; once the day's token budget is spent (`budget`) or the
- * proposals near the job file's size (fileLimit(), `file_full`), no
- * further record is sent and the job says so. Answers are cleaned and
- * capped as writing help's are. Each chunk declares the records it
- * proposed for (ActionResponse::withRecords()): only those are audited,
- * and counted as affected.
+ * WritingGuard's rules are asked again at the start of every chunk, with
+ * the `ai` settings read anew (Vector runs each chunk on a request scope
+ * of its own). A refusal before any record has a row fails the whole job
+ * before any provider call; after one, the rest are not sent
+ * (`unavailable`) and finish() still delivers what was made. Each chunk
+ * declares the records it proposed for (ActionResponse::withRecords()):
+ * only those are audited, and counted as affected.
  *
  * The CSV finish() returns is never larger than JobStore::MAX_FILE_BYTES,
  * which the job's file must fit: rows are added in the order the

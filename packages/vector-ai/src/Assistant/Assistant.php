@@ -56,17 +56,10 @@ use Psr\Log\LoggerInterface;
  * data-stream protocol (stream()) or answered whole (answer()).
  *
  * Every provider call is a usage row (AssistantLedger), every run one log
- * line: who, which provider and model, tokens, duration, the tools called
- * and how it ended — never a prompt, a message, a tool's arguments or
- * answer, the model's output or a provider's error body. A failed stream
- * ends with the adapter's neutral "The run failed." frame, and is logged
- * by category, with the exception's class and file:line but never its
- * message — its message as a plain string, and the exception itself, are
- * attached only under APP_ENV=development. A departure — the run stopped by the request's
- * DepartureSignal, or not advanced further because the browser had left —
- * writes no frame and is logged at info as such, not as a failure; any
- * other exception is a failure, even when the browser has also left. Built
- * per request: the tools run in this request's scope.
+ * line that never carries a prompt, a message, a tool's arguments or
+ * answer, the model's output or a provider's error body; how a run's end
+ * is written, logged and charged is told()'s (docs/ai.md, "The
+ * assistant"). Built per request: the tools run in this request's scope.
  */
 final readonly class Assistant
 {
@@ -305,7 +298,7 @@ final readonly class Assistant
      * already does on valid() or current(). Once the browser has gone, the
      * run is advanced no further and nothing more is written.
      *
-     * How it ends (Rule 1 of the assistant's departure rules):
+     * How it ends:
      *
      * - a departure — the application stopped it: the DepartureSignal fired
      *   and the stream stopped (cleanly, or with the ProviderException a

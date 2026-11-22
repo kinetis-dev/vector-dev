@@ -13,8 +13,10 @@ use Kinetis\Vector\Database\VectorDatabase;
 
 /**
  * Publishes kinetis/vector-ai's migrations into the application — the
- * sealed provider keys (`vector_ai_credentials`) and the usage ledger
- * (`vector_ai_usage`) — the way `vector:install` publishes Vector's: into
+ * sealed provider keys (`vector_ai_credentials`), the usage ledger
+ * (`vector_ai_usage`), the assistant's proposals (`vector_ai_approvals`)
+ * and the bulk rewrites' rows (`vector_ai_rewrites`) — the way
+ * `vector:install` publishes Vector's: into
  * `migrations/` for the default connection or `migrations/<name>/` for a
  * named one, in the dialect `DB_CONNECTION` or `DB_<NAME>_CONNECTION`
  * names. Put them on the connection Vector's own tables are on
