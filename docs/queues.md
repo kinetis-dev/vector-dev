@@ -16,10 +16,10 @@ There is nothing to install for the dashboard itself. It appears on its
 own, per user:
 
 - **Queues** is in the menu, beside **Jobs**, when the application's
-  queue is configured — a `QueueInterface` bound, which `kinetis/queue`
+  queue is configured (a `QueueInterface` bound, which `kinetis/queue`
   does when `QUEUE_CONNECTION` (or the connection
   `QUEUE_CONNECTION_NAME` names) is set, or your `bootstrap.php` binds
-  one — and the dashboard's policy lets the user view (see below). The
+  one) and the dashboard's policy lets the user view (see below). The
   descriptor reports it as `capabilities.queues`. Otherwise the entry
   and the dashboard card are left out, and every `/vector/queues`
   endpoint answers `404`, as a path no route matches does.

@@ -3,11 +3,11 @@
 Some work is too large for a request. Vector runs it as a job on your
 application's queue:
 
-- **queued actions** — an action that declares `queued()`, run in chunks
+- **queued actions**: an action that declares `queued()`, run in chunks
   of `chunkSize()`;
-- **large exports** — above the resource's `exportLimit()`, up to
+- **large exports**: above the resource's `exportLimit()`, up to
   `exportQueueLimit()`, and every Excel (XLSX) export;
-- **imports** — every CSV import.
+- **imports**: every CSV import.
 
 Each job runs as the admin who started it, reports its progress to
 `vector_jobs` for the **Jobs** page, which the UI polls, and leaves that
@@ -70,8 +70,8 @@ its job (`ActionRequest::$jobId`), so an action can key what it keeps
 by job and record, and its `finish()` runs once after the last chunk and
 may leave the job a file ({doc}`actions`).
 
-A failure the admin should read — the selection is gone, the action
-declined, a validation refusal — is reported on the row verbatim; any
+A failure the admin should read (the selection is gone, the action
+declined, a validation refusal) is reported on the row verbatim; any
 other exception is logged, and the row says only that the job failed.
 
 ## Stalled jobs
@@ -139,15 +139,15 @@ hooks and audit apply per row. The finished job reports
 
 Re-importing an export with `key: sku` in update-or-create (`upsert`)
 mode changes the values in place instead of duplicating rows. Map the
-columns that import back — a relation exports its label, a rich-text
-field its plain text — and skip the rest.
+columns that import back (a relation exports its label, a rich-text
+field its plain text) and skip the rest.
 
 Rows are created one by one: a failed row never undoes the rows before
 it. To retry, fix and import the failed-rows file, not the original.
 
 ## See also
 
-- {doc}`actions` — declaring a queued action.
-- {doc}`queues` — the queue dashboard, there wherever a queue is
+- {doc}`actions`: declaring a queued action.
+- {doc}`queues`: the queue dashboard, there wherever a queue is
   configured: queue sizes, the jobs the worker gave up on, and job metrics.
-- {doc}`limits` — every bound.
+- {doc}`limits`: every bound.

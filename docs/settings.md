@@ -62,5 +62,5 @@ script. Adding script to the admin is a deployment decision, made with
 
 ## See also
 
-- {doc}`customizing-the-ui` — theming beyond branding.
-- {doc}`authorization` — who may manage what.
+- {doc}`customizing-the-ui`: theming beyond branding.
+- {doc}`authorization`: who may manage what.

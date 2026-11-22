@@ -56,10 +56,10 @@ application).
 
 ## Envelopes
 
-- **A list** — `{data, currentPage, perPage, total, lastPage}`, or
+- **A list**: `{data, currentPage, perPage, total, lastPage}`, or
   `{data, nextCursor, hasMore, perPage}` under a cursor, plus
   `summaries` when asked.
-- **An uncounted list** — a resource that declares `withoutCount()`
+- **An uncounted list**: a resource that declares `withoutCount()`
   issues no COUNT: its offset page is `{data, currentPage, perPage,
   total: null, lastPage: null, hasMore}`, where `hasMore` says whether
   another page follows (read from one row past the page), plus
@@ -68,14 +68,14 @@ application).
   in its own form. A collection's page under `/{id}/{relation}` takes
   the target resource's form; that path is not in the OpenAPI document.
   The cursor envelope is the same for every resource.
-- **A record** — `{data, permissions}`, where `permissions` is
+- **A record**: `{data, permissions}`, where `permissions` is
   `{update, delete, restore, forceDelete, actions}`.
-- **A write refusal** — the framework's RFC 9457 document with
+- **A write refusal**: the framework's RFC 9457 document with
   `errors[].path/code/message`. Other refusals: `{"error": "..."}`.
-- **An action** — `{type, message, url, affected, jobId}`, where `type`
+- **An action**: `{type, message, url, affected, jobId}`, where `type`
   is `message`, `redirect`, `url`, `danger` (answered `422`) or `job`
   (answered `202`); a download answers the file itself.
-- **A job** — `{id, kind, resource, name, actorId, impersonatorId,
+- **A job**: `{id, kind, resource, name, actorId, impersonatorId,
   status, total, processed, result, failure, hasFile, fileName,
   createdAt, updatedAt, finishedAt}`.
 
@@ -85,7 +85,7 @@ Labels in `GET /vector/schema`, `/schema/{resource}`, `/settings`,
 `/dashboards/{name}` and widget results are translated for the request's
 language: the user's `locale` preference (`PUT /vector/preferences`,
 which refuses a language not on offer with `422`), else the
-administrator's default — among the languages on offer;
+administrator's default, among the languages on offer;
 `Accept-Language` is not consulted. The schema's `i18n` is
 `{locale, locales: [{code, name, dir}]}`, and its `ETag` covers the
 language. Values and records are never translated. See {doc}`languages`.
@@ -162,7 +162,7 @@ write or the list grammar. See {doc}`forms`.
 | Money | Integers in the currency's minor units; the schema lists exceptions to hundredths in `minorUnits` |
 | Belongs-to, has-one | `{id, label}` or `null`, plus the related currency when a money field is priced in it (`currencyField('order.currency')`) |
 | Has-many, many-to-many | `{count}` on a record; a list of ids on a write |
-| Rich text | The editor's JSON document in a string — or, where the field `storesHtml`, the stored HTML; a write always sends the document |
+| Rich text | The editor's JSON document in a string, or, where the field `storesHtml`, the stored HTML; a write always sends the document |
 | Markdown | Its source |
 | Computed | Typed by its `computed.as` (money as minor units, a date as `YYYY-MM-DD`, an instant as ISO 8601 UTC), always with the fields it is computed from |
 | Ids | As the entity types them |
@@ -215,8 +215,8 @@ reason.
 
 ### Validating a filter without running it
 
-Code that builds a filter — an extension, a package turning a sentence
-into conditions — checks it with the same grammar before anything runs:
+Code that builds a filter (an extension, a package turning a sentence
+into conditions) checks it with the same grammar before anything runs:
 `Kinetis\Vector\Query\ListRequest::fromQueryParams($params,
 $descriptor, $converter)`, with the request's
 `Kinetis\Vector\Write\ValueConverter`, parses the parameters against the
@@ -238,7 +238,7 @@ A list, a show and a write run a fixed number of statements; see
 | `403` | Not admitted, or refused by a policy: `{"error": "…"}`. |
 | `404` | Unknown resource or record, or a queue-dashboard route that is not there for this user or this application ({doc}`queues`). |
 | `409` | A stale version, a revert over a field changed since, or a clear on a queue backend that cannot discard jobs. |
-| `422` | Validation — the framework's RFC 9457 document, with `errors[].path`, `code` and `message` — or an invalid list request. |
+| `422` | Validation (the framework's RFC 9457 document, with `errors[].path`, `code` and `message`) or an invalid list request. |
 
 ## OpenAPI document
 
@@ -271,5 +271,5 @@ own.
 
 ## See also
 
-- {doc}`limits` — every bound.
-- {doc}`mcp` — the same services for agents.
+- {doc}`limits`: every bound.
+- {doc}`mcp`: the same services for agents.

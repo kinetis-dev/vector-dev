@@ -32,22 +32,22 @@ one input per field you may write.
 :class: only-dark
 ```
 
-- **Sections and tabs** — a long form may be grouped. A folded section
+- **Sections and tabs**: a long form may be grouped. A folded section
   opens, and a tab switches, when a field inside it needs attention; a
   tab with a problem carries a red dot.
-- **Validation** — the form checks what it can as you go (a required
+- **Validation**: the form checks what it can as you go (a required
   field, a length, an e-mail address). What only the server can check,
   such as a duplicate name, comes back on the field it concerns.
-- **Conditional fields** — a field may appear, become required or be
+- **Conditional fields**: a field may appear, become required or be
   disabled depending on another; a product's *Released at* shows only
   when its status is not *Draft*.
-- **Dependent choices** — a choice may wait for another: pick a team
+- **Dependent choices**: a choice may wait for another: pick a team
   before its agents are offered.
-- **Rows** — some records own rows edited inside their form, such as an
+- **Rows**: some records own rows edited inside their form, such as an
   order's lines: add, change or remove them, and they save with the
   record.
 - **Files and images** upload as soon as you pick them.
-- **Formatted text** — a rich-text field has a toolbar: bold, headings,
+- **Formatted text**: a rich-text field has a toolbar: bold, headings,
   lists, links, tables and, where allowed, images and `@` mentions. A
   Markdown field adds **Source** to edit the text itself. Pasted content
   keeps only the formatting the field allows.
@@ -75,8 +75,8 @@ A form submitted with required fields empty marks each one and saves nothing:
   opens a fresh form with the defaults. The admin remembers the one you
   used last and makes it the button.
 - <kbd>Ctrl</kbd>+<kbd>S</kbd> (<kbd>⌘</kbd>+<kbd>S</kbd> on a Mac) saves.
-- Leaving a form with unsaved changes — a menu entry, **Cancel**, a
-  reload — asks first. Nothing is lost by accident; once saved, you
+- Leaving a form with unsaved changes (a menu entry, **Cancel**, a
+  reload) asks first. Nothing is lost by accident; once saved, you
   leave without a question.
 
 ## Duplicating
@@ -140,5 +140,5 @@ job to follow.
 
 ## See also
 
-- {doc}`lists` — many records at once.
-- {doc}`using-the-admin` — navigation, search and jobs.
+- {doc}`lists`: many records at once.
+- {doc}`using-the-admin`: navigation, search and jobs.

@@ -135,7 +135,7 @@ renders nothing while nothing is registered.
 |---|---|---|
 | `defineShellAction(name, component)` | the app bar, before the notifications inbox | no props; it may teleport its own dialog or end-side `VNavigationDrawer` |
 | `defineListToolbarItem(name, component)` | a list's toolbar row, beside the search, above the filter bar | `resource`, `filters`, `groups`, `advanced`, `search`; emits `update:filters`, `update:groups`, `update:advanced`, `update:search` (the filter bar's own models) to change the list |
-| `defineInputAddon(name, { types, component, placement? })` | under each form input whose field type is in `types`, in record forms, action dialogs and settings groups; with `placement: 'inner'` (the default is `'below'`), inside the input itself at its inline end — right in a left-to-right language, left in a right-to-left one — which only the text and textarea inputs (`string`, `email`, `url`, `slug`, `password`, `color`, `text`, `json`) render, wherever they are used, in a list's inline edit and a repeater's rows too | `field`, `resource` (the slug; empty in a settings group), `record`, `modelValue`, `disabled`; emits `update:modelValue` to change the field |
+| `defineInputAddon(name, { types, component, placement? })` | under each form input whose field type is in `types`, in record forms, action dialogs and settings groups; with `placement: 'inner'` (the default is `'below'`), inside the input itself at its inline end: right in a left-to-right language, left in a right-to-left one, which only the text and textarea inputs (`string`, `email`, `url`, `slug`, `password`, `color`, `text`, `json`) render, wherever they are used, in a list's inline edit and a repeater's rows too | `field`, `resource` (the slug; empty in a settings group), `record`, `modelValue`, `disabled`; emits `update:modelValue` to change the field |
 | `defineEditorToolbarItem(name, component)` | the rich-text and Markdown editors' toolbars, before the undo/redo end | `editor` (the live Tiptap `Editor`), `field` |
 | `definePaletteCommand(name, { title, icon, run })` | the command palette (<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd>), under *Commands* | `run(query)` is called with what was typed, and the palette closes; `title` may be a function, like a page's |
 | `defineSettingsAddon(group, component)` | the Settings page, under that group's form, outside it | `group`, the group's name |
@@ -171,7 +171,7 @@ needs more than its props:
 A package's own capabilities reach the UI through the descriptor: a
 `#[ShellContributor(name: 'acme')]` on the server ({ref}`shell-contributors`)
 publishes its object as `host.schema.value.capabilities.acme`, absent
-when the package is not installed — what a slot checks before it
+when the package is not installed: what a slot checks before it
 renders.
 
 ### From a layer
@@ -194,7 +194,7 @@ panel is a settings addon of the `ai` group.
 
 ## Rich-text extensions
 
-A node or mark type — a callout, an embed — joins the rich-text schema
+A node or mark type (a callout, an embed) joins the rich-text schema
 on both sides:
 
 ```js
@@ -253,7 +253,7 @@ The demo's *Stock overview* page is a fuller one, in `demo/backend/public/vector
 `group` places the page under a menu section (a resource group's name,
 or its own); without one it goes under *Pages*. `title` and `group` may
 also be functions returning the text, which the admin calls each time it
-shows them — so a translated label follows a change of language without
+shows them, so a translated label follows a change of language without
 a reload:
 
 ```js
@@ -284,8 +284,8 @@ routes.
 ## Forms in your own pages
 
 `VxResourceForm` is the generated form. It tracks unsaved changes
-(`dirty`, exposed with `reset()`), and with `variants` — as the create
-and edit pages use it — offers the save variants (back to the record,
+(`dirty`, exposed with `reset()`), and with `variants` (as the create
+and edit pages use it) offers the save variants (back to the record,
 continue editing, add another), remembers the last one as the user
 preference `form.saveVariant`, and saves with <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>S</kbd>.
 `saved` emits the record and the variant. The pages guard leaving a
@@ -306,6 +306,6 @@ is ever rendered as markup or executed.
 
 ## See also
 
-- {doc}`languages` — translating the admin.
-- {doc}`deployment` — where extensions are served from.
-- {doc}`ai` — `@kinetis/vector-ai-ui`, a layer built on these points.
+- {doc}`languages`: translating the admin.
+- {doc}`deployment`: where extensions are served from.
+- {doc}`ai`: `@kinetis/vector-ai-ui`, a layer built on these points.

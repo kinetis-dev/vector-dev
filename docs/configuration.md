@@ -46,5 +46,5 @@ In a Nuxt application extending `@kinetis/vector-ui`:
 
 ## See also
 
-- {doc}`deployment` — the keys each mode needs, and the security
+- {doc}`deployment`: the keys each mode needs, and the security
   checklist.

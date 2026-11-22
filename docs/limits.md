@@ -49,7 +49,7 @@ The per-resource bounds are methods on the resource; see
   Matches are not ranked: a list keeps its sort.
 - Vector's writes to its own tables (action log, audit, jobs) run on
   Vector's connection as statements of their own, after the entity
-  flush has committed — on the same connection or another. When
+  flush has committed, on the same connection or another. When
   Vector's tables are on another connection than the entities, they
   commit separately.
 - Vector never deletes a stored upload when a value changes;

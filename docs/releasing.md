@@ -92,8 +92,8 @@ yourself, as the history check asks.
 One change needs no bump: a `package.json` under a product's path whose
 only difference is in `devDependencies` entries for the test and
 type-check tooling `TEST_ONLY_DEV_DEPENDENCIES` in
-`scripts/version-policy.mjs` lists — `happy-dom`, `vitest`,
-`@vue/test-utils`, `@nuxt/test-utils`, `@types/node` and `vue-tsc` —
+`scripts/version-policy.mjs` lists (`happy-dom`, `vitest`,
+`@vue/test-utils`, `@nuxt/test-utils`, `@types/node` and `vue-tsc`)
 added, removed or moved to another range. None of them reaches the npm
 package or the hosted bundle, so a Dependabot `test-tooling` update
 (that group in `.github/dependabot.yml` lists the same packages) merges
@@ -154,8 +154,8 @@ when that is set, and `HEAD^` otherwise.
 
   The base and the head are compared end to end, so a version skipped
   across several commits fails even when each commit moved one step.
-  With no base to compare against — the repository's first commit, a
-  branch's first push, or a base that has no manifest yet — the history
+  With no base to compare against (the repository's first commit, a
+  branch's first push, or a base that has no manifest yet), the history
   check is skipped, and the output says so.
 
 ## Releasing on merge

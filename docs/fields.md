@@ -15,7 +15,7 @@ second column.
 | `Id` | `id` | The identifier. Read-only, sortable, never on a form. |
 | `Text`, `Email`, `Url`, `Password`, `Slug`, `Color` | `string`, `email`, `url`, `password`, `slug`, `color` | String columns; `searchable()` allowed. `Slug::from('name')` derives a slug. `Email` must be an address and `Url` an absolute http(s) URL (the admin shows it as a link), unless the field declares an e-mail, URL or pattern rule of its own. `Password`: see [Passwords](#passwords). |
 | `Textarea`, `Json` | `text`, `json` | Long text, edited in wide inputs. A JSON value is a string column. |
-| `RichText` | `richtext` | Formatted content — headings, lists, links, tables, images — stored as a structured document; see below. |
+| `RichText` | `richtext` | Formatted content (headings, lists, links, tables, images) stored as a structured document; see below. |
 | `Markdown` | `markdown` | Markdown text for technical content, edited visually or as source; `toolbar([...])`. |
 | `Number` | `number` | Numbers; `decimals(n)`, `step()`. |
 | `Money` | `money` | An amount in the currency's minor units (cents, whole yen); see [Money and currencies](#money-and-currencies). |
@@ -53,7 +53,7 @@ dependent choices and repeaters are on {doc}`forms`.
 ## Passwords
 
 A `Password` field stores what is written, so the resource's `create()`
-or `apply()` hashes it — or the field is `hashed()`: the value is then
+or `apply()` hashes it, or the field is `hashed()`: the value is then
 hashed through the application's
 `Kinetis\Vector\Auth\PasswordHasherInterface`, bound on `AppScope` in
 `bootstrap.php`, or through the implementation `hashed(OtherHasher::class)`
@@ -66,8 +66,8 @@ the stored hash.
 
 A record's page offers **Duplicate** when the user may create and the
 resource is `replicable()` (true unless it returns false): a create form
-filled from the record. It copies every value the create form writes — a
-many-to-many's membership, a repeater's rows as new rows — except a
+filled from the record. It copies every value the create form writes (a
+many-to-many's membership, a repeater's rows as new rows) except a
 field marked `unique()`, which its column's unique index would refuse,
 and file or image keys, since a stored key belongs to its record. The
 copy is saved through the ordinary create. The descriptor publishes
@@ -92,7 +92,7 @@ filterable. The list grammar and "any of" groups are on {doc}`rest-api`.
 
 `RichText` gives authors a word-processor-like editor (Tiptap, on
 ProseMirror) and stores what they write as the editor's **JSON
-document** — a tree, not markup — in a string property on a `TEXT` or
+document** (a tree, not markup) in a string property on a `TEXT` or
 `JSON` column. The server validates every write against a fixed schema,
 so sanitizing becomes schema validation:
 
@@ -107,7 +107,7 @@ RichText::make('description')
 - **Features** are what the editor offers and the server accepts:
   `bold`, `italic`, `underline`, `strike`, `code`, `heading`, `list`,
   `blockquote`, `codeBlock`, `horizontalRule`, `link`, `table`, `image`,
-  `mention` — all but images and mentions by default.
+  `mention`: all but images and mentions by default.
 - **Validation.** The value must be valid JSON with a
   `{"type": "doc", "content": [...]}` root; every node and mark type must
   be one of the field's features, and every attribute one that type
@@ -141,7 +141,7 @@ $html = $this->document->toHtml($product['description'], Document::DEFAULT_FEATU
 
 `toHtml()` renders through
 [`ueberdosis/tiptap-php`](https://github.com/ueberdosis/tiptap-php),
-configured with exactly the given features — never its highlighting code
+configured with exactly the given features, never its highlighting code
 blocks, which reach the filesystem or a process. What they do not cover
 is dropped, and text and attributes are escaped. `toPlainText()` is the
 projection CSV exports and search use. The demo's shop page,
@@ -156,7 +156,7 @@ on both sides; see {doc}`customizing-the-ui`.
 column: the admin still sends the document, and the server stores
 `toHtml()` of it. The admin reads the stored HTML back through the same
 schema, so anything outside it is dropped on the next save. Fidelity is
-only what HTML carries — prefer the document for new columns. The demo's
+only what HTML carries: prefer the document for new columns. The demo's
 ticket body is one.
 
 ### Markdown
@@ -198,14 +198,14 @@ public function lineTotal(array $line): ?int
 }
 ```
 
-- `as()` — how it is shown: `text`, `number` (`decimals()`), `money`
+- `as()`: how it is shown: `text`, `number` (`decimals()`), `money`
   (`currency()` or `currencyField()`), `boolean`, `date`, `datetime`,
   or `enum` with `options()`. The value is typed by it and exported like
   any field.
-- `from()` — the fields the method reads: every list and record that
+- `from()`: the fields the method reads: every list and record that
   shows the computed value carries them too, whatever the `columns`
   asked for.
-- `method()` — a public instance method of the resource, built by the
+- `method()`: a public instance method of the resource, built by the
   request container and called once per record with the record already
   serialized. It runs no query of its own, so a list's statement count
   does not change.
@@ -255,6 +255,6 @@ field that declares no `default()` (and allows the code).
 
 ## See also
 
-- {doc}`forms` — conditions, dependent choices, repeaters, inline edits.
-- {doc}`files` — uploads.
-- {doc}`authorization` — hiding fields per user.
+- {doc}`forms`: conditions, dependent choices, repeaters, inline edits.
+- {doc}`files`: uploads.
+- {doc}`authorization`: hiding fields per user.

@@ -47,7 +47,7 @@ same validation, hooks and audit trail. See {doc}`mcp`.
 
 ## Request scope
 
-Anything that runs per request — policies, hooks, actions, widgets — is
+Anything that runs per request (policies, hooks, actions, widgets) is
 built by the request container and may inject what a controller may.
 Nothing Vector keeps on the application scope carries request state,
 which is what a persistent worker requires.
@@ -63,6 +63,6 @@ which is what a persistent worker requires.
 
 ## See also
 
-- {doc}`resources` — declaring what the descriptor holds.
-- {doc}`authorization` — how the per-user descriptor is decided.
-- {doc}`rest-api` — every route.
+- {doc}`resources`: declaring what the descriptor holds.
+- {doc}`authorization`: how the per-user descriptor is decided.
+- {doc}`rest-api`: every route.

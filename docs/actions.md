@@ -52,7 +52,7 @@ For every run, Vector:
 4. loads the entities and hands them to `handle()`;
 5. saves everything in one flush, unless the response is `danger`;
 6. logs the run in `vector_action_events` and adds an entry naming the
-   action to each record's audit trail — every record handed to
+   action to each record's audit trail: every record handed to
    `handle()`, or only those the response declares (below).
 
 `affected` in the response is the count `handle()` gave it; when that
@@ -64,8 +64,8 @@ acted on instead, with `->withRecords($ids)` on its response:
 return ActionResponse::message("{$count} published.")->withRecords($published);
 ```
 
-Then only those records are logged and audited — none for an empty
-list, which still flushes and logs the run — and `affected` is their
+Then only those records are logged and audited (none for an empty
+list, which still flushes and logs the run) and `affected` is their
 count. An identifier the action was not handed is ignored, so an
 action cannot audit a record outside its selection (or its chunk, when
 queued). The declaration is not part of the response the client sees.
@@ -102,16 +102,16 @@ A queued action's chunks each get the job they run in as
 chunk of one run. After the last chunk, Vector calls `finish()` once,
 with no records and the same `jobId`: return
 `ActionResponse::download($contents, $name, $type, $message)` to leave a
-file on the job — the **Jobs** page offers it for download, as an
-export's — `danger()` to fail the job, or null (the default) for
+file on the job (the **Jobs** page offers it for download, as an
+export's), `danger()` to fail the job, or null (the default) for
 nothing. `finish()` flushes nothing. Keep what it needs from the chunks
 somewhere keyed by `jobId`, since each chunk is a fresh request: every
 chunk, and `finish()`, runs on a request scope of its own, as the admin
 who started the job, so nothing a request-scoped service remembered in
-one chunk — a cache, settings it read, which fields the admin sees — is
+one chunk (a cache, settings it read, which fields the admin sees) is
 what the next one sees.
 
 ## See also
 
-- {doc}`jobs` — background execution.
-- {doc}`audit` — what an action leaves behind.
+- {doc}`jobs`: background execution.
+- {doc}`audit`: what an action leaves behind.

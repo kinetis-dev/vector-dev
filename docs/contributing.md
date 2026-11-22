@@ -1,8 +1,8 @@
 # Working on Vector
 
-Vector is developed in one repository: the packages — `kinetis/vector`
+Vector is developed in one repository: the packages (`kinetis/vector`
 and `@kinetis/vector-ui`, and the AI companion `kinetis/vector-ai` and
-`@kinetis/vector-ai-ui` — and the demo application ({doc}`demo`) that
+`@kinetis/vector-ai-ui`) and the demo application ({doc}`demo`) that
 consumes them the way an adopter would.
 Every command on this page runs from `demo/`, with the stack up and
 seeded.
@@ -239,7 +239,7 @@ typescript-eslint supports TypeScript only below 6.1.
 The workflows in `.github/workflows/` run on pushes to `main` and on
 pull requests, each for the paths it covers:
 
-- `ci.yml` — on PHP 8.4 and 8.5, in the demo's own PHP image with
+- `ci.yml`: on PHP 8.4 and 8.5, in the demo's own PHP image with
   MySQL, PostgreSQL and Redis as services: `composer validate --strict`
   for the packages' and the demo's `composer.json` files, `composer audit`, the PHPUnit suite
   (both placements of Vector's tables, as above), PHPStan and Psalm (one run, ordinary and
@@ -251,9 +251,9 @@ pull requests, each for the paths it covers:
   `node scripts/check-vector-ui-pack.mjs --packed`, which fails unless
   npm would pack `vector-bundle.json` and every file it lists; and the
   strict build of this manual.
-- `monorepo-validate.yml` — `node scripts/validate-monorepo.mjs`: no
+- `monorepo-validate.yml`: `node scripts/validate-monorepo.mjs`: no
   `App\` reference under `packages/`.
-- `versions.yml` — `node scripts/validate-versions.mjs`: a pull request
+- `versions.yml`: `node scripts/validate-versions.mjs`: a pull request
   that changes files under `packages/vector` bumps `vector` in
   `packages.manifest.json` by one step, with `node scripts/bump.mjs`. One
   that changes files under `packages/vector-ui` bumps both `vector-ui`
@@ -261,16 +261,16 @@ pull requests, each for the paths it covers:
   (`packages/vector/resources/ui.json`, which `bump.mjs vector-ui`
   moves), and `@kinetis/vector-ai-ui` depends on exactly that release
   (so `vector-ai-ui` is bumped too); see {doc}`releasing`.
-- `infection.yml` — `composer infection:workers`, then
+- `infection.yml`: `composer infection:workers`, then
   `composer infection:vector` or `composer infection:queues`,
   when Vector's Registry, Query or Queues or the mutation setup
   changes; the mutated files are split over parallel jobs, each passing
   floors of its own and, for Registry and Query, `--filter`. The queue
   dashboard is one job of its own.
-- `sonarqube.yml` — the PHPUnit suite under pcov, its coverage of
+- `sonarqube.yml`: the PHPUnit suite under pcov, its coverage of
   `packages/vector/src` reported to
   SonarQube Cloud with its quality gate.
-- `semgrep.yml` — Semgrep SAST; `.semgrepignore` lists the reviewed
+- `semgrep.yml`: Semgrep SAST; `.semgrepignore` lists the reviewed
   false positives.
 
 `deploy-docs.yml` publishes this manual to `kinetis.dev/vector/docs/`
@@ -278,5 +278,5 @@ when `docs/` changes on `main`.
 
 ## See also
 
-- {doc}`demo` — the stack and its services.
-- {doc}`coding-agents` — the same work with an AI coding agent.
+- {doc}`demo`: the stack and its services.
+- {doc}`coding-agents`: the same work with an AI coding agent.

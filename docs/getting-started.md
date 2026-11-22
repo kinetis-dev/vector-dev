@@ -14,17 +14,17 @@ vendor/bin/kinetis migrate
 vendor/bin/kinetis vector:install-ui    # the hosted UI, if you serve it
 ```
 
-`vector:install` publishes Vector's migrations — settings, preferences,
+`vector:install` publishes Vector's migrations (settings, preferences,
 saved views, the action log, the audit trail, jobs, notifications and
-the queue dashboard's job metrics — for MySQL or PostgreSQL, as your
+the queue dashboard's job metrics) for MySQL or PostgreSQL, as your
 connection's `DB_CONNECTION` says (`mysql` or `pgsql`). There is one
 migration per table, each under its own timestamp: `vector_settings`,
 `vector_preferences`, `vector_views`, `vector_action_events`,
 `vector_audit`, `vector_jobs`, `vector_notifications` and
 `vector_queue_metrics`. It is idempotent. A later change to Vector's
-tables ships as a new migration with a later timestamp —
+tables ships as a new migration with a later timestamp:
 `vector_write_origin` adds the `origin` column to the action log and the
-audit trail ({doc}`audit`) — so run it again after every upgrade, then
+audit trail ({doc}`audit`). Run it again after every upgrade, then
 `migrate`.
 
 `vector:install-ui` installs the hosted admin UI into `public/vector/ui`:
@@ -107,8 +107,8 @@ you want control, declare `fields()`; see {doc}`resources` and
 {doc}`fields`.
 
 Vector compiles every resource into one descriptor at `kinetis build`,
-and on each boot in development. A mistake — a field that maps no
-property, a sort on a field without a column — fails the build with the
+and on each boot in development. A mistake (a field that maps no
+property, a sort on a field without a column) fails the build with the
 class and field named.
 
 ## Open the admin
@@ -163,7 +163,7 @@ admin and the seed data.
 
 ## See also
 
-- {doc}`core-concepts` — how the pieces fit together.
-- {doc}`resources` — everything a resource declares.
-- {doc}`using-the-admin` — the admin from a user's side.
-- {doc}`demo` — the demo application in full.
+- {doc}`core-concepts`: how the pieces fit together.
+- {doc}`resources`: everything a resource declares.
+- {doc}`using-the-admin`: the admin from a user's side.
+- {doc}`demo`: the demo application in full.

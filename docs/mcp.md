@@ -7,7 +7,7 @@ is validated, hooked and audited.
 
 | Tool | Arguments | Does |
 |---|---|---|
-| `vector_resources` | — | Lists the resources this identity may view: slug, label and group. |
+| `vector_resources` | none | Lists the resources this identity may view: slug, label and group. |
 | `vector_describe` | `resource` | Describes one resource's fields, actions and permissions (below). |
 | `vector_query` | `resource`, `filter`, `q`, `sort`, `page`, `perPage`, `fields` | Lists records under the list grammar. `perPage` defaults to 25 and is capped at 200 and at the resource's own maximum. A page carries `total` and `lastPage`; for a resource described as `withoutCount`, both are `null` and `hasMore` says whether another page follows. `fields` (a list of field names) makes each row carry only those fields, its key, and `_version` and `_trashed` where the list carries them; a field the list does not publish is refused. Without `fields` a row is the list's own. |
 | `vector_aggregate` | `resource`, `metrics`, `groupBy`, `filter`, `q`, `sort`, `limit` | Counts, totals, averages, minimums and maximums over every record `filter` and `q` match, grouped by up to three keys ({ref}`mcp-aggregates`). |
@@ -65,8 +65,8 @@ left out, and `filter` and `q` read by the list's own grammar
 - **`groupBy`**: 0 to 3 of `{field, bucket?}`, none for one overall row.
   A choice, currency, boolean, text or number field groups by its value;
   a belongsTo groups by its key, written `{id, label}` with the related
-  record's title; a date or datetime needs `bucket` — `day`, `week`
-  (from Monday), `month`, `quarter` or `year` — and its key is the
+  record's title; a date or datetime needs `bucket`: `day`, `week`
+  (from Monday), `month`, `quarter` or `year`; its key is the
   bucket's first day, `YYYY-MM-DD`. Buckets fall in UTC, the timezone
   Vector stores and filters instants in: like the date filters, they
   assume a timestamp column holds naive UTC values. A PostgreSQL
@@ -76,8 +76,8 @@ left out, and `filter` and `q` read by the list's own grammar
   group keys.
 - **`limit`**: the groups returned, 1 to 100 (25 by default).
 
-A field is eligible when the identity's descriptor publishes it — what
-`vector_describe` lists, so a field a policy hides is unknown — and the
+A field is eligible when the identity's descriptor publishes it (what
+`vector_describe` lists, so a field a policy hides is unknown) and the
 resource's list or record view shows it, the rule a list applies to the
 columns it may serialize: a form-only field is refused, and so is a money
 metric whose currency field no view shows. It must also map to a column
@@ -139,5 +139,5 @@ identity to run as.
 
 ## See also
 
-- {doc}`authorization` — what an identity may do.
-- {doc}`rest-api` — the list grammar the tools share.
+- {doc}`authorization`: what an identity may do.
+- {doc}`rest-api`: the list grammar the tools share.

@@ -81,8 +81,8 @@ A package that builds on Vector tells the admin, per user, what it
 offers through `capabilities` in `GET /vector/schema`. A class
 implementing `Kinetis\Vector\Http\ShellContributorInterface` and carrying
 `#[ShellContributor(name: '...')]` is discovered like a settings group;
-on every schema request it is resolved from the request scope — so it
-may depend on request-scoped services — and its answer is published as
+on every schema request it is resolved from the request scope (so it
+may depend on request-scoped services) and its answer is published as
 `capabilities.<name>`:
 
 ```php
@@ -123,7 +123,7 @@ entry are keyed by its slug.
 
 A relation that names its resource, `BelongsTo::to('owner',
 ProfileResource::class)`, links to that one. A relation that names none
-— a field derived from the entity's mapping — links to the entity's
+(a field derived from the entity's mapping) links to the entity's
 relation target: its only resource, or, when it has several, the one
 marked `relationTarget: true`:
 
@@ -181,7 +181,7 @@ These run on an instance the request container builds, so they may
 inject anything a controller may:
 
 - `scope(Query $query, CurrentUserInterface $user)` narrows the rows a
-  user sees — everywhere: lists, counts, exports, badges, search.
+  user sees everywhere: lists, counts, exports, badges, search.
 - `create()` builds a new entity from the validated values, and
   `apply()` writes them to a loaded one. Returning `null` or `false`
   leaves it to Vector's default writer.
@@ -323,6 +323,6 @@ A resource in no navigation group shows `—` in the Group column.
 
 ## See also
 
-- {doc}`fields` — the field catalog.
-- {doc}`forms` — conditions, dependent choices and repeaters.
-- {doc}`authorization` — who may do what.
+- {doc}`fields`: the field catalog.
+- {doc}`forms`: conditions, dependent choices and repeaters.
+- {doc}`authorization`: who may do what.

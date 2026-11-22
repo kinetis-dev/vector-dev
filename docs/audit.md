@@ -2,8 +2,8 @@
 
 ## The audit trail
 
-Every write through Vector — create, update, delete, restore, attach,
-detach, actions, bulk and inline edits, imports, repeater rows — is
+Every write through Vector (create, update, delete, restore, attach,
+detach, actions, bulk and inline edits, imports, repeater rows) is
 recorded in `vector_audit` with the actor, and the impersonator when
 there is one. Creates, updates, reverts and membership changes carry the
 field-level changes the writer observed; deletes, restores and action
@@ -80,5 +80,5 @@ records are users; its record pages then offer **Impersonate**.
 
 ## See also
 
-- {doc}`records` — history and revert from a user's side.
-- {doc}`authentication` — the two credential modes.
+- {doc}`records`: history and revert from a user's side.
+- {doc}`authentication`: the two credential modes.

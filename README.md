@@ -27,7 +27,7 @@ user manual.
 | [`packages/vector-ui`](packages/vector-ui) | `@kinetis/vector-ui`, the admin UI as a Nuxt 4 layer on Vuetify 4. |
 | [`packages/vector-ai`](packages/vector-ai) | `kinetis/vector-ai`, AI for Vector on `kinetis/neuron`: plain-language filters on its lists, an in-admin assistant that reads and proposes changes a person approves, and writing help, over its configuration, sealed provider keys, settings, model boundary and usage ledger ([AI](docs/ai.md)). |
 | [`packages/vector-ai-ui`](packages/vector-ai-ui) | `@kinetis/vector-ai-ui`, the AI layer over `@kinetis/vector-ui`, delivered through Nuxt `extends`. |
-| [`demo/`](demo) | A Kinetis application administered by Vector — a shop on MySQL and a support desk on PostgreSQL — with the Docker stack that runs it and the end-to-end suite. |
+| [`demo/`](demo) | A Kinetis application administered by Vector (a shop on MySQL and a support desk on PostgreSQL) with the Docker stack that runs it and the end-to-end suite. |
 | [`docs/`](docs) | The user manual. |
 
 ## Try it
@@ -79,4 +79,4 @@ docker run --rm -v "$PWD/docs":/docs -w /docs python:3.12-slim \
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
