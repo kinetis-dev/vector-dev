@@ -12,6 +12,7 @@ use Kinetis\Persistence\Contract\PostgresLink;
 // without one of their own. The three flags are 0/1 integers, as on MySQL.
 return new class implements Migration
 {
+    #[\Override]
     public function up(MysqlLink|PostgresLink $db): void
     {
         $db->execute(<<<'SQL'
@@ -32,6 +33,7 @@ return new class implements Migration
         $db->execute('CREATE INDEX vector_views_shared_index ON vector_views (resource, shared)');
     }
 
+    #[\Override]
     public function down(MysqlLink|PostgresLink $db): void
     {
         $db->execute('DROP TABLE vector_views');

@@ -53,7 +53,11 @@ The package needs `ext-sodium`.
    any header CORS does not expose. Without it, the admin can say that
    today's budget is spent, but not when it renews.
 
-4. Configure a provider ({ref}`ai-operator`).
+4. Schedule `vector-ai:approvals:prune` hourly, after
+   `vector:jobs:reap`. Nothing else deletes stale proposals or the rows
+   a bulk rewrite kept ({ref}`ai-prune`).
+
+5. Configure a provider ({ref}`ai-operator`).
 
 Against a backend without `kinetis/vector-ai`, the admin shows no AI
 feature and sends no AI request.

@@ -91,7 +91,7 @@ test('Hebrew lays the admin out right to left', async ({ admin: page, api }) => 
         await expect(page.locator('html')).toHaveAttribute('lang', 'he')
         await expect(page.locator('.v-application')).toHaveClass(/v-locale--is-rtl/)
         // the drawer opens from the right edge
-        const drawer = page.locator('.v-navigation-drawer')
+        const drawer = page.locator('.v-navigation-drawer:not([data-ai-assistant])')
         const box = await drawer.boundingBox()
         const width = page.viewportSize()!.width
         expect(box!.x + box!.width).toBeGreaterThan(width - 5)
