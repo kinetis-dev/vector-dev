@@ -6,6 +6,7 @@ namespace Kinetis\Vector\Console;
 
 use Kinetis\Cache\DiscoveryContext;
 use Kinetis\Console\Attributes\Command;
+use Kinetis\Console\CommandArguments;
 use Kinetis\Console\Output;
 use Kinetis\Runtime\ProjectRoot;
 use Kinetis\Vector\Registry\ResourceDescriptor;
@@ -34,8 +35,12 @@ final readonly class ListCommand
     ) {}
 
     #[Command('vector:list', description: 'Displays the resources, settings groups and dashboards Vector compiles', bootstrap: false)]
-    public function run(): int
+    public function run(CommandArguments $arguments): int
     {
+        if (CommandHelp::requested($arguments)) {
+            return CommandHelp::print($this->output, self::class, 'run');
+        }
+
         $registry = VectorRegistry::fromArray(VectorRegistry::compile(new DiscoveryContext($this->projectRoot->path)));
 
         $this->printResources($registry->resources());

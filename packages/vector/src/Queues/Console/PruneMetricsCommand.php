@@ -7,6 +7,7 @@ namespace Kinetis\Vector\Queues\Console;
 use Kinetis\Console\Attributes\Command;
 use Kinetis\Console\CommandArguments;
 use Kinetis\Console\Output;
+use Kinetis\Vector\Console\CommandHelp;
 use Kinetis\Vector\Queues\Metrics\JobMetricsStore;
 use Kinetis\Vector\Queues\Metrics\MetricsClock;
 
@@ -34,6 +35,10 @@ final readonly class PruneMetricsCommand
     #[Command('vector:queues:prune-metrics', description: 'Deletes queue metrics older than --days=<n> (7).')]
     public function run(CommandArguments $arguments): int
     {
+        if (CommandHelp::requested($arguments)) {
+            return CommandHelp::print($this->output, self::class, 'run', ['[--days=<n>]']);
+        }
+
         $days = $arguments->hasOption('days') ? ($arguments->option('days') ?? '') : (string) self::DEFAULT_DAYS;
 
         if (preg_match('/^[1-9]\d{0,4}$/D', $days) !== 1 || (int) $days > self::MAX_DAYS) {

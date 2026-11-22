@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Vector;
 
 use App\Tests\Fixtures\CommandOutput;
+use Kinetis\Console\CommandArguments;
 use Kinetis\Runtime\ProjectRoot;
 use Kinetis\Testing\TestApplication;
 use Kinetis\Vector\Console\ListCommand;
@@ -87,7 +88,7 @@ final class ListCommandTest extends TestCase
         file_put_contents("{$this->root}/composer.json", json_encode(['autoload' => ['psr-4' => ['App\\Tests\\Fixtures\\ListCommand\\' => 'fixture/']]]));
 
         $capture = new CommandOutput();
-        $status = new ListCommand(new ProjectRoot($this->root), $capture->output)->run();
+        $status = new ListCommand(new ProjectRoot($this->root), $capture->output)->run(CommandArguments::parse([]));
         $output = $capture->stdout();
 
         self::assertSame(0, $status);

@@ -78,6 +78,14 @@ final readonly class InstallUiCommand
      */
     public function run(CommandArguments $arguments, Config $config, string $projectRoot, string $pinFile, bool $devInstall): int
     {
+        if (CommandHelp::requested($arguments)) {
+            return CommandHelp::print($this->output, self::class, 'installUi', [
+                '[--version=X.Y.Z] [--force]',
+                '--from=<tgz|dir> [--integrity=sha512-…] [--version=X.Y.Z]',
+                '--check [--version=X.Y.Z]',
+            ]);
+        }
+
         $usage = self::usageProblem($arguments);
 
         if ($usage !== null) {

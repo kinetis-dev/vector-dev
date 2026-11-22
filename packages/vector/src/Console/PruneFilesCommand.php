@@ -28,6 +28,10 @@ final readonly class PruneFilesCommand
     #[Command('vector:files:prune', description: 'Deletes uploads no record uses, older than --grace-hours=<n> (24). --dry-run lists them and deletes nothing.')]
     public function prune(CommandArguments $arguments): int
     {
+        if (CommandHelp::requested($arguments)) {
+            return CommandHelp::print($this->output, self::class, 'prune', ['[--grace-hours=<n>] [--dry-run]']);
+        }
+
         $hours = $arguments->hasOption('grace-hours') ? ($arguments->option('grace-hours') ?? '') : (string) FilePruner::DEFAULT_GRACE_HOURS;
 
         if (preg_match('/^[1-9]\d{0,5}$/D', $hours) !== 1) {

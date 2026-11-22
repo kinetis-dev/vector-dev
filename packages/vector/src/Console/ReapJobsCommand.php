@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kinetis\Vector\Console;
 
 use Kinetis\Console\Attributes\Command;
+use Kinetis\Console\CommandArguments;
 use Kinetis\Console\Output;
 use Kinetis\Vector\Jobs\StalledJobs;
 
@@ -22,8 +23,12 @@ final readonly class ReapJobsCommand
     ) {}
 
     #[Command('vector:jobs:reap', description: 'Marks background jobs that stopped reporting progress as failed, after the minutes the Background jobs setting allows.')]
-    public function reap(): int
+    public function reap(CommandArguments $arguments): int
     {
+        if (CommandHelp::requested($arguments)) {
+            return CommandHelp::print($this->output, self::class, 'reap');
+        }
+
         $count = $this->stalled->reap();
         $this->output->line($count === 0
             ? "No stalled jobs (running rows silent for {$this->stalled->minutes()} minutes or more)."

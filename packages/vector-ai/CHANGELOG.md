@@ -95,6 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `vector-ai:install --help` and `-h` print the command's usage instead of publishing its migrations, and `vector-ai:approvals:prune --help` prunes nothing.
 - A projected `vector_query` naming no `perPage` is given at most its resource's own `maxPerPage()`, not a size the list would refuse.
 
 - A model's reasoning written inline is no longer read as its answer:

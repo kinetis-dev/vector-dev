@@ -68,6 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `--help` and `-h` on every Vector command print its usage and run nothing; `vector:install --help` published migrations and `vector:files:prune --help` deleted uploads.
 - `vector_aggregate` refuses a field neither the list nor the record view shows (as a group key, metric, sort or a money metric's currency), as a list's `columns` does.
 
 ## [0.16.0] - 2026-11-19
