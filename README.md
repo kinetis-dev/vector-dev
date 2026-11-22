@@ -24,9 +24,8 @@ user manual.
 | Path | What it is |
 |---|---|
 | [`packages/vector`](packages/vector) | `kinetis/vector`, the PHP package: the compiled resource registry, the REST admin API, background jobs, the queue dashboard ([Queue dashboard](docs/queues.md)) and MCP tools. |
-| [`packages/vector-ui`](packages/vector-ui) | `@kinetis/vector-ui`, the admin UI as a Nuxt 4 layer on Vuetify 4. |
+| [`packages/vector-ui`](packages/vector-ui) | `@kinetis/vector-ui`, the admin UI as a Nuxt 4 layer on Vuetify 4, the AI UI included. |
 | [`packages/vector-ai`](packages/vector-ai) | `kinetis/vector-ai`, AI for Vector on `kinetis/neuron`: plain-language filters on its lists, an in-admin assistant that reads and proposes changes a person approves, and writing help, over its configuration, sealed provider keys, settings, model boundary and usage ledger ([AI](docs/ai.md)). |
-| [`packages/vector-ai-ui`](packages/vector-ai-ui) | `@kinetis/vector-ai-ui`, the AI layer over `@kinetis/vector-ui`, delivered through Nuxt `extends`. |
 | [`demo/`](demo) | A Kinetis application administered by Vector (a shop on MySQL and a support desk on PostgreSQL) with the Docker stack that runs it and the end-to-end suite. |
 | [`docs/`](docs) | The user manual. |
 

@@ -73,14 +73,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that writing help is not offered on (`WritingGuard::offers()`). The
   admin reads both; the endpoint refuses those fields either way.
 
-- `vector-ai:install-ui` installs the hosted admin with AI, the bundle
-  `@kinetis/vector-ai-ui` ships, into `VECTOR_UI_DIR` in place of
-  Vector's plain one, through kinetis/vector's `TarballInstaller`, with
-  the options of `vector:install-ui`. The bundle must be the release
-  `resources/ui.json` pins (`@kinetis/vector-ai-ui` 0.1.0) and include
-  the `@kinetis/vector-ui` release kinetis/vector pins; `--check` holds
-  the served bundle to both.
-
 ### Changed
 
 - `vector_query`'s page size follows its projection: 25 rows without
@@ -276,8 +268,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status, logged with those two only), the `UsageLedger`,
   `Testing\ScriptedProvider` (the `fake` provider type, chat, stream and
   structured calls alike, with `ScriptedCalls` to read what it was sent)
-  and `vector-ai:install`. The UI half,
-  `@kinetis/vector-ai-ui`, is delivered through Nuxt `extends`.
+  and `vector-ai:install`. The UI is part of `@kinetis/vector-ui`
+  0.13.0, shown when the descriptor carries `capabilities.ai`.
 - The read-only assistant: `POST /vector/ai/assistant` runs one agent
   turn over Vector's five read tools (`vector_resources`,
   `vector_describe`, `vector_query`, `vector_get`, `vector_widget`) as

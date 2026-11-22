@@ -130,11 +130,7 @@ against the registry's sha512 integrity; `--from=<tgz>
 `VECTOR_UI_REGISTRY` / `VECTOR_UI_REGISTRY_TOKEN` name a private
 registry. After `composer update`, run `vector:install`, `migrate` and
 `vector:install-ui` again; `vector:install-ui --check` verifies the
-installed UI offline, for CI. A package that ships a hosted admin built
-from this UI plus its own layer installs it through
-`Kinetis\Vector\Ui\TarballInstaller`, with the same options and checks;
-its bundle names the `@kinetis/vector-ui` release it includes, and
-`vector:install-ui --check` accepts it when that is the pinned one. Full
+installed UI offline, for CI. Full
 documentation:
 [kinetis.dev/vector/docs](https://kinetis.dev/vector/docs/), starting with
 [Getting started](https://kinetis.dev/vector/docs/getting-started.html).

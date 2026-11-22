@@ -52,7 +52,7 @@ from first install to the reference.
 ## Integrations
 
 - [MCP tools](https://kinetis.dev/vector/docs/mcp.html): The admin's services as Model Context Protocol tools for AI agents.
-- [AI](https://kinetis.dev/vector/docs/ai.html): kinetis/vector-ai and @kinetis/vector-ai-ui: installing, the VECTOR_AI_* configuration, the AI settings, sealed provider keys, access, data governance with meta('ai.send'), plain-language filters, the assistant (POST /vector/ai/assistant, its governed tools, streaming and JSON fallback) and the changes it proposes for approval (POST /vector/ai/approvals/{id}/approve and /reject, vector-ai:approvals:prune), writing help, usage, and the UI layer through Nuxt extends or the hosted bundle vector-ai:install-ui installs.
+- [AI](https://kinetis.dev/vector/docs/ai.html): kinetis/vector-ai: installing, the VECTOR_AI_* configuration, the AI settings, sealed provider keys, access, data governance with meta('ai.send'), plain-language filters, the assistant (POST /vector/ai/assistant, its governed tools, streaming and JSON fallback) and the changes it proposes for approval (POST /vector/ai/approvals/{id}/approve and /reject, vector-ai:approvals:prune), writing help, usage, and the AI UI @kinetis/vector-ui shows when the API publishes capabilities.ai.
 - [Testing your admin](https://kinetis.dev/vector/docs/testing.html): Driving the REST API from the application's own test suite.
 
 ## Reference
@@ -65,4 +65,4 @@ from first install to the reference.
 
 - [Working on Vector](https://kinetis.dev/vector/docs/contributing.html): The monorepo layout, the test suites, static analysis, mutation testing and continuous integration.
 - [AI coding agents](https://kinetis.dev/vector/docs/coding-agents.html): Working on this repository with an AI coding agent through Orbitron: session setup, client configuration and diagnostics.
-- [Releasing](https://kinetis.dev/vector/docs/releasing.html): Independent versions in packages.manifest.json, bumped in the pull request with scripts/bump.mjs and checked by versions.yml; release on merge to main to the mirrors kinetis-dev/vector and kinetis-dev/vector-ai and npm; the vector-ui/vector-ai-ui pairing; the mirror's history rule, one-time setup and recovery.
+- [Releasing](https://kinetis.dev/vector/docs/releasing.html): Independent versions in packages.manifest.json, bumped in the pull request with scripts/bump.mjs and checked by versions.yml; release on merge to main to the mirrors kinetis-dev/vector and kinetis-dev/vector-ai and npm; the mirror's history rule, one-time setup and recovery.

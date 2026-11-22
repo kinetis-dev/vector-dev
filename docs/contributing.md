@@ -1,9 +1,9 @@
 # Working on Vector
 
 Vector is developed in one repository: the packages (`kinetis/vector`
-and `@kinetis/vector-ui`, and the AI companion `kinetis/vector-ai` and
-`@kinetis/vector-ai-ui`) and the demo application ({doc}`demo`) that
-consumes them the way an adopter would.
+and `@kinetis/vector-ui`, and the AI companion `kinetis/vector-ai`) and
+the demo application ({doc}`demo`) that consumes them the way an
+adopter would.
 Every command on this page runs from `demo/`, with the stack up and
 seeded.
 
@@ -11,10 +11,9 @@ seeded.
 
 ```text
 packages/vector/            kinetis/vector: registry, REST API, jobs, the queue dashboard (src/Queues/), MCP tools, migration stubs
-packages/vector-ui/         @kinetis/vector-ui, the Nuxt layer; its Vitest suite in test/nuxt/
+packages/vector-ui/         @kinetis/vector-ui, the Nuxt layer, the AI UI included; its Vitest suite in test/nuxt/
   hosted/                   the hosted bundle's build entry: the layer alone, built into dist/static
 packages/vector-ai/         kinetis/vector-ai: AI configuration, sealed provider keys, the ai settings group, filters, the assistant and its approvals, writing help, bulk rewrites, the usage ledger, migration stubs
-packages/vector-ai-ui/      @kinetis/vector-ai-ui, the AI layer over @kinetis/vector-ui; its Vitest suite in test/nuxt/
 demo/docker-compose.yml     the stack: app, worker, nginx, frankenphp, mysql, postgres, redis, node; e2e and oha on demand
 demo/docker/                the PHP images (PHP-FPM and FrankenPHP) and their shared extension recipe, nginx, the Caddyfile, php.ini
 demo/bin/                   check-frankenphp and benchmark, for the FrankenPHP worker service
@@ -32,7 +31,7 @@ demo/backend/               the demo application, kinetis/vector and kinetis/vec
   public/vector-extensions/ the demo's runtime UI extensions
   translations/             the demo's labels
   tests/                    PHPUnit (App\Tests\)
-demo/frontend/              the demo Nuxt app: extends @kinetis/vector-ai-ui (and so @kinetis/vector-ui)
+demo/frontend/              the demo Nuxt app: extends @kinetis/vector-ui
 demo/e2e/                   the end-to-end suite: Playwright, both admin modes
 docs/                       this manual (Sphinx, MyST Markdown)
 bin/orbitron-mcp            launches the Orbitron MCP server for demo/backend
@@ -269,8 +268,7 @@ pull requests, each for the paths it covers:
   that changes files under `packages/vector-ui` bumps both `vector-ui`
   and `vector`, since `kinetis/vector` pins the UI release
   (`packages/vector/resources/ui.json`, which `bump.mjs vector-ui`
-  moves), and `@kinetis/vector-ai-ui` depends on exactly that release
-  (so `vector-ai-ui` is bumped too); see {doc}`releasing`.
+  moves); see {doc}`releasing`.
 - `infection.yml`: `composer infection:workers`, then
   `composer infection:vector` or `composer infection:queues`,
   when Vector's Registry, Query or Queues or the mutation setup

@@ -189,7 +189,7 @@ export default defineNuxtPlugin(() => {
 })
 ```
 
-`@kinetis/vector-ai-ui` is such a layer ({doc}`ai`): its provider-key
+The AI features ({doc}`ai`) use these points too: their provider-key
 panel is a settings addon of the `ai` group.
 
 ## Rich-text extensions
@@ -308,4 +308,4 @@ is ever rendered as markup or executed.
 
 - {doc}`languages`: translating the admin.
 - {doc}`deployment`: where extensions are served from.
-- {doc}`ai`: `@kinetis/vector-ai-ui`, a layer built on these points.
+- {doc}`ai`: the AI features, built on these points.

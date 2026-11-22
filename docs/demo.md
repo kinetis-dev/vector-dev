@@ -88,7 +88,7 @@ from `demo/`.
 |---|---|---|
 | `nginx`, `app` | `localhost:8080` | The API: nginx and PHP-FPM. `/openapi` in development. Set `NGINX_HOST_PORT` to publish it on another host port when 8080 is taken. |
 | `frankenphp` | `localhost:8081` | The same application under FrankenPHP worker mode, Kinetis's primary runtime: 12 worker threads on the native database drivers. |
-| `node` | `localhost:3000` | The standalone admin: `nuxt dev` for `demo/frontend`, which extends `@kinetis/vector-ai-ui` (`@kinetis/vector-ui` with the AI layer). |
+| `node` | `localhost:3000` | The standalone admin: `nuxt dev` for `demo/frontend`, which extends `@kinetis/vector-ui`. |
 | `worker` | none | `queue:work --queue=default,vector`: the application's jobs first, then Vector's. |
 | `scheduler` | none | Every hour, `vector:jobs:reap` (jobs whose worker died are marked failed), then `vector-ai:approvals:prune` (stale assistant proposals, and the rewrite proposal rows of ended jobs). Kinetis has no scheduler; in production, cron or the platform's runs these. |
 | `mysql` | `localhost:3306` | The shop, and the SQL queue table the test suite uses. `vector` / `vector`. Set `MYSQL_HOST_PORT` to publish it on another host port when 3306 is taken. |
@@ -258,27 +258,25 @@ extension in a worker image. Both images carry two:
 ## The hosted admin
 
 The hosted admin is the same UI served by the PHP application at
-`/vector/ui`, behind the session sign-in at `/login`. The demo serves
-the admin with AI ({doc}`ai`). An application installs the published
-`@kinetis/vector-ai-ui` release with `vector-ai:install-ui`; the demo
-builds the bundle from this checkout and installs that build instead:
+`/vector/ui`, behind the session sign-in at `/login`. An application
+installs the published `@kinetis/vector-ui` release with
+`vector:install-ui`; the demo builds the bundle from this checkout and
+installs that build instead:
 
 ```console
-docker compose exec node pnpm --filter @kinetis/vector-ai-ui generate:hosted
-docker compose exec app vendor/bin/kinetis vector-ai:install-ui --from=/workspace/packages/vector-ai-ui/dist/static
+docker compose exec node pnpm generate:hosted
+docker compose exec app vendor/bin/kinetis vector:install-ui --from=/workspace/packages/vector-ui/dist/static
 docker compose restart app frankenphp
 ```
 
-`generate:hosted` builds into `packages/vector-ai-ui/dist/static`,
-labelled with `packages/vector-ai-ui/package.json`'s version, which is
-the one `kinetis/vector-ai` pins, and naming the `@kinetis/vector-ui`
-release it includes, the one `kinetis/vector` pins.
-`vector-ai:install-ui --check` and `vector:install-ui --check` then exit 0.
-The plain admin is `pnpm generate:hosted` and `vector:install-ui
---from=/workspace/packages/vector-ui/dist/static`.
+`pnpm generate:hosted` builds into `packages/vector-ui/dist/static`,
+labelled with `packages/vector-ui/package.json`'s version, which is the
+one `kinetis/vector` pins. `vector:install-ui --check` then exits 0.
+The demo runs `kinetis/vector-ai`, so the admin shows its AI features
+({doc}`ai`).
 
-The end-to-end suite's AI specs run in both modes, hosted against the
-admin with AI under the shell's strict CSP: `ai.spec.ts` against the
+The end-to-end suite's AI specs run in both modes, hosted under the
+shell's strict CSP: `ai.spec.ts` against the
 demo as it ships, and `ai-filters.spec.ts`, `ai-assistant.spec.ts`,
 `ai-approval.spec.ts` (which turns *Assistant may propose changes* on
 for itself, and back) and `ai-writing.spec.ts` with the scripted `fake`

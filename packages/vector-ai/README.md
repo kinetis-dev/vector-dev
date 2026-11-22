@@ -28,8 +28,9 @@ AI for the [Kinetis Vector](https://kinetis.dev/vector/docs/) admin,
 over the model providers an operator configures. Built on
 [`kinetis/neuron`](https://kinetis.dev/docs/neuron.html), so every
 provider call suspends the calling Fiber instead of blocking the worker.
-The UI half is a separate package,
-[`@kinetis/vector-ai-ui`](https://www.npmjs.com/package/@kinetis/vector-ai-ui).
+Its UI is part of
+[`@kinetis/vector-ui`](https://www.npmjs.com/package/@kinetis/vector-ui),
+which shows it when this package publishes `capabilities.ai`.
 
 - **Plain-language filters.** On a list, an admin describes the records
   they want; the model's answer is validated by the list's own validator,
@@ -76,8 +77,8 @@ Installing this package auto-registers, via `extra.kinetis`:
   `POST /vector/ai/writing/{resource}/{field}`, and
   `GET /vector/ai/credentials` with `PUT` and
   `DELETE /vector/ai/credentials/{provider}`.
-- **Commands** on `vendor/bin/kinetis`: `vector-ai:install`,
-  `vector-ai:install-ui` and `vector-ai:approvals:prune`.
+- **Commands** on `vendor/bin/kinetis`: `vector-ai:install` and
+  `vector-ai:approvals:prune`.
 - **The `ai` settings group**, *AI assistant*: each feature's switch,
   provider and model, the daily token budget, the assistant's limits and
   what record data is sent to a model.
@@ -135,11 +136,9 @@ later and [`kinetis/vector`](https://packagist.org/packages/kinetis/vector)
 on another connection. Schedule `vector:jobs:reap`, then
 `vector-ai:approvals:prune`, hourly.
 
-The AI layer reaches both admins. Standalone, extend
-`@kinetis/vector-ai-ui` instead of `@kinetis/vector-ui` (see its README).
-Hosted, `vendor/bin/kinetis vector-ai:install-ui` installs the bundle
-`@kinetis/vector-ai-ui` ships, the release `resources/ui.json` pins, in
-place of the plain one; restart the workers after it. Full documentation:
+Both admins, hosted and standalone, are `@kinetis/vector-ui`, which
+carries the AI UI: restart the workers after installing, and nothing
+else changes on the UI side. Full documentation:
 [kinetis.dev/vector/docs/ai.html](https://kinetis.dev/vector/docs/ai.html).
 
 ## License

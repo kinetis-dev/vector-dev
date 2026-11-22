@@ -44,7 +44,7 @@
   },
   "contributing.html": {
    "canonical": "https://kinetis.dev/vector/docs/contributing.html",
-   "description": "Vector is developed in one repository: the packages ( kinetis/vector and@kinetis/vector-ui, and the AI companion kinetis/vector-ai and@kinetis/vector-ai-ui) and the demo application ( The demo appl...",
+   "description": "Vector is developed in one repository: the packages ( kinetis/vector and@kinetis/vector-ui, and the AI companion kinetis/vector-ai) and the demo application ( The demo application) that consumes th...",
    "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
    "og:url": "https://kinetis.dev/vector/docs/contributing.html",
    "title": "Working on Vector - Kinetis Vector"
@@ -184,7 +184,7 @@
   },
   "releasing.html": {
    "canonical": "https://kinetis.dev/vector/docs/releasing.html",
-   "description": "Vector ships four products, each at its own version: packages/vector, published to the mirror kinetis-dev/vector, which Packagist serves as kinetis/vector;, packages/vector-ui, published to npm as@...",
+   "description": "Vector ships three products, each at its own version: packages/vector, published to the mirror kinetis-dev/vector, which Packagist serves as kinetis/vector;, packages/vector-ui, published to npm as...",
    "og:image": "https://kinetis.dev/vector/docs/_static/og-image.png",
    "og:url": "https://kinetis.dev/vector/docs/releasing.html",
    "title": "Releasing - Kinetis Vector"

@@ -37,6 +37,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - History shows a write's origin as a chip (*via assistant* for the AI
   assistant's approved proposals), from `record.audit.origin.<token>`,
   or the token itself when it has no message.
+- The AI UI for `kinetis/vector-ai`, registered through the points
+  above only while the descriptor carries `capabilities.ai`, so a plain
+  install registers none of it and sends no AI request. Each part shows
+  only while its own flag is on, for a resource not kept from the model
+  (`excluded`) and a field not kept back (`excludedFields`):
+  - **Plain-language filters** in every list's toolbar
+    (`capabilities.ai.filters`): the answer filters the list at once,
+    and a note says what it understood, offers the candidates of an
+    ambiguous relation, and Undo puts the list's filter and search back.
+  - **The assistant** (`capabilities.ai.assistant`): a sparkle button in
+    the app bar, and ⌘J (Ctrl+J on Windows and Linux) from anywhere,
+    open an end-side drawer with the conversation, a composer, *New
+    conversation* and a line naming the page the questions are about.
+    Answers stream from `POST /vector/ai/assistant` (the Vercel AI SDK
+    data-stream protocol, with the whole JSON answer where the runtime
+    answers `501`), follow the reader at a reading pace, render through
+    the admin's own Markdown sanitizer and link each `resource#id` to
+    its record. Tool chips show each tool once, with a count. A
+    failure shows its reason and Retry; a spent budget says when it
+    renews. The conversation sent back is trimmed to the server's caps
+    (`ASSISTANT_MAX_BODY_BYTES`, `ASSISTANT_MAX_MESSAGES`,
+    `ASSISTANT_MAX_MESSAGE_CHARS`, checked against
+    `AssistantController` by the test suite) and opens with the
+    person's own message. It is the signed-in user's: forgotten, and
+    the drawer closed, when the user changes, the session ends or the
+    admin signs out.
+  - **Approval cards** (`capabilities.ai.assistantWrites`): a change the
+    assistant proposed shows under its answer as a card built from the
+    structured proposal, field by field with the value before, never
+    from the model's prose. Approve and Reject post to
+    `/vector/ai/approvals/{id}/approve` and `/reject`; the decision goes
+    back to the assistant, and an expired (410) or unknown (404)
+    proposal says so. An executed change reloads the open list, record
+    and History.
+  - **Writing help** (`capabilities.ai.writing`): a menu inside the
+    `string` and `text` inputs of a resource's create and edit pages
+    (`defineInputAddon`, placement `inner`), and in the rich-text and
+    Markdown editors' toolbars, never in a bulk edit, an action's
+    dialog or a relation's inline create. Rewrite, Shorten, Fix
+    grammar and Translate to… work on the selection, or the whole text
+    while nothing is selected; the answer opens beside the text, Before
+    and After, to Replace or Discard. Not offered on a field in
+    `capabilities.ai.noWriting`.
+  - **The provider-key panel** of the `ai` settings group
+    (`GET`, `PUT` and `DELETE /vector/ai/credentials`).
+  - Its messages, under `ai`, in every shipped language.
+- `capabilities.ai` in the descriptor's type (`AiCapabilities`), read
+  through `aiCapabilities()` and `aiOffered()`.
 
 ### Changed
 

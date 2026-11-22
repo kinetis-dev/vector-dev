@@ -58,26 +58,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   was not handed is ignored. A response that declares nothing behaves as
   before; the response's JSON is unchanged.
 
-- `Ui\TarballInstaller`, the hosted UI install pipeline as a public
-  facade: a pinned npm package from `VECTOR_UI_REGISTRY` (with
-  `VECTOR_UI_REGISTRY_TOKEN`), `--from=<tgz|dir>`, `--integrity`,
-  `--version`, `--check` and `--force`, with the same https, sha512 and
-  atomic install rules. `vector:install-ui` runs it for
-  `@kinetis/vector-ui`; a package that ships a hosted bundle built from
-  Vector's layer plus its own runs it for that bundle, naming the
-  `@kinetis/vector-ui` release the bundle must include.
-- A composed bundle: `vector-bundle.json` may carry `includes`, the npm
-  packages and versions the bundle was built with
-  (`{"@kinetis/vector-ui": "0.13.0"}`). `HostedBundle::read()` reads and
-  validates it, `HostedBundle::verify()` takes the expected package and
-  includes, and `HostedBundle::carries()` names the version of a package
-  a bundle is or includes. `UiPin` and `UiInstaller::install()` take the
-  expected package.
-- `vector:install-ui --check`, `vector:install`'s drift note and the
-  installed UI version the worker reads accept a bundle of another
-  package that includes the pinned `@kinetis/vector-ui` release as that
-  release.
-
 ### Changed
 
 - Requires `kinetis/framework` `^1.29.0`.

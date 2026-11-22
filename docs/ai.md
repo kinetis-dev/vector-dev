@@ -12,8 +12,9 @@
 - **Bulk rewrite proposals**: a CSV of rewrites for many records, to
   review and import ({ref}`ai-bulk`).
 
-It is a companion product: the Composer package `kinetis/vector-ai`
-and the Nuxt layer `@kinetis/vector-ai-ui`. It is built on
+It is a companion product, the Composer package `kinetis/vector-ai`.
+Its UI is part of `@kinetis/vector-ui` and turns itself on when the API
+publishes `capabilities.ai`. It is built on
 [`kinetis/neuron`](https://kinetis.dev/docs/neuron.html), so every
 provider call suspends the calling Fiber instead of blocking the worker.
 
@@ -41,13 +42,10 @@ The package needs `ext-sodium`.
    connection Vector's own tables use (`VECTOR_DB_CONNECTION`); the
    command says so when they differ.
 
-2. Add the AI layer to the admin, in either mode ({doc}`deployment`):
-
-   - **Standalone**: your Nuxt app extends `@kinetis/vector-ai-ui`
-     instead of `@kinetis/vector-ui`: `extends: ['@kinetis/vector-ai-ui']`.
-   - **Hosted**: `vendor/bin/kinetis vector-ai:install-ui` installs the
-     bundle `@kinetis/vector-ai-ui` ships in place of the plain one. Then
-     restart the workers ({ref}`hosted admin with AI <hosted-ai-bundle>`).
+2. Restart the workers. The admin needs nothing more, in either mode
+   ({doc}`deployment`): the hosted bundle `vector:install-ui` installs
+   and the standalone layer are the same `@kinetis/vector-ui`, and it
+   shows the AI features once the API publishes `capabilities.ai`.
 
 3. Standalone only: add `Retry-After` to your `CorsMiddleware`'s
    `exposedHeaders`. The admin is on another origin, and a browser hides
@@ -56,10 +54,8 @@ The package needs `ext-sodium`.
 
 4. Configure a provider ({ref}`ai-operator`).
 
-Each `@kinetis/vector-ai-ui` release depends on exactly the
-`@kinetis/vector-ui` release `kinetis/vector` pins
-({ref}`release-pairing`). Against a backend without `kinetis/vector-ai`,
-the layer renders nothing of its own.
+Against a backend without `kinetis/vector-ai`, the admin shows no AI
+feature and sends no AI request.
 
 (ai-operator)=
 ## Operator configuration
@@ -1404,5 +1400,5 @@ reply can be keyed by.
 ## See also
 
 - {doc}`deployment`: the hosted and standalone modes.
-- {doc}`customizing-the-ui`: the UI extension points the layer is built on.
+- {doc}`customizing-the-ui`: the UI extension points the AI features are built on.
 - {doc}`settings`: settings groups.
