@@ -46,7 +46,7 @@ function check(bool $ok, string $label, string $detail = ''): void
         $failures++;
     }
 
-    echo ($ok ? '  ok    ' : '  FAIL  ') . $label . ($detail !== '' ? " — {$detail}" : '') . "\n";
+    echo ($ok ? '  ok    ' : '  FAIL  ') . $label . ($detail !== '' ? " ({$detail})" : '') . "\n";
 }
 
 /**

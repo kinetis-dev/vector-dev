@@ -140,7 +140,7 @@ export function productPlan({ product, version, published, publishedVersions }) 
     const problem = transitionProblem(highest, version)
 
     if (problem !== null) {
-        throw new Error(`${product} ${version} does not follow what is published (highest ${highest}): ${problem}. Publish the missing version first — re-run the release for the commit that introduced it — then re-run this one.`)
+        throw new Error(`${product} ${version} does not follow what is published (highest ${highest}): ${problem}. Publish the missing version first (re-run the release for the commit that introduced it), then re-run this one.`)
     }
 
     return { publish: true, notice: `${product} ${version} follows the published ${highest}.` }

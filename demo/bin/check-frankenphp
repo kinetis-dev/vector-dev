@@ -30,7 +30,7 @@ if [ -z "$(docker compose ps -q --status running frankenphp)" ]; then
     # FrankenPHP 1.13.1 sometimes crashes (exit 139) before logging that
     # error; the restart warnings before it name the worker either way.
     failed=$(printf '%s\n' "$log" | grep '"worker script has failed on restart"' | grep -o '"worker":"[^"]*"' | tail -1 | cut -d'"' -f4 || true)
-    echo "  FAIL  the frankenphp service is not running${error:+ — its last error: $error}"
+    echo "  FAIL  the frankenphp service is not running${error:+ (its last error: $error)}"
     if [ -n "$failed" ]; then
         echo "        $cause: $failed returned without ever calling frankenphp_handle_request(), on every thread, until FrankenPHP stopped"
     else
@@ -97,7 +97,7 @@ status=0
 docker compose exec -T app php /workspace/demo/bin/check-frankenphp.php --threads="${threads:-12}" "$@" || status=$?
 
 if [ "$status" -ne 0 ] && docker compose logs --no-log-prefix --since 5m frankenphp 2>&1 | grep -q 'called while not in worker mode'; then
-    echo "frankenphp's log: \"frankenphp_handle_request() called while not in worker mode\" — $cause"
+    echo "frankenphp's log: \"frankenphp_handle_request() called while not in worker mode\": $cause"
 fi
 
 if [ "$workers" -ne 0 ] || [ "$extensions" -ne 0 ] || [ "$opcache" -ne 0 ]; then

@@ -69,7 +69,7 @@ function withLanguageNames(group: VectorSettingsGroup, inLanguage: string): Vect
                 return { ...field, help: languageName(field.name, inLanguage, field.label) ?? field.help }
             }
             if (field.name === 'default' && field.options) {
-                return { ...field, options: field.options.map(option => ({ ...option, label: [option.label, languageName(String(option.value), inLanguage, option.label)].filter(Boolean).join(' — ') })) }
+                return { ...field, options: field.options.map(option => ({ ...option, label: [option.label, languageName(String(option.value), inLanguage, option.label)].filter(Boolean).join(' / ') })) }
             }
             return field
         }),
