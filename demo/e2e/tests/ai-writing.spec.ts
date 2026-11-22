@@ -1,5 +1,5 @@
 import { watchCsp } from '../support/csp'
-import { ADMIN, expect, test } from '../support/fixtures'
+import { ADMIN, expect, FAKE_AI, FAKE_AI_NEEDED, test } from '../support/fixtures'
 
 // Writing help against the demo's `fake` AI provider, which shortens the
 // two texts App\Vector\Ai\DemoAiReplies scripts: an order's notes, from
@@ -9,9 +9,9 @@ import { ADMIN, expect, test } from '../support/fixtures'
 // the notes, in a popover under the field); Replace puts it in
 // the input, and the admin saves it as their own edit. Needs the stack
 // configured with it (backend/.env: VECTOR_AI_PROVIDERS=demo,
-// VECTOR_AI_DEMO_TYPE=fake); skipped against the demo as it ships, which
-// ai.spec.ts covers. In both projects; hosted, under the shell's strict
-// CSP without a violation.
+// VECTOR_AI_DEMO_TYPE=fake); skipped unless VECTOR_E2E_FAKE_AI=1
+// says so. ai.spec.ts covers the demo as it ships. In both projects;
+// hosted, under the shell's strict CSP without a violation.
 const LONG_NOTES = 'Please make sure to call the customer before the delivery, because the customer has asked us to call ahead before the parcel is delivered.'
 const SHORT_NOTES = 'Call the customer before delivery.'
 const LONG_DESCRIPTION = 'This lamp gives a warm and pleasant light that is very suitable for reading in the evening and for other quiet activities at home.'
@@ -19,7 +19,8 @@ const SHORT_DESCRIPTION = 'A warm reading lamp for quiet evenings.'
 
 test.describe('AI, writing help', () => {
     test.beforeEach(async ({ api }) => {
-        test.skip((await api.aiCapabilities())?.writing !== true, 'needs a fake AI provider: VECTOR_AI_PROVIDERS=demo, VECTOR_AI_DEMO_TYPE=fake')
+        test.skip(!FAKE_AI, FAKE_AI_NEEDED)
+        expect((await api.aiCapabilities())?.writing, 'VECTOR_E2E_FAKE_AI=1, but the stack reports no AI writing').toBe(true)
     })
 
     test('shortens an order\'s notes, and the save is the admin\'s own edit', async ({ admin: page, api }) => {

@@ -48,6 +48,24 @@ host sees. The global setup also waits for the stack and loads the
 standalone admin once, so the dev server's first compile is not charged
 to the first test.
 
+## AI specs
+
+`ai.spec.ts` checks the demo as it ships, with no AI provider. The
+other `ai-*.spec.ts` files drive the AI features against the demo's
+scripted `fake` provider and are skipped unless the run says that is
+the provider, with `VECTOR_E2E_FAKE_AI=1`. The descriptor reports only
+that some provider is configured, and against a real one these specs
+would call the model, fail on its answers and cost money. Configure the
+fake provider in `backend/.env` (`VECTOR_AI_PROVIDERS=demo` and
+`VECTOR_AI_DEMO_TYPE=fake`), recreate `app`, then:
+
+```sh
+docker compose run --rm -e VECTOR_E2E_FAKE_AI=1 e2e
+```
+
+With the flag set, a stack that reports no AI feature fails these specs
+instead of skipping them.
+
 A failure keeps its trace and screenshot in `test-results/`. The HTML
 report is in `playwright-report/`, served with:
 
@@ -63,10 +81,11 @@ current source: build and install it again after changing the UI.
 `tests/screenshots.standalone.spec.ts` is not a test. It captures the
 documentation's screenshots into `docs/_static/screenshots/`, as
 `<name>-light.png` and `<name>-dark.png`, and is skipped unless
-`VECTOR_SCREENSHOTS=1`:
+`VECTOR_SCREENSHOTS=1`. Its AI captures need the fake provider and
+`VECTOR_E2E_FAKE_AI=1`, as the AI specs do:
 
 ```sh
-docker compose run --rm -e VECTOR_SCREENSHOTS=1 e2e test tests/screenshots.standalone.spec.ts
+docker compose run --rm -e VECTOR_SCREENSHOTS=1 -e VECTOR_E2E_FAKE_AI=1 e2e test tests/screenshots.standalone.spec.ts
 ```
 
 Run it on the stock data set (`demo:seed --fresh`) with the flaky

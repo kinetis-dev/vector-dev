@@ -1,5 +1,5 @@
 import { watchCsp } from '../support/csp'
-import { ADMIN, expect, test } from '../support/fixtures'
+import { ADMIN, expect, FAKE_AI, FAKE_AI_NEEDED, test } from '../support/fixtures'
 
 // The assistant proposing changes, against the demo's `fake` AI provider,
 // with `assistantWrites` turned on for the test: App\Vector\Ai\DemoAiReplies
@@ -10,8 +10,9 @@ import { ADMIN, expect, test } from '../support/fixtures'
 // acknowledges the decision. A second proposal is rejected and changes
 // nothing. Needs the stack configured with the fake provider
 // (backend/.env: VECTOR_AI_PROVIDERS=demo, VECTOR_AI_DEMO_TYPE=fake);
-// skipped against the demo as it ships, which ai.spec.ts covers. In both
-// projects; hosted, under the shell's strict CSP without a violation.
+// skipped unless VECTOR_E2E_FAKE_AI=1 says so. ai.spec.ts covers the
+// demo as it ships. In both projects; hosted, under the shell's strict
+// CSP without a violation.
 const PRODUCT = 9
 const RESTOCK = 'Set the stock of products#9 to 42.'
 const RESTOCK_AGAIN = 'Set the stock of products#9 to 7.'
@@ -24,7 +25,8 @@ test.describe('AI, the assistant proposing changes', () => {
     let stock: unknown = null
 
     test.beforeEach(async ({ api }) => {
-        test.skip((await api.aiCapabilities())?.assistant !== true, 'needs a fake AI provider: VECTOR_AI_PROVIDERS=demo, VECTOR_AI_DEMO_TYPE=fake')
+        test.skip(!FAKE_AI, FAKE_AI_NEEDED)
+        expect((await api.aiCapabilities())?.assistant, 'VECTOR_E2E_FAKE_AI=1, but the stack reports no AI assistant').toBe(true)
         settings = await api.settingsValues('ai')
         stock = (await api.show('products', PRODUCT)).stock
     })

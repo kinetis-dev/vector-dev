@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { API, Api, expect, test } from '../support/fixtures'
+import { API, Api, expect, FAKE_AI, FAKE_AI_NEEDED, test } from '../support/fixtures'
 import { DELIVERY_NOTE, HISTORY_PRODUCT, prepareScreenshotData, SHIPPED_ORDER } from '../support/screenshot-data'
 import type { Locator, Page } from '@playwright/test'
 
@@ -8,7 +8,7 @@ import type { Locator, Page } from '@playwright/test'
 // <name>-light.png and <name>-dark.png, one pair per screen. Skipped unless
 // VECTOR_SCREENSHOTS=1, so the normal run neither captures nor slows down:
 //
-//   docker compose run --rm -e VECTOR_SCREENSHOTS=1 e2e test tests/screenshots.standalone.spec.ts
+//   docker compose run --rm -e VECTOR_SCREENSHOTS=1 -e VECTOR_E2E_FAKE_AI=1 e2e test tests/screenshots.standalone.spec.ts
 //
 // Each pair is one prepared state captured twice: the admin's theme is
 // Vuetify's "system" theme (while the Branding settings leave it at
@@ -26,8 +26,9 @@ import type { Locator, Page } from '@playwright/test'
 // requests, which write no record.
 //
 // The AI captures need the demo's scripted `fake` provider
-// (VECTOR_AI_PROVIDERS=demo, VECTOR_AI_DEMO_TYPE=fake) and ask it what
-// App\Vector\Ai\DemoAiReplies scripts, so each run shows the same answers.
+// (VECTOR_AI_PROVIDERS=demo, VECTOR_AI_DEMO_TYPE=fake), declared to the
+// run with VECTOR_E2E_FAKE_AI=1, and ask it what App\Vector\Ai\DemoAiReplies
+// scripts, so each run shows the same answers.
 
 const OUT = fileURLToPath(new URL('../../../docs/_static/screenshots/', import.meta.url))
 
@@ -338,6 +339,7 @@ test.describe('docs screenshots', () => {
 
     test.describe('AI', () => {
         test.beforeEach(async ({ api }) => {
+            expect(FAKE_AI, FAKE_AI_NEEDED).toBe(true)
             const capabilities = await api.aiCapabilities()
             expect(capabilities?.assistant && capabilities.filters && capabilities.writing, 'the AI captures need the fake provider: VECTOR_AI_PROVIDERS=demo, VECTOR_AI_DEMO_TYPE=fake').toBe(true)
         })

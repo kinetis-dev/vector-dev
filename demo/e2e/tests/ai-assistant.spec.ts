@@ -1,19 +1,20 @@
 import { watchCsp } from '../support/csp'
-import { expect, test } from '../support/fixtures'
+import { expect, FAKE_AI, FAKE_AI_NEEDED, test } from '../support/fixtures'
 
 // The read-only assistant against the demo's `fake` AI provider, which
 // answers the question App\Vector\Ai\DemoAiReplies scripts: it reads the
 // low-stock products with vector_query, then names one as `products#1`.
 // Needs the stack configured with it (backend/.env: VECTOR_AI_PROVIDERS=demo,
-// VECTOR_AI_DEMO_TYPE=fake); skipped against the demo as it ships, which
-// ai.spec.ts covers. In both projects; hosted, under the shell's strict
-// CSP without a violation.
+// VECTOR_AI_DEMO_TYPE=fake); skipped unless VECTOR_E2E_FAKE_AI=1
+// says so. ai.spec.ts covers the demo as it ships. In both projects;
+// hosted, under the shell's strict CSP without a violation.
 const QUESTION = 'Which products are low on stock?'
 const ANSWER = 'I listed the active products with 10 or fewer in stock, lowest first.'
 
 test.describe('AI, the assistant', () => {
     test.beforeEach(async ({ api }) => {
-        test.skip((await api.aiCapabilities())?.assistant !== true, 'needs a fake AI provider: VECTOR_AI_PROVIDERS=demo, VECTOR_AI_DEMO_TYPE=fake')
+        test.skip(!FAKE_AI, FAKE_AI_NEEDED)
+        expect((await api.aiCapabilities())?.assistant, 'VECTOR_E2E_FAKE_AI=1, but the stack reports no AI assistant').toBe(true)
     })
 
     test('opens from the app bar, streams the answer, and its record link opens the record', async ({ admin: page, mode }) => {

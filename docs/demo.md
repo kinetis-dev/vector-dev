@@ -280,7 +280,9 @@ shell's strict CSP: `ai.spec.ts` against the
 demo as it ships, and `ai-filters.spec.ts`, `ai-assistant.spec.ts`,
 `ai-approval.spec.ts` (which turns *Assistant may propose changes* on
 for itself, and back) and `ai-writing.spec.ts` with the scripted `fake`
-provider configured as above; each skips itself on the other stack.
+provider configured as above and `VECTOR_E2E_FAKE_AI=1` passed to the
+run (`demo/e2e/README.md`). Without that flag they skip themselves, so a
+stack with a real provider never sends them to the model.
 
 Then open `http://localhost:8080/vector/ui`, or
 `http://localhost:8081/vector/ui` for the same admin under FrankenPHP.

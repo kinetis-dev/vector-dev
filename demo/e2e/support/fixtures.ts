@@ -7,6 +7,16 @@ export const API = 'http://localhost:8080'
 export const UI = 'http://localhost:3000/'
 
 /**
+ * Whether the run was told that the stack's AI provider is the demo's
+ * scripted `fake` one: `docker compose run --rm -e VECTOR_E2E_FAKE_AI=1 e2e`.
+ * The AI specs run only then. The descriptor says only that some provider
+ * is configured, and against a real one they would call the model, fail
+ * on its answers and cost money.
+ */
+export const FAKE_AI = process.env.VECTOR_E2E_FAKE_AI === '1'
+export const FAKE_AI_NEEDED = 'needs the fake AI provider (backend/.env: VECTOR_AI_PROVIDERS=demo, VECTOR_AI_DEMO_TYPE=fake) and VECTOR_E2E_FAKE_AI=1'
+
+/**
  * The seeded accounts (demo:seed). The suite's admin is its own, not the
  * admin a person signs in as: every test resets this account's saved
  * preferences, and some change them (its language), which would otherwise

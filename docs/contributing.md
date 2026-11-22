@@ -97,8 +97,10 @@ The end-to-end suite needs the hosted bundle installed
 ({doc}`demo`) and writes to the demo databases, so run it on its own,
 never beside PHPUnit. It signs in as its own admin, `e2e@vector.local`,
 and clears that account's saved preferences before each test, so it and
-a person using the demo do not disturb each other. See
-`demo/e2e/README.md`.
+a person using the demo do not disturb each other. The AI specs run
+only with the demo's `fake` provider configured and
+`VECTOR_E2E_FAKE_AI=1` passed to the run, so they never call a real
+model. See `demo/e2e/README.md`.
 
 ### Documentation screenshots
 
@@ -111,14 +113,15 @@ one matching their own theme. The spec is skipped unless
 
 The AI captures ask the demo's scripted `fake` provider, so each run
 shows the same answers: configure it in `backend/.env`
-(`VECTOR_AI_PROVIDERS=demo` and `VECTOR_AI_DEMO_TYPE=fake`, {doc}`demo`).
-To regenerate the screenshots, start from the stock data set and the
+(`VECTOR_AI_PROVIDERS=demo` and `VECTOR_AI_DEMO_TYPE=fake`, {doc}`demo`)
+and pass `VECTOR_E2E_FAKE_AI=1` to the run, which says that is the
+provider. To regenerate the screenshots, start from the stock data set and the
 queue dashboard's failed jobs, then capture:
 
 ```console
 docker compose exec --user www-data app vendor/bin/kinetis demo:seed --fresh
 docker compose exec --user www-data app vendor/bin/kinetis demo:queue-flaky --count=20 --failure=40
-docker compose run --rm -e VECTOR_SCREENSHOTS=1 e2e test tests/screenshots.standalone.spec.ts
+docker compose run --rm -e VECTOR_SCREENSHOTS=1 -e VECTOR_E2E_FAKE_AI=1 e2e test tests/screenshots.standalone.spec.ts
 ```
 
 Before it opens a page, the spec makes what the seed does not, through
