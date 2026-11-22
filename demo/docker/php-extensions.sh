@@ -23,7 +23,7 @@ apk add --no-cache unzip su-exec libpq libuv libevent libzip icu-libs
 # collection is off, which is the default.
 #
 # uv and event are Revolt event-loop drivers. Without one, Revolt falls
-# back to select(), which cannot watch a descriptor numbered above 1024 —
+# back to select(), which cannot watch a descriptor numbered above 1024,
 # and under FrankenPHP the Go server's client sockets share the process's
 # descriptor table with the Postgres and Redis clients' watchers, so a
 # loaded worker passes 1024. Revolt prefers uv when both are loaded, and
@@ -42,7 +42,7 @@ docker-php-ext-install pdo_mysql mysqli pdo_pgsql pgsql sockets pcntl zip intl
 # image: the Dockerfile bind-mounts its binary for this one RUN.
 #
 # PIE downloads each release through the GitHub API, which allows an
-# anonymous client 60 requests an hour per IP — little on a shared CI
+# anonymous client 60 requests an hour per IP, little on a shared CI
 # runner. The Dockerfile mounts an optional BuildKit secret, github_token,
 # that CI fills from the workflow's GITHUB_TOKEN; it is exported for PIE
 # only when present and non-empty, so a local `docker compose up --build`

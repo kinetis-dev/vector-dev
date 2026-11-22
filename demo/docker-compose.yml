@@ -49,7 +49,7 @@ services:
     stop_grace_period: 60s
 
   # The demo's scheduler: the same image, mounts and user as worker,
-  # running every hour what Vector and vector-ai need run periodically —
+  # running every hour what Vector and vector-ai need run periodically,
   # `vector:jobs:reap` first, which marks a job whose worker died as
   # failed, then `vector-ai:approvals:prune`, which sweeps stale
   # assistant proposals and the rewrite rows of ended jobs (a job still

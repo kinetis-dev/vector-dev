@@ -17,8 +17,8 @@ import type { Locator, Page } from '@playwright/test'
 // suite account's preferences and resets the Languages settings, so every
 // page is in English.
 //
-// What `demo:seed --fresh` does not make — a product's history, saved
-// views, finished jobs and their notifications — is made first, through the
+// What `demo:seed --fresh` does not make (a product's history, saved
+// views, finished jobs and their notifications) is made first, through the
 // admin API (support/screenshot-data.ts), and only what is missing: a
 // second run adds nothing. The capture itself then only reads: no form or
 // dialog is submitted, and every request from the page that is not a read

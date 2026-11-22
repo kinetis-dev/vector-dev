@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test'
 
 // Each user's language: switched from the app bar, remembered as their
 // preference, applied to the UI's strings and the application's labels
-// alike — and Hebrew turns the page right to left.
+// alike, and Hebrew turns the page right to left.
 
 const languageMenu = (page: Page) => page.getByRole('banner').locator('button:has(.mdi-translate)')
 const nav = (page: Page) => page.getByRole('navigation').first()

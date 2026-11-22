@@ -4,7 +4,7 @@ import { expect, type Api } from './fixtures'
  * The data the docs screenshots show that `demo:seed --fresh` does not
  * make: a product's history, saved views, and finished jobs with their
  * notifications. All of it goes through the admin API as the suite's
- * admin, so it is what the admin itself writes — real audit entries, real
+ * admin, so it is what the admin itself writes, real audit entries, real
  * jobs run by the worker.
  *
  * Each step looks first and writes only what is missing, so running it

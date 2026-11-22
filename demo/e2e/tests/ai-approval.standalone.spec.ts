@@ -18,7 +18,7 @@ const RESTOCK_ANSWER = 'I proposed the new stock of products#9; it changes once 
 const DECIDED_ANSWER = 'Noted: your decision on the change I proposed is recorded above.'
 
 test.describe('AI, the assistant proposing changes', () => {
-    // what the test changes, put back after it whatever happened — a timeout included
+    // what the test changes, put back after it whatever happened; a timeout included
     let settings: Record<string, unknown> | null = null
     let stock: unknown = null
 

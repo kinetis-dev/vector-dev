@@ -13,9 +13,9 @@ declare(strict_types=1);
  *       classic mode boots once per request and always reports 1.
  *   (b) the native drivers: the same document names the database
  *       clients DB_DRIVER=auto built and the event-loop driver.
- *   (c) request isolation: four principals — the seeded admin (#1), the
+ *   (c) request isolation: four principals, the seeded admin (#1), the
  *       end-to-end admin (#3), the editor (no admin access) and
- *       anonymous — interleaved at random, many requests in flight at
+ *       anonymous, interleaved at random, many requests in flight at
  *       once, round after round, on the same worker threads. Every
  *       response must be its own principal's: the identity, the admin
  *       access, and the per-record permission overlay (nobody may
@@ -26,7 +26,7 @@ declare(strict_types=1);
  * (default 25), --concurrency=N (default 24), --threads=N (the worker
  * thread count to expect at most, default 12), --wrong-expectation
  * (expects the admin's own record to be deletable by the admin, which
- * must make (c) fail — proof the check can fail).
+ * must make (c) fail, proof the check can fail).
  */
 
 $options = getopt('', ['base:', 'rounds:', 'concurrency:', 'threads:', 'wrong-expectation']);
@@ -241,7 +241,7 @@ for ($round = 1; $round <= $rounds; $round++) {
         }
     }
 
-    // probes in the same batch show which boots — which threads — served the round
+    // probes in the same batch show which boots (which threads) served the round
     for ($i = 0; $i < 4; $i++) {
         $batch[] = ['principal' => null, 'method' => 'GET', 'path' => '/_demo/runtime', 'token' => null];
     }

@@ -10,7 +10,7 @@ export const UI = 'http://localhost:3000/'
  * The seeded accounts (demo:seed). The suite's admin is its own, not the
  * admin a person signs in as: every test resets this account's saved
  * preferences, and some change them (its language), which would otherwise
- * reach — and be reached by — whoever uses the demo at the same time.
+ * reach (and be reached by) whoever uses the demo at the same time.
  */
 export const ADMIN = { email: 'e2e@vector.local', password: 'password', name: 'E2E Admin' }
 export const EDITOR = { email: 'editor@vector.local', password: 'password', name: 'Demo Editor' }
@@ -170,7 +170,7 @@ export class Api {
  *
  * Hosted: the application's own sign-in form, which sets the session
  * cookie. Standalone: a token from /auth/login, placed where the admin
- * keeps it (sessionStorage) before any page script runs — on every load
+ * keeps it (sessionStorage) before any page script runs, on every load
  * of this page, so a test of signing out signs in through the form
  * instead (auth.standalone.spec.ts).
  */
@@ -195,7 +195,7 @@ export async function signIn(page: Page, mode: Mode, account: Account = ADMIN): 
 export class Cleanup {
     private readonly pending: { resource: string, name: string, force: boolean }[] = []
 
-    /** Removes every `resource` record whose search matches `name` once the test ends — for good with `force`. */
+    /** Removes every `resource` record whose search matches `name` once the test ends, for good with `force`. */
     byName(resource: string, name: string, force = false) {
         this.pending.push({ resource, name, force })
     }

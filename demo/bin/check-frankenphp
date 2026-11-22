@@ -19,7 +19,7 @@ cd "$(dirname "$0")/.."
 # stops FrankenPHP from starting at all, and one that does call it leaves
 # public/index.php on FrankenPHP's regular threads, where Kinetis still
 # picks its FrankenPHP adapter (frankenphp_handle_request() exists) and
-# every request fails with "called while not in worker mode" — a 500.
+# every request fails with "called while not in worker mode"; a 500.
 routed=/workspace/demo/backend/public/index.php
 cause="likely cause: the worker script (docker/Caddyfile worker.file, FRANKENPHP_WORKER_FILE) is not $routed"
 
