@@ -4,8 +4,8 @@ name: Release
 # yet: each Composer product to its own mirror, tagged v<version> there
 # (packages/vector to kinetis-dev/vector, Packagist's kinetis/vector;
 # packages/vector-ai to kinetis-dev/vector-ai; MIRRORS in
-# scripts/release.mjs), and packages/vector-ui and packages/vector-ai-ui
-# to npm (@kinetis/vector-ui, @kinetis/vector-ai-ui; NPM_PRODUCTS). Each versions
+# scripts/release.mjs), and packages/vector-ui to npm
+# (@kinetis/vector-ui). Each versions
 # independently, bumped in its pull request with scripts/bump.mjs and
 # held to the policy by versions.yml; a push that publishes nothing is a
 # successful no-op. This repository itself gets no tags. npm goes first:
@@ -72,8 +72,6 @@ jobs:
       mirrors_publish: ${{ steps.plan.outputs.mirrors_publish }}
       ui_version: ${{ steps.plan.outputs.ui_version }}
       ui_publish: ${{ steps.plan.outputs.ui_publish }}
-      ai_ui_version: ${{ steps.plan.outputs.vector_ai_ui_version }}
-      ai_ui_publish: ${{ steps.plan.outputs.vector_ai_ui_publish }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -207,102 +205,6 @@ jobs:
         # with no prereleases to keep off it.
         run: npm publish --tag latest --provenance --access public
 
-  npm-ai-ui-dry-run:
-    name: Rehearse the npm publish of @kinetis/vector-ai-ui
-    needs: plan
-    if: needs.plan.outputs.dry_run == 'true' && needs.plan.outputs.ai_ui_publish == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.plan.outputs.source }}
-          persist-credentials: false
-
-      - uses: pnpm/action-setup@v6
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '26'
-
-      - name: Install npm 11 and the workspace
-        run: |
-          npm install --global npm@^11.5.1
-          pnpm install --frozen-lockfile
-
-      - name: Build the hosted admin bundle with AI
-        # Into packages/vector-ai-ui/dist/static, labelled with the version
-        # being published and the @kinetis/vector-ui release it includes:
-        # the package's prepack refuses any other.
-        env:
-          VERSION: ${{ needs.plan.outputs.ai_ui_version }}
-        run: node scripts/build-hosted-bundle.mjs --package=vector-ai-ui --version="$VERSION"
-
-      - name: What would be published
-        working-directory: packages/vector-ai-ui
-        run: |
-          npm pack --dry-run
-          npm publish --dry-run --tag latest --provenance=false --access public
-
-  npm-ai-ui-publish:
-    name: Publish @kinetis/vector-ai-ui
-    # After @kinetis/vector-ui: this package depends on exactly the release
-    # kinetis/vector pins, which the npm-publish job puts out first.
-    needs: [plan, npm-publish]
-    if: >-
-      always()
-      && needs.plan.result == 'success'
-      && needs.plan.outputs.dry_run != 'true'
-      && needs.plan.outputs.ai_ui_publish == 'true'
-      && (needs.npm-publish.result == 'success' || needs.npm-publish.result == 'skipped')
-    runs-on: ubuntu-latest
-    environment: npm-release
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.plan.outputs.source }}
-          persist-credentials: false
-
-      - uses: pnpm/action-setup@v6
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '26'
-
-      - name: Install npm 11 and the workspace
-        run: |
-          npm install --global npm@^11.5.1
-          npm --version
-          pnpm install --frozen-lockfile
-
-      - name: Ask npm whether this version is out
-        id: npm
-        env:
-          VERSION: ${{ needs.plan.outputs.ai_ui_version }}
-        run: node scripts/release.mjs npm-published --package=vector-ai-ui --version="$VERSION"
-
-      - name: Already on npm
-        if: steps.npm.outputs.published == 'true'
-        env:
-          VERSION: ${{ needs.plan.outputs.ai_ui_version }}
-        run: echo "::notice::@kinetis/vector-ai-ui@${VERSION} is already on npm; nothing to publish."
-
-      - name: Build the hosted admin bundle with AI
-        if: steps.npm.outputs.published != 'true'
-        # Into packages/vector-ai-ui/dist/static, labelled with the version
-        # being published and the @kinetis/vector-ui release it includes:
-        # the package's prepack refuses any other.
-        env:
-          VERSION: ${{ needs.plan.outputs.ai_ui_version }}
-        run: node scripts/build-hosted-bundle.mjs --package=vector-ai-ui --version="$VERSION"
-
-      - name: Publish @kinetis/vector-ai-ui
-        if: steps.npm.outputs.published != 'true'
-        working-directory: packages/vector-ai-ui
-        run: npm publish --tag latest --provenance --access public
-
   mirror:
     name: Split and push the mirror (${{ matrix.product }} ${{ matrix.version }})
     # After npm, so the @kinetis/vector-ui release kinetis/vector pins is
@@ -310,15 +212,13 @@ jobs:
     # again: the registry can take minutes to serve a version it accepted.
     # A round with no UI release skips both npm jobs, and a skipped job
     # does not hold the mirrors back; a failed one does.
-    needs: [plan, npm-dry-run, npm-publish, npm-ai-ui-dry-run, npm-ai-ui-publish]
+    needs: [plan, npm-dry-run, npm-publish]
     if: >-
       always()
       && needs.plan.result == 'success'
       && needs.plan.outputs.mirrors_publish == 'true'
       && (needs.npm-dry-run.result == 'success' || needs.npm-dry-run.result == 'skipped')
       && (needs.npm-publish.result == 'success' || needs.npm-publish.result == 'skipped')
-      && (needs.npm-ai-ui-dry-run.result == 'success' || needs.npm-ai-ui-dry-run.result == 'skipped')
-      && (needs.npm-ai-ui-publish.result == 'success' || needs.npm-ai-ui-publish.result == 'skipped')
     runs-on: ubuntu-latest
     strategy:
       # One mirror at a time, in the manifest's order (kinetis/vector

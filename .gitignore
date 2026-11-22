@@ -13,9 +13,7 @@ node_modules/
 .data/
 /demo/frontend/dist
 /packages/vector-ui/hosted/dist
-/packages/vector-ai-ui/hosted/dist
 /packages/vector-ui/dist/
-/packages/vector-ai-ui/dist/
 /demo/e2e/test-results/
 /demo/e2e/playwright-report/
 /docs/_build/

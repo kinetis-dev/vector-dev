@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
 import {
-    MIRRORS, NPM_PRODUCTS, changelogSection, mirrorOf, npmPublished, npmPublishedVersions, plan, planOutputs, productPlan, publicationPlan, publishMirror, split,
+    MIRRORS, changelogSection, mirrorOf, npmPublished, npmPublishedVersions, plan, planOutputs, productPlan, publicationPlan, publishMirror, split,
 } from './release.mjs'
 
 const changelog = `# Changelog
@@ -87,13 +87,9 @@ test('every Composer product has a mirror of its own', () => {
 
 test("every product in this repository's manifest has a way out: a mirror, or npm", () => {
     const products = JSON.parse(readFileSync(new URL('../packages.manifest.json', import.meta.url), 'utf8')).packages
-    const channelless = Object.keys(products).filter(key => !Object.hasOwn(NPM_PRODUCTS, key) && !Object.hasOwn(MIRRORS, key))
+    const channelless = Object.keys(products).filter(key => key !== 'vector-ui' && !Object.hasOwn(MIRRORS, key))
     assert.deepEqual(channelless, [])
     assert.equal(products['vector-ui'].name, '@kinetis/vector-ui')
-    // each npm product publishes the package the manifest names
-    for (const key of Object.keys(NPM_PRODUCTS)) {
-        assert.equal(products[key].name, NPM_PRODUCTS[key])
-    }
     // each mirror is named after the Composer package it serves, and lists vector first, which the others require
     for (const key of Object.keys(MIRRORS)) {
         assert.equal(MIRRORS[key], `https://github.com/kinetis-dev/${products[key].name.replace(/^kinetis\//, '')}.git`)
@@ -120,12 +116,6 @@ test("the plan's outputs: the mirror matrix in manifest order, and each product'
         ui_version: '0.12.0',
         ui_publish: false,
     })
-
-    // an npm product besides the UI kinetis/vector pins has outputs of its own
-    const withAiUi = planOutputs({ source: 'f'.repeat(40), mirrors: { vector: product('0.16.0', false) }, ui: product('0.13.0', false), npm: { 'vector-ai-ui': product('0.1.0', true) } })
-    assert.equal(withAiUi.vector_ai_ui_version, '0.1.0')
-    assert.equal(withAiUi.vector_ai_ui_publish, true)
-    assert.equal(withAiUi.ui_publish, false)
 
     const none = planOutputs({ source: 'f'.repeat(40), mirrors: { vector: product('0.14.0', false) }, ui: product('0.12.0', true) })
     assert.equal(none.mirrors, '[]')
@@ -412,12 +402,4 @@ test('plan reads the source commit, the mirror and npm, and a real release only 
     } finally {
         rmSync(scratch, { recursive: true, force: true })
     }
-})
-
-test('npm is asked about the package named, @kinetis/vector-ui by default', () => {
-    assert.equal(npmPublished('0.1.0', () => ({ status: 0, stdout: '0.1.0\n' }), '@kinetis/vector-ai-ui'), true)
-    assert.equal(npmPublished('0.1.0', () => ({ status: 1, stdout: '', stderr: 'npm error code E404\n' }), '@kinetis/vector-ai-ui'), false)
-    assert.throws(() => npmPublished('0.1.0', () => ({ status: 1, stdout: '', stderr: 'boom' }), '@kinetis/vector-ai-ui'), /whether @kinetis\/vector-ai-ui@0\.1\.0 exists: boom/)
-    assert.deepEqual(npmPublishedVersions(() => ({ status: 1, stdout: '', stderr: 'npm error code E404\n' }), '@kinetis/vector-ai-ui'), [])
-    assert.throws(() => npmPublishedVersions(() => ({ status: 1, stdout: '', stderr: 'boom' }), '@kinetis/vector-ai-ui'), /versions of @kinetis\/vector-ai-ui exist/)
 })

@@ -192,39 +192,3 @@ test('bump a Composer product of its own, kinetis/vector-addon: its manifest ent
         done()
     }
 })
-
-test('bump vector-ui moves @kinetis/vector-ai-ui\'s dependency with the pin; bump vector-ai-ui moves kinetis/vector-ai\'s pin', () => {
-    const manifest = `${JSON.stringify({
-        packages: {
-            'vector': { name: 'kinetis/vector', path: 'packages/vector', includes: ['packages/vector-ui'], version: '0.9.0' },
-            'vector-ui': { name: '@kinetis/vector-ui', path: 'packages/vector-ui', version: '0.9.0' },
-            'vector-ai': { name: 'kinetis/vector-ai', path: 'packages/vector-ai', includes: ['packages/vector-ai-ui'], version: '0.1.0' },
-            'vector-ai-ui': { name: '@kinetis/vector-ai-ui', path: 'packages/vector-ai-ui', version: '0.1.0' },
-        },
-    }, null, 4)}\n`
-    const aiUiJson = '{\n    "name": "@kinetis/vector-ai-ui",\n    "version": "0.1.0",\n    "dependencies": {\n        "@kinetis/vector-ui": "0.9.0"\n    }\n}\n'
-    const { repo, read, done } = scratch(manifest, {
-        'packages/vector-ai/composer.json': '{\n    "name": "kinetis/vector-ai"\n}\n',
-        'packages/vector-ai/CHANGELOG.md': changelog('kinetis/vector-ai'),
-        'packages/vector-ai/resources/ui.json': '{"package":"@kinetis/vector-ai-ui","version":"0.1.0"}\n',
-        'packages/vector-ai-ui/package.json': aiUiJson,
-        'packages/vector-ai-ui/CHANGELOG.md': changelog('@kinetis/vector-ai-ui'),
-    })
-
-    try {
-        const ui = bump(repo, 'vector-ui', 'minor', { date: '2026-11-19' })
-        assert.ok(ui.files.includes('packages/vector-ai-ui/package.json'))
-        assert.equal(JSON.parse(read('packages/vector-ai-ui/package.json')).dependencies['@kinetis/vector-ui'], '0.10.0')
-        assert.equal(JSON.parse(read('packages/vector/resources/ui.json')).version, '0.10.0')
-        assert.deepEqual(ui.alsoBump, ['vector'])
-
-        // @kinetis/vector-ai-ui's own release moves kinetis/vector-ai's pin, and names kinetis/vector-ai to bump
-        const aiUi = bump(repo, 'vector-ai-ui', 'patch', { date: '2026-11-19' })
-        assert.deepEqual(aiUi.files.sort(), ['packages.manifest.json', 'packages/vector-ai-ui/CHANGELOG.md', 'packages/vector-ai-ui/package.json', 'packages/vector-ai/resources/ui.json'])
-        assert.equal(read('packages/vector-ai/resources/ui.json'), '{"package":"@kinetis/vector-ai-ui","version":"0.1.1"}\n')
-        assert.deepEqual(aiUi.alsoBump, ['vector-ai'])
-        assert.equal(read('packages/vector/resources/ui.json'), '{"package":"@kinetis/vector-ui","version":"0.10.0"}\n', 'kinetis/vector\'s pin is not vector-ai-ui\'s')
-    } finally {
-        done()
-    }
-})

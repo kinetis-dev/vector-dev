@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { checkAiPin, checkConsistency, checkHistory, checkIncludes, checkPairing, checkPin, onlyTestToolingChanged, parseArguments, parseManifest, validate } from './validate-versions.mjs'
+import { checkConsistency, checkHistory, checkIncludes, checkPin, onlyTestToolingChanged, parseArguments, parseManifest, validate } from './validate-versions.mjs'
 
 const manifest = (vector, ui) => ({
     packages: {
@@ -170,67 +170,6 @@ test("consistency: kinetis/vector's pin names exactly vector-ui's package.json v
 test('the pin is checked only when the manifest lists both products', () => {
     const only = { packages: { vector: manifest('0.9.0', '0.9.0').packages.vector } }
     assert.deepEqual(checkPin(only, reader({})), [])
-})
-
-test("pairing: @kinetis/vector-ai-ui depends on exactly the @kinetis/vector-ui kinetis/vector pins", () => {
-    const products = {
-        packages: {
-            'vector': { name: 'kinetis/vector', path: 'packages/vector', version: '0.16.0' },
-            'vector-ui': { name: '@kinetis/vector-ui', path: 'packages/vector-ui', version: '0.13.0' },
-            'vector-ai': { name: 'kinetis/vector-ai', path: 'packages/vector-ai', version: '0.1.0' },
-            'vector-ai-ui': { name: '@kinetis/vector-ai-ui', path: 'packages/vector-ai-ui', version: '0.1.0' },
-        },
-    }
-    const files = {
-        'packages/vector/resources/ui.json': '{"package":"@kinetis/vector-ui","version":"0.13.0"}',
-        'packages/vector-ui/package.json': '{"name":"@kinetis/vector-ui","version":"0.13.0"}',
-        'packages/vector-ai-ui/package.json': '{"name":"@kinetis/vector-ai-ui","version":"0.1.0","dependencies":{"@kinetis/vector-ui":"0.13.0"}}',
-    }
-
-    assert.deepEqual(checkPin(products, reader(files)), [])
-    assert.deepEqual(checkPairing(products, reader(files)), [])
-
-    files['packages/vector-ai-ui/package.json'] = '{"name":"@kinetis/vector-ai-ui","version":"0.1.0","dependencies":{"@kinetis/vector-ui":"^0.13.0"}}'
-    assert.deepEqual(checkPairing(products, reader(files)), ['vector-ai-ui: packages/vector-ai-ui/package.json depends on @kinetis/vector-ui "^0.13.0", but packages/vector/resources/ui.json pins 0.13.0; it must depend on exactly that release (scripts/bump.mjs vector-ui moves both)'])
-
-    files['packages/vector-ai-ui/package.json'] = '{"name":"@kinetis/vector-ai-ui","version":"0.1.0","dependencies":{"@kinetis/vector-ui":"0.12.5"}}'
-    assert.equal(checkPairing(products, reader(files)).length, 1)
-
-    files['packages/vector-ai-ui/package.json'] = '{"name":"@kinetis/vector-ai-ui","version":"0.1.0"}'
-    assert.match(checkPairing(products, reader(files)).join(), /depends on @kinetis\/vector-ui \(not at all\)/)
-})
-
-test("kinetis/vector-ai pins exactly the @kinetis/vector-ai-ui in its package.json", () => {
-    const products = {
-        packages: {
-            'vector-ai': { name: 'kinetis/vector-ai', path: 'packages/vector-ai', includes: ['packages/vector-ai-ui'], version: '0.1.0' },
-            'vector-ai-ui': { name: '@kinetis/vector-ai-ui', path: 'packages/vector-ai-ui', version: '0.1.0' },
-        },
-    }
-    const files = {
-        'packages/vector-ai/resources/ui.json': '{"package":"@kinetis/vector-ai-ui","version":"0.1.0"}',
-        'packages/vector-ai-ui/package.json': '{"name":"@kinetis/vector-ai-ui","version":"0.1.0"}',
-    }
-
-    assert.deepEqual(checkAiPin(products, reader(files)), [])
-
-    files['packages/vector-ai/resources/ui.json'] = '{"package":"@kinetis/vector-ai-ui","version":"0.0.9"}'
-    assert.deepEqual(checkAiPin(products, reader(files)), ['vector-ai: packages/vector-ai/resources/ui.json pins @kinetis/vector-ai-ui 0.0.9, but packages/vector-ai-ui/package.json is at 0.1.0; run scripts/bump.mjs vector-ai-ui, which moves the pin with it'])
-
-    files['packages/vector-ai/resources/ui.json'] = '{"package":"@kinetis/vector-ui","version":"0.1.0"}'
-    assert.match(checkAiPin(products, reader(files)).join(), /must be exactly \{"package": "@kinetis\/vector-ai-ui"/)
-
-    files['packages/vector-ai/resources/ui.json'] = '{"package":"@kinetis/vector-ai-ui","version":"0.1.0","extra":1}'
-    assert.match(checkAiPin(products, reader(files)).join(), /must be exactly/)
-
-    files['packages/vector-ai/resources/ui.json'] = '{'
-    assert.match(checkAiPin(products, reader(files)).join(), /is not valid JSON/)
-
-    delete files['packages/vector-ai/resources/ui.json']
-    assert.match(checkAiPin(products, reader(files)).join(), /is missing; it pins the @kinetis\/vector-ai-ui release vector-ai:install-ui installs/)
-
-    // checked only when the manifest lists both products
-    assert.deepEqual(checkAiPin({ packages: { 'vector-ai': products.packages['vector-ai'] } }, reader({})), [])
 })
 
 test('history: a changed product needs a bump, an unchanged one keeps its version', () => {
