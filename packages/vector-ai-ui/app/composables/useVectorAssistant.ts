@@ -38,7 +38,7 @@ export interface AssistantTurn {
     streaming: boolean
 }
 
-/** What the server answers with `Accept: application/json`: `toolCalls` as `{name, ok}`, or as bare names from an older server. */
+/** What the server answers with `Accept: application/json`: `toolCalls` as `{name, ok}`, or as bare names. */
 interface WholeAnswer { text: string, toolCalls: unknown, approvals?: unknown[] }
 
 /** What a decision answers: `{status, result}`, or for a 409 `{error, status, result?}`. */

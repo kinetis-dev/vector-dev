@@ -20,7 +20,7 @@ export interface AssistantToolChip {
 
 /**
  * The whole answer's `toolCalls` as calls: each `{name, ok}`, or a bare
- * name — the shape before outcomes were sent — taken as one that answered.
+ * name, taken as one that answered.
  */
 export function toolCallsOf(toolCalls: unknown): AssistantToolCall[] {
     if (!Array.isArray(toolCalls)) return []

@@ -31,7 +31,7 @@ describe('AI availability in the admin', () => {
         expect(aiOffered(AI, 'writing', 'products', 'sku')).toBe(false)
         expect(aiOffered(AI, 'writing', 'products', 'name')).toBe(true)
         expect(aiOffered(AI, 'filters', 'products', 'sku')).toBe(true)
-        // an older server publishes no noWriting
+        // without noWriting, writing help is off only where something is kept back
         expect(aiOffered({ ...AI, noWriting: undefined }, 'writing', 'products', 'sku')).toBe(true)
     })
 

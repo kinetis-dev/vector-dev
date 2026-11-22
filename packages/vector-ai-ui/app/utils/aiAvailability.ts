@@ -16,7 +16,8 @@ export interface AiCapabilities {
     /**
      * The text fields writing help is not offered on, `{slug: [field, …]}`:
      * kept back, a unique string (an identifier, such as a SKU), or a field
-     * with the `ai.writing` meta false. Absent from an older server.
+     * with the `ai.writing` meta false. When absent, writing help is off
+     * only where something is kept back.
      */
     noWriting?: Record<string, unknown>
 }

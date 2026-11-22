@@ -424,7 +424,7 @@ describe('the assistant', () => {
         wrapper.unmount()
     })
 
-    it('shows the whole answer\'s tool calls the same way, also a server\'s that names them only', async () => {
+    it('shows the whole answer\'s tool calls the same way, also when they are names only', async () => {
         standaloneApi()
         let toolCalls: unknown = []
         cleanups.push(endpoint('/vector/ai/assistant', (request: Received) => request.headers.get('accept') === 'application/json'
@@ -436,7 +436,7 @@ describe('the assistant', () => {
         await ask(wrapper, 'Which products are low on stock?')
         expect(chips(wrapper)).toEqual(['Read with vector_query ×2', 'Proposed with vector_update'])
 
-        // the names alone, as before outcomes were sent: each one answered
+        // the names alone: each one answered
         toolCalls = ['vector_query', 'vector_describe', 'vector_query', 'vector_query']
         await ask(wrapper, 'And the next ones?')
         const answers = wrapper.findAll('[data-ai-assistant-turn="assistant"]')
