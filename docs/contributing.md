@@ -13,7 +13,7 @@ seeded.
 packages/vector/            kinetis/vector: registry, REST API, jobs, the queue dashboard (src/Queues/), MCP tools, migration stubs
 packages/vector-ui/         @kinetis/vector-ui, the Nuxt layer; its Vitest suite in test/nuxt/
   hosted/                   the hosted bundle's build entry: the layer alone, built into dist/static
-packages/vector-ai/         kinetis/vector-ai: AI configuration, sealed provider keys, the ai settings group, the usage ledger, migration stubs
+packages/vector-ai/         kinetis/vector-ai: AI configuration, sealed provider keys, the ai settings group, filters, the assistant and its approvals, writing help, bulk rewrites, the usage ledger, migration stubs
 packages/vector-ai-ui/      @kinetis/vector-ai-ui, the AI layer over @kinetis/vector-ui; its Vitest suite in test/nuxt/
 demo/docker-compose.yml     the stack: app, worker, nginx, frankenphp, mysql, postgres, redis, node; e2e and oha on demand
 demo/docker/                the PHP images (PHP-FPM and FrankenPHP) and their shared extension recipe, nginx, the Caddyfile, php.ini
@@ -63,7 +63,7 @@ satisfies that.
 docker compose exec app vendor/bin/phpunit                                        # the API and the PHP package
 docker compose exec -e VECTOR_TEST_DB_CONNECTION=default app vendor/bin/phpunit   # the same, Vector's tables on MySQL
 docker compose exec node pnpm test                                                # the UI layers: Vitest, no server
-docker compose exec node pnpm typecheck                                           # vue-tsc over the layer and its tests
+docker compose exec node pnpm typecheck                                           # vue-tsc over the layers and their tests
 docker compose run --rm e2e                                                       # the admin in a browser, both modes
 bin/check-frankenphp                                                              # the application under FrankenPHP worker mode
 ```
