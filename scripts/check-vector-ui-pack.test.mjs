@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, test } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import { missingFromPack, packProblem, tarballFiles } from './check-vector-ui-pack.mjs'
+import { missingFromPack, packProblem, parseArgs, tarballFiles } from './check-vector-ui-pack.mjs'
 
 let dir
 
@@ -17,7 +17,7 @@ beforeEach(async () => {
 
 afterEach(() => rm(dir, { recursive: true, force: true }))
 
-const manifest = version => writeFile(path.join(dir, 'vector-bundle.json'), JSON.stringify({ package: '@kinetis/vector-ui', version }))
+const manifest = (version, extra = {}) => writeFile(path.join(dir, 'vector-bundle.json'), JSON.stringify({ package: '@kinetis/vector-ui', version, ...extra }))
 
 test('a bundle built for the version being packed passes', async () => {
     await writeFile(path.join(dir, 'index.html'), '<!doctype html>')
@@ -46,6 +46,56 @@ test('a bundle of another version fails, as does packing without a version', asy
 
     assert.match(await packProblem(dir, '0.11.0'), /is version dev-0123456789ab, not 0\.11\.0/)
     assert.notEqual(await packProblem(dir, undefined), null)
+})
+
+test('a bundle of another package fails', async () => {
+    await writeFile(path.join(dir, 'index.html'), '<!doctype html>')
+    await manifest('0.11.0', { package: '@kinetis/vector-ai-ui' })
+
+    assert.match(await packProblem(dir, '0.11.0'), /was built for @kinetis\/vector-ai-ui, not @kinetis\/vector-ui/)
+})
+
+const ai = { name: '@kinetis/vector-ai-ui', includes: { '@kinetis/vector-ui': '0.13.0' } }
+
+test('a vector-ai-ui bundle including the @kinetis/vector-ui it depends on passes', async () => {
+    await writeFile(path.join(dir, 'index.html'), '<!doctype html>')
+    await manifest('0.1.0', { package: '@kinetis/vector-ai-ui', includes: { '@kinetis/vector-ui': '0.13.0' } })
+
+    assert.equal(await packProblem(dir, '0.1.0', ai), null)
+})
+
+test('a vector-ai-ui bundle including another @kinetis/vector-ui, or none, fails', async () => {
+    await writeFile(path.join(dir, 'index.html'), '<!doctype html>')
+
+    await manifest('0.1.0', { package: '@kinetis/vector-ai-ui', includes: { '@kinetis/vector-ui': '0.12.0' } })
+    assert.match(await packProblem(dir, '0.1.0', ai), /includes @kinetis\/vector-ui 0\.12\.0, not 0\.13\.0/)
+
+    await manifest('0.1.0', { package: '@kinetis/vector-ai-ui' })
+    assert.match(await packProblem(dir, '0.1.0', ai), /includes @kinetis\/vector-ui undefined, not 0\.13\.0/)
+})
+
+test('a vector-ai-ui bundle of another version, or the plain bundle, fails', async () => {
+    await writeFile(path.join(dir, 'index.html'), '<!doctype html>')
+
+    await manifest('0.2.0', { package: '@kinetis/vector-ai-ui', includes: { '@kinetis/vector-ui': '0.13.0' } })
+    assert.match(await packProblem(dir, '0.1.0', ai), /is version 0\.2\.0, not 0\.1\.0/)
+
+    await manifest('0.1.0')
+    assert.match(await packProblem(dir, '0.1.0', ai), /was built for @kinetis\/vector-ui, not @kinetis\/vector-ai-ui/)
+})
+
+test('arguments: --package and --packed, vector-ui by default', () => {
+    assert.deepEqual(parseArgs([]), { package: 'vector-ui', packed: false })
+    assert.deepEqual(parseArgs(['--package=vector-ai-ui', '--packed']), { package: 'vector-ai-ui', packed: true })
+    assert.throws(() => parseArgs(['--package=vector']), /Unknown argument --package=vector/)
+})
+
+test('the vector-ai-ui prepack exits non-zero when the check fails', () => {
+    const script = fileURLToPath(new URL('./check-vector-ui-pack.mjs', import.meta.url))
+    const result = spawnSync(process.execPath, [script, '--package=vector-ai-ui'], { env: { ...process.env, npm_package_version: '0.0.0-never' }, encoding: 'utf8' })
+
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /build the hosted bundle/)
 })
 
 test('the script exits non-zero when the check fails', () => {

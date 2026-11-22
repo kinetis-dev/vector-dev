@@ -27,6 +27,7 @@
     "files": [
         "nuxt.config.ts",
         "app",
+        "dist/static",
         "README.md",
         "LICENSE",
         "CHANGELOG.md"
@@ -40,6 +41,8 @@
     },
     "scripts": {
         "prepare": "nuxt prepare",
+        "prepack": "node ../../scripts/check-vector-ui-pack.mjs --package=vector-ai-ui",
+        "generate:hosted": "node ../../scripts/build-hosted-bundle.mjs --package=vector-ai-ui",
         "typecheck": "nuxt prepare && vue-tsc --noEmit",
         "lint": "eslint .",
         "test": "vitest run --passWithNoTests"
