@@ -1,17 +1,20 @@
+import { watchCsp } from '../support/csp'
 import { expect, test } from '../support/fixtures'
 
 // kinetis/vector-ai installed and, as the demo ships, unconfigured: the
 // `AI assistant` settings group is there with its provider-key panel,
 // which says no provider is configured, and no other AI UI shows.
-// Standalone only: the demo frontend extends @kinetis/vector-ai-ui, while
-// the hosted bundle is plain @kinetis/vector-ui.
+// In both projects: the demo frontend extends @kinetis/vector-ai-ui, and
+// the hosted admin is the bundle `vector-ai:install-ui` installs, under
+// the shell's strict CSP without a violation.
 test.describe('AI, unconfigured', () => {
-    // a stack configured with a provider (ai-filters.standalone.spec.ts) is not the demo as it ships
+    // a stack configured with a provider (ai-filters.spec.ts) is not the demo as it ships
     test.beforeEach(async ({ api }) => {
         test.skip((await api.aiCapabilities())?.filters === true, 'an AI provider is configured')
     })
 
     test('the AI settings group is there, with its provider-key panel', async ({ admin: page }) => {
+        const csp = await watchCsp(page)
         await page.goto('settings')
 
         const tab = page.getByRole('tab', { name: 'AI assistant' })
@@ -25,9 +28,11 @@ test.describe('AI, unconfigured', () => {
         await expect(panel.locator('[data-ai-no-provider]')).toHaveText('No AI provider is configured. The operator lists them in VECTOR_AI_PROVIDERS.')
         // no key is ever shown, and none can be entered without a provider
         await expect(panel.locator('input')).toHaveCount(0)
+        expect(await csp()).toEqual([])
     })
 
     test('no other AI UI shows', async ({ admin: page }) => {
+        const csp = await watchCsp(page)
         const schema = page.waitForResponse(response => response.url().endsWith('/vector/schema') && response.request().method() === 'GET')
         await page.goto('r/products')
         const capabilities = (await (await schema).json() as { capabilities: { ai?: unknown } }).capabilities
@@ -38,5 +43,6 @@ test.describe('AI, unconfigured', () => {
         await expect(page.locator('[data-shell-action]')).toHaveCount(0)
         await expect(page.locator('[data-list-toolbar-item]')).toHaveCount(0)
         await expect(page.locator('[data-input-addon]')).toHaveCount(0)
+        expect(await csp()).toEqual([])
     })
 })

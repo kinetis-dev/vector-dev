@@ -1,3 +1,4 @@
+import { watchCsp } from '../support/csp'
 import { expect, test } from '../support/fixtures'
 
 // The read-only assistant against the demo's `fake` AI provider, which
@@ -5,8 +6,8 @@ import { expect, test } from '../support/fixtures'
 // low-stock products with vector_query, then names one as `products#1`.
 // Needs the stack configured with it (backend/.env: VECTOR_AI_PROVIDERS=demo,
 // VECTOR_AI_DEMO_TYPE=fake); skipped against the demo as it ships, which
-// ai.standalone.spec.ts covers. Standalone only: the hosted bundle is
-// the plain admin.
+// ai.spec.ts covers. In both projects; hosted, under the shell's strict
+// CSP without a violation.
 const QUESTION = 'Which products are low on stock?'
 const ANSWER = 'I listed the active products with 10 or fewer in stock, lowest first.'
 
@@ -15,7 +16,8 @@ test.describe('AI, the assistant', () => {
         test.skip((await api.aiCapabilities())?.assistant !== true, 'needs a fake AI provider: VECTOR_AI_PROVIDERS=demo, VECTOR_AI_DEMO_TYPE=fake')
     })
 
-    test('opens from the app bar, streams the answer, and its record link opens the record', async ({ admin: page }) => {
+    test('opens from the app bar, streams the answer, and its record link opens the record', async ({ admin: page, mode }) => {
+        const csp = await watchCsp(page)
         await page.goto('r/products')
         await page.locator('[data-shell-action="ai-assistant"]').click()
 
@@ -34,14 +36,18 @@ test.describe('AI, the assistant', () => {
 
         const link = answer.locator('a[data-record-link="products#1"]')
         await expect(link).toBeVisible()
+        // a link the router does not follow (a new tab) opens the record too: hosted, under /vector/ui
+        await expect(link).toHaveAttribute('href', mode === 'hosted' ? '/vector/ui/r/products/1' : '/r/products/1')
         await link.click()
         await expect(page).toHaveURL(/\/r\/products\/1$/)
         // the drawer is the layout's: the conversation is still there on the record's page
         await expect(drawer.locator('[data-ai-assistant-answer]')).toContainText(ANSWER)
         await expect(drawer.locator('[data-ai-assistant-context]')).toHaveText('Product #1')
+        expect(await csp()).toEqual([])
     })
 
     test('Ctrl+J opens the drawer, and closes it from its own input', async ({ admin: page }) => {
+        const csp = await watchCsp(page)
         await page.goto('')
         // the shortcut is listened for once the admin has rendered
         await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible()
@@ -61,5 +67,6 @@ test.describe('AI, the assistant', () => {
         await page.keyboard.press('Control+K')
         await page.getByRole('dialog').getByRole('textbox', { name: 'Search' }).fill(QUESTION)
         await expect(page.getByRole('dialog').getByText('Ask the assistant…')).toHaveCount(0)
+        expect(await csp()).toEqual([])
     })
 })

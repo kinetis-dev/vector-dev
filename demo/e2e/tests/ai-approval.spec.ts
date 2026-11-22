@@ -1,3 +1,4 @@
+import { watchCsp } from '../support/csp'
 import { ADMIN, expect, test } from '../support/fixtures'
 
 // The assistant proposing changes, against the demo's `fake` AI provider,
@@ -9,8 +10,8 @@ import { ADMIN, expect, test } from '../support/fixtures'
 // acknowledges the decision. A second proposal is rejected and changes
 // nothing. Needs the stack configured with the fake provider
 // (backend/.env: VECTOR_AI_PROVIDERS=demo, VECTOR_AI_DEMO_TYPE=fake);
-// skipped against the demo as it ships, which ai.standalone.spec.ts
-// covers. Standalone only: the hosted bundle is the plain admin.
+// skipped against the demo as it ships, which ai.spec.ts covers. In both
+// projects; hosted, under the shell's strict CSP without a violation.
 const PRODUCT = 9
 const RESTOCK = 'Set the stock of products#9 to 42.'
 const RESTOCK_AGAIN = 'Set the stock of products#9 to 7.'
@@ -36,6 +37,7 @@ test.describe('AI, the assistant proposing changes', () => {
     })
 
     test('a proposal approved is written via the assistant; a second one rejected changes nothing', async ({ admin: page, api }) => {
+        const csp = await watchCsp(page)
         expect(stock).not.toBe(42)
         await api.settings('ai', { ...settings, assistantWrites: true })
         await page.goto(`r/products/${PRODUCT}`)
@@ -91,5 +93,6 @@ test.describe('AI, the assistant proposing changes', () => {
         await expect(drawer.locator('[data-ai-approval][data-ai-approval-state="rejected"]')).toHaveCount(1)
         await expect(drawer.locator('[data-ai-assistant-answer]').last()).toContainText(DECIDED_ANSWER)
         expect((await api.show('products', PRODUCT)).stock).toBe(42)
+        expect(await csp()).toEqual([])
     })
 })

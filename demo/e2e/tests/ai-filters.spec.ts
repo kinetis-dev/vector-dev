@@ -1,17 +1,19 @@
+import { watchCsp } from '../support/csp'
 import { expect, test } from '../support/fixtures'
 
 // Plain-language filters against the demo's `fake` AI provider, which
 // answers the sentences App\Vector\Ai\DemoAiReplies scripts. Needs the
 // stack configured with it (backend/.env: VECTOR_AI_PROVIDERS=demo,
 // VECTOR_AI_DEMO_TYPE=fake); skipped against the demo as it ships, which
-// ai.standalone.spec.ts covers. Standalone only: the hosted bundle is
-// the plain admin.
+// ai.spec.ts covers. In both projects; hosted, under the shell's strict
+// CSP without a violation.
 test.describe('AI, plain-language filters', () => {
     test.beforeEach(async ({ api }) => {
         test.skip((await api.aiCapabilities())?.filters !== true, 'needs a fake AI provider: VECTOR_AI_PROVIDERS=demo, VECTOR_AI_DEMO_TYPE=fake')
     })
 
     test('a sentence filters the list at once, and Undo puts it back', async ({ admin: page }) => {
+        const csp = await watchCsp(page)
         await page.goto('r/orders')
         const input = page.locator('[data-ai-filters-input] input')
         await expect(input).toBeVisible()
@@ -41,11 +43,14 @@ test.describe('AI, plain-language filters', () => {
         await note.locator('[data-ai-filters-undo]').click()
         await unfiltered
         await expect(note).toHaveCount(0)
+        expect(await csp()).toEqual([])
     })
 
     test('a resource kept from AI offers no filter', async ({ admin: page }) => {
+        const csp = await watchCsp(page)
         await page.goto('r/profiles')
         await expect(page.getByRole('heading', { name: 'Profiles', level: 1 })).toBeVisible()
         await expect(page.locator('[data-ai-filters]')).toHaveCount(0)
+        expect(await csp()).toEqual([])
     })
 })

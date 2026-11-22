@@ -31,6 +31,7 @@ defineOptions({ inheritAttrs: false })
 const host = useVectorHost()
 const appConfig = useAppConfig()
 const route = useRoute()
+const router = useRouter()
 const { t } = useVectorT()
 const { open, draft, turns, busy, refused, send, retry, reset, decide } = useVectorAssistant()
 
@@ -51,8 +52,11 @@ const contextLine = computed(() => {
         : t('ai.assistant.context.record', { label: resource.labelSingular ?? resource.label, id: ctx.recordId })
 })
 
+/** Where the admin's pages are as a link outside the router opens them: under the app's base URL (`/vector/ui` hosted). */
+const linkBase = computed(() => router.resolve(appConfig.vector.basePath || '/').href.replace(/\/$/, ''))
+
 function html(content: string): string {
-    return linkRecords(host.markdownHtml(content), slugs.value, appConfig.vector.basePath)
+    return linkRecords(host.markdownHtml(content), slugs.value, linkBase.value)
 }
 
 /** A record link in an answer navigates inside the admin, rather than reloading it. */
@@ -60,7 +64,8 @@ function follow(event: MouseEvent) {
     const link = (event.target as Element | null)?.closest('a[data-record-link]')
     if (!link || event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return
     event.preventDefault()
-    void navigateTo(link.getAttribute('href') ?? '/')
+    const [slug = '', id = ''] = (link.getAttribute('data-record-link') ?? '').split('#')
+    void navigateTo(`${appConfig.vector.basePath}/r/${encodeURIComponent(slug)}/${encodeURIComponent(id)}`)
 }
 
 function onKeydown(event: KeyboardEvent) {

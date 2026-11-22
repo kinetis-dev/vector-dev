@@ -1,3 +1,4 @@
+import { watchCsp } from '../support/csp'
 import { ADMIN, expect, test } from '../support/fixtures'
 
 // Writing help against the demo's `fake` AI provider, which shortens the
@@ -8,8 +9,8 @@ import { ADMIN, expect, test } from '../support/fixtures'
 // the input, and the admin saves it as their own edit. Needs the stack
 // configured with it (backend/.env: VECTOR_AI_PROVIDERS=demo,
 // VECTOR_AI_DEMO_TYPE=fake); skipped against the demo as it ships, which
-// ai.standalone.spec.ts covers. Standalone only: the hosted bundle is
-// the plain admin.
+// ai.spec.ts covers. In both projects; hosted, under the shell's strict
+// CSP without a violation.
 const LONG_NOTES = 'Please make sure to call the customer before the delivery, because the customer has asked us to call ahead before the parcel is delivered.'
 const SHORT_NOTES = 'Call the customer before delivery.'
 const LONG_DESCRIPTION = 'This lamp gives a warm and pleasant light that is very suitable for reading in the evening and for other quiet activities at home.'
@@ -21,6 +22,7 @@ test.describe('AI, writing help', () => {
     })
 
     test('shortens an order\'s notes, and the save is the admin\'s own edit', async ({ admin: page, api }) => {
+        const csp = await watchCsp(page)
         const id = (await api.search('orders', ''))[0]!.id
         const before = (await api.show('orders', id)).notes
 
@@ -61,9 +63,11 @@ test.describe('AI, writing help', () => {
         } finally {
             await api.update('orders', id, { notes: before })
         }
+        expect(await csp()).toEqual([])
     })
 
     test('shortens a selection in a rich-text description, and saves it', async ({ admin: page, api }) => {
+        const csp = await watchCsp(page)
         const product = (await api.search('products', 'SKU-00044'))[0]!
         const before = (await api.show('products', product.id)).description
 
@@ -100,5 +104,6 @@ test.describe('AI, writing help', () => {
         } finally {
             await api.update('products', product.id, { description: before })
         }
+        expect(await csp()).toEqual([])
     })
 })
