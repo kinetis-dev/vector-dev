@@ -464,7 +464,7 @@ ends with the text so far; behind PHP-FPM, nginx closing the connection
 ends the script at its next write. A Bedrock call cannot be stopped this
 way, and runs to its deadline.
 
-A call stopped this way is still charged ({ref}`ai-departures`): a
+A call stopped this way is still charged ({ref}`when the browser leaves <ai-departures>`): a
 provider reports most of a call's tokens at the end of its stream, which
 a stopped stream never reaches, so the call is recorded with the input
 the provider reported — or an estimate when it reported none — and the
