@@ -2,7 +2,7 @@
 import type { VectorListState, VectorResource, VectorSavedView } from '#vector/app/types/vector'
 
 // Saved views: pick one, save the current list as a new one, update or
-// delete your own, share, set your default — or, where the policy allows,
+// delete your own, share, set your default, or, where the policy allows,
 // the default of everyone who has none of their own.
 const props = defineProps<{ resource: VectorResource, current: VectorListState, activeId: number | null }>()
 const emit = defineEmits<{ apply: [view: VectorSavedView | null], 'update:activeId': [id: number | null] }>()

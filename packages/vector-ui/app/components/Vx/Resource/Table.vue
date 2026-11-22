@@ -3,8 +3,8 @@ import { fieldProps, type VectorAction, type VectorExportFormat, type VectorFiel
 import type { VectorPageStep } from '#vector/app/composables/useVectorCursorPager'
 import { type Violation, violationsOf } from '#vector/app/utils/internal/violations'
 
-// The list view: a server-driven table whose every option — page, size,
-// sort, filters, search, grouping, columns — becomes one list request,
+// The list view: a server-driven table whose every option (page, size,
+// sort, filters, search, grouping, columns) becomes one list request,
 // with saved views, per-user column state, summaries, bulk operations,
 // actions and export on top.
 const props = defineProps<{ resource: VectorResource }>()

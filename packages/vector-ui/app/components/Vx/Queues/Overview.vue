@@ -2,8 +2,8 @@
 import type { VectorQueue, VectorQueuePermissions } from '#vector/app/types/vector'
 
 // The overview: GET /vector/queues every QUEUE_POLL_MS while the page is
-// visible, one request at a time — the next is scheduled only once the last
-// settled — and never after the tab is unmounted or once the server refused
+// visible, one request at a time (the next is scheduled only once the last
+// settled) and never after the tab is unmounted or once the server refused
 // the dashboard. The Failed column is there only with failed jobs.
 const props = defineProps<{ permissions: VectorQueuePermissions, failedJobs: boolean }>()
 

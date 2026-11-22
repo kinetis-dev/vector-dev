@@ -4,7 +4,7 @@ import type { Editor } from '@tiptap/core'
 import type { VectorField } from '#vector/app/types/vector'
 
 // A rich-text field: a Tiptap editor over exactly the field's schema. Its
-// value is the document as JSON text — null when empty — which the server
+// value is the document as JSON text (null when empty) which the server
 // validates against the same schema. Pasted content outside the schema is
 // dropped by construction: ProseMirror keeps only what the schema holds.
 // An image is uploaded through the field's image field and stored by its

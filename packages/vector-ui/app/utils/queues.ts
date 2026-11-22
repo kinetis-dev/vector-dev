@@ -52,7 +52,7 @@ export function compactQuery<T extends Record<string, QueueScalar>>(query: T): R
 
 /**
  * A `datetime-local` value in the browser's zone as RFC 3339 in whole seconds, UTC; '' when unset or invalid.
- * An invalid one must not reach it unnoticed — '' drops the filter — so a form checks queueLocalDateValid() first.
+ * An invalid one must not reach it unnoticed ('' drops the filter) so a form checks queueLocalDateValid() first.
  */
 export function toRfc3339(local: string): string {
     if (!local) return ''

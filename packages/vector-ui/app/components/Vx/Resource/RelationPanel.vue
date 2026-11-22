@@ -3,7 +3,7 @@ import type { VectorField, VectorRecord, VectorRelationValue, VectorResource } f
 
 // One collection of a record (hasMany or manyToMany) as a panel under
 // its show page: the related records as a server-paged table in the
-// target's own columns, and the changes the relation allows here —
+// target's own columns, and the changes the relation allows here,
 // creating a child with the parent pre-filled (hasMany), attaching and
 // detaching existing records (manyToMany).
 const props = defineProps<{

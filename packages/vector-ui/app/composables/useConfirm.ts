@@ -43,7 +43,7 @@ export function useConfirm() {
         return ask(options).then(answer => answer !== null)
     }
 
-    /** Resolves to the typed text — equal to `requireText` — on confirm, or null when declined. */
+    /** Resolves to the typed text (equal to `requireText`) on confirm, or null when declined. */
     function confirmTyped(options: ConfirmOptions & { requireText: string, requireLabel: string }): Promise<string | null> {
         return ask(options)
     }

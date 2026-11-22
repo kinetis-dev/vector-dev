@@ -555,8 +555,8 @@ describe('the Queues page', () => {
         }
 
         /**
-         * Holds the overview's poll — the setTimeout of QUEUE_POLL_MS it arms
-         * after each request — instead of arming it, so a test elapses the
+         * Holds the overview's poll (the setTimeout of QUEUE_POLL_MS it arms
+         * after each request) instead of arming it, so a test elapses the
          * interval by firing it. Every other timer (the test utilities',
          * Vuetify's) is the real one, so mounting and flushPromises work as
          * usual. Restored in the test's `finally`, and by restoreMocks.

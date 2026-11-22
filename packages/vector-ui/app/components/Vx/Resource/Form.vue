@@ -7,7 +7,7 @@ import { type Violation, violationsOf } from '#vector/app/utils/internal/violati
 // editable field, client rules mirroring the server's, and the server's
 // 422 mapped onto the field it names. It knows whether it holds unsaved
 // changes (`dirty`), and on a page offers save variants: back to the
-// record, keep editing, or (creating) start another — the last one chosen
+// record, keep editing, or (creating) start another; the last one chosen
 // remembered per user, Ctrl/Cmd+S running it.
 const props = defineProps<{
     resource: VectorResource

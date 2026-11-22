@@ -78,7 +78,7 @@ const categoriesOf = new Map<string, string[]>()
  * The plural forms a message has in `locale`, in order: the CLDR categories
  * whole counts reach there. English and German: one, other. Hebrew: one,
  * two, other. Russian, Polish, Ukrainian: one, few, many. Arabic: zero,
- * one, two, few, many, other. Chinese, Japanese, Korean: other — a single
+ * one, two, few, many, other. Chinese, Japanese, Korean: other; a single
  * form. A category only fractions or exact millions reach (French `many`
  * at 1 000 000) is not a form of its own; such a count takes `other`.
  */

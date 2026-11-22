@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { VectorField, VectorFieldState } from '#vector/app/types/vector'
 
-// A block of inputs for a loose field list — an action's dialog, a
-// settings group — sharing the record form's registry, rules and 422
+// A block of inputs for a loose field list (an action's dialog, a
+// settings group) sharing the record form's registry, rules and 422
 // mapping. The owner holds the values and the server errors.
 const props = defineProps<{
     fields: VectorField[]

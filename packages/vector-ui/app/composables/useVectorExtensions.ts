@@ -3,7 +3,7 @@ import type { AnyExtension } from '@tiptap/core'
 
 /**
  * A custom page's title or menu section: a string, or a function returning
- * one — `() => t('stock.title')` — called each time it is shown, so it
+ * one, `() => t('stock.title')`, called each time it is shown, so it
  * follows a change of language.
  */
 export type VectorPageLabel = string | (() => string)
@@ -37,7 +37,7 @@ export interface VectorInputAddon {
     component: Component
     /**
      * `below` (the default): in a row under the input, in the record form and a loose field list.
-     * `inner`: inside the input itself, at its inline end (Vuetify's `append-inner`) — only the
+     * `inner`: inside the input itself, at its inline end (Vuetify's `append-inner`); only the
      * text and textarea inputs render it.
      */
     placement: VectorInputAddonPlacement

@@ -10,15 +10,15 @@ import MarkdownIt from 'markdown-it'
 
 /**
  * The rich-text schema on the client: the Tiptap extensions a field's
- * `features` allow — the same node and mark types, with the same
- * attributes, the server's Document validates — and the sanitizer every
+ * `features` allow (the same node and mark types, with the same
+ * attributes, the server's Document validates) and the sanitizer every
  * generated HTML string passes before the one `v-html` that shows it.
  */
 
 /** Every feature a field may allow, as the server names them. */
 export const RICH_TEXT_FEATURES = ['bold', 'italic', 'underline', 'strike', 'code', 'heading', 'list', 'blockquote', 'codeBlock', 'horizontalRule', 'link', 'table', 'image', 'mention'] as const
 
-/** Links go to http(s), mailto or a relative place — the server's rule. */
+/** Links go to http(s), mailto or a relative place; the server's rule. */
 export function allowedHref(href: string): boolean {
     // Control characters and spaces are what hide a scheme, so they are stripped on purpose.
     // eslint-disable-next-line no-control-regex

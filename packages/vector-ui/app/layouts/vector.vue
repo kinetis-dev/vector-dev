@@ -29,7 +29,7 @@ async function chooseLanguage(code: string) {
         await language.choose(code)
     } catch (caught) {
         useVectorNotifications().error(t('shell.languageFailed', { error: vectorErrorMessage(caught) }))
-        // refused — say, switched off since this menu was loaded: the descriptor says what is on offer now
+        // refused, say, switched off since this menu was loaded: the descriptor says what is on offer now
         await load(true).catch(() => undefined)
     }
 }

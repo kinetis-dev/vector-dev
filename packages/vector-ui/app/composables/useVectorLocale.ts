@@ -49,8 +49,8 @@ export function useVectorLocale() {
 
     /**
      * The user picks a language: remembered as their preference, then applied
-     * — in that order, since applying it makes every page fetch its labels
-     * again, and the server answers in the preference it has — and the
+     *(in that order, since applying it makes every page fetch its labels
+     * again, and the server answers in the preference it has) and the
      * descriptor reloaded in it.
      */
     async function choose(code: string): Promise<void> {

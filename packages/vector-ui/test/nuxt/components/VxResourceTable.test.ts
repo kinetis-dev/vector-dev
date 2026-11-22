@@ -9,7 +9,7 @@ import { resource } from '../fixtures'
 
 // The list's paging when the resource cannot be counted: an uncounted
 // (withoutCount) list by page number, a cursor (cursorPaging) list by the
-// cursors the API hands out — previous and next only, no total.
+// cursors the API hands out, previous and next only, no total.
 
 const query = (request: Received) => Object.fromEntries(new URL(request.path, 'http://x').searchParams)
 const rows = (ids: number[]) => ids.map(id => ({ id, name: `Tag ${id}`, color: '#000000' }))

@@ -332,7 +332,7 @@ export type VectorFilterGroup = VectorFilters[]
 
 /**
  * The list grammar's whole filter object: field conditions, `trashed`,
- * and `or` / `and` holding more filter objects — `(a or b) and c` is
+ * and `or` / `and` holding more filter objects, `(a or b) and c` is
  * `{c: …, or: [{a: …}, {b: …}]}`.
  */
 export interface VectorFilterQuery {
@@ -488,7 +488,7 @@ export interface VectorSchema {
     settings: { name: string, label: string, icon: string | null }[]
     dashboards: { name: string, label: string, icon: string | null }[]
     /**
-     * `exportFormats`: what the export menu offers — csv always, xlsx where the server can write it (in the queue).
+     * `exportFormats`: what the export menu offers, csv always, xlsx where the server can write it (in the queue).
      * `queues`: the queue dashboard is there for this user (a queue configured, the policy lets them view);
      * `failedJobs`: it shows failed jobs too (kinetis/queue-failed-jobs installed and wired). Absent is false.
      * `queueMetrics`: it shows the job metrics too (VECTOR_QUEUE_METRICS not turned off). Absent is false.

@@ -44,7 +44,7 @@ describe('VxWidgetCard', () => {
     })
 
     // an extension type the application registered no card for: the card says so rather than
-    // guessing at a shape — no stat figure, and none of the payload, markup or not, is drawn
+    // guessing at a shape; no stat figure, and none of the payload, markup or not, is drawn
     it('says no renderer is registered for an extension type with no card, instead of drawing a stat', async () => {
         const wrapper = await mountSuspended(VxWidgetCard, { props: { widget: widget('sparkline-chart'), load: load('sparkline-chart', { value: 7, caption: '<img src=x onerror=alert(1)>' }) } })
         await settle()

@@ -3,7 +3,7 @@ import { endpoint, standaloneApi } from '../endpoints'
 import type { VectorJob } from '#vector/app/types/vector'
 
 // Following a job: polled until it settles, and stopped by the page's
-// signal — which the poll leaves as it found it, however long it ran.
+// signal, which the poll leaves as it found it, however long it ran.
 
 const job = (status: VectorJob['status']): VectorJob => ({
     id: 7, kind: 'export', resource: 'tags', name: 'Tags', actorId: '1', impersonatorId: null, status,

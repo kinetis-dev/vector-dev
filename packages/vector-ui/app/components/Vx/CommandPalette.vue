@@ -2,7 +2,7 @@
 import { fieldProps, type VectorSearchResult } from '#vector/app/types/vector'
 
 // Ctrl/Cmd+K: search every globally searchable resource, jump to a
-// record or a resource. A dialog and a list — no Labs dependency.
+// record or a resource. A dialog and a list; no Labs dependency.
 const appConfig = useAppConfig()
 const api = useVectorApi()
 const { menu, resource: resourceOf } = useVectorSchema()
@@ -36,7 +36,7 @@ watch(open, (o) => { if (!o) { query.value = ''; results.value = [] } })
 
 const keyOf = (r: VectorSearchResult) => `${r.resource}-${r.id}`
 
-/** The subtitle as its field shows it — an enum by its label — then the resource. */
+/** The subtitle as its field shows it (an enum by its label) then the resource. */
 function subtitleOf(r: VectorSearchResult): string {
     const resource = resourceOf(r.resource)
     const field = resource?.fields.find(f => f.name === resource.searchResult?.subtitle)
