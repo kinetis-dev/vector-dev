@@ -195,7 +195,7 @@ $app->instance(AiAccessInterface::class, new MyAiAccess());
 Every AI route is in the `vector` middleware group.
 
 (ai-boundary)=
-## What a model is sent
+## Data sent to the model
 
 One class, `Kinetis\VectorAi\Governance\ModelBoundary`, decides what
 any feature may send a model.
@@ -224,7 +224,7 @@ Vector publishes the bag and never reads it; `kinetis/vector-ai` does.
 A resource kept from the model whole offers no AI at all: its
 plain-language filter answers `403`, and the admin hides it.
 
-### What each tool answer keeps
+### Fields in a tool answer
 
 The assistant reads record data only through its tools, and every tool
 answer passes the boundary (`record()`, `page()`, `toolResult()`).
@@ -1233,7 +1233,7 @@ is sent as it is, as plain text. Prefer bulk proposals on `string`,
 `text` and `markdown` fields: a rich-text value the model has reshaped
 can fail the import's validation.
 
-## What the admin is told
+## Capabilities in the schema
 
 `GET /vector/schema` carries `capabilities.ai` for each user, so the
 admin offers only what the endpoints would serve:
@@ -1294,7 +1294,7 @@ The numbers are each call's own, never a counter kept in the worker:
 the tokens its answer reported or, for an assistant call that ended
 without them, an estimate.
 
-### What an assistant call is charged
+### How an assistant call is billed
 
 The charge depends on whether the provider produced output, not on
 whether an HTTP status is known. A provider reports most of a call's

@@ -49,7 +49,7 @@ The UI half is a separate package,
 
 Every feature rests on the same foundations: the operator configuration,
 the sealed provider keys, the `ai` settings group, the access policy, the
-model boundary that decides what record data a model is sent, and the
+model boundary that decides what record data is sent to a model, and the
 usage ledger that holds each user to a daily token budget. Resources and
 fields steer the model boundary and writing help through Vector's
 metadata bag:
@@ -80,7 +80,7 @@ Installing this package auto-registers, via `extra.kinetis`:
   `vector-ai:install-ui` and `vector-ai:approvals:prune`.
 - **The `ai` settings group**, *AI assistant*: each feature's switch,
   provider and model, the daily token budget, the assistant's limits and
-  what record data a model is sent.
+  what record data is sent to a model.
 - **`capabilities.ai`** in `GET /vector/schema`, from a shell
   contributor: per user, which AI features the admin offers and which
   resources and fields are kept from the model.

@@ -295,8 +295,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   such fields (`ModelBoundary::sends()`, `searches()` and
   `defaultSort()`, which `vector_describe`'s answer follows too), at most `maxToolCallsPerRun` calls, every answer cut by the
   boundary and sent after a fixed data-not-instructions preamble.
-  `ModelBoundary::record()`, `page()` and `toolResult()` decide what of a
-  record, a page, a description or a widget a model is sent (excluded
+  `ModelBoundary::record()`, `page()` and `toolResult()` decide which parts of a
+  record, a page, a description or a widget are sent to a model (excluded
   fields gone, the primary key kept, a relation's label and carried
   columns (a belongsTo's or a hasOne's) only as far as its target's
   fields may be sent, strings cut at
