@@ -262,8 +262,8 @@ final readonly class RecordWriter
 
     /**
      * Validates each repeater's rows as the child resource validates a
-     * record — a row with an `id` as an update of that child of this
-     * record, one without as a create — and pairs every row with what it
+     * record (a row with an `id` as an update of that child of this
+     * record, one without as a create) and pairs every row with what it
      * writes. `$owner` is the loaded parent (null when creating): the rows
      * its collection holds now, of which the ones not sent are removed.
      *
@@ -308,7 +308,7 @@ final readonly class RecordWriter
         }
 
         $child = $this->reader->resource($field['relation']['resource']);
-        // a row writes the repeater's fields and nothing else — the parent it belongs to least of all
+        // a row writes the repeater's fields and nothing else; the parent it belongs to least of all
         $form = $child->withoutFields(array_values(array_diff(array_keys($child->fields()), $repeater['fields'])));
         $existing = [];
 
@@ -474,8 +474,8 @@ final readonly class RecordWriter
     }
 
     /**
-     * Validated values written to a loaded entity — by the resource's own
-     * apply(), or assigned — stamped, through its before-update hook.
+     * Validated values written to a loaded entity, by the resource's own
+     * apply(), or assigned, stamped, through its before-update hook.
      *
      * @param array<string, mixed> $values
      */

@@ -11,7 +11,7 @@ use Kinetis\QueryBuilder\Query;
 
 /**
  * `vector_notifications`: the inbox. Anything Vector runs on an admin's
- * behalf — a finished job, an action that wants to say something later —
+ * behalf (a finished job, an action that wants to say something later)
  * leaves a message here; the UI polls the unread count.
  *
  * @phpstan-type NotificationRow array{id: int, kind: string, title: string, body: string|null, link: string|null, readAt: string|null, createdAt: string}

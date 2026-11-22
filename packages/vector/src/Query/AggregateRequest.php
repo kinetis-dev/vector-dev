@@ -14,9 +14,9 @@ use Kinetis\Vector\Registry\ResourceDescriptor;
  * from the request survives as SQL.
  *
  * One eligibility rule decides every field a group, a metric or the sort
- * names: it must be a field of the descriptor this user sees — what
+ * names: it must be a field of the descriptor this user sees, what
  * vector_describe lists, so a field the policy hides (`viewField`) is
- * unknown — that its list or record view shows (the list's own rule for
+ * unknown, that its list or record view shows (the list's own rule for
  * the columns it serializes, so a form-only field is refused), mapped to
  * a column, and of a type the use takes (GROUPABLE,
  * SUMMABLE, COMPARABLE). A computed, rich-text, key-value or collection
@@ -124,8 +124,8 @@ final readonly class AggregateRequest
     }
 
     /**
-     * Every field this aggregate reads: its group keys — a currency one
-     * included — and its metrics' fields.
+     * Every field this aggregate reads: its group keys (a currency one
+     * included) and its metrics' fields.
      *
      * @return list<string>
      */

@@ -11,8 +11,8 @@ use Kinetis\Vector\Store\JobStore;
 use Kinetis\Vector\Store\SettingsStore;
 
 /**
- * The staleness rule for job rows. A job moves its row itself — running,
- * a progress count, done, failed — so a worker that dies leaves the row
+ * The staleness rule for job rows. A job moves its row itself (running,
+ * a progress count, done, failed) so a worker that dies leaves the row
  * `running` with nothing to move it on. A running row that has not been
  * updated for the configured number of minutes (the Background jobs
  * settings group, 30 by default) is answered as `stalled`, and reap()

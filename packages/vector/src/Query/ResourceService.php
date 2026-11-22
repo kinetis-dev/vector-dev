@@ -28,7 +28,7 @@ use Kinetis\Vector\VectorResource;
 /**
  * The read side of the admin API. Request-scoped: it holds the request's
  * user and container. Lists run on the query builder with columns the
- * descriptor names — a request only ever chooses among them — and every
+ * descriptor names (a request only ever chooses among them) and every
  * relation display value is loaded in one statement per relation field,
  * never per row.
  */
@@ -150,13 +150,13 @@ final readonly class ResourceService
 
     /**
      * One page of the resource under the request's grammar: the bounded
-     * plan of §4.6 — scope, soft-delete predicate, filters, search,
+     * plan of §4.6, scope, soft-delete predicate, filters, search,
      * order (always terminated by the key), one page, one statement per
      * relation field, one aggregate statement when summaries are asked.
      * A withoutCount() resource reads one row past the page instead of
      * counting the match.
      *
-     * @return array<string, mixed> the Paginator envelope — with `total` and `lastPage` null and a `hasMore` when the resource is withoutCount() — or `{data, nextCursor, hasMore, perPage}` under a cursor
+     * @return array<string, mixed> the Paginator envelope, with `total` and `lastPage` null and a `hasMore` when the resource is withoutCount(), or `{data, nextCursor, hasMore, perPage}` under a cursor
      */
     public function list(ResourceDescriptor $resource, ListRequest $request, ?\Closure $restrict = null): array
     {
@@ -455,7 +455,7 @@ final readonly class ResourceService
 
     /**
      * The fields a list serializes: the requested subset of the index
-     * fields, or all of them, plus the ones their display depends on —
+     * fields, or all of them, plus the ones their display depends on,
      * and always the primary key, the row's identity, which a client
      * links, selects and edits by whether or not it shows it.
      *
@@ -592,7 +592,7 @@ final readonly class ResourceService
 
     /**
      * `q`, as one parenthesized OR group: a case-insensitive LIKE over
-     * every searchable column — LIKE on MySQL, whose collations already
+     * every searchable column, LIKE on MySQL, whose collations already
      * ignore case, ILIKE on PostgreSQL, whose LIKE does not; the full-text
      * predicate over the columns the resource's index covers; and, for a
      * searchable belongsTo, the foreign key among the related records
@@ -698,9 +698,9 @@ final readonly class ResourceService
      * no word. PostgreSQL's plainto_tsquery() takes the text as typed and
      * requires every word. MySQL's boolean mode is given the words alone,
      * so no operator of the user's survives: each is required (`+word`),
-     * except one InnoDB's defaults leave out of the index — shorter than
+     * except one InnoDB's defaults leave out of the index, shorter than
      * innodb_ft_min_token_size (3 characters, counted as code points, as
-     * InnoDB counts them), or a default stopword — which, required, would
+     * InnoDB counts them), or a default stopword, which, required, would
      * match no row at all.
      *
      * @param 'mysql'|'pgsql' $dialect
@@ -761,9 +761,9 @@ final readonly class ResourceService
     }
 
     /**
-     * The groups of the rows a list of $request matches — the same
+     * The groups of the rows a list of $request matches (the same
      * scope, soft-delete predicate, filters and search, under the same
-     * `viewAny` — with each group's metrics, in one grouped statement, and
+     * `viewAny`) with each group's metrics, in one grouped statement, and
      * one more counting the groups when there are more than the limit.
      * Each belongsTo key is the related record's id and title, read as a
      * list reads it: one statement per relation key. A date key is the
@@ -847,7 +847,7 @@ final readonly class ResourceService
 
     /**
      * A group key as SQL over a descriptor column: the column itself, or
-     * the first day of its bucket as `YYYY-MM-DD` — weeks start on Monday.
+     * the first day of its bucket as `YYYY-MM-DD`, weeks start on Monday.
      * Instants are stored in UTC, so the buckets are UTC days.
      *
      * @param 'mysql'|'pgsql' $dialect
@@ -923,7 +923,7 @@ final readonly class ResourceService
 
     /**
      * A metric as a list writes its field: a count or an integer column's
-     * sum as an integer — money in minor units — an average rounded as a
+     * sum as an integer (money in minor units) an average rounded as a
      * summary is, and a date's minimum or maximum as the record shows it.
      *
      * @param array{fn: string, type: string|null, valueType: string|null} $metric
@@ -980,7 +980,7 @@ final readonly class ResourceService
     /**
      * The identifier of the one record whose $field holds $value, through
      * the resource's scope and without trashed records: what an import
-     * updating by a key column matches a row to. One indexed statement —
+     * updating by a key column matches a row to. One indexed statement,
      * $field is the key or a unique field.
      */
     public function findByKey(ResourceDescriptor $resource, string $field, mixed $value): int|string|null
@@ -1084,8 +1084,8 @@ final readonly class ResourceService
     }
 
     /**
-     * The actions this user may run — on one record when given, on the
-     * resource otherwise — by name.
+     * The actions this user may run (on one record when given, on the
+     * resource otherwise) by name.
      *
      * @param array<string, mixed>|null $record
      * @return list<string>
@@ -1124,7 +1124,7 @@ final readonly class ResourceService
      *
      * An option carries the target's search subtitle and, when the record
      * has one, the name of its search image field (fetched through the
-     * file endpoint like any image) — each only when the field is declared
+     * file endpoint like any image); each only when the field is declared
      * and visible to this user. Both come from the same statement.
      *
      * @param list<string> $ids
@@ -1238,7 +1238,7 @@ final readonly class ResourceService
     /**
      * Whether a dependent choice is one the options would offer: the
      * target record `$id` has `$value` where the relation depends on it.
-     * No policy is asked — this validates a write, not a listing.
+     * No policy is asked; this validates a write, not a listing.
      *
      * @param array<string, mixed> $field a belongsTo field with relation.dependsOn
      */

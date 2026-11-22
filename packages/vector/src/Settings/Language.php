@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Kinetis\Vector\Settings;
 
 /**
- * The languages Vector's UI ships — English is the base every other one
- * falls back to — in Locales::SHIPPED's order, which the default-language
+ * The languages Vector's UI ships (English is the base every other one
+ * falls back to) in Locales::SHIPPED's order, which the default-language
  * choice lists them in.
  */
 enum Language: string

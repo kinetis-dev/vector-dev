@@ -12,8 +12,8 @@ use Kinetis\Persistence\Contract\PostgresLink;
  * counting the attempts that succeeded, were released for a retry and
  * failed permanently, with their summed and longest handler durations.
  *
- * Every write is one atomic upsert — MySQL's `INSERT … ON DUPLICATE KEY
- * UPDATE`, Postgres' `INSERT … ON CONFLICT … DO UPDATE` — which adds to
+ * Every write is one atomic upsert (MySQL's `INSERT … ON DUPLICATE KEY
+ * UPDATE`, Postgres' `INSERT … ON CONFLICT … DO UPDATE`) which adds to
  * the counters and keeps the larger maximum in the database itself, so
  * any number of workers, and of Fibers within one, write the same row
  * without reading it first and without losing an increment.

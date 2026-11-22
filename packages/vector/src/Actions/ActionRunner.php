@@ -29,7 +29,7 @@ use Kinetis\Vector\Write\ValueConverter;
  * record a filter matches, within the resource's bulk limit), checks
  * the policy and the action's own visibility for every record,
  * validates the dialog's values, hands the loaded entities to the
- * action, flushes once and logs the run — for every record handed over,
+ * action, flushes once and logs the run, for every record handed over,
  * or for those the response declares (ActionResponse::withRecords()).
  */
 final readonly class ActionRunner

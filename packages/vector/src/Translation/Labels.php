@@ -6,8 +6,8 @@ namespace Kinetis\Vector\Translation;
 
 /**
  * Translates what the admin shows as text in a descriptor-shaped
- * document — the schema, a settings group, a dashboard, a widget's
- * result — for one locale, at response time: the compiled registry stays
+ * document (the schema, a settings group, a dashboard, a widget's
+ * result) for one locale, at response time: the compiled registry stays
  * locale-free. A string under one of the label keys is looked up as a
  * key and kept as declared when the translator has nothing for it.
  * Values, records and rows are data and are never touched.

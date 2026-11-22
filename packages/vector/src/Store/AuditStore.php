@@ -11,8 +11,8 @@ use Kinetis\QueryBuilder\Query;
 
 /**
  * `vector_audit`: field-level history per record. The writer records
- * what changed — `{field: {from, to}}` on an update, every value on a
- * create — and who did it, impersonator included, and the channel it
+ * what changed, `{field: {from, to}}` on an update, every value on a
+ * create, and who did it, impersonator included, and the channel it
  * came through (ActorContext::$origin) when that was not the admin's own
  * hand. A null origin is not written, so an installation that has not
  * yet added the `origin` column keeps recording its own writes.

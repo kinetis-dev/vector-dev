@@ -19,7 +19,7 @@ final readonly class VisibleResources
 {
     /**
      * all()'s answer, under `all`, once it was asked: this instance's own,
-     * and so one request's — never shared.
+     * and so one request's, never shared.
      *
      * @var \ArrayObject<'all', array<string, array{descriptor: ResourceDescriptor, permissions: array<string, bool>}>>
      */
@@ -33,8 +33,8 @@ final readonly class VisibleResources
     }
 
     /**
-     * Every resource whose list this user may see — without the fields
-     * its policy hides from them — with their permissions on it. Decided
+     * Every resource whose list this user may see (without the fields
+     * its policy hides from them) with their permissions on it. Decided
      * once per request: asked again, by the descriptor, the OpenAPI
      * document or a shell contributor, it asks no policy again.
      *
@@ -63,7 +63,7 @@ final readonly class VisibleResources
 
     /**
      * $slug as this user sees it, when all() has already decided this
-     * request's list and it is on it; null otherwise — asks no policy, so a
+     * request's list and it is on it; null otherwise, asks no policy, so a
      * caller that wants one resource is not made to pay for every one.
      */
     public function decided(string $slug): ?ResourceDescriptor

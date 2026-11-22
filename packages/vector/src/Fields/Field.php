@@ -12,7 +12,7 @@ use Kinetis\Validation\Constraints\NotBlank;
  * One administered attribute of a resource, as compile-time data. A
  * field never sees a value: the request-time serializer works from the
  * array toArray() produces, keyed by `type`, so the compile boundary
- * of §4.3 holds — nothing here survives into a worker but plain data.
+ * of §4.3 holds; nothing here survives into a worker but plain data.
  */
 abstract class Field
 {
@@ -139,8 +139,8 @@ abstract class Field
     /**
      * Editable in place in the list: a click on the cell edits it, and
      * the list saves every changed cell together (POST …/changes). For
-     * simple values only — text-like, number, money, boolean, enum, date,
-     * date-time and belongsTo fields — and never a read-only one.
+     * simple values only (text-like, number, money, boolean, enum, date,
+     * date-time and belongsTo fields) and never a read-only one.
      */
     public function inlineEditable(bool $inline = true): static
     {
@@ -150,7 +150,7 @@ abstract class Field
     }
 
     /**
-     * Marks the value as unique among the resource's records — what the
+     * Marks the value as unique among the resource's records, what the
      * column's unique index already enforces. A duplicated record's form
      * starts without it, and a CSV import may use it as the key that
      * matches rows to records. The ORM's metadata does not carry indexes,

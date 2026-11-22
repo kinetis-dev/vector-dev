@@ -44,7 +44,7 @@ use Psr\Http\Message\ServerRequestInterface;
  * - failed jobs are there when, on top of that, kinetis/queue-failed-jobs
  *   is installed and its store and retrier are bound; otherwise the
  *   /vector/queues/failed routes are that 404 too, and nothing of that
- *   package is touched — it is a suggestion, not a requirement.
+ *   package is touched; it is a suggestion, not a requirement.
  * - the job metrics are there when, on top of the dashboard,
  *   VECTOR_QUEUE_METRICS has not turned them off (unset is on), read once
  *   at boot: off, nothing is recorded, the listener never builds the
@@ -98,7 +98,7 @@ final readonly class QueueDashboard
         // whichever driver it is. ConnectionFactory::fromConfig() (kinetis/database-bridge v1.4.2
         // src/ConnectionFactory.php:103) takes DB_DRIVER, `auto` when unset, and SqlConnectionFactory::create()
         // (kinetis/persistence v1.4.5 src/SqlConnectionFactory.php:56, :127-136) makes `auto` the native async
-        // pool under FrankenPHP or RoadRunner and PDO everywhere else — PHP-FPM and a CLI `queue:work`, as in the
+        // pool under FrankenPHP or RoadRunner and PDO everywhere else, PHP-FPM and a CLI `queue:work`, as in the
         // demo. Both are safe:
         // - the native clients are pools with one statement in flight per connection, "and callers beyond it
         //   wait for a connection like any pool" (src/Driver/MysqliAsyncClient.php:46-49,
@@ -158,7 +158,7 @@ final readonly class QueueDashboard
         return $this->available($policy, $actor) && $this->failedJobsWired();
     }
 
-    /** kinetis/queue-failed-jobs installed, and its store and retrier bound — by its own bootstrap or the application's. */
+    /** kinetis/queue-failed-jobs installed, and its store and retrier bound, by its own bootstrap or the application's. */
     public function failedJobsWired(): bool
     {
         return $this->failedJobsInstalled

@@ -14,11 +14,11 @@ use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
- * Records every attempt kinetis/queue's worker settles — succeeded,
- * released for a retry, failed permanently — into its minute's row of
+ * Records every attempt kinetis/queue's worker settles (succeeded,
+ * released for a retry, failed permanently) into its minute's row of
  * `vector_queue_metrics`, keyed by queue and job class (the events carry
  * no connection name). Discovered from its #[Listener] methods under the
- * `extra.kinetis.scan` root, Kinetis\Vector\ — nothing registers it.
+ * `extra.kinetis.scan` root, Kinetis\Vector\; nothing registers it.
  *
  * Metrics must never cost a job its outcome: the worker dispatches these
  * events only after the backend has settled the job, and a failed write
@@ -29,7 +29,7 @@ use Throwable;
  * every event returns before anything is resolved: no write, no metrics
  * store, no database link, no warning. That is why the store is
  * resolved from the application scope on each write rather than
- * injected — an injected one would be built, with its link, for every
+ * injected; an injected one would be built, with its link, for every
  * job of an application that turned metrics off.
  *
  * Autowired per job scope, so an instance sees one job's events at most;

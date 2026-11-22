@@ -15,8 +15,8 @@ use Kinetis\Http\CurrentUserInterface;
  * the job row remembered. Read by every log and audit row Vector writes.
  *
  * `origin` names the channel a write came through when it was not the
- * admin's own hand — a short token such as `assistant`, which History
- * shows beside the entry — and is null otherwise. Whoever writes through
+ * admin's own hand (a short token such as `assistant`, which History
+ * shows beside the entry) and is null otherwise. Whoever writes through
  * another channel registers an ActorContext carrying it on that
  * request's scope before anything that writes is resolved.
  */

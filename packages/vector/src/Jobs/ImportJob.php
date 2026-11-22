@@ -20,20 +20,20 @@ use Kinetis\Vector\Store\JobStore;
 use Kinetis\Vector\Write\RecordWriter;
 
 /**
- * A CSV import: every row becomes one create — or, updating by a key
- * column, one update of the record the key finds — through the same
+ * A CSV import: every row becomes one create (or, updating by a key
+ * column, one update of the record the key finds) through the same
  * writer a form uses, so every rule, policy, hook and audit entry
  * applies. A row the writer refuses lands in the failed-rows file with
- * the reason; the rest are written. Rows are processed one by one — a
- * failure never rolls back the rows before it — so a re-run must start
- * from the failed-rows file. A failure that is not about the row — the
- * connection, the worker — fails the job instead, at the row it reached.
+ * the reason; the rest are written. Rows are processed one by one (a
+ * failure never rolls back the rows before it) so a re-run must start
+ * from the failed-rows file. A failure that is not about the row (the
+ * connection, the worker) fails the job instead, at the row it reached.
  */
 final readonly class ImportJob implements Job
 {
     /**
      * @param array<string, string> $mapping CSV header => field name
-     * @param string $mode create, update or upsert — validated by RowMapper::validateMapping()
+     * @param string $mode create, update or upsert, validated by RowMapper::validateMapping()
      * @param string|null $key the field update and upsert match rows by
      */
     public function __construct(
@@ -97,8 +97,8 @@ final readonly class ImportJob implements Job
                 }
             } catch (ValidationException $e) {
                 $failed[] = [...$row, 'error' => implode('; ', array_map(static fn (Violation $v): string => implode('.', array_map('strval', $v->path)) . ' ' . $v->message, $e->violations))];
-                // a refused row may still be pending — a failed flush keeps its insert, a hook's refusal
-                // the values already assigned — and the next row's flush would send it again
+                // a refused row may still be pending (a failed flush keeps its insert, a hook's refusal
+                // the values already assigned) and the next row's flush would send it again
                 $manager->clear();
             } catch (VectorException | AuthorizationException $e) {
                 $failed[] = [...$row, 'error' => $e->getMessage()]; // refused by a policy or a rule: this row's failure
@@ -119,7 +119,7 @@ final readonly class ImportJob implements Job
 
     /**
      * One row written: a create, or the update of the record its key
-     * finds — or, upserting, a create when it finds none.
+     * finds, or, upserting, a create when it finds none.
      *
      * @param array<string, string> $row
      * @return 'created'|'updated'

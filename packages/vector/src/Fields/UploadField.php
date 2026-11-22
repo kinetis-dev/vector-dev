@@ -6,8 +6,8 @@ namespace Kinetis\Vector\Fields;
 
 /**
  * A field whose value is the storage key of an uploaded file. The upload
- * endpoint accepts a file only when its content — detected from its
- * bytes, never from the name or type the client sent — is one of the
+ * endpoint accepts a file only when its content (detected from its
+ * bytes, never from the name or type the client sent) is one of the
  * formats accept() lists, and within maxBytes(); it stores the file
  * privately under a key it generates. A written value must be such a
  * key, issued for this field, or the value already stored.

@@ -19,12 +19,12 @@ use Kinetis\Vector\Registry\VectorRegistry;
 use Throwable;
 
 /**
- * Turns a raw input value into the typed value a compiled field holds —
+ * Turns a raw input value into the typed value a compiled field holds,
  * a related entity is loaded through the manager of the connection that
  * entity lives on, and only when the target's scope() lists it for this
- * user, so a value never points at a record its author may not see —
+ * user, so a value never points at a record its author may not see,
  * and runs the field's compiled rules. Shared by record writes, action
- * dialogs, settings pages and — in its query-string form — list
+ * dialogs, settings pages and (in its query-string form) list
  * filters, so one conversion vocabulary serves every input Vector
  * accepts. Pure per call; the reader that answers the scope question is
  * resolved from the request on demand, since it takes this converter.
@@ -285,8 +285,8 @@ final readonly class ValueConverter
 
     /**
      * The case whose value is $raw, or null. Under strict types tryFrom()
-     * throws a TypeError for the other scalar — a string for an int-backed
-     * enum, an int for a string-backed one — so that is no case either.
+     * throws a TypeError for the other scalar (a string for an int-backed
+     * enum, an int for a string-backed one) so that is no case either.
      *
      * @param class-string<BackedEnum> $enum
      */

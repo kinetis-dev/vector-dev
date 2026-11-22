@@ -80,7 +80,7 @@ final readonly class FileService
     }
 
     /**
-     * The record's file for $fieldName — or, with $key, an image one of the
+     * The record's file for $fieldName, or, with $key, an image one of the
      * record's rich-text documents shows from that field's uploads.
      */
     public function download(ResourceDescriptor $resource, string $id, string $fieldName, ?string $key = null): ResponseInterface
@@ -139,7 +139,7 @@ final readonly class FileService
 
     /**
      * Whether $value is a key this service issued for $resource's $field
-     * and the file is stored — what a written file value must be.
+     * and the file is stored, what a written file value must be.
      */
     public function issued(ResourceDescriptor $resource, string $fieldName, string $value): bool
     {
@@ -155,8 +155,8 @@ final readonly class FileService
      * path with no empty, `.` or `..` segment, no backslash and no
      * control character, so the storage cannot resolve it elsewhere;
      * and, inside Vector's own `vector/` prefix, only under this
-     * field's. A key written outside Vector — the application's own, or
-     * one typed while uploads were unavailable — keeps being served.
+     * field's. A key written outside Vector (the application's own, or
+     * one typed while uploads were unavailable) keeps being served.
      */
     private static function servable(ResourceDescriptor $resource, string $fieldName, string $key): bool
     {
@@ -206,7 +206,7 @@ final readonly class FileService
     /**
      * The editable fields whose value an upload to $fieldName becomes: the
      * field itself, and every rich-text field that uploads its images
-     * through it — the image field need not be on a form of its own.
+     * through it; the image field need not be on a form of its own.
      *
      * @return list<array<string, mixed>>
      */

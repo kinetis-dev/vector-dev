@@ -15,7 +15,7 @@ use Kinetis\Vector\Write\ValueConverter;
  * through the mapping the admin chose: text is parsed by each field's
  * value type (the same parser list filters use), an empty cell is null, a
  * manyToMany takes `a|b|c` identifiers. What comes out is still raw
- * input — the writer validates it like any request.
+ * input; the writer validates it like any request.
  *
  * An import creates records (`create`), updates the records a key column
  * finds (`update`), or does whichever a row needs (`upsert`). The key is
@@ -29,7 +29,7 @@ final readonly class RowMapper
 
     /**
      * The mapping's fields must exist, be written by the mode's view
-     * (create, update, or either for an upsert — a row then refuses what
+     * (create, update, or either for an upsert; a row then refuses what
      * its own path does not take), and not be named twice; update and
      * upsert need a key, mapped, that identifies one record.
      *

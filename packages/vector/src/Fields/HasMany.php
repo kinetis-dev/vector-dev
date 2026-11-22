@@ -29,7 +29,7 @@ final class HasMany extends RelationField
 
     /**
      * Edits an owned relation's rows inside the parent's form: the whole
-     * list is sent with the parent and written in its transaction — a
+     * list is sent with the parent and written in its transaction; a
      * row with an `id` updates that child, one without creates it, and a
      * child left out is deleted. `$fields` picks the child's fields a row
      * shows (every one it can write by default, never the one pointing

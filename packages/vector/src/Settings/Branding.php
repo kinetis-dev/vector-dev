@@ -12,9 +12,9 @@ use Kinetis\Vector\Fields\Url;
 
 /**
  * The first settings group: what the shell shows about the
- * application. Every value is structured data the UI renders escaped —
- * a title, a logo URL, two theme colours, a footer line, a default
- * theme — so an admin changes the admin's look without a deployment
+ * application. Every value is structured data the UI renders escaped
+ * (a title, a logo URL, two theme colours, a footer line, a default
+ * theme) so an admin changes the admin's look without a deployment
  * and without ever injecting markup (§4.15).
  */
 #[Settings]

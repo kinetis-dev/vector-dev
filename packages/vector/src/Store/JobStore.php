@@ -12,7 +12,7 @@ use Kinetis\QueryBuilder\Query;
 /**
  * `vector_jobs`: the row a background job reports into. The queue holds
  * the job itself; this row is what the admin who started it polls, and
- * where an export leaves its file — base64, so one text-safe column
+ * where an export leaves its file, base64, so one text-safe column
  * serves MySQL and PostgreSQL alike. Request-neutral: holds the link only.
  *
  * @phpstan-type JobRow array{id: int, kind: string, resource: string, name: string, actorId: string, impersonatorId: string|null, status: string, total: int|null, processed: int, result: array<string, mixed>|null, failure: string|null, hasFile: bool, fileName: string|null, createdAt: string, updatedAt: string, finishedAt: string|null}
@@ -105,8 +105,8 @@ final readonly class JobStore
 
     /**
      * Marks a queued job running: true when this call made the
-     * transition, false when the row was not queued — already running,
-     * done or failed — which is how a redelivered job knows not to run
+     * transition, false when the row was not queued (already running,
+     * done or failed) which is how a redelivered job knows not to run
      * again. One conditional update, so two workers cannot both win.
      */
     public function start(int $id, ?int $total = null): bool

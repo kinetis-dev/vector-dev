@@ -14,8 +14,8 @@ use Kinetis\Vector\Registry\ResourceDescriptor;
  * the serialized rows the policy saw, plus the dialog's converted
  * values. Empty lists for a standalone action, and for the request
  * VectorAction::finish() is given. `jobId` is the background job a
- * queued action's chunk runs in — the same for every chunk of one run,
- * and for its finish() — and null on the synchronous path.
+ * queued action's chunk runs in, the same for every chunk of one run,
+ * and for its finish(), and null on the synchronous path.
  */
 final readonly class ActionRequest
 {

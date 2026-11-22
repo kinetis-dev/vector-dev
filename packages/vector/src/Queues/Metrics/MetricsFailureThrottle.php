@@ -10,7 +10,7 @@ namespace Kinetis\Vector\Queues\Metrics;
  * warning a minute says so without burying the worker's own log.
  *
  * Bound once on AppScope by {@see \Kinetis\Vector\Queues\QueueDashboard::register()},
- * so its one piece of state — when it last allowed a line — is shared by
+ * so its one piece of state (when it last allowed a line) is shared by
  * every job a worker runs, and is an instance property, never a static.
  * It holds nothing about any job.
  */

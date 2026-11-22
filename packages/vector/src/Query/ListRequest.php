@@ -14,7 +14,7 @@ use Kinetis\Vector\Write\ValueConverter;
  * The list endpoint's query string, validated against the descriptor:
  * every sort names a sortable field, every filter a filterable field
  * and an operator it admits, the page size stays within the resource's
- * bound, and nothing from the request survives as text — every column
+ * bound, and nothing from the request survives as text; every column
  * here came from the descriptor.
  *
  * Grammar: `page`, `perPage`, `sort=-a,b`, `filter[f][op]=v` (or
@@ -24,7 +24,7 @@ use Kinetis\Vector\Write\ValueConverter;
  * pagination by the primary key.
  *
  * The conditions of a filter object must all hold. `filter[or][i]` holds
- * alternatives — filter objects of their own, any one of which may hold —
+ * alternatives (filter objects of their own, any one of which may hold)
  * and `filter[and][i]` combines several such objects, so
  * `(a or b) and (c or d)` is `and[0][or]…&and[1][or]…`. Groups nest at
  * most MAX_DEPTH deep and hold at most MAX_CONDITIONS conditions in all.
@@ -357,8 +357,8 @@ final readonly class ListRequest
     }
 
     /**
-     * One field's conditions — `filter[f][op]=v`, or `filter[f]=v` for
-     * equality — as predicates, counted against MAX_CONDITIONS.
+     * One field's conditions (`filter[f][op]=v`, or `filter[f]=v` for
+     * equality) as predicates, counted against MAX_CONDITIONS.
      *
      * @return list<Predicate>
      */

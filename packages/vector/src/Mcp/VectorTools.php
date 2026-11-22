@@ -29,7 +29,7 @@ use Kinetis\Vector\Write\ValueConverter;
 /**
  * The admin API as MCP tools: the same services the controllers call,
  * the same policies, the same list grammar. Every tool injects
- * CurrentUserInterface, so over stdio — where no middleware runs — the
+ * CurrentUserInterface, so over stdio (where no middleware runs) the
  * class cannot be built and every tool fails closed; over HTTP the
  * application's middleware in the `mcp` group identifies the caller,
  * and the access policy is asked here as the `vector` group would.
@@ -319,7 +319,7 @@ final readonly class VectorTools
     /**
      * A page whose rows carry only $keep, and the markers a row always
      * carries (`_version`, `_trashed`): what a list adds for a field's
-     * display — a computed value's sources, a money field's currency — goes.
+     * display (a computed value's sources, a money field's currency) goes.
      *
      * @param array<string, mixed> $page
      * @param list<string> $keep

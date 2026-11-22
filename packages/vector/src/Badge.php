@@ -6,7 +6,7 @@ namespace Kinetis\Vector;
 
 /**
  * A count shown beside a resource in the menu: the records matching a
- * filter in the list grammar — `['status' => ['eq' => 'open']]` — as the
+ * filter in the list grammar (`['status' => ['eq' => 'open']]`) as the
  * user's own list would count them, scope and soft deletion included.
  */
 final readonly class Badge

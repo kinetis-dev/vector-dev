@@ -186,8 +186,8 @@ final class ResourceCompiler
     }
 
     /**
-     * Compiles a field that maps no entity property — an action's or a
-     * settings group's input — inferring the value type from the field
+     * Compiles a field that maps no entity property (an action's or a
+     * settings group's input) inferring the value type from the field
      * type. A belongsTo resolves to a registered resource's slug.
      *
      * @param array<string, string> $slugByClass resource class => slug
@@ -349,7 +349,7 @@ final class ResourceCompiler
     /**
      * A money field priced in a related record's currency
      * (`currencyField('order.currency')`) has that relation carry the
-     * currency with its value — `{id, label, currency}` — so a list or a
+     * currency with its value (`{id, label, currency}`) so a list or a
      * record shows it without a request of its own. The related field must
      * be a text column of the target resource.
      *
@@ -386,8 +386,8 @@ final class ResourceCompiler
 
     /**
      * A repeater's rows are its child resource's fields, known only once
-     * every resource is compiled: the ones a row may write — or those the
-     * repeater names — never the field pointing back at the parent. A
+     * every resource is compiled: the ones a row may write (or those the
+     * repeater names) never the field pointing back at the parent. A
      * child field required to create a row must be among them, and a
      * soft-deleting child cannot be one, since leaving a row out deletes it.
      *
@@ -743,8 +743,8 @@ final class ResourceCompiler
     }
 
     /**
-     * A field another field's display depends on — a money field's
-     * currency — is serialized with every view that shows the
+     * A field another field's display depends on (a money field's
+     * currency) is serialized with every view that shows the
      * dependent field, whether or not it is displayed itself.
      *
      * @param list<string> $visible

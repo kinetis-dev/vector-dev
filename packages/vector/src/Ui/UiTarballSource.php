@@ -8,7 +8,7 @@ namespace Kinetis\Vector\Ui;
  * Where `vector:install-ui` finds a published @kinetis/vector-ui: the
  * registry's answer for one version, and the tarball it names.
  * HttpsTarballSource is the one implementation; the command checks what
- * a source returns — https URLs, a sha512 integrity — rather than
+ * a source returns (https URLs, a sha512 integrity) rather than
  * trusting it.
  */
 interface UiTarballSource

@@ -11,7 +11,7 @@ use Kinetis\Vector\Store\SettingsStore;
 /**
  * The language one request is answered in: the language the user chose
  * in the app bar, while the administrator has it switched on, else the
- * administrator's default — English unless changed. The browser's
+ * administrator's default, English unless changed. The browser's
  * languages play no part: until users choose, the administrator decides.
  * Holds no state: the user is an argument.
  */

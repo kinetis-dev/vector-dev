@@ -19,9 +19,9 @@ use Psr\Http\Message\ServerRequestInterface;
 
 /**
  * The job metrics, in the same `vector` middleware group as
- * {@see QueuesController}, behind the same gate — the Kernel's own 404
+ * {@see QueuesController}, behind the same gate, the Kernel's own 404
  * unless a queue is configured and the policy's view() lets the actor
- * look — asked before anything else, and that same 404 when
+ * look, asked before anything else, and that same 404 when
  * VECTOR_QUEUE_METRICS turned the metrics off. They are Vector's own table, on
  * Vector's own connection, so they need nothing of
  * kinetis/queue-failed-jobs. Then the query is validated (an unwatched
@@ -48,7 +48,7 @@ final readonly class MetricsController
 
     /**
      * Query: `queue`, `class`, `from` and `to` (unix seconds; the last
-     * 60 minutes by default, at most 7 days) — see {@see MetricsQuery}.
+     * 60 minutes by default, at most 7 days), see {@see MetricsQuery}.
      *
      * @return array{data: array<string, mixed>}
      */
@@ -132,7 +132,7 @@ final readonly class MetricsController
 
     /**
      * A queue's or a class's totals over the window. `failureRate` is the
-     * share of finished jobs — succeeded or failed permanently — that
+     * share of finished jobs (succeeded or failed permanently) that
      * failed, null when none finished (only releases); a release is an
      * attempt, not an outcome. `lastProcessedAt` is unix seconds.
      *

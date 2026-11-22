@@ -13,7 +13,7 @@ use Kinetis\Persistence\Contract\SqlLink;
  * The SQL dialect of each connection an administered entity lives on,
  * for the few statements Vector writes by hand (search, the `contains`
  * filter, summaries). Read from the link the application bound for the
- * connection — the default `SqlLink`, or a `db.<name>` binding — and
+ * connection (the default `SqlLink`, or a `db.<name>` binding) and
  * otherwise from the connection's `DB_CONNECTION` / `DB_<NAME>_CONNECTION`
  * key, the same key the bridge builds that connection's link from.
  *

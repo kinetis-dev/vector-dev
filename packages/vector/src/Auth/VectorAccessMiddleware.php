@@ -31,7 +31,7 @@ final readonly class VectorAccessMiddleware implements MiddlewareInterface
     #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        // every answer of the admin API — a refusal included — is about one account; a shared browser or proxy keeps none of it
+        // every answer of the admin API (a refusal included) is about one account; a shared browser or proxy keeps none of it
         return self::noStore($this->answer($request, $handler));
     }
 
