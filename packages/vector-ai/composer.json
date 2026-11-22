@@ -1,6 +1,6 @@
 {
     "name": "kinetis/vector-ai",
-    "description": "AI for Kinetis Vector, on kinetis/neuron. This release offers plain-language filters on the admin's lists, an in-admin assistant that reads and proposes changes a person approves, and writing help in text, Markdown and rich-text inputs, over provider configuration, sealed provider keys, the AI settings, a model boundary and a usage ledger.",
+    "description": "AI for the Kinetis Vector admin, on kinetis/neuron: plain-language filters, an assistant that reads and proposes changes a person approves, writing help in text, Markdown and rich-text inputs, and bulk rewrite proposals, with sealed provider keys, a model boundary and a daily token budget.",
     "keywords": [
         "kinetis",
         "vector",
