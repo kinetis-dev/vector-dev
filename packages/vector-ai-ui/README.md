@@ -37,8 +37,8 @@ that adds, through the admin's own extension points:
 - **writing help**: a menu behind an icon inside the text inputs of a
   resource's create and edit forms (not in bulk edit or action dialogs),
   and in the rich-text and Markdown editors' toolbars. It rewrites,
-  shortens, corrects or translates the text — the selection, or the whole
-  text while nothing is selected — and shows the answer beside it to
+  shortens, corrects or translates the text (the selection, or the whole
+  text while nothing is selected) and shows the answer beside it to
   replace or discard. It is not offered on a field the server has writing
   help off for (`capabilities.ai.noWriting`: a unique string such as a
   SKU, or a field with the `ai.writing` meta false);
@@ -81,4 +81,4 @@ policy, in
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

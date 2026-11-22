@@ -26,7 +26,7 @@ monorepo, beside its admin UI and a demo application.
 Declare *resources* over your `kinetis/orm` entities. Vector compiles
 them into one immutable descriptor at `kinetis build`, serves a REST
 admin API from it, runs actions and background jobs, and exposes the
-same services as MCP tools — under your application's authentication
+same services as MCP tools, under your application's authentication
 and per-resource policies. The admin UI is a separate package,
 [`@kinetis/vector-ui`](https://www.npmjs.com/package/@kinetis/vector-ui),
 which renders the descriptor and contains no application knowledge.
@@ -52,8 +52,8 @@ final class ProductResource extends VectorResource
 }
 ```
 
-Everything a request may name — a field, a column, a sort, a filter, an
-action, a widget — is checked against the compiled descriptor, so no
+Everything a request may name (a field, a column, a sort, a filter, an
+action, a widget) is checked against the compiled descriptor, so no
 request text ever reaches SQL as an identifier. Everything that runs per
 request is built by the request container; nothing Vector holds on the
 application scope carries request state.
@@ -137,4 +137,4 @@ documentation:
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

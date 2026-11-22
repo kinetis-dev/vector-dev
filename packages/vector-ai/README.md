@@ -105,11 +105,11 @@ is a provider's name in upper case, a dash written as an underscore.
 | Key | Default | Purpose |
 |---|---|---|
 | `VECTOR_AI_PROVIDERS` | *(unset)* | The providers the admin may call, by name; unset, no AI feature is offered. |
-| `VECTOR_AI_<NAME>_TYPE` | — | `openai`, `anthropic`, `openai-like`, `ollama`, `bedrock` or `fake`. |
+| `VECTOR_AI_<NAME>_TYPE` | *(none)* | `openai`, `anthropic`, `openai-like`, `ollama`, `bedrock` or `fake`. |
 | `VECTOR_AI_<NAME>_BASE_URL` | *(the type's)* | The provider's API; required for `openai-like` and `ollama`. |
 | `VECTOR_AI_<NAME>_KEY` | *(unset)* | The provider's API key; unset, an administrator stores one on the Settings page. |
 | `VECTOR_AI_<NAME>_MODELS` | *(unset)* | The models the settings may choose; unset admits any. |
-| `VECTOR_AI_<NAME>_REGION` | — | The AWS region of a `bedrock` provider. |
+| `VECTOR_AI_<NAME>_REGION` | *(none)* | The AWS region of a `bedrock` provider. |
 | `VECTOR_AI_KEY` | *(unset)* | `base64:` and 32 random bytes, which seal administrators' provider keys; unset, none can be stored. |
 | `VECTOR_AI_TIMEOUT` | `90` | Seconds per provider call. |
 | `VECTOR_AI_MAX_RESPONSE_BYTES` | `4194304` | The largest provider response read. |
@@ -142,4 +142,4 @@ instead of `@kinetis/vector-ui` (see its README). The hosted admin that
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

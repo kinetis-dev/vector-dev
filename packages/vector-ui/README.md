@@ -24,8 +24,8 @@ monorepo, beside its PHP package and a demo application.
 
 The admin UI for [`kinetis/vector`](https://packagist.org/packages/kinetis/vector):
 a Nuxt 4 layer on Vuetify 4 that renders the descriptor the API
-publishes — navigation, lists, forms, relation panels, actions,
-dashboards, jobs, settings — and contains no application knowledge. An
+publishes (navigation, lists, forms, relation panels, actions,
+dashboards, jobs, settings) and contains no application knowledge. An
 application is a Nuxt app that extends the layer, served as a static
 site on its own origin with a bearer token (standalone), or installed
 into the PHP application and served at `/vector/ui` behind its session
@@ -77,4 +77,4 @@ Cells, inputs, widgets and runtime extensions:
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
