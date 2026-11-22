@@ -38,7 +38,7 @@ use Kinetis\Vector\Store\JobStore;
  */
 final class VectorQueue
 {
-    /** kinetis/queue's queue-name grammar: letters, digits, hyphens and underscores, 1–80 characters. */
+    /** kinetis/queue's queue-name grammar: letters, digits, hyphens and underscores, 1 to 80 characters. */
     private const string QUEUE_NAME = '/^[A-Za-z0-9_-]{1,80}$/D';
 
     private ?QueueInterface $built = null;
