@@ -34,8 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Vuetify set gains `VNavigationDrawer`, `VToolbar`,
   `VProgressCircular` and `VBadge`.
 - The types carry `meta` on resources and fields.
-- History shows a write's origin as a chip — *via assistant* for the AI
-  assistant's approved proposals — from `record.audit.origin.<token>`,
+- History shows a write's origin as a chip (*via assistant* for the AI
+  assistant's approved proposals), from `record.audit.origin.<token>`,
   or the token itself when it has no message.
 
 ### Changed
@@ -268,15 +268,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the forms, the settings, bulk edit, action dialogs, inline list edits
   and uploads, instead of being read as one: a `null` entry made a form
   or the list's changeset fail without showing anything.
-- A record form shows a server error on a field it does not show — hidden
-  by `visibleWhen`, or preset by the relation the form was opened from —
+- A record form shows a server error on a field it does not show (hidden
+  by `visibleWhen`, or preset by the relation the form was opened from)
   above the form, under the field's label; it was shown nowhere, and the
   save failed without a reason.
 
 ### Security
 
 - An action answering `ActionResponse::openUrl()` opens the URL only
-  when it is http(s), mailto or relative — the rule a URL cell and a
+  when it is http(s), mailto or relative: the rule a URL cell and a
   rich-text link follow. A `javascript:` or `data:` URL, which an action
   echoing a record's value could return, is no longer opened.
 - A notification's link is followed only when it is a path of the

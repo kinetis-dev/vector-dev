@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The assistant has `vector_aggregate` among its reads, governed like
   the others: refused when its `groupBy`, a metric, its `filter`, `sort`
-  or `q` touches a field kept from the model — a money metric's currency
-  field included — its answer sent after the preamble through
+  or `q` touches a field kept from the model (a money metric's currency
+  field included), its answer sent after the preamble through
   `ModelBoundary::toolResult()`, with a belongsTo key's label left out
   when the related resource's title field may not be sent. The system
   prompt tells the model to aggregate rather than add up or count rows,
@@ -22,10 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   action a resource opts into by listing a subclass (naming the field
   and a `WritingOperation`, with optional `targetLocale()` and
   `instructions()`) in its `actions()`. It runs writing help's rules as
-  the admin who started it — a misconfigured run, including a field not
+  the admin who started it (a misconfigured run, including a field not
   on the detail view, fails before any provider call, and one that stops
   being available after a chunk has run sends no more (`unavailable`)
-  but still delivers its CSV — makes one single-shot writing call per
+  but still delivers its CSV), makes one single-shot writing call per
   record, skips and counts a record they may not update or with no text,
   counts a failed call by category whatever it throws and an empty
   answer as `empty_answer`, stops calling once the day's budget is spent
@@ -82,7 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   refused.
 
 - Writing help is off by default for a `string` field marked
-  `->unique()`: a unique short string is an identifier — a SKU, a code —
+  `->unique()`: a unique short string is an identifier (a SKU, a code),
   not prose. `WritingGuard::helps()` decides it (with the `ai.writing`
   override), and the writing endpoint and `ProposeRewrites` refuse such a
   field with the `403` they answer for any other field that is no text
@@ -117,8 +117,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and from an approve or reject of that row, which then answers 409
   `failed` instead of `executing`. It is never executed again.
 - An approval that threw is recorded as *The change failed, but it may
-  have been made before it did. Check the record's History.* — the
-  write may have committed — and the assistant tells the person the
+  have been made before it did. Check the record's History.* (the
+  write may have committed) and the assistant tells the person the
   outcome is unknown.
 - The conversation sent to the provider alternates roles: a fixed
   assistant turn goes between two adjacent user-role turns (an answer
@@ -131,8 +131,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A proposal Vector's own permissions would refuse the person (`create`,
   or the record's `update` or `delete`) is refused when it is proposed,
   instead of showing a card the approval would only fail.
-- A conversation that opens with the assistant — as one the browser
-  trimmed from its start can — has its turns before the first user-role
+- A conversation that opens with the assistant (as one the browser
+  trimmed from its start can) has its turns before the first user-role
   one dropped before it is sent to the provider, which Bedrock otherwise
   refused.
 - `capabilities.ai.assistantWrites` is offered only to someone the
@@ -157,7 +157,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   per row, search column and reference: a page of 25 rows asks the
   `viewField` policy once per field instead of 25 times.
 - The model is no longer sent the text of a refusal that failed an
-  approved change — a validation, policy or hook message, which can
+  approved change: a validation, policy or hook message, which can
   quote record values and fields kept from it (`ai.send` false). It is
   told `ModelBoundary::writeFailure()` instead: for a validation
   refusal, which fields the boundary lets through failed and their rule
@@ -166,25 +166,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A forced delete (`vector_delete` with `force: true`) is proposed only
   when the person's policy grants `forceDelete` on the record, asked
   through the gate as Vector's own forced delete (`RecordWriter`) asks
-  it — of a live record as of a trashed one, so a live record's forced
+  it, of a live record as of a trashed one, so a live record's forced
   delete is no longer refused because the trash's
   `recordPermissions()['forceDelete']` is false for it; `delete` alone
   does not let it through, and a resource that does not soft-delete has
   none.
 - A streamed assistant run the browser left is told apart from a failed
   one by an explicit rule, not by the exception's type: it ended because
-  the browser left only when the application stopped it — its stream
+  the browser left only when the application stopped it: its stream
   asked the run's `Assistant\DepartureSignal` (the stop closure
   `AssistantController` hands the provider) and was stopped, or
   `Assistant::told()` saw the connection gone between two steps and did
   not advance the run. Such a run is logged at info (`An assistant run
   ended after the browser left.`, outcome `client_gone`), never as
-  `answered`, with no provider warning. Everything else — a Bedrock
+  `answered`, with no provider warning. Everything else (a Bedrock
   refusal, a cut stream, a tool's exception, a runaway model, a database
-  error — is the run's failure, logged as one whether or not the browser
+  error) is the run's failure, logged as one whether or not the browser
   is still there. The connection decides only whether frames are
   written: once it is gone nothing more is, and the run is advanced no
-  further — a browser gone before the first step sends no request — so
+  further (a browser gone before the first step sends no request), so
   the model is not called again and nothing is proposed for nobody.
 - An assistant call is charged by whether the provider produced output:
   a complete answer as reported; an answer the departure stopped with
@@ -193,7 +193,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a failure after the provider streamed anything, estimated
   (`AssistantLedger::ESTIMATE_BYTES`, 4 bytes a token of what was sent
   and streamed back, tool definitions not counted); a failure with
-  nothing streamed — no connection, an HTTP or Bedrock refusal — at 0,
+  nothing streamed (no connection, an HTTP or Bedrock refusal) at 0,
   however often it is retried. An estimated row's outcome ends in
   `:estimated`; each call is one row, each side the larger of reported
   and estimated, never their sum.
@@ -202,8 +202,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   refused to the model as a tool error (`ProposingTool::TOO_DEEP`) and
   never stored, and `ApprovalStore::propose()` refuses one too: before,
   it was stored and could then never be approved or rejected.
-- An approved change whose result nests deeper than that — an update of
-  a record with deeply nested JSON — is stored with
+- An approved change whose result nests deeper than that (an update of
+  a record with deeply nested JSON) is stored with
   `ApprovalStore::TOO_DEEP` (`{"truncated": "too_deep"}`) as its result
   instead: the approval still settles, and the conversation that replays
   it no longer fails on every read.
@@ -233,8 +233,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   connection as its second argument.
 - The assistant's whole answer (`Accept: application/json`) gives each
   of its `toolCalls` as `{"name": …, "ok": true|false}` instead of the
-  bare name: `ok` is false for a call that was a tool error — a refusal,
-  a validation failure, a spent budget — as the stream tells it by
+  bare name: `ok` is false for a call that was a tool error (a refusal,
+  a validation failure, a spent budget), as the stream tells it by
   `tool-output-error`. A proposal waiting for approval answered: it is
   `ok`. `ToolBudget::calls()` and `settle()` keep each call's outcome;
   `names()` still lists the tools for the run's log line.
@@ -290,7 +290,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ModelBoundary::record()`, `page()` and `toolResult()` decide what of a
   record, a page, a description or a widget a model is sent (excluded
   fields gone, the primary key kept, a relation's label and carried
-  columns — a belongsTo's or a hasOne's — only as far as its target's
+  columns (a belongsTo's or a hasOne's) only as far as its target's
   fields may be sent, strings cut at
   2,000 characters, at most 25 rows; a widget whose link leads to a
   resource kept from the model refused, and a table's row keys and
@@ -305,7 +305,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Writing help: `POST /vector/ai/writing/{resource}/{field}` rewrites,
   shortens, corrects or translates one field's text
   (`{operation, text, format, targetLocale, instructions, recordId}` in,
-  `{text, operation, model, truncated}` out) and writes nothing — the
+  `{text, operation, model, truncated}` out) and writes nothing: the
   admin puts the answer in the input for the person to save as their own
   edit. A password field is refused by its type before anything else;
   the field must be a `string`, `text`, `markdown` or `richtext` field
@@ -327,7 +327,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `AiAccessInterface::canUse($user, Feature::AssistantWrites)`
   (`capabilities.ai.assistantWrites`): Vector's four writes reach the
   model as `Assistant\ProposingTool`s, and not at all otherwise. A call
-  writes nothing — it counts against `maxToolCallsPerRun`, has its
+  writes nothing: it counts against `maxToolCallsPerRun`, has its
   arguments checked as the MCP dispatcher checks them
   (`Approvals\ToolArguments`, the same `{"errors": [...]}` feedback), is
   refused for a resource or a field the boundary keeps back, and is

@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - The MCP tool `vector_aggregate`: counts, sums, averages, minimums and
-  maximums (1 to 6 metrics) over every record a `filter` and `q` match —
+  maximums (1 to 6 metrics) over every record a `filter` and `q` match,
   read by the list's own grammar, under its scope, trash predicate and
-  `viewAny` — grouped by up to three keys: a value, a belongsTo's key
+  `viewAny`, grouped by up to three keys: a value, a belongsTo's key
   (`{id, label}`) or a date or datetime by `day`, `week`, `month`,
   `quarter` or `year` in UTC, on MySQL and PostgreSQL; sorted by a metric
   or key, at most 100 groups, with `groupCount` and `truncated`. A field
@@ -27,8 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   carries only those, its key, and the `_version` and `_trashed` it
   carries anyway. Without it a page is unchanged.
 
-- `Http\VisibleResources::all()` — the resources this request's user may
-  list, as they see them, with their permissions — is decided once per
+- `Http\VisibleResources::all()` (the resources this request's user may
+  list, as they see them, with their permissions) is decided once per
   request: the descriptor, the OpenAPI document and a shell contributor
   that injects it share one pass of the resource and field policies;
   `decided($slug)` reads one resource from that pass when it was made,
@@ -46,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A queued action knows its job and can leave it a file:
   `ActionRequest::$jobId` names the job every chunk (and the run's
   `finish()`) runs in, null on the synchronous path, and
-  `VectorAction::finish()` runs once after a queued run's last chunk — a
+  `VectorAction::finish()` runs once after a queued run's last chunk: a
   `download` it answers becomes the job's file and message, `danger`
   fails the job, null (the default) changes nothing.
   `ActionResponse::download()` takes an optional message for it.
@@ -68,7 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `vector_aggregate` refuses a field neither the list nor the record view shows — as a group key, metric, sort or a money metric's currency — as a list's `columns` does.
+- `vector_aggregate` refuses a field neither the list nor the record view shows (as a group key, metric, sort or a money metric's currency), as a list's `columns` does.
 
 ## [0.16.0] - 2026-11-19
 
@@ -189,8 +189,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A queue dashboard, built in (`Kinetis\Vector\Queues\`, under
   `/vector/queues`): queue sizes and clears on the application's
-  `QueueInterface`, the failed jobs `kinetis/queue-failed-jobs` keeps —
-  browsed, retried, forgotten and pruned — and per-minute job metrics,
+  `QueueInterface`, the failed jobs `kinetis/queue-failed-jobs` keeps
+  (browsed, retried, forgotten and pruned) and per-minute job metrics,
   behind `QueueDashboardPolicyInterface` (view-only by default, an
   application's own binding wins) and watching `VECTOR_QUEUES`. It is the
   code of the separate queue-dashboard package, never released, whose
@@ -359,8 +359,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Uploading to a file or image field needs write permission, not just
-  list (`viewAny`): the field — or a rich-text field uploading its
-  images through it — on the create form while the policy allows
+  list (`viewAny`): the field (or a rich-text field uploading its
+  images through it) on the create form while the policy allows
   `create()`, or on the update form while it allows `update()` on the
   record the upload names in its new multipart `record` part. Otherwise
   the upload answers `403`. The UI's inputs send the id of the record
@@ -373,8 +373,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - A job whose push the queue backend refused stored the backend's own
-  message on its row — hosts, ports, and whatever else the driver put in
-  it — where the admin's Jobs page shows it. The row now says only that
+  message on its row (hosts, ports, and whatever else the driver put in
+  it), where the admin's Jobs page shows it. The row now says only that
   the job failed unexpectedly, as a job failing in the worker does; the
   message reaches the log with the rethrown exception.
 - The MCP `vector://schema` resource listed every action of a resource,
@@ -414,17 +414,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   every row had been processed. The file now keeps the failed rows that
   fit, whole, the last one's `error` saying how many more are not in it,
   and the import completes.
-- An enum value of the scalar type its enum is not backed by — any
+- An enum value of the scalar type its enum is not backed by (any
   `filter[field]=…` on an int-backed enum, or a string sent for one in
-  a body — answered `500` with a `TypeError` from `tryFrom()`. A list
+  a body) answered `500` with a `TypeError` from `tryFrom()`. A list
   filter now matches an int-backed enum by its digits, and any other
   value is refused as `invalid_choice` (`422`).
 - A CSV import refused a non-empty cell of a date-only field
   (`Kinetis\Orm\Date`) on every row with "must be a date as
   YYYY-MM-DD.": the parsed date reached the writer as an object rather
   than the text a body carries.
-- A row of a CSV import that the database refused — a duplicate unique
-  value, a value too long for its column — stayed pending in the entity
+- A row of a CSV import that the database refused (a duplicate unique
+  value, a value too long for its column) stayed pending in the entity
   manager, so the next row's write sent it again and failed with that
   row's reason, up to the next hundred rows. A refused row's pending
   changes are now discarded before the next row.
@@ -451,7 +451,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An integer identifier, list cursor, `page`, `perPage` or integer
   value no longer accepts a trailing newline: `"42\n"` read as `42`,
   because the patterns ended in `$` without the `D` modifier. It is now
-  refused like any other non-integer — 404 for a record, job,
+  refused like any other non-integer: 404 for a record, job,
   notification, view or history entry, 422 for a list parameter or a
   field value.
 - Ships the `@kinetis/vector-ui` 0.10.2 hosted bundle, with its keyboard

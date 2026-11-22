@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   since it was sent is left alone (`ai.writing.changedDocument`).
 - `aiOffered()`, and so `useVectorWriting().offered()`, follows
   `capabilities.ai.noWriting`: no writing help on a field the server has
-  it off for — a unique string such as a SKU, or a field with the
+  it off for: a unique string such as a SKU, or a field with the
   `ai.writing` meta false. Against a server without `noWriting`, nothing
   changes.
 - One helper, `app/utils/aiAvailability.ts` (`aiCapabilities()`,
@@ -37,8 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   order first shown, with how many times it answered when more than
   once (*Read with vector_query ×3*; `ai.assistant.toolTimes` and
   `ai.assistant.proposingToolTimes`), and leave out every call that was
-  a tool error — a `tool-output-error` frame, or `ok: false` in the
-  whole answer's `toolCalls`, now `{name, ok}` objects. A whole answer
+  a tool error (a `tool-output-error` frame, or `ok: false` in the
+  whole answer's `toolCalls`, now `{name, ok}` objects). A whole answer
   from a server that sends bare tool names still shows them, each taken
   as answered.
 - The assistant's conversation follows the answer as it arrives,
@@ -90,7 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The layer, over `@kinetis/vector-ui` 0.13.0: the plain-language
   filter in every list's toolbar (`defineListToolbarItem`), shown when
-  `capabilities.ai.filters` is on and the resource is not kept from AI —
+  `capabilities.ai.filters` is on and the resource is not kept from AI;
   the answer filters the list at once, and a note says what it
   understood, offers the candidates of an ambiguous relation, and Undo,
   which puts the list's filter and search back; and the provider-key panel under the `ai` settings group
@@ -115,9 +115,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Writing help: inside the `string` and `text` inputs of a resource's
   create page and of a record's edit page, as an icon at the field's
   inline end, and not in a list's bulk edit or an action's dialog
-  (`defineInputAddon`, placement `inner`), a menu — Rewrite, Shorten, Fix grammar, Translate
+  (`defineInputAddon`, placement `inner`), a menu: Rewrite, Shorten, Fix grammar, Translate
   to… (every language the UI ships, and any other the descriptor lets
-  the user choose) — whose answer opens in a popover anchored to the
+  the user choose); its answer opens in a popover anchored to the
   field, beside the text, Before and After, with Replace (into the
   input, for the person to save) and Discard (Escape or a click outside
   the popover discards too); and the
@@ -134,9 +134,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a bulk edit, an action's dialog or a relation's inline create.
 - Approval cards: a change the assistant proposed (a `data-approval`
   frame, or the JSON answer's `approvals`) shows under its answer as a
-  card built from the structured proposal — the tool, the resource, the
+  card built from the structured proposal: the tool, the resource, the
   record and each field, with its value before where a `vector_get` of
-  the same run read it, and when it expires — never from the model's
+  the same run read it, and when it expires, never from the model's
   prose. Approve and Reject post to `/vector/ai/approvals/{id}/approve`
   and `/reject` with no body; a decision that stands (also one the
   server reports as already made, 409) is sent back as an `approval`
