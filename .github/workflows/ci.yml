@@ -18,7 +18,7 @@ concurrency:
 
 env:
   # The Composer cache below removes almost every download; this covers
-  # what is left — a cold cache, or a lock file that just changed. The
+  # what is left: a cold cache, or a lock file that just changed. The
   # job's own ephemeral token lifts the anonymous codeload.github.com
   # rate limit. No secret to provision.
   COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ secrets.GITHUB_TOKEN }}"}}'
@@ -38,7 +38,7 @@ jobs:
     steps:
       # dorny/paths-filter needs a real checkout for a push trigger (it
       # diffs against the previous commit with plain git there, while a
-      # pull_request uses the API) — fetch-depth: 0 so that commit is
+      # pull_request uses the API). fetch-depth: 0 keeps that commit
       # present even for a multi-commit push.
       - uses: actions/checkout@v7
         if: github.event_name == 'push'

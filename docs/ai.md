@@ -42,10 +42,11 @@ The package needs `ext-sodium`.
    connection Vector's own tables use (`VECTOR_DB_CONNECTION`); the
    command says so when they differ.
 
-2. Restart the workers. The admin needs nothing more, in either mode
-   ({doc}`deployment`). The hosted bundle that `vector:install-ui`
-   installs and the standalone layer are the same `@kinetis/vector-ui`.
-   It shows the AI features once the API publishes `capabilities.ai`.
+2. Restart the workers. The AI features ship in `@kinetis/vector-ui`
+   itself, in both modes ({doc}`deployment`). A hosted admin gets them
+   from the bundle `vector:install-ui` installs, so run that command
+   after upgrading `kinetis/vector`. The admin shows them once the API
+   publishes `capabilities.ai`.
 
 3. Standalone only: add `Retry-After` to your `CorsMiddleware`'s
    `exposedHeaders`. The admin is on another origin, and a browser hides

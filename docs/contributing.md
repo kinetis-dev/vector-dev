@@ -61,8 +61,8 @@ satisfies that.
 ```console
 docker compose exec app vendor/bin/phpunit                                        # the API and the PHP package
 docker compose exec -e VECTOR_TEST_DB_CONNECTION=default app vendor/bin/phpunit   # the same, Vector's tables on MySQL
-docker compose exec node pnpm test                                                # the UI layers: Vitest, no server
-docker compose exec node pnpm typecheck                                           # vue-tsc over the layers and their tests
+docker compose exec node pnpm test                                                # the UI layer: Vitest, no server
+docker compose exec node pnpm typecheck                                           # vue-tsc over the layer and its tests
 docker compose run --rm e2e                                                       # the admin in a browser, both modes
 bin/check-frankenphp                                                              # the application under FrankenPHP worker mode
 ```

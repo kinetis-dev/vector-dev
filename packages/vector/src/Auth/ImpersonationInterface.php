@@ -11,7 +11,7 @@ use Kinetis\Http\CurrentUserInterface;
  * endpoints, the authorization hook and the log entries; the
  * application owns the credential (a re-issued token carrying an
  * `impersonator` claim in bearer mode, a swapped session in cookie mode)
- *and answers with what the client must do next.
+ * and answers with what the client must do next.
  */
 interface ImpersonationInterface
 {

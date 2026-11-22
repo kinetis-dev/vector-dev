@@ -4,7 +4,7 @@ import type { Page } from '@playwright/test'
 
 // Rich text in a real browser: the product description (a document) and
 // ticket replies (Markdown), rendered through the schema and sanitized,
-// edited through the toolbar — and, hosted, under the strict CSP without
+// edited through the toolbar, and, hosted, under the strict CSP without
 // a single violation.
 
 async function productId(page: Page, sku: string): Promise<string> {

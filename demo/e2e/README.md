@@ -31,9 +31,9 @@ docker compose run --rm e2e test tests/tags.spec.ts        # one file
 docker compose run --rm e2e test -g "searches by SKU"      # by title
 ```
 
-The hosted project runs every spec against that bundle, the AI specs
-included, which assert that the page reports no CSP violation
-(`support/csp.ts`).
+The hosted project runs every spec except the `*.standalone.spec.ts`
+files against that bundle. The AI specs run there too and assert that
+the page reports no CSP violation (`support/csp.ts`).
 
 The `e2e` service is the Playwright image, with Chromium, and is not
 started by `docker compose up`. Everything after the service name goes

@@ -17,7 +17,7 @@ use Kinetis\Vector\Testing\InteractsWithVector;
 
 /**
  * An upload writes to storage, so it needs write permission: the field
- *(or a rich-text field uploading its images through it) on the create
+ * (or a rich-text field uploading its images through it) on the create
  * form while the user may create, or on the update form while the user
  * may update the record the upload names. Listing the resource is not
  * enough. Every file a test stores is removed again.

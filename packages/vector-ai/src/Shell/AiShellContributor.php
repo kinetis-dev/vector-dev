@@ -59,7 +59,7 @@ final readonly class AiShellContributor implements ShellContributorInterface
      * passes) from this request's services, reusing the resources and
      * permissions the descriptor already decided (VisibleResources). For
      * anyone else, from a request scope of their own, so that every answer
-     *(the access policy, the budget, the resources they may list, the
+     * (the access policy, the budget, the resources they may list, the
      * fields they see) is theirs, not this request's user's.
      *
      * @return array{filters: bool, assistant: bool, assistantWrites: bool, writing: bool, excluded: object, excludedFields: object, noWriting: object}
