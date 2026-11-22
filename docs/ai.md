@@ -1195,7 +1195,8 @@ can fail the import's validation.
 
 ## What the admin is told
 
-`GET /vector/schema` carries, per user, `capabilities.ai`:
+`GET /vector/schema` carries `capabilities.ai` for each user, so the
+admin offers only what the endpoints would serve:
 
 ```json
 { "filters": true, "assistant": true, "assistantWrites": false, "writing": true,
@@ -1203,50 +1204,69 @@ can fail the import's validation.
   "noWriting": { "products": ["sku"], "tags": ["name"] } }
 ```
 
-A feature is `true` when a provider is configured, its switch is on, the access policy lets this user use
-it, their daily budget has tokens left, and a provider, model and key
-resolve for it, and, for `assistantWrites`, the assistant's switch is
-on and the policy lets them use the assistant too. That is the same
-check, in one place (`Auth\AiAvailability`), that each feature's own
-endpoint makes, so a feature is offered exactly when its endpoint would
-serve it. Whether a provider, model and key resolve is read from the
-configuration, the settings and the stored key's record: computing it
-builds no provider and opens no key, since it runs on every `GET
-/vector/schema` (a `304` included, as the ETag covers it). A stored key
-altered in the database therefore still shows the feature, and its
-endpoint answers `403` *… is not configured*.
-`excluded` names each resource this user may list that is
-kept from the model whole, so the admin offers no AI on it.
-`excludedFields` names, for each other resource they may list, the
-fields they see that the boundary keeps back (opted out, outside the
-allow-list, or a password, file or image field), so the admin offers no
-writing help on them; a resource with none is absent. `noWriting`, in
-the same shape, names for each of those resources the `string`, `text`,
-`markdown` and `richtext` fields they see that writing help is not
-offered on (`WritingGuard::offers()`): a unique string, a field with
-`ai.writing` false, or one kept back, so the admin shows no writing
-menu there. The admin reads both; the endpoint refuses those fields
-either way. All three are empty
-while no feature is offered. The key is absent when `kinetis/vector-ai` is not installed; it
-is published by a shell contributor ({ref}`shell-contributors`).
+| Key | Means |
+|---|---|
+| `filters`, `assistant`, `writing`, `assistantWrites` | The feature is offered to this user (below). |
+| `excluded` | Each resource this user may list that is kept from the model whole. The admin offers no AI on it. |
+| `excludedFields` | For each other resource they may list, the fields they see that the boundary keeps back: opted out, outside the allow-list, or a password, file or image field. The admin offers no writing help on them. A resource with none is absent. |
+| `noWriting` | In the same shape, the `string`, `text`, `markdown` and `richtext` fields they see that writing help is not offered on (`WritingGuard::offers()`): a unique string, a field with `ai.writing` false, or one kept back. The admin shows no writing menu there. |
+
+The three lists are empty while no feature is offered. The endpoints
+refuse those fields whatever the admin shows. The key is absent when
+`kinetis/vector-ai` is not installed; a shell contributor publishes it
+({ref}`shell-contributors`).
+
+A feature is `true` when:
+
+- a provider is configured, and a provider, model and key resolve for
+  it;
+- its switch is on;
+- the access policy lets this user use it;
+- their daily budget has tokens left;
+- for `assistantWrites`, also: the assistant's switch is on and the
+  policy lets them use the assistant.
+
+That is the same check each feature's endpoint makes, in one place
+(`Auth\AiAvailability`), so a feature is offered exactly when its
+endpoint would serve it.
+
+The check runs on every `GET /vector/schema`, a `304` included, since
+the ETag covers it. So whether a key resolves is read from the
+configuration, the settings and the stored key's record, without
+building a provider or opening a key. A stored key altered in the
+database therefore still shows the feature, and its endpoint answers
+`403` *… is not configured*.
 
 (ai-usage)=
 ## Usage and failures
 
 Every call is recorded in `vector_ai_usage`: the actor and the
 impersonator, the feature, the provider and model, the tokens in and
-out, the duration, the tool calls and the outcome. The daily budget is
-summed from it per actor since midnight UTC. The numbers are each call's
-own, never a counter kept in the worker: the tokens its answer reported,
-or, for an assistant call that ended without them, an estimate.
+out, the duration, the tool calls and the outcome.
 
-What an assistant call is charged depends on whether the provider
-produced output, not on whether an HTTP status is known. An estimate is
-one token for every 4 bytes of the instructions, the conversation as
-sent, each call's newest message and the text streamed back (the tool
-definitions, which are sent too, are not counted), and its outcome ends
-in `:estimated`. Each side is the larger of what was reported and what
-was estimated, never their sum; each call is one row.
+The daily budget is summed from it per actor since midnight UTC. Once
+it is spent, the feature endpoints answer `429`, with `Retry-After`
+counting the seconds to midnight UTC, and a bulk run stops sending
+records ({ref}`ai-bulk`). A budget of 0 turns AI off: the endpoints
+answer `403`.
+
+The numbers are each call's own, never a counter kept in the worker:
+the tokens its answer reported or, for an assistant call that ended
+without them, an estimate.
+
+### What an assistant call is charged
+
+The charge depends on whether the provider produced output, not on
+whether an HTTP status is known. A provider reports most of a call's
+tokens at the end of its stream, which a stopped or failed stream never
+reaches; such a call is estimated.
+
+- An estimate is one token for every 4 bytes of the instructions, the
+  conversation as sent, each call's newest message and the text streamed
+  back. The tool definitions are sent too, but not counted.
+- Each side is the larger of what was reported and what was estimated,
+  never their sum, and an estimated outcome ends in `:estimated`.
+- Each call is one row.
 
 | The call ended with | Input | Output | Outcome |
 | --- | --- | --- | --- |
@@ -1261,24 +1281,34 @@ A failure that produced nothing costs nothing, however often it is
 retried: the budget is an abuse limit, not a bill.
 
 (ai-departures)=
-**When the browser leaves.** A run counts as ended by the browser
-leaving only when the application itself stopped it: its stream asked
-whether to stop (before every event it reads) and was told yes, or
-the assistant saw the connection gone between two steps and did not go
-on (before the first one, no request is sent at all, and nothing is
-charged). Such a run is logged at info, `An assistant run ended after
-the browser left.`, outcome `client_gone`, with no provider warning.
+### When the browser leaves
+
+A run counts as ended by the browser leaving only when the application
+itself stopped it:
+
+- its stream asked whether to stop, before an event it reads, and was
+  told yes; or
+- the assistant saw the connection gone between two steps and did not go
+  on. Before the first step no request is sent, and nothing is charged.
+
+Such a run is logged at info, `An assistant run ended after the browser
+left.`, with the outcome `client_gone` and no provider warning.
+
 Anything else is a failure, whether or not the browser is still there:
 a provider's refusal (a Bedrock call is never stopped), a cut stream, a
-tool's exception, a runaway model, a database error, logged as the
-run's failure: a warning for a provider's, an error for the run's own.
-Whether the browser is gone decides only whether anything more is
+tool's exception, a runaway model, a database error. It is logged as
+the run's failure: a warning for a provider's, an error for the run's
+own. Whether the browser is gone decides only whether anything more is
 written to it.
 
 (ai-failures)=
-A failed call is reported by category (`timeout`, `too_large`,
-`refused`, `unavailable` or `invalid_request`) with a status, and a
-message that quotes neither the prompt, the provider's answer nor a key.
+### Provider failures
+
+A failed call is reported by category, with a status and a message that
+quotes neither the prompt, the provider's answer nor a key. The
+categories are `timeout`, `too_large`, `refused`, `unavailable` and
+`invalid_request`.
+
 It is logged with the category and the provider's status only: a
 provider's error body can quote the prompt, and its request carries the
 key.
@@ -1286,12 +1316,20 @@ key.
 (ai-testing)=
 ## Testing
 
-The `fake` provider type replays replies keyed by the SHA-256 of the
-last text block of the last user message (for a plain-language filter,
-the admin's sentence, and for its repair turn, that turn's text), for a
-chat, a stream or a structured call alike. Bind the replies on AppScope
-in a test; give them a `ScriptedCalls` to read every request the
-providers were sent, structured schema included:
+The `fake` provider type replays scripted replies, for a chat, a stream
+or a structured call alike. Configure it in the test's configuration:
+
+```ini
+VECTOR_AI_PROVIDERS=fake
+VECTOR_AI_FAKE_TYPE=fake
+```
+
+Bind the replies on AppScope in a test. Each reply is keyed by the last
+text block of the last user message: for a plain-language filter, the
+admin's sentence, and for its repair turn, that turn's text.
+`ScriptedReplies::of()` takes the message text and keys by its SHA-256.
+Pass it a `ScriptedCalls` to read every request the providers were sent,
+structured schema included:
 
 ```php
 use Kinetis\VectorAi\Testing\ScriptedCalls;
@@ -1303,17 +1341,11 @@ $app->instance(ScriptedReplies::class, ScriptedReplies::of([
 ], $calls));
 ```
 
-with `VECTOR_AI_PROVIDERS=fake` and `VECTOR_AI_FAKE_TYPE=fake` in the
-test's configuration.
-
-A message can instead start a run that calls tools: its reply is the
+A message can instead start a run that calls tools. Its reply is the
 list of the run's turns, each asking for `toolCalls` or answering with
-`text`, the next turn taken once the last one's tool results are in.
-A run that ends in a proposal is scripted the same way, with a write
-tool among its `toolCalls`; the turn that tells the model how the person
-decided ends with the text `Assistant::OUTCOME_PROMPT`, which a reply
-can be keyed by. The scripted provider streams a text reply too, and
-keeps every request, tool results included:
+`text`; the next turn is taken once the last one's tool results are in.
+The scripted provider streams a text reply too, and keeps every request,
+tool results included:
 
 ```php
 $app->instance(ScriptedReplies::class, ScriptedReplies::of([
@@ -1323,6 +1355,11 @@ $app->instance(ScriptedReplies::class, ScriptedReplies::of([
     ],
 ], $calls));
 ```
+
+A run that ends in a proposal is scripted the same way, with a write
+tool among its `toolCalls`. The turn that tells the model how the
+person decided ends with the text `Assistant::OUTCOME_PROMPT`, which a
+reply can be keyed by.
 
 ## See also
 
