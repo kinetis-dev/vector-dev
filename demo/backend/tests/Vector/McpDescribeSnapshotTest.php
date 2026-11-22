@@ -7,8 +7,9 @@ namespace App\Tests\Vector;
 /**
  * vector_describe is a contract agents depend on: for every resource in
  * Fixtures/describe-7974585.json, recorded at commit 7974585, its answer
- * to an administrator is byte-identical to the recorded one, so no
- * resource's or field's metadata bag reaches an agent through it.
+ * to an administrator is byte-identical to the recorded one, so the
+ * metadata bag of none of those resources or their fields reaches an
+ * agent through it.
  */
 final class McpDescribeSnapshotTest extends VectorTestCase
 {
