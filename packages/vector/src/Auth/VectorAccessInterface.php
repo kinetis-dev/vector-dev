@@ -13,8 +13,8 @@ use Kinetis\Http\CurrentUserInterface;
  * worker handles.
  *
  * The check receives whatever object the application's authentication
- * middleware registered as CurrentUserInterface — a JwtUser, a session
- * user — so an application reads a claim, a column or a role from it
+ * middleware registered as CurrentUserInterface (a JwtUser, a session
+ * user) so an application reads a claim, a column or a role from it
  * however it stores that fact.
  */
 interface VectorAccessInterface

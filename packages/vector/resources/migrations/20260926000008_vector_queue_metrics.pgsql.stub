@@ -15,7 +15,7 @@ use Kinetis\Persistence\Contract\PostgresLink;
 // `queue` and `job_class` byte-exactly, which the .mysql. sibling stub has
 // to ask for. Both are VARCHAR, as `queue` and `class` are in
 // kinetis/queue-failed-jobs' stub, so a class name must be valid in the
-// database's encoding — PHP admits non-UTF-8 bytes in a name, and a write
+// database's encoding, PHP admits non-UTF-8 bytes in a name, and a write
 // for such a class is refused (and logged, never failing the job). bytea
 // is not a way round it: the drivers bind parameters as text, and bytea's
 // text input reads the backslashes of every namespaced class name as
@@ -27,6 +27,7 @@ use Kinetis\Persistence\Contract\PostgresLink;
 // serves the unfiltered window reads and the prune.
 return new class implements Migration
 {
+    #[\Override]
     public function up(MysqlLink|PostgresLink $db): void
     {
         $db->execute(<<<'SQL'
@@ -47,6 +48,7 @@ return new class implements Migration
         $db->execute('CREATE INDEX vector_queue_metrics_bucket_index ON vector_queue_metrics (bucket)');
     }
 
+    #[\Override]
     public function down(MysqlLink|PostgresLink $db): void
     {
         $db->execute('DROP TABLE vector_queue_metrics');

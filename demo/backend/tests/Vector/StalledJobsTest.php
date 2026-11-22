@@ -10,7 +10,7 @@ use Kinetis\Vector\Store\JobStore;
 /**
  * A job whose worker died leaves its row running with nothing to move
  * it on. After the minutes the Background jobs setting allows without a
- * progress report — 30 until an admin changes it — the row is answered
+ * progress report (30 until an admin changes it) the row is answered
  * as stalled, and the reaper marks it failed.
  */
 final class StalledJobsTest extends VectorTestCase

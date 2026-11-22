@@ -5,12 +5,67 @@ by Vector, the one the packages are developed and tested against. It
 has two business domains on two databases, so every field type and
 relation shape Vector administers is exercised:
 
-- a shop on MySQL — customers, orders, products, categories and tags;
-- a support desk on PostgreSQL — teams, agents, tickets, replies and
+- a shop on MySQL: customers, orders, products, categories and tags;
+- a support desk on PostgreSQL: teams, agents, tickets, replies and
   labels.
 
 It runs both admin modes, background jobs on a real queue, the queue
-dashboard ({doc}`queues`), and a seeded catalog.
+dashboard ({doc}`queues`), a seeded catalog, and `kinetis/vector-ai`
+({doc}`ai`) installed but unconfigured: its *AI assistant* settings group
+is there, and no AI feature is offered. To try plain-language filters,
+the assistant and writing help without a model, configure the `fake` provider the
+demo scripts (`App\Vector\Ai\DemoAiReplies`) in `backend/.env`:
+`VECTOR_AI_PROVIDERS=demo` and `VECTOR_AI_DEMO_TYPE=fake`, and type
+*paid orders over 500* on the Orders list. The demo's profiles opt out
+of AI, and the users' e-mail field does.
+
+Then try the assistant, in the standalone admin (`localhost:3000`):
+
+1. Open the Products list and click the sparkle button in the app bar.
+   The drawer opens beside the page; its context line reads *Products
+   list*.
+2. Ask *Which products are low on stock?* The scripted run calls
+   `vector_query` for the active products with 10 or fewer in stock (the
+   drawer shows the tool it read with) and the answer streams in,
+   naming `products#1`.
+3. Click `products#1`: the record opens, and the drawer and its
+   conversation stay, now about *Product #1*.
+4. Press ⌘J (Ctrl+J) to close the drawer, and again to open it: the
+   conversation is still there. *New conversation* starts afresh.
+
+And the assistant proposing changes: turn *Assistant may propose
+changes* on in the AI settings, open *Product #9* and ask *Set the stock
+of products#9 to 42.* The scripted run reads the product with
+`vector_get` and proposes the new stock with `vector_update`; nothing
+changes yet. The drawer shows a card with the stock now and the stock
+proposed: *Approve* writes it as you (History shows the update *via
+assistant*) and the assistant acknowledges your decision; *Reject*
+(try *Set the stock of products#9 to 7.*) changes nothing. The
+`scheduler` service sweeps stale proposals every hour
+(`vector-ai:approvals:prune`, {doc}`ai`).
+
+And writing help: edit an order, type *Please make sure to call the
+customer before the delivery, because the customer has asked us to call
+ahead before the parcel is delivered.* in its notes, and choose *Writing
+help* → *Shorten* under them: the shorter text shows beside yours, and
+*Replace* puts it in the input for you to save.
+
+And bulk proposals: select orders on the Orders list and run *Propose AI
+rewrites of Notes* (`App\Vector\Actions\TidyOrderNotes`, a
+`ProposeRewrites` the orders list in their `actions()`). The queue
+worker sends each selected order's notes, one call per order, and the
+job leaves a CSV of `id,notes` proposals on the **Jobs** page; orders
+without notes are left out and counted. Nothing changes until you import
+that CSV on the Orders list in *Update existing records* mode keyed by
+ID; then History shows each change as your own update. With the demo's
+scripted provider every proposal reads *No reply is scripted for this
+message.*; with a real provider it is the corrected text ({doc}`ai`).
+
+Any other question or text gets *No reply is scripted for this
+message.*; with a real provider configured instead
+(VECTOR_AI_PROVIDERS, {doc}`ai`) the assistant answers what is asked,
+and writing help works on any text, but not on an identifier such as a
+product's SKU, a unique string, which it leaves alone.
 
 ## Run it
 
@@ -33,16 +88,17 @@ from `demo/`.
 |---|---|---|
 | `nginx`, `app` | `localhost:8080` | The API: nginx and PHP-FPM. `/openapi` in development. Set `NGINX_HOST_PORT` to publish it on another host port when 8080 is taken. |
 | `frankenphp` | `localhost:8081` | The same application under FrankenPHP worker mode, Kinetis's primary runtime: 12 worker threads on the native database drivers. |
-| `node` | `localhost:3000` | The standalone admin: `nuxt dev` for `demo/frontend`. |
-| `worker` | — | `queue:work --queue=default,vector`: the application's jobs first, then Vector's. |
+| `node` | `localhost:3000` | The standalone admin: `nuxt dev` for `demo/frontend`, which extends `@kinetis/vector-ui`. |
+| `worker` | none | `queue:work --queue=default,vector`: the application's jobs first, then Vector's. |
+| `scheduler` | none | Every hour, `vector:jobs:reap` (jobs whose worker died are marked failed), then `vector-ai:approvals:prune` (stale assistant proposals, and the rewrite proposal rows of ended jobs). Kinetis has no scheduler; in production, cron or the platform's runs these. |
 | `mysql` | `localhost:3306` | The shop, and the SQL queue table the test suite uses. `vector` / `vector`. Set `MYSQL_HOST_PORT` to publish it on another host port when 3306 is taken. |
 | `postgres` | `localhost:5432` | `vector_support`, the support desk (connection `support`), and `vector_admin`, Vector's own tables (connection `admin`). `vector` / `vector`. |
 | `redis` | `localhost:6379` | The job queue (connection `jobs`) and, in database 1, the cache holding sign-in throttling and refresh tokens. |
 
 The repository is mounted at `/workspace`. `demo/backend/vendor/` and
 the `node_modules/` directories are named volumes. Uploaded files live
-on the private `storage` volume, shared by `app`, `worker` and
-`frankenphp` and never served by nginx or Caddy. The file sessions are a
+on the private `storage` volume, shared by `app`, `worker`,
+`scheduler` and `frankenphp` and never served by nginx or Caddy. The file sessions are a
 volume too, so one browser session holds on both ports. Request bodies
 may be up to 12 MB (`MAX_BODY_SIZE` and nginx's `client_max_body_size`).
 
@@ -216,6 +272,17 @@ docker compose restart app frankenphp
 `pnpm generate:hosted` builds into `packages/vector-ui/dist/static`,
 labelled with `packages/vector-ui/package.json`'s version, which is the
 one `kinetis/vector` pins. `vector:install-ui --check` then exits 0.
+The demo runs `kinetis/vector-ai`, so the admin shows its AI features
+({doc}`ai`).
+
+The end-to-end suite's AI specs run in both modes, hosted under the
+shell's strict CSP: `ai.spec.ts` against the
+demo as it ships, and `ai-filters.spec.ts`, `ai-assistant.spec.ts`,
+`ai-approval.spec.ts` (which turns *Assistant may propose changes* on
+for itself, and back) and `ai-writing.spec.ts` with the scripted `fake`
+provider configured as above and `VECTOR_E2E_FAKE_AI=1` passed to the
+run (`demo/e2e/README.md`). Without that flag they skip themselves, so a
+stack with a real provider never sends them to the model.
 
 Then open `http://localhost:8080/vector/ui`, or
 `http://localhost:8081/vector/ui` for the same admin under FrankenPHP.
@@ -294,7 +361,7 @@ The test suite expects the stock data set. Put it back with
 
 ## See also
 
-- {doc}`getting-started` — the same steps in your own application.
-- {doc}`contributing` — the tests, the repository layout and building
+- {doc}`getting-started`: the same steps in your own application.
+- {doc}`contributing`: the tests, the repository layout and building
   the manual.
-- {doc}`coding-agents` — working on the demo with an AI coding agent.
+- {doc}`coding-agents`: working on the demo with an AI coding agent.

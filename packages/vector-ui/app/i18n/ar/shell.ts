@@ -41,6 +41,7 @@ export default {
         records: 'السجلات',
         resources: 'الموارد',
         noMatch: 'لا توجد سجلات مطابقة',
+        commands: 'الأوامر',
     },
     inbox: {
         title: 'الإشعارات',

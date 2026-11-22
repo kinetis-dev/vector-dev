@@ -5,7 +5,7 @@ import type { VectorField } from '#vector/app/types/vector'
  * The field registry: a descriptor field resolves to the component that
  * renders it as a table cell or a show-page value.
  *
- * Built-in cells are imported explicitly — a dynamic `<component :is>`
+ * Built-in cells are imported explicitly; a dynamic `<component :is>`
  * defeats template-time auto-import, so nothing here relies on it. A
  * consuming app adds or replaces entries through `app.config.vector.fields`
  * (keyed by a field's explicit `component` name or by its `type`), naming

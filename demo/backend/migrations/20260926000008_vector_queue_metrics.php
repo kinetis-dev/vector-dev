@@ -14,13 +14,13 @@ use Kinetis\Persistence\Contract\PostgresLink;
 // `last_processed_at` are unix seconds, `bucket` floored to its minute.
 // Both key columns are matched for exact equality, and MySQL's default
 // collation compares case-insensitively, so neither uses it: `queue` is
-// ascii_bin, as in kinetis/queue-failed-jobs' stub — kinetis/queue's
-// queue-name grammar is ASCII — and `job_class` is VARBINARY, compared
+// ascii_bin, as in kinetis/queue-failed-jobs' stub (kinetis/queue's
+// queue-name grammar is ASCII) and `job_class` is VARBINARY, compared
 // and stored as bytes, with no character set to validate the name
 // against. (The failed-jobs stub's own `class VARCHAR(255) NOT NULL` takes
 // the table's default, case-insensitive collation; this column keys a
 // unique index, where two classes differing only in case must stay two
-// rows.) Postgres compares byte-exactly already — see the .pgsql. sibling
+// rows.) Postgres compares byte-exactly already, see the .pgsql. sibling
 // stub.
 //
 // The unique key is what every write upserts on, and serves the reads

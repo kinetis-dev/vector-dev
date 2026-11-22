@@ -65,7 +65,7 @@ final class QueueMetricsEndpointTest extends MetricsTestCase
             $this->record('qa-mail', OtherJob::class, $outcome, $ms, self::MINUTE + 5);
         }
 
-        // qa-mail, SendInvoiceJob: only releases — nothing finished, so no failure rate
+        // qa-mail, SendInvoiceJob: only releases; nothing finished, so no failure rate
         $this->record('qa-mail', SendInvoiceJob::class, JobOutcome::Released, 4.0, self::MINUTE - 300);
         // qa-reports, SendInvoiceJob: only failures
         $this->record('qa-reports', SendInvoiceJob::class, JobOutcome::Failed, 8.0, self::MINUTE - 120);

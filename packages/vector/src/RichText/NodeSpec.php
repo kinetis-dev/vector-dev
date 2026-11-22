@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Kinetis\Vector\RichText;
 
 /**
- * A node or mark type an application adds to the rich-text schema — a
- * callout, an embed — registered with Document::extend() so the server
+ * A node or mark type an application adds to the rich-text schema (a
+ * callout, an embed) registered with Document::extend() so the server
  * accepts what a runtime extension's editor produces
  * (`window.Vector.defineRichTextExtension()`). A field then names it in
  * `features()`.

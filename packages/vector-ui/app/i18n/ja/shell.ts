@@ -41,6 +41,7 @@ export default {
         records: 'レコード',
         resources: 'リソース',
         noMatch: '一致するレコードがありません',
+        commands: 'コマンド',
     },
     inbox: {
         title: '通知',

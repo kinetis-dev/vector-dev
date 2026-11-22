@@ -12,8 +12,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The demo policy's own refusals. Over HTTP a non-admin never reaches it —
- * DemoVectorAccess turns them away first — so its false branch is tested
+ * The demo policy's own refusals. Over HTTP a non-admin never reaches it
+ * (DemoVectorAccess turns them away first) so its false branch is tested
  * here, directly.
  */
 final class DemoQueueDashboardPolicyTest extends TestCase

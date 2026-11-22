@@ -12,8 +12,8 @@ use Kinetis\Vector\Jobs\StalledJobs;
 
 /**
  * How background jobs are watched: after how many minutes without a
- * progress report a running job counts as stalled — its worker died,
- * or was stopped mid-way — so the jobs page says so instead of showing
+ * progress report a running job counts as stalled (its worker died,
+ * or was stopped mid-way) so the jobs page says so instead of showing
  * it running for ever, and `kinetis vector:jobs:reap` can mark it
  * failed. An admin edits it on the settings page; 30 minutes until then.
  */

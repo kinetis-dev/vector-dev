@@ -44,6 +44,10 @@ export default {
         revertTitle: 'Deze wijziging terugdraaien?',
         revertText: 'Zet de eerdere waarde van {fields} terug. Het terugdraaien wordt ook in de geschiedenis vastgelegd.',
         reverted: 'Wijziging teruggedraaid.',
+        via: 'via {origin}',
+        origin: {
+            assistant: 'de assistent',
+        },
     },
     panel: {
         attach: 'Koppelen',

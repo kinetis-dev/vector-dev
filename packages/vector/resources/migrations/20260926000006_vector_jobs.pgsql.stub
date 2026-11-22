@@ -12,6 +12,7 @@ use Kinetis\Persistence\Contract\PostgresLink;
 // (base64 text).
 return new class implements Migration
 {
+    #[\Override]
     public function up(MysqlLink|PostgresLink $db): void
     {
         $db->execute(<<<'SQL'
@@ -38,6 +39,7 @@ return new class implements Migration
         $db->execute('CREATE INDEX vector_jobs_actor_index ON vector_jobs (actor_id, created_at)');
     }
 
+    #[\Override]
     public function down(MysqlLink|PostgresLink $db): void
     {
         $db->execute('DROP TABLE vector_jobs');

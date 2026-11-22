@@ -23,7 +23,7 @@ use Kinetis\Vector\Store\JobStore;
  * (default `default`), on the application's own `QueueInterface`, or on
  * the named queue connection `VECTOR_QUEUE_CONNECTION` when set. A named
  * connection is built by kinetis/queue's own `QueueFactory`: its backend
- * is `QUEUE_<NAME>_CONNECTION` — redis, sql, sqs or rabbitmq — and it
+ * is `QUEUE_<NAME>_CONNECTION` (redis, sql, sqs or rabbitmq) and it
  * reads that backend's keys under the same name (`REDIS_<NAME>_*`,
  * `DB_<NAME>_*`, …). A worker serves it with
  *
@@ -38,7 +38,7 @@ use Kinetis\Vector\Store\JobStore;
  */
 final class VectorQueue
 {
-    /** kinetis/queue's queue-name grammar: letters, digits, hyphens and underscores, 1–80 characters. */
+    /** kinetis/queue's queue-name grammar: letters, digits, hyphens and underscores, 1 to 80 characters. */
     private const string QUEUE_NAME = '/^[A-Za-z0-9_-]{1,80}$/D';
 
     private ?QueueInterface $built = null;
@@ -94,7 +94,7 @@ final class VectorQueue
 
     /**
      * Whether the application's own queue backend is configured: a
-     * QueueInterface bound on AppScope explicitly — by kinetis/queue when
+     * QueueInterface bound on AppScope explicitly, by kinetis/queue when
      * QUEUE_CONNECTION is set, or by the application's bootstrap.php.
      * Read from the bindings alone; nothing is built or opened. Vector's
      * jobs push to it without VECTOR_QUEUE_CONNECTION, and the queue
@@ -130,8 +130,8 @@ final class VectorQueue
     }
 
     /**
-     * Pushes the job a row was created for; a push that fails — a backend
-     * the queue package refuses to build, a connection it cannot open —
+     * Pushes the job a row was created for; a push that fails (a backend
+     * the queue package refuses to build, a connection it cannot open)
      * marks the row failed rather than leaving it queued forever, then
      * rethrows so the request answers with the reason.
      */

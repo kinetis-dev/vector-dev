@@ -12,10 +12,10 @@ use Kinetis\QueryBuilder\Query;
 
 /**
  * The support desk lives on the PostgreSQL connection "support" while the
- * shop lives on MySQL: every Vector feature over it — reads, filters,
+ * shop lives on MySQL: every Vector feature over it (reads, filters,
  * search, summaries, grouping, cursor pages, relations, writes, unique
  * and version conflicts, soft deletion, actions, export, audit, global
- * search, MCP — runs on the entity's own connection and dialect.
+ * search, MCP) runs on the entity's own connection and dialect.
  */
 final class SupportDomainTest extends VectorTestCase
 {

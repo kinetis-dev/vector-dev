@@ -18,7 +18,7 @@
 # endpoint first.
 #
 # Statements per request, averaged over 20 sequential requests, counted
-# by the database servers themselves — the way the test suite's
+# by the database servers themselves; the way the test suite's
 # countStatements() reads MySQL's own counter, but per account rather
 # than per session, since a worker's pooled connections outlive any one
 # request: MySQL's performance_schema statement summary for the
@@ -114,7 +114,7 @@ echo
 echo "| Endpoint | Runtime | One at a time: p50 ms | Under load: requests/s | p50 ms | p90 ms | p99 ms | Failed | MySQL statements | PostgreSQL statements |"
 echo "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|"
 
-# label|path — the query strings already percent-encoded for oha
+# label|path; the query strings already percent-encoded for oha
 while IFS='|' read -r label path <&3; do
     [ -n "$label" ] || continue
 

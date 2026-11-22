@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test'
 
 // Each user's language: switched from the app bar, remembered as their
 // preference, applied to the UI's strings and the application's labels
-// alike — and Hebrew turns the page right to left.
+// alike, and Hebrew turns the page right to left.
 
 const languageMenu = (page: Page) => page.getByRole('banner').locator('button:has(.mdi-translate)')
 const nav = (page: Page) => page.getByRole('navigation').first()
@@ -91,7 +91,7 @@ test('Hebrew lays the admin out right to left', async ({ admin: page, api }) => 
         await expect(page.locator('html')).toHaveAttribute('lang', 'he')
         await expect(page.locator('.v-application')).toHaveClass(/v-locale--is-rtl/)
         // the drawer opens from the right edge
-        const drawer = page.locator('.v-navigation-drawer')
+        const drawer = page.locator('.v-navigation-drawer:not([data-ai-assistant])')
         const box = await drawer.boundingBox()
         const width = page.viewportSize()!.width
         expect(box!.x + box!.width).toBeGreaterThan(width - 5)

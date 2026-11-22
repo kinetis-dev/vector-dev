@@ -296,7 +296,7 @@ final class RichTextTest extends VectorTestCase
         $lines = explode("\r\n", trim($csv));
 
         self::assertCount(2, $lines);
-        self::assertStringContainsString('Silent Monitors 42 — a demo product in the Monitors category.', $lines[1]);
+        self::assertStringContainsString('Silent Monitors 42: a demo product in the Monitors category.', $lines[1]);
         self::assertStringNotContainsString('"type"', $lines[1], 'the cell holds text, not the JSON');
     }
 

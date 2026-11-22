@@ -72,7 +72,7 @@ final readonly class LoginController
         }
     }
 
-    /** Redeems a refresh token — once — for a new pair; a second time revokes its whole family. */
+    /** Redeems a refresh token (once) for a new pair; a second time revokes its whole family. */
     #[Post('/auth/refresh')]
     public function refresh(#[Body] RefreshRequest $data): ResponseInterface
     {
@@ -187,7 +187,7 @@ final readonly class LoginController
         }
     }
 
-    /** One answer for every refused token — unknown, expired, replayed or revoked — so none of them is told apart. */
+    /** One answer for every refused token (unknown, expired, replayed or revoked) so none of them is told apart. */
     private static function invalidRefreshToken(): ResponseInterface
     {
         return ErrorResponse::create(401, 'Invalid or expired refresh token.');

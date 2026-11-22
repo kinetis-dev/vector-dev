@@ -26,7 +26,7 @@ monorepo, beside its admin UI and a demo application.
 Declare *resources* over your `kinetis/orm` entities. Vector compiles
 them into one immutable descriptor at `kinetis build`, serves a REST
 admin API from it, runs actions and background jobs, and exposes the
-same services as MCP tools — under your application's authentication
+same services as MCP tools, under your application's authentication
 and per-resource policies. The admin UI is a separate package,
 [`@kinetis/vector-ui`](https://www.npmjs.com/package/@kinetis/vector-ui),
 which renders the descriptor and contains no application knowledge.
@@ -52,8 +52,8 @@ final class ProductResource extends VectorResource
 }
 ```
 
-Everything a request may name — a field, a column, a sort, a filter, an
-action, a widget — is checked against the compiled descriptor, so no
+Everything a request may name (a field, a column, a sort, a filter, an
+action, a widget) is checked against the compiled descriptor, so no
 request text ever reaches SQL as an identifier. Everything that runs per
 request is built by the request container; nothing Vector holds on the
 application scope carries request state.
@@ -77,7 +77,7 @@ Installing this package auto-registers, via `extra.kinetis`:
   `vector:install-ui`, `vector:list`, `vector:jobs:reap` and
   `vector:files:prune`.
 - **MCP tools** `vector_resources`, `vector_describe`, `vector_query`,
-  `vector_get`, `vector_create`, `vector_update`, `vector_delete`,
+  `vector_aggregate`, `vector_get`, `vector_create`, `vector_update`, `vector_delete`,
   `vector_run_action` and `vector_widget`, and the resource
   `vector://schema`.
 - **The registry**: every `#[Resource]`, `#[Settings]` and `#[Dashboard]`
@@ -120,9 +120,9 @@ vendor/bin/kinetis migrate
 vendor/bin/kinetis vector:install-ui    # the hosted admin UI, then restart the workers
 ```
 
-Requires PHP 8.4+ with `ext-zlib` and `ext-openssl`, and
-[`kinetis/framework`](https://github.com/kinetis-dev/framework) 1.28 or
-later.
+Requires PHP 8.4 or 8.5 with `ext-zlib` and `ext-openssl`, and
+[`kinetis/framework`](https://github.com/kinetis-dev/framework) 1.30.0
+or later.
 `vector:install-ui` downloads the `@kinetis/vector-ui` release this
 package pins (`resources/ui.json`) from the npm registry and checks it
 against the registry's sha512 integrity; `--from=<tgz>
@@ -137,4 +137,4 @@ documentation:
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

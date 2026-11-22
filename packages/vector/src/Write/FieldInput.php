@@ -8,8 +8,8 @@ use Kinetis\Validation\Exception\ValidationException;
 use Kinetis\Validation\Violation;
 
 /**
- * Validates a JSON object against a list of loose compiled fields — an
- * action's dialog, a settings group — the way RecordInput validates a
+ * Validates a JSON object against a list of loose compiled fields (an
+ * action's dialog, a settings group) the way RecordInput validates a
  * record: every failure collected into the framework's 422 document.
  */
 final readonly class FieldInput

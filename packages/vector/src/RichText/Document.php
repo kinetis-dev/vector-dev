@@ -562,7 +562,7 @@ final readonly class Document
     }
 
     /**
-     * The tiptap-php extensions for $features — never the highlighting
+     * The tiptap-php extensions for $features, never the highlighting
      * code blocks, which reach the filesystem or a process.
      *
      * @param list<string> $features

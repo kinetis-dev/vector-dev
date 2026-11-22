@@ -44,7 +44,7 @@ final class QueueMetricsRecordingTest extends MetricsTestCase
         $this->now = self::MINUTE + 1;
         $this->dispatch(new JobFailedPermanently(OtherJob::class, 'qa-mail', 2, new \RuntimeException('gave up'), [], null, 4.5));
 
-        // total the sum, max the largest, last the latest — not the last written
+        // total the sum, max the largest, last the latest, not the last written
         self::assertSame(
             [self::row('qa-mail', OtherJob::class, succeeded: 2, released: 1, failed: 1, total: 90.0, max: 45.5, last: self::MINUTE + 59)],
             $this->rows(),

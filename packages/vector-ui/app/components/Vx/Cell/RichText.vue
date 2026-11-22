@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { VectorField, VectorResource } from '#vector/app/types/vector'
 
-// A rich-text value. On the record page it is shown as HTML — and this is
+// A rich-text value. On the record page it is shown as HTML, and this is
 // the one `v-html` in the layer. It is safe because the HTML is never the
 // stored value: it is generated here from the document through the
 // field's fixed schema (anything outside the schema cannot be expressed),

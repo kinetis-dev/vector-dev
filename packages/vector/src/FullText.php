@@ -8,7 +8,7 @@ namespace Kinetis\Vector;
  * The searchable text fields a resource's full-text index covers: `q`
  * matches them by whole words with the engine's full-text predicate
  * instead of LIKE. The application creates the index in its own
- * migration — on MySQL a FULLTEXT index over exactly these columns, in
+ * migration, on MySQL a FULLTEXT index over exactly these columns, in
  * this order; on PostgreSQL a GIN index over the same `to_tsvector()`
  * expression the search builds.
  */

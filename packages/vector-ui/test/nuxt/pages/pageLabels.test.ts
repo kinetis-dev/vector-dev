@@ -9,8 +9,8 @@ import { schema } from '../fixtures'
 
 // A custom page's title and menu section given as functions follow a
 // change of language: the menu, the page's heading and its tab title
-// call them again. A title computed once with t() at registration — the
-// string form — keeps the language it was registered in: the control.
+// call them again. A title computed once with t() at registration (the
+// string form) keeps the language it was registered in: the control.
 
 const Panel = defineComponent({ setup: () => () => h('p', { class: 'panel' }, 'Stock panel') })
 

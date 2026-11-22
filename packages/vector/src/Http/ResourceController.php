@@ -404,7 +404,7 @@ final readonly class ResourceController
         return ['data' => $record, 'permissions' => $this->service->recordPermissions($descriptor, $record)];
     }
 
-    /** Deletes — into the trash on a soft-deleting resource unless `?force=1`; a hard-deleting resource removes the row either way. */
+    /** Deletes, into the trash on a soft-deleting resource unless `?force=1`; a hard-deleting resource removes the row either way. */
     #[Delete(self::RECORD, status: 204)]
     public function delete(string $resource, string $id, ServerRequestInterface $request): ResponseInterface
     {
@@ -432,7 +432,7 @@ final readonly class ResourceController
 
     /**
      * A bulk delete, restore or forceDelete over `ids` or over
-     * `all: {filter, q}` — every record the selection matches, within
+     * `all: {filter, q}`; every record the selection matches, within
      * the resource's bulk limit.
      *
      * @return array<string, int>

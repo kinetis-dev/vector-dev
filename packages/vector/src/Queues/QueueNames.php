@@ -9,7 +9,7 @@ use Kinetis\Config\Config;
 /**
  * The queue names the dashboard watches, and the only ones it accepts in
  * a path or a filter: `VECTOR_QUEUES`, a comma-separated list, in the
- * order the overview lists them. Unset or blank, it is `default` alone —
+ * order the overview lists them. Unset or blank, it is `default` alone:
  * the names a worker serves are its own `--queue` argument, which no
  * HTTP process can see. Read once per worker, at boot; a name outside
  * kinetis/queue's grammar stops the boot rather than a request.

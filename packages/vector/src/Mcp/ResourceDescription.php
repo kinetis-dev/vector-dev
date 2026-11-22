@@ -9,7 +9,7 @@ use Kinetis\Vector\Write\RecordInput;
 
 /**
  * One resource as an agent needs it to read and write records through
- * the MCP tools — what vector_describe answers. Unlike the UI's
+ * the MCP tools, what vector_describe answers. Unlike the UI's
  * descriptor (layouts, table settings, page sizes), it states per field
  * what a call can do with it: whether a create must send it, whether a
  * create or update may write it, its rules, its choices, the relation it

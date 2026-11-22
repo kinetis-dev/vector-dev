@@ -52,10 +52,18 @@ export interface VectorRelation {
 
 export type VectorOperator = 'eq' | 'ne' | 'lt' | 'lte' | 'gt' | 'gte' | 'in' | 'nin' | 'like' | 'nlike' | 'between' | 'null' | 'nnull'
 
+/**
+ * A resource's or field's metadata bag, as `#[Resource(meta: ...)]` and
+ * `Field::meta()` declared it: namespaced keys (`vendor.key`), scalar or
+ * list values. Vector publishes it and never reads it. Absent when empty.
+ */
+export type VectorMeta = Record<string, string | number | boolean | null | (string | number | boolean | null)[]>
+
 export interface VectorField {
     name: string
     type: VectorFieldType
     label: string
+    meta?: VectorMeta
     sortable: boolean
     searchable: boolean
     filterable: boolean
@@ -286,6 +294,8 @@ export interface VectorAuditEntry {
     event: string
     actorId: string
     impersonatorId: string | null
+    /** The channel the write came through when it was not the admin's own hand, such as `assistant`; null or absent otherwise. */
+    origin?: string | null
     changes: Record<string, { from: unknown, to: unknown }>
     createdAt: string
 }
@@ -322,7 +332,7 @@ export type VectorFilterGroup = VectorFilters[]
 
 /**
  * The list grammar's whole filter object: field conditions, `trashed`,
- * and `or` / `and` holding more filter objects — `(a or b) and c` is
+ * and `or` / `and` holding more filter objects, `(a or b) and c` is
  * `{c: …, or: [{a: …}, {b: …}]}`.
  */
 export interface VectorFilterQuery {
@@ -422,6 +432,7 @@ export interface VectorResource {
     labelSingular: string
     group: string | null
     icon: string | null
+    meta?: VectorMeta
     primaryKey: { field: string, column?: string, type: 'int' | 'string' }
     titleField: string
     version: string | null
@@ -470,6 +481,30 @@ export interface VectorMenuGroup {
     resources: string[]
 }
 
+/**
+ * `capabilities.ai` as GET /vector/schema publishes it for the signed-in
+ * user (kinetis/vector-ai's AiShellContributor): which AI features the
+ * admin offers them (each flag the very check its endpoint makes) and
+ * what is kept from the model.
+ */
+export interface AiCapabilities {
+    filters?: boolean
+    assistant?: boolean
+    assistantWrites?: boolean
+    writing?: boolean
+    /** The resources kept from the model whole, `{slug: true}`. */
+    excluded?: Record<string, unknown>
+    /** The fields kept back of the others, `{slug: [field, …]}`. */
+    excludedFields?: Record<string, unknown>
+    /**
+     * The text fields writing help is not offered on, `{slug: [field, …]}`:
+     * kept back, a unique string (an identifier, such as a SKU), or a field
+     * with the `ai.writing` meta false. When absent, writing help is off
+     * only where something is kept back.
+     */
+    noWriting?: Record<string, unknown>
+}
+
 export interface VectorSchema {
     version: number
     resources: Record<string, VectorResource>
@@ -477,12 +512,14 @@ export interface VectorSchema {
     settings: { name: string, label: string, icon: string | null }[]
     dashboards: { name: string, label: string, icon: string | null }[]
     /**
-     * `exportFormats`: what the export menu offers — csv always, xlsx where the server can write it (in the queue).
+     * `exportFormats`: what the export menu offers, csv always, xlsx where the server can write it (in the queue).
      * `queues`: the queue dashboard is there for this user (a queue configured, the policy lets them view);
      * `failedJobs`: it shows failed jobs too (kinetis/queue-failed-jobs installed and wired). Absent is false.
      * `queueMetrics`: it shows the job metrics too (VECTOR_QUEUE_METRICS not turned off). Absent is false.
+     * `ai`: the AI features kinetis/vector-ai offers this user; absent where it is not installed.
+     * Any other key is a package's own, published by its #[ShellContributor] under its name: an object.
      */
-    capabilities: { impersonation: boolean, queue: boolean, uploads?: boolean, exportFormats?: VectorExportFormat[], queues?: boolean, failedJobs?: boolean, queueMetrics?: boolean }
+    capabilities: { impersonation: boolean, queue: boolean, uploads?: boolean, exportFormats?: VectorExportFormat[], queues?: boolean, failedJobs?: boolean, queueMetrics?: boolean, ai?: AiCapabilities } & { [contributor: string]: unknown }
     branding: VectorBranding | null
     /** The language this descriptor is in, and the ones this user may switch to. */
     i18n?: VectorSchemaI18n

@@ -50,8 +50,8 @@ the tab.
 
 ## Conditions
 
-A field can depend on another field of the same form — a resource's, an
-action dialog's or a settings group's:
+A field can depend on another field of the same form (a resource's, an
+action dialog's or a settings group's):
 
 ```php
 DateTime::make('releasedAt')
@@ -77,8 +77,8 @@ fails the build. A collection can only be tested with `null` or
 A relation input searches the target's title. When the target declares
 `searchSubtitle()` or `searchImage()` (see
 [Resources](resources.md#global-search)), each choice shows that value
-under its title and the image as a thumbnail — the same as global
-search — so records with the same title can be told apart.
+under its title and the image as a thumbnail (the same as global
+search), so records with the same title can be told apart.
 
 ## Dependent choices
 
@@ -154,5 +154,5 @@ instead of losing the other change; the form says so.
 
 ## See also
 
-- {doc}`fields` — every field and modifier.
-- {doc}`records` — the forms from a user's side.
+- {doc}`fields`: every field and modifier.
+- {doc}`records`: the forms from a user's side.

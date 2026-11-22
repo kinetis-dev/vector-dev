@@ -11,10 +11,13 @@ use Kinetis\QueryBuilder\Query;
 
 /**
  * `vector_audit`: field-level history per record. The writer records
- * what changed — `{field: {from, to}}` on an update, every value on a
- * create — and who did it, impersonator included.
+ * what changed, `{field: {from, to}}` on an update, every value on a
+ * create, and who did it, impersonator included, and the channel it
+ * came through (ActorContext::$origin) when that was not the admin's own
+ * hand. A null origin is not written, so an installation that has not
+ * yet added the `origin` column keeps recording its own writes.
  *
- * @phpstan-type AuditRow array{id: int, event: string, actorId: string, impersonatorId: string|null, changes: array<string, mixed>, createdAt: string}
+ * @phpstan-type AuditRow array{id: int, event: string, actorId: string, impersonatorId: string|null, origin: string|null, changes: array<string, mixed>, createdAt: string}
  */
 final readonly class AuditStore
 {
@@ -24,7 +27,7 @@ final readonly class AuditStore
      * @param list<string> $recordIds
      * @param array<string, mixed> $changes
      */
-    public function record(string $resource, array $recordIds, string $event, array $changes, string $actorId, ?string $impersonatorId): void
+    public function record(string $resource, array $recordIds, string $event, array $changes, string $actorId, ?string $impersonatorId, ?string $origin = null): void
     {
         $rows = [];
         $now = JobStore::now();
@@ -39,7 +42,7 @@ final readonly class AuditStore
                 'event' => $event,
                 'changes' => $encoded,
                 'created_at' => $now,
-            ];
+            ] + ($origin === null ? [] : ['origin' => $origin]);
         }
 
         if ($rows !== []) {
@@ -85,6 +88,8 @@ final readonly class AuditStore
             'event' => (string) $row['event'],
             'actorId' => (string) $row['actor_id'],
             'impersonatorId' => $row['impersonator_id'] === null ? null : (string) $row['impersonator_id'],
+            // absent where the column has not been added yet
+            'origin' => isset($row['origin']) ? (string) $row['origin'] : null,
             'changes' => is_array($changes) ? $changes : [],
             'createdAt' => (new DateTimeImmutable((string) $row['created_at'], new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.v\Z'),
         ];

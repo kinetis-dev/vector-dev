@@ -7,6 +7,105 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The MCP tool `vector_aggregate`: counts, sums, averages, minimums and
+  maximums (1 to 6 metrics) over every record a `filter` and `q` match,
+  read by the list's own grammar, under its scope, trash predicate and
+  `viewAny`, grouped by up to three keys: a value, a belongsTo's key
+  (`{id, label}`) or a date or datetime by `day`, `week`, `month`,
+  `quarter` or `year` in UTC, on MySQL and PostgreSQL; sorted by a metric
+  or key, at most 100 groups, with `groupCount` and `truncated`. A field
+  is eligible when the user's descriptor publishes it, its list or record
+  view shows it, and it is no
+  computed, rich-text, key-value or collection field. Money stays in
+  minor units, and a field priced in a currency field of its record is
+  grouped by that currency too. `Query\AggregateRequest` validates the
+  request and `ResourceService::aggregate()` runs it.
+
+- `vector_query` takes `fields`, a list of field names: each row then
+  carries only those, its key, and the `_version` and `_trashed` it
+  carries anyway. Without it a page is unchanged.
+
+- `Http\VisibleResources::all()` (the resources this request's user may
+  list, as they see them, with their permissions) is decided once per
+  request: the descriptor, the OpenAPI document and a shell contributor
+  that injects it share one pass of the resource and field policies;
+  `decided($slug)` reads one resource from that pass when it was made,
+  and asks no policy when it was not.
+
+- `Auth\ActorScope::run()` runs a closure on a request scope of its own,
+  created as the worker creates a job's, acting as a given admin (their
+  `ActorContext` and user registered on it), and disposes of it as
+  kinetis/queue's `SyncQueue` disposes of a job's: the closure's own
+  failure is rethrown, and a disposal failure on top of it is logged at
+  error rather than put in its place; alone, it is the outcome.
+  `JobContext::inFreshScope()` runs a closure that way as the job's
+  actor.
+
+- A queued action knows its job and can leave it a file:
+  `ActionRequest::$jobId` names the job every chunk (and the run's
+  `finish()`) runs in, null on the synchronous path, and
+  `VectorAction::finish()` runs once after a queued run's last chunk: a
+  `download` it answers becomes the job's file and message, `danger`
+  fails the job, null (the default) changes nothing.
+  `ActionResponse::download()` takes an optional message for it.
+- An action can declare the records it acted on:
+  `ActionResponse::withRecords(list<int|string>)`. Only those, of the
+  records it was handed, are logged in `vector_action_events` and get an
+  `action:<name>` audit entry (none for an empty list), and `affected`
+  is their count rather than the chunk's size. An identifier the action
+  was not handed is ignored. A response that declares nothing behaves as
+  before; the response's JSON is unchanged.
+
+### Changed
+
+- Requires `kinetis/framework` `^1.30.0`, whose console answers `--help`
+  and `-h` on every command, Vector's included, with the command's usage
+  and description, without running it.
+- A queued action's every chunk, and its `finish()`, now run on a request
+  scope of their own (`RunActionJob`, through `JobContext::inFreshScope()`),
+  the resource read anew as the admin sees it: a request-scoped cache
+  filled during one chunk is no longer what the next one sees.
+
+### Fixed
+
+- `vector_aggregate` refuses a field neither the list nor the record view shows (as a group key, metric, sort or a money metric's currency), as a list's `columns` does.
+
+## [0.16.0] - 2026-11-19
+
+### Added
+
+- A metadata bag: `Field::meta(string $key, mixed $value)` and
+  `#[Resource(meta: [...])]`, published verbatim as `meta` on the field
+  and the resource in the descriptor. Vector never reads it; keys are
+  namespaced by convention (`ai.send`). Omitted when empty, so a
+  resource that declares none is published, and described by
+  `vector_describe`, exactly as before.
+- Shell contributors: a class implementing
+  `Http\ShellContributorInterface` and carrying
+  `#[ShellContributor(name: '...')]` is discovered at compile time and
+  answers, per user and per request, `capabilities.<name>` in
+  `GET /vector/schema`. A malformed name, one taken twice or one of the
+  built-in capability keys stops the compile.
+- A write's origin: `ActorContext` takes an optional `origin` token
+  (`assistant`, say) for a write that did not come from the admin's own
+  hand, recorded in a new nullable `origin` column of `vector_audit` and
+  `vector_action_events` (the `vector_write_origin` migration) and
+  returned on each entry of `GET /vector/r/{resource}/{id}/audit`. Null
+  for every other write, and not written at all then, so an installation
+  that has not applied the migration keeps recording its writes.
+
+### Changed
+
+- The descriptor is version 6 (`VectorRegistry::VERSION`): an AOT cache
+  compiled at version 5 is refused and rebuilt, and the UI must be
+  @kinetis/vector-ui 0.13.0 or later.
+- `vector:install-ui` installs `@kinetis/vector-ui` 0.13.0 by default.
+- Requires PHP 8.4 or 8.5 (`>=8.4 <8.6`). Every Kinetis requirement is
+  raised to its latest release: `kinetis/framework` 1.29.1 and the rest
+  of the Kinetis packages one patch release up.
+
 ## [0.15.1] - 2026-11-16
 
 ### Changed
@@ -95,8 +194,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A queue dashboard, built in (`Kinetis\Vector\Queues\`, under
   `/vector/queues`): queue sizes and clears on the application's
-  `QueueInterface`, the failed jobs `kinetis/queue-failed-jobs` keeps —
-  browsed, retried, forgotten and pruned — and per-minute job metrics,
+  `QueueInterface`, the failed jobs `kinetis/queue-failed-jobs` keeps
+  (browsed, retried, forgotten and pruned) and per-minute job metrics,
   behind `QueueDashboardPolicyInterface` (view-only by default, an
   application's own binding wins) and watching `VECTOR_QUEUES`. It is the
   code of the separate queue-dashboard package, never released, whose
@@ -265,8 +364,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Uploading to a file or image field needs write permission, not just
-  list (`viewAny`): the field — or a rich-text field uploading its
-  images through it — on the create form while the policy allows
+  list (`viewAny`): the field (or a rich-text field uploading its
+  images through it) on the create form while the policy allows
   `create()`, or on the update form while it allows `update()` on the
   record the upload names in its new multipart `record` part. Otherwise
   the upload answers `403`. The UI's inputs send the id of the record
@@ -279,8 +378,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - A job whose push the queue backend refused stored the backend's own
-  message on its row — hosts, ports, and whatever else the driver put in
-  it — where the admin's Jobs page shows it. The row now says only that
+  message on its row (hosts, ports, and whatever else the driver put in
+  it), where the admin's Jobs page shows it. The row now says only that
   the job failed unexpectedly, as a job failing in the worker does; the
   message reaches the log with the rethrown exception.
 - The MCP `vector://schema` resource listed every action of a resource,
@@ -320,17 +419,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   every row had been processed. The file now keeps the failed rows that
   fit, whole, the last one's `error` saying how many more are not in it,
   and the import completes.
-- An enum value of the scalar type its enum is not backed by — any
+- An enum value of the scalar type its enum is not backed by (any
   `filter[field]=…` on an int-backed enum, or a string sent for one in
-  a body — answered `500` with a `TypeError` from `tryFrom()`. A list
+  a body) answered `500` with a `TypeError` from `tryFrom()`. A list
   filter now matches an int-backed enum by its digits, and any other
   value is refused as `invalid_choice` (`422`).
 - A CSV import refused a non-empty cell of a date-only field
   (`Kinetis\Orm\Date`) on every row with "must be a date as
   YYYY-MM-DD.": the parsed date reached the writer as an object rather
   than the text a body carries.
-- A row of a CSV import that the database refused — a duplicate unique
-  value, a value too long for its column — stayed pending in the entity
+- A row of a CSV import that the database refused (a duplicate unique
+  value, a value too long for its column) stayed pending in the entity
   manager, so the next row's write sent it again and failed with that
   row's reason, up to the next hundred rows. A refused row's pending
   changes are now discarded before the next row.
@@ -357,7 +456,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An integer identifier, list cursor, `page`, `perPage` or integer
   value no longer accepts a trailing newline: `"42\n"` read as `42`,
   because the patterns ended in `$` without the `D` modifier. It is now
-  refused like any other non-integer — 404 for a record, job,
+  refused like any other non-integer: 404 for a record, job,
   notification, view or history entry, 422 for a list parameter or a
   field value.
 - Ships the `@kinetis/vector-ui` 0.10.2 hosted bundle, with its keyboard

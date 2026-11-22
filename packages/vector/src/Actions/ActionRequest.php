@@ -12,7 +12,10 @@ use Kinetis\Vector\Registry\ResourceDescriptor;
  * What an action handles: the records it was run on, both as the
  * entities the ORM loaded (mutate them; the runner flushes once) and as
  * the serialized rows the policy saw, plus the dialog's converted
- * values. Empty lists for a standalone action.
+ * values. Empty lists for a standalone action, and for the request
+ * VectorAction::finish() is given. `jobId` is the background job a
+ * queued action's chunk runs in, the same for every chunk of one run,
+ * and for its finish(), and null on the synchronous path.
  */
 final readonly class ActionRequest
 {
@@ -28,6 +31,7 @@ final readonly class ActionRequest
         public array $entities,
         public array $records,
         public array $fields,
+        public ?int $jobId = null,
     ) {}
 
     /** @return list<object> */

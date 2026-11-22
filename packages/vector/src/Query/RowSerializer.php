@@ -98,7 +98,7 @@ final readonly class RowSerializer
     }
 
     /**
-     * The stored JSON as an object of text values — an object even when
+     * The stored JSON as an object of text values; an object even when
      * empty or keyed by digits; a nested value reads as its JSON text.
      */
     private static function keyValue(mixed $stored): ?\stdClass

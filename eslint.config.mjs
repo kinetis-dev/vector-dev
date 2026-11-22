@@ -31,6 +31,7 @@ export default createConfigForNuxt({
         '**/.output/**',
         '**/dist/**',
         'packages/vector/**',
+        'packages/vector-ai/**',
         'demo/backend/**',
         'demo/e2e/test-results/**',
         'demo/e2e/playwright-report/**',

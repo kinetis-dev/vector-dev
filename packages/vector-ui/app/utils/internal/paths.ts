@@ -4,7 +4,7 @@
 /**
  * A path of this admin, and nothing a browser would read as another
  * origin: one leading `/` not followed by `/` or `\` (`//host`, `/\host`),
- * no scheme, and no backslash, whitespace or control character anywhere —
+ * no scheme, and no backslash, whitespace or control character anywhere:
  * a browser strips tab, CR and LF from a URL, so `/\t/host` is `//host`.
  */
 export function isAdminPath(path: string): boolean {

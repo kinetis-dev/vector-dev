@@ -109,8 +109,11 @@ final class ResourcesPerEntityTest extends TestCase
      * compiles byte for byte as it did then: the fixture was captured
      * from the compiler at 826da67. Users, now one of two resources over
      * its entity, is among them. Products and tickets have since declared
-     * a searchable relation and full-text search, and the fixture holds
-     * them with those declarations.
+     * a searchable relation and full-text search, products and users their
+     * `ai.send` metadata (docs/ai.md), orders their bulk AI rewrite
+     * action (TidyOrderNotes) and their number's `unique()` (the
+     * orders_number_unique key), and the fixture holds them with those
+     * declarations.
      */
     public function testEveryExistingDescriptorIsUnchanged(): void
     {

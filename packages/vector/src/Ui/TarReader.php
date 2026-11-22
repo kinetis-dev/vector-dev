@@ -131,7 +131,7 @@ final readonly class TarReader
     }
 
     /**
-     * Reads a metadata entry — pax (`x`, `g`) or GNU long name (`L`) — and
+     * Reads a metadata entry, pax (`x`, `g`) or GNU long name (`L`), and
      * answers the long name, pax path and pax size it sets for the next
      * entry. A `g` header's records are read past.
      *

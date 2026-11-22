@@ -8,7 +8,7 @@ use Kinetis\Vector\RichText\Document;
 
 /**
  * Long-form content edited in a word-processor-like editor and stored as
- * the editor's JSON document — a tree the server validates against a
+ * the editor's JSON document; a tree the server validates against a
  * fixed schema, never markup. The entity property is a string on a TEXT
  * or JSON column.
  *
@@ -16,7 +16,7 @@ use Kinetis\Vector\RichText\Document;
  * strike, code, heading, list, blockquote, codeBlock, horizontalRule,
  * link, table, image, mention, and any node Document::extend() added);
  * every one but image and mention by default. `imageField()` names the
- * file or image field whose uploads images come from — an image stores a
+ * file or image field whose uploads images come from; an image stores a
  * storage key, never a URL; `mentions()` names the relation whose
  * records `@` offers. `searchable()` needs `textField()`: a second
  * string property the writer fills with the plain text on every write.

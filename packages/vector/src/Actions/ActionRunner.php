@@ -29,7 +29,8 @@ use Kinetis\Vector\Write\ValueConverter;
  * record a filter matches, within the resource's bulk limit), checks
  * the policy and the action's own visibility for every record,
  * validates the dialog's values, hands the loaded entities to the
- * action, flushes once and logs the run.
+ * action, flushes once and logs the run, for every record handed over,
+ * or for those the response declares (ActionResponse::withRecords()).
  */
 final readonly class ActionRunner
 {
@@ -91,8 +92,9 @@ final readonly class ActionRunner
      *
      * @param list<int|string> $ids
      * @param array<array-key, mixed> $rawFields
+     * @param int|null $jobId the job a queued chunk runs in, handed to the action on its ActionRequest
      */
-    public function runNow(ResourceDescriptor $resource, string $name, array $ids, array $rawFields): ActionResponse
+    public function runNow(ResourceDescriptor $resource, string $name, array $ids, array $rawFields, ?int $jobId = null): ActionResponse
     {
         $compiled = $this->admitted($resource, $name);
         $instance = $this->scope->get($compiled['class']);
@@ -119,15 +121,61 @@ final readonly class ActionRunner
             $entities = array_values($this->writer->loadMany($resource, array_map(strval(...), $ids)));
         }
 
-        $response = $instance->handle(new ActionRequest($resource, $this->user, $this->managers->managerFor($resource->entityClass()), $entities, $records, $values));
+        $response = $instance->handle(new ActionRequest($resource, $this->user, $this->managers->managerFor($resource->entityClass()), $entities, $records, $values, $jobId));
 
         if ($response->type === 'danger') {
             return $response; // the action declined; nothing is flushed
         }
 
-        $this->writer->commitAction($resource, $name, $ids);
+        if ($response->records === null) {
+            $this->writer->commitAction($resource, $name, $ids);
 
-        return $response->affected === 0 && $ids !== [] ? $response->withAffected(count($ids)) : $response;
+            return $response->affected === 0 && $ids !== [] ? $response->withAffected(count($ids)) : $response;
+        }
+
+        // the action declared what it acted on: only those, of the records it was handed, are logged and audited
+        $acted = self::declared($ids, $response->records);
+        $this->writer->commitAction($resource, $name, $acted);
+
+        return $response->withAffected(count($acted));
+    }
+
+    /**
+     * The identifiers of $ids an action declared, as $ids holds them and
+     * in its order; one it was not handed is dropped, so an action cannot
+     * audit a record it was not given.
+     *
+     * @param list<int|string> $ids
+     * @param list<int|string> $declared
+     * @return list<int|string>
+     */
+    private static function declared(array $ids, array $declared): array
+    {
+        $wanted = array_fill_keys(array_map(strval(...), $declared), true);
+
+        return array_values(array_filter($ids, static fn (int|string $id): bool => isset($wanted[(string) $id])));
+    }
+
+    /**
+     * A queued run's finish(), once its chunks are done: the action asked
+     * again as at the start of every chunk (policy, canRun(), the
+     * dialog's values), then handed no records and the job's id. Nothing
+     * is flushed or logged.
+     *
+     * @param array<array-key, mixed> $rawFields
+     */
+    public function finish(ResourceDescriptor $resource, string $name, array $rawFields, int $jobId): ?ActionResponse
+    {
+        $compiled = $this->admitted($resource, $name);
+        $instance = $this->scope->get($compiled['class']);
+
+        if (!$instance instanceof VectorAction) {
+            throw new \LogicException("{$compiled['class']} is not a VectorAction.");
+        }
+
+        $values = $this->input->validate($this->fieldsOf($compiled), $rawFields);
+
+        return $instance->finish(new ActionRequest($resource, $this->user, $this->managers->managerFor($resource->entityClass()), [], [], $values, $jobId));
     }
 
     /**

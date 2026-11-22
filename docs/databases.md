@@ -14,11 +14,11 @@ An entity may live on a named connection:
 
 with its `DB_SUPPORT_*` keys and its migrations in
 `migrations/support/`. Its resource needs nothing extra. The compiled
-descriptor records each resource's connection. Every read — lists,
+descriptor records each resource's connection. Every read (lists,
 filters, search, summaries, relation labels and counts, options,
-related lists, export, global search — is built on that connection
-through the request's `EntityManagerRegistry`, and every write —
-create, update, delete, restore, batch, actions — flushes through that
+related lists, export, global search) is built on that connection
+through the request's `EntityManagerRegistry`, and every write
+(create, update, delete, restore, batch, actions) flushes through that
 connection's manager. A related record is loaded through the manager of
 the connection it lives on. A relation never spans two connections (the
 ORM refuses such a mapping at build time), so every relation Vector
@@ -44,8 +44,8 @@ connection.
 
 ## Vector's own tables
 
-By default Vector's tables — settings, preferences, views, the action
-log, audit, jobs and notifications — share the application's default
+By default Vector's tables (settings, preferences, views, the action
+log, audit, jobs and notifications) share the application's default
 connection. To keep them apart:
 
 ```console
@@ -120,5 +120,5 @@ CREATE INDEX articles_fulltext ON articles USING GIN (to_tsvector('english', coa
 
 ## See also
 
-- {doc}`configuration` — every key.
-- {doc}`limits` — sizes and bounds.
+- {doc}`configuration`: every key.
+- {doc}`limits`: sizes and bounds.

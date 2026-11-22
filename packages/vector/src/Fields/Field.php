@@ -12,7 +12,7 @@ use Kinetis\Validation\Constraints\NotBlank;
  * One administered attribute of a resource, as compile-time data. A
  * field never sees a value: the request-time serializer works from the
  * array toArray() produces, keyed by `type`, so the compile boundary
- * of §4.3 holds — nothing here survives into a worker but plain data.
+ * of §4.3 holds; nothing here survives into a worker but plain data.
  */
 abstract class Field
 {
@@ -57,6 +57,14 @@ abstract class Field
     protected int|string|null $columnSpan = null;
 
     protected bool $hasDefault = false;
+
+    /**
+     * Free-form, namespaced metadata (`ai.send`, say) for packages that
+     * build on Vector. Vector publishes it verbatim and never reads it.
+     *
+     * @var array<string, scalar|list<scalar|null>|null>
+     */
+    protected array $meta = [];
 
     /** The operators a condition may use. */
     public const array CONDITION_OPERATORS = ['eq', 'ne', 'in', 'nin', 'null', 'nnull'];
@@ -131,8 +139,8 @@ abstract class Field
     /**
      * Editable in place in the list: a click on the cell edits it, and
      * the list saves every changed cell together (POST …/changes). For
-     * simple values only — text-like, number, money, boolean, enum, date,
-     * date-time and belongsTo fields — and never a read-only one.
+     * simple values only (text-like, number, money, boolean, enum, date,
+     * date-time and belongsTo fields) and never a read-only one.
      */
     public function inlineEditable(bool $inline = true): static
     {
@@ -142,7 +150,7 @@ abstract class Field
     }
 
     /**
-     * Marks the value as unique among the resource's records — what the
+     * Marks the value as unique among the resource's records, what the
      * column's unique index already enforces. A duplicated record's form
      * starts without it, and a CSV import may use it as the key that
      * matches rows to records. The ORM's metadata does not carry indexes,
@@ -315,6 +323,39 @@ abstract class Field
     }
 
     /**
+     * One entry of the field's metadata bag, published verbatim as the
+     * descriptor's `meta`. Vector never interprets it: it is there for a
+     * package or a runtime extension that builds on the descriptor. Keys
+     * are namespaced by convention (`vendor.key`); a value is a scalar,
+     * null or a list of those.
+     */
+    public function meta(string $key, mixed $value): static
+    {
+        self::checkMeta($key, $value, "\"{$this->name}\"");
+        $this->meta[$key] = $value;
+
+        return $this;
+    }
+
+    /**
+     * Refuses a metadata entry Vector could not publish as plain JSON.
+     *
+     * @throws \InvalidArgumentException
+     */
+    public static function checkMeta(mixed $key, mixed $value, string $owner): void
+    {
+        if (!is_string($key) || preg_match('/^[A-Za-z][A-Za-z0-9_-]*(?:\.[A-Za-z0-9_-]+)*$/D', $key) !== 1 || strlen($key) > 100) {
+            throw new \InvalidArgumentException("{$owner}: a meta key is a dotted name such as \"vendor.key\".");
+        }
+
+        $scalar = static fn (mixed $v): bool => $v === null || is_scalar($v);
+
+        if (!$scalar($value) && !(is_array($value) && array_is_list($value) && array_all($value, $scalar))) {
+            throw new \InvalidArgumentException("{$owner}: meta \"{$key}\" must be a scalar, null or a list of those.");
+        }
+    }
+
+    /**
      * The compiled form. `nullable` and `column` are filled in by the
      * compiler from the entity's metadata.
      *
@@ -344,7 +385,7 @@ abstract class Field
             'default' => $this->default,
             'hasDefault' => $this->hasDefault,
             'conditions' => $this->conditions,
-        ];
+        ] + ($this->meta === [] ? [] : ['meta' => $this->meta]);
     }
 
     public static function labelFrom(string $name): string

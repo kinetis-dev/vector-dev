@@ -11,7 +11,7 @@ use Kinetis\Vector\Translation\MessagesTranslator;
 
 /**
  * Labels in the user's language: translated at response time for the
- * language the user chose — while the administrator has it switched on —
+ * language the user chose (while the administrator has it switched on)
  * else the administrator's default; the browser's languages play no part.
  * The compiled registry stays in the labels' own words. Languages are set
  * on a viewer of the tests' own (headersIn()), never on the seeded admin.
@@ -95,7 +95,7 @@ final class TranslationTest extends VectorTestCase
         self::assertTrue($fields['default']['hasDefault']);
         self::assertSame(array_keys(Locales::SHIPPED), array_keys(array_filter($group['values'], static fn (mixed $on): bool => $on === true)));
 
-        // the default is always a language that is switched on — so at least one is
+        // the default is always a language that is switched on; so at least one is
         $this->client->put('/vector/settings/languages', body: ['en' => false], headers: $this->realAdminHeaders())
             ->assertValidationError('default');
         $this->client->put('/vector/settings/languages', body: ['de' => false, 'default' => 'de'], headers: $this->realAdminHeaders())

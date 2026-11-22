@@ -3,7 +3,7 @@ import type { VectorLayoutNode } from '#vector/app/types/vector'
 
 // A resource's layout (sections, tabs, column spans) around the fields
 // the owner renders through the `field` slot: the record form's inputs,
-// the show page's values. Layout only groups — it never decides what is
+// the show page's values. Layout only groups; it never decides what is
 // edited or shown; `shown` does, per field. A section or tab none of
 // whose fields is shown is not drawn. A field with an error opens the
 // section holding it and activates its tab, which carries a badge.

@@ -26,8 +26,8 @@ on a form itself. An upload without `record` is allowed by create
 permission only. Otherwise the answer is `403`; listing the resource is
 not enough. The server:
 
-- detects the format from the file's bytes — never from its name or the
-  type the browser sent — and refuses one the field does not `accept()`;
+- detects the format from the file's bytes (never from its name or the
+  type the browser sent) and refuses one the field does not `accept()`;
 - refuses a file above the field's `maxBytes()`;
 - stores it privately under a key it generates,
   `vector/{resource}/{field}/{random}.{ext}`, and answers that key with
@@ -48,16 +48,16 @@ accepts raster formats only; SVG can carry script.
 The stored key is checked again before it is read, whoever wrote it: a
 key with an empty, `.` or `..` segment, a leading `/`, a backslash or a
 control character, or one under `vector/` but outside that field's own
-`vector/{resource}/{field}/`, answers `404`. A key outside `vector/` —
-one your application stored, or one typed while uploads were
-unavailable — is still served.
+`vector/{resource}/{field}/`, answers `404`. A key outside `vector/`
+(one your application stored, or one typed while uploads were
+unavailable) is still served.
 
 ## Cleaning up unused files
 
 Vector never deletes a stored file when a value changes or a record is
 deleted, so an undo or a revert can still bring it back. Uploads that no
-record uses — never saved, replaced by a later upload, or left by a
-deleted record — stay until you prune them:
+record uses (never saved, replaced by a later upload, or left by a
+deleted record) stay until you prune them:
 
 ```console
 vendor/bin/kinetis vector:files:prune --dry-run   # lists what would be deleted
@@ -100,5 +100,5 @@ and the user uploads it again.
 
 ## See also
 
-- {doc}`fields` — the other field types.
-- {doc}`configuration` — storage keys.
+- {doc}`fields`: the other field types.
+- {doc}`configuration`: storage keys.

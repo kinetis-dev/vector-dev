@@ -2,8 +2,8 @@
 import type { VectorFailedJob, VectorQueuePermissions } from '#vector/app/types/vector'
 
 // One failed job: GET /failed/{id}, its exception, message, trace (always
-// null today) and redacted arguments, every one as text — interpolated,
-// never v-html — and Retry and Forget where the permissions allow them.
+// null today) and redacted arguments, every one as text (interpolated,
+// never v-html) and Retry and Forget where the permissions allow them.
 const props = defineProps<{ id: string, permissions: VectorQueuePermissions }>()
 const emit = defineEmits<{ back: [], changed: [] }>()
 

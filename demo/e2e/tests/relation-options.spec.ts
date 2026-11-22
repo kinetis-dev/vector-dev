@@ -2,7 +2,7 @@ import { expect, test } from '../support/fixtures'
 import type { Page } from '@playwright/test'
 
 // A relation's choice list tells records apart: a customer shows its
-// e-mail under the name, a product its SKU and its image — fetched with
+// e-mail under the name, a product its SKU and its image, fetched with
 // the admin's credentials and shown under the hosted CSP.
 
 async function choose(page: Page, label: string, search: string) {

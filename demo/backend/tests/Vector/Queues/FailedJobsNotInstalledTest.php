@@ -17,12 +17,12 @@ use Kinetis\Vector\Queues\FailedJobsLink;
  * as an application that skips the suggestion: the CI job
  * `php-without-failed-jobs` removes the package from the demo and runs
  * this test alone. With the package installed, as in the demo itself, it
- * skips — FailedJobsUnwiredTest covers "installed but not wired" there.
+ * skips, FailedJobsUnwiredTest covers "installed but not wired" there.
  *
  * Unlike FailedJobsUnwiredTest, nothing here builds the gate: the
  * application boots as it would in production, so QueueDashboard::register()
  * decides by itself that the package is missing. Any hard reference to one
- * of its classes on the boot or request path fails here — as a boot error,
+ * of its classes on the boot or request path fails here, as a boot error,
  * or as a 500 instead of the answers below. This file names the package's
  * classes only as the ::class string the skip check takes, which loads
  * nothing; it must not extend QueuesTestCase, whose setUp() builds

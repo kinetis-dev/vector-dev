@@ -11,13 +11,13 @@ use Kinetis\Migrations\Migration;
 // 20260810143000_create_kinetis_queue_jobs_table.php.
 // Required by Kinetis\Queue\SqlQueue.
 //
-// AUTO_INCREMENT/UNSIGNED are MySQL-only syntax — see the .pgsql. sibling
+// AUTO_INCREMENT/UNSIGNED are MySQL-only syntax, see the .pgsql. sibling
 // stub for the Postgres equivalent; migrations are raw SQL by design, so
 // there is no shared, dialect-abstracted version of this file.
 //
 // `queue` and `reserved_token` are ascii_bin: MySQL's default collation
 // compares case-insensitively, and both columns are matched for exact
-// equality — a queue name the caller asked for, and the token fencing a
+// equality; a queue name the caller asked for, and the token fencing a
 // settlement to the reservation that produced it. Postgres compares
 // byte-exactly already.
 

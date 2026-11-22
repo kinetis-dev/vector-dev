@@ -3,8 +3,9 @@ name: Release
 # Every push to main releases what packages.manifest.json says is not out
 # yet: each Composer product to its own mirror, tagged v<version> there
 # (packages/vector to kinetis-dev/vector, Packagist's kinetis/vector;
-# MIRRORS in scripts/release.mjs), and
-# packages/vector-ui to npm (@kinetis/vector-ui). Each versions
+# packages/vector-ai to kinetis-dev/vector-ai; MIRRORS in
+# scripts/release.mjs), and packages/vector-ui to npm
+# (@kinetis/vector-ui). Each versions
 # independently, bumped in its pull request with scripts/bump.mjs and
 # held to the policy by versions.yml; a push that publishes nothing is a
 # successful no-op. This repository itself gets no tags. npm goes first:
@@ -21,7 +22,7 @@ on:
   # A rehearsal: dispatch it with dry_run on (the default) to run every
   # check, the bundle build and the split, and see what npm and the mirror
   # would receive, writing nothing. It can run from any
-  # branch — a pull request's, before it merges — and reports, rather than
+  # branch (a pull request's, before it merges) and reports, rather than
   # fails on, a commit not on main yet; every other refusal fails it as it
   # would a real run. A dispatch that publishes must run from main.
   workflow_dispatch:
@@ -38,7 +39,7 @@ permissions:
 # One release at a time, and a running one is never cancelled: a release
 # stopped midway through the mirror's push or npm's publish is exactly the
 # partial state this workflow works to avoid, and two releases side by
-# side could finish out of order — the older one's push last is how a
+# side could finish out of order: the older one's push last is how a
 # mirror ends up with main behind its own tag. The group is a constant,
 # not the per-ref pair, because a dispatch from another branch must queue
 # behind main's runs too.
@@ -49,7 +50,7 @@ permissions:
 # queued, and a dry-run dispatch can displace a pending real release.
 # Nothing is lost while the manifest still states the displaced version:
 # the next run publishes every version not yet out. A version superseded
-# before its run started — 0.9.1 merged, then 0.9.2 — is no longer in the
+# before its run started (0.9.1 merged, then 0.9.2) is no longer in the
 # manifest, and the next run's predecessor check refuses to publish over
 # the gap rather than leave 0.9.1 unpublished. Re-run the cancelled run
 # (it releases its own commit's versions), then the refused one; see

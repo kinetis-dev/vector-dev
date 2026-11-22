@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Kinetis\Vector\Fields;
 
 /**
- * A JSON object of text values in a string column — attributes, labels,
- * settings — edited as key/value rows rather than as JSON text. On the
+ * A JSON object of text values in a string column (attributes, labels,
+ * settings) edited as key/value rows rather than as JSON text. On the
  * wire it is an object; a stored number or boolean reads back as text.
  */
 final class KeyValue extends Field

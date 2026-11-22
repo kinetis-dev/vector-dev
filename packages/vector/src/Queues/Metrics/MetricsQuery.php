@@ -13,7 +13,7 @@ use Kinetis\Vector\Queues\QueueNames;
 /**
  * One validated `GET /vector/queues/metrics` query: `queue` (a watched
  * queue), `class` (a fully-qualified class name), and the window `from`
- * and `to` — unix seconds, each taken to the start of its minute, both
+ * and `to`, unix seconds, each taken to the start of its minute, both
  * minutes included. `to` defaults to now and `from` to DEFAULT_MINUTES
  * minutes before `to`, the minute `to` falls in counted; the window spans
  * at most MAX_MINUTES minutes (7 days). Any other parameter, and any bad

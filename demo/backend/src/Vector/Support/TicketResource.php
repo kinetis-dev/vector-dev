@@ -34,9 +34,9 @@ use Kinetis\Vector\VectorResource;
 
 /**
  * The support desk's main resource, on PostgreSQL: every field shape the
- * MySQL products exercise — enums, a belongsTo, a nullable belongsTo, a
+ * MySQL products exercise (enums, a belongsTo, a nullable belongsTo, a
  * manyToMany, an owned hasMany, money, JSON, booleans, instants, soft
- * deletion, a version — so both dialects are covered by one feature set.
+ * deletion, a version) so both dialects are covered by one feature set.
  */
 #[Resource(entity: Ticket::class, group: 'Support', icon: 'mdi-lifebuoy', title: 'subject')]
 final class TicketResource extends VectorResource

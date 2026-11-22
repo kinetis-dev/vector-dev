@@ -18,7 +18,7 @@ concurrency:
 
 env:
   # The Composer cache below removes almost every download; this covers
-  # what is left — a cold cache, or a lock file that just changed. The
+  # what is left: a cold cache, or a lock file that just changed. The
   # job's own ephemeral token lifts the anonymous codeload.github.com
   # rate limit. No secret to provision.
   COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ secrets.GITHUB_TOKEN }}"}}'
@@ -38,7 +38,7 @@ jobs:
     steps:
       # dorny/paths-filter needs a real checkout for a push trigger (it
       # diffs against the previous commit with plain git there, while a
-      # pull_request uses the API) — fetch-depth: 0 so that commit is
+      # pull_request uses the API). fetch-depth: 0 keeps that commit
       # present even for a multi-commit push.
       - uses: actions/checkout@v7
         if: github.event_name == 'push'
@@ -51,6 +51,7 @@ jobs:
           filters: |
             php:
               - 'packages/vector/**'
+              - 'packages/vector-ai/**'
               - 'demo/backend/**'
               - 'demo/docker/**'
               - '.github/scripts/php'
@@ -85,10 +86,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # composer.json requires ^8.4; demo/docker/Dockerfile defaults to
-        # 8.4 and builds on 8.5 with the same extension recipe. php-image
-        # is the patch release each job builds on: at least 8.4.27 and
-        # 8.5.12, raised with the Dockerfile's default.
+        # composer.json requires >=8.4 <8.6; demo/docker/Dockerfile
+        # defaults to 8.4 and builds on 8.5 with the same extension recipe.
+        # php-image is the patch release each job builds on: at least
+        # 8.4.27 and 8.5.12, raised with the Dockerfile's default.
         include:
           - php-version: '8.4'
             php-image: '8.4.27'
@@ -156,6 +157,7 @@ jobs:
       - name: Validate composer.json
         run: |
           .github/scripts/php composer validate --strict ../../packages/vector/composer.json
+          .github/scripts/php composer validate --strict ../../packages/vector-ai/composer.json
           .github/scripts/php composer validate --strict
 
       - name: Install dependencies

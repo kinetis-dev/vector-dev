@@ -24,8 +24,9 @@ user manual.
 | Path | What it is |
 |---|---|
 | [`packages/vector`](packages/vector) | `kinetis/vector`, the PHP package: the compiled resource registry, the REST admin API, background jobs, the queue dashboard ([Queue dashboard](docs/queues.md)) and MCP tools. |
-| [`packages/vector-ui`](packages/vector-ui) | `@kinetis/vector-ui`, the admin UI as a Nuxt 4 layer on Vuetify 4. |
-| [`demo/`](demo) | A Kinetis application administered by Vector — a shop on MySQL and a support desk on PostgreSQL — with the Docker stack that runs it and the end-to-end suite. |
+| [`packages/vector-ui`](packages/vector-ui) | `@kinetis/vector-ui`, the admin UI as a Nuxt 4 layer on Vuetify 4, the AI UI included. |
+| [`packages/vector-ai`](packages/vector-ai) | `kinetis/vector-ai`, AI for Vector on `kinetis/neuron`: plain-language filters on its lists, an in-admin assistant that reads and proposes changes a person approves, and writing help, over its configuration, sealed provider keys, settings, model boundary and usage ledger ([AI](docs/ai.md)). |
+| [`demo/`](demo) | A Kinetis application administered by Vector (a shop on MySQL and a support desk on PostgreSQL) with the Docker stack that runs it and the end-to-end suite. |
 | [`docs/`](docs) | The user manual. |
 
 ## Try it
@@ -77,4 +78,4 @@ docker run --rm -v "$PWD/docs":/docs -w /docs python:3.12-slim \
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

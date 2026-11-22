@@ -20,6 +20,7 @@
     <projectFiles>
         <directory name="src" />
         <directory name="../../packages/vector/src" />
+        <directory name="../../packages/vector-ai/src" />
         <directory name="migrations" />
         <ignoreFiles>
             <directory name="vendor" />

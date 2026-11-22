@@ -9,6 +9,7 @@ use Kinetis\Container\RequestScope;
 use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Validation\Exception\ValidationException;
 use Kinetis\Vector\Auth\ActorContext;
+use Kinetis\Vector\Auth\ActorScope;
 use Kinetis\Vector\Auth\ActorResolverInterface;
 use Kinetis\Vector\Auth\VectorAccessInterface;
 use Kinetis\Vector\Exception\VectorException;
@@ -18,8 +19,8 @@ use Psr\Log\LoggerInterface;
 
 /**
  * What every Vector job does first: rebuild the actor on the job's own
- * request scope so the same services the controllers use — policies,
- * the writer, the reader — answer for that admin, and mark the job row
+ * request scope so the same services the controllers use (policies,
+ * the writer, the reader) answer for that admin, and mark the job row
  * running. The worker gives each job a fresh scope, so registering the
  * identity here leaks into nothing else.
  */
@@ -35,6 +36,7 @@ final readonly class JobContext
         public JobStore $jobs,
         public NotificationStore $notifications,
         private LoggerInterface $log,
+        private ActorScope $scopes,
     ) {}
 
     /**
@@ -64,11 +66,46 @@ final readonly class JobContext
     }
 
     /**
+     * Runs $body on a request scope of its own, created as the worker
+     * creates the job's, with the job's actor registered on it as actAs()
+     * registered it here, and disposes of it after: what each chunk of a
+     * queued action runs in (RunActionJob), so nothing a request-scoped
+     * service remembered during one chunk (a cache, the settings it read,
+     * how a resource looked to the admin) is what the next one sees.
+     * $body is given the JobContext of that scope. ActorScope creates and
+     * disposes of it: when the body failed, that failure is rethrown and a
+     * disposal failure is only logged; when it did not, a disposal failure
+     * is the outcome.
+     *
+     * @template T
+     * @param \Closure(JobContext): T $body
+     * @return T
+     */
+    public function inFreshScope(\Closure $body): mixed
+    {
+        $actor = $this->scope->get(ActorContext::class);
+
+        if (!$actor instanceof ActorContext) {
+            throw new \LogicException('inFreshScope() runs after actAs() registered the job\'s actor.');
+        }
+
+        return $this->scopes->run($actor, static function (RequestScope $scope) use ($body): mixed {
+            $context = $scope->get(self::class);
+
+            if (!$context instanceof self) {
+                throw new \LogicException('JobContext did not resolve.');
+            }
+
+            return $body($context);
+        });
+    }
+
+    /**
      * Runs a job body against its row: running → done, or failed with the
      * message, and a notification either way; a finished row stays done
      * when its notification fails, which only the log records. A row
-     * that is not queued — a redelivery of a job that already ran, or was
-     * already marked failed — is left alone: every Vector job runs at
+     * that is not queued (a redelivery of a job that already ran, or was
+     * already marked failed) is left alone: every Vector job runs at
      * most once.
      */
     public function run(int $jobId, string $actorId, string $title, \Closure $body): void
@@ -101,7 +138,7 @@ final readonly class JobContext
     /**
      * What the job row and the notification say about a failure: a
      * message Vector or the framework wrote for the admin, verbatim; any
-     * other exception — a driver's, a library's — carries connection
+     * other exception (a driver's, a library's) carries connection
      * details and SQL the admin should not read, so those go to the log
      * and the row gets a generic line.
      */

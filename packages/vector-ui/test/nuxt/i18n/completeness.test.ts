@@ -5,7 +5,7 @@ import { bundledMessages, pluralCategories } from '#vector/app/i18n'
 // placeholders in each message, and every plural message with the forms
 // its own language has (pluralCategories: two for German, three for
 // Russian, one for Japanese). This is a completeness test, not a
-// translation check — the translations are machine translations.
+// translation check; the translations are machine translations.
 
 type Messages = { [key: string]: string | Messages }
 

@@ -44,6 +44,10 @@ export default {
         revertTitle: 'Reverter esta alteração?',
         revertText: 'Restaura o valor anterior de {fields}. A reversão também fica registrada no histórico.',
         reverted: 'Alteração revertida.',
+        via: 'via {origin}',
+        origin: {
+            assistant: 'assistente',
+        },
     },
     panel: {
         attach: 'Vincular',

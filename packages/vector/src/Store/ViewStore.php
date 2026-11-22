@@ -10,8 +10,8 @@ use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\QueryBuilder\Query;
 
 /**
- * `vector_views`: saved list configurations — filters, search, sort,
- * columns, grouping, page size — per resource. A view is personal to
+ * `vector_views`: saved list configurations (filters, search, sort,
+ * columns, grouping, page size) per resource. A view is personal to
  * its owner or shared with every admin; its owner alone changes it. A
  * user's default view for a resource is the one the list opens with; one
  * shared view per resource can be the default for everyone else.

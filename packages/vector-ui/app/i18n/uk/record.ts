@@ -44,6 +44,10 @@ export default {
         revertTitle: 'Відкотити цю зміну?',
         revertText: 'Повертає попереднє значення: {fields}. Відкат також записується в історію.',
         reverted: 'Зміну відкочено.',
+        via: 'через {origin}',
+        origin: {
+            assistant: 'асистента',
+        },
     },
     panel: {
         attach: 'Прикріпити',

@@ -48,6 +48,29 @@ services:
     stop_signal: SIGTERM
     stop_grace_period: 60s
 
+  # The demo's scheduler: the same image, mounts and user as worker,
+  # running every hour what Vector and vector-ai need run periodically,
+  # `vector:jobs:reap` first, which marks a job whose worker died as
+  # failed, then `vector-ai:approvals:prune`, which sweeps stale
+  # assistant proposals and the rewrite rows of ended jobs (a job still
+  # stored as running keeps them, hence the order). Kinetis has no
+  # scheduler of its own; in production use cron or your platform's. A
+  # command that fails is reported and the loop goes on; init lets the
+  # shell stop on SIGTERM instead of waiting out the grace period.
+  scheduler:
+    <<: *php
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          php vendor/bin/kinetis vector:jobs:reap || echo "scheduler: vector:jobs:reap failed" >&2
+          php vendor/bin/kinetis vector-ai:approvals:prune || echo "scheduler: vector-ai:approvals:prune failed" >&2
+          sleep 3600
+        done
+    init: true
+    restart: unless-stopped
+
   # The same application under FrankenPHP worker mode, Kinetis's primary
   # runtime, on its own port: each of its threads boots the application
   # once and serves request after request, on the native non-blocking
@@ -188,7 +211,7 @@ services:
   # the workspace's, installed by the node service. The image tag and
   # @playwright/test in e2e/package.json must name the same version.
   e2e:
-    image: mcr.microsoft.com/playwright:v1.65.0-noble
+    image: mcr.microsoft.com/playwright:v1.65.1-noble
     profiles: [e2e]
     working_dir: /workspace/demo/e2e
     entrypoint: ["./node_modules/.bin/playwright"]

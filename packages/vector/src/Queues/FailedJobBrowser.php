@@ -10,7 +10,7 @@ use Kinetis\Persistence\Contract\SqlLink;
  * The dashboard's reads of `kinetis_failed_jobs` that SqlFailedJobStore
  * has no method for: a page filtered by class and failed-at range, newest
  * first, and the failure count per queue. Only ever reads, and never the
- * `args` column — a single record's arguments come from the store's own
+ * `args` column; a single record's arguments come from the store's own
  * find(), and are redacted before they leave the server.
  *
  * Application-scoped and request-neutral: the only state is the link,

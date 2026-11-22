@@ -9,9 +9,9 @@ use Kinetis\Http\CurrentUserInterface;
 /**
  * How the application lets one admin act as another. Vector owns the
  * endpoints, the authorization hook and the log entries; the
- * application owns the credential — a re-issued token carrying an
- * `impersonator` claim in bearer mode, a swapped session in cookie mode
- * — and answers with what the client must do next.
+ * application owns the credential (a re-issued token carrying an
+ * `impersonator` claim in bearer mode, a swapped session in cookie mode)
+ * and answers with what the client must do next.
  */
 interface ImpersonationInterface
 {

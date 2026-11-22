@@ -44,6 +44,10 @@ export default {
         revertTitle: 'Cofnąć tę zmianę?',
         revertText: 'Przywraca wcześniejszą wartość pól: {fields}. Cofnięcie również zostaje zapisane w historii.',
         reverted: 'Zmianę cofnięto.',
+        via: 'przez {origin}',
+        origin: {
+            assistant: 'asystenta',
+        },
     },
     panel: {
         attach: 'Dołącz',

@@ -8,8 +8,8 @@ use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Vector\Fields\Field;
 
 /**
- * One operation an admin runs on records — one, a selection, or every
- * record a filter matched — or on nothing at all when `standalone()`.
+ * One operation an admin runs on records (one, a selection, or every
+ * record a filter matched) or on nothing at all when `standalone()`.
  *
  * The definition methods run at compile time on an instance built
  * without arguments, exactly like a resource's: they return plain data
@@ -107,4 +107,16 @@ abstract class VectorAction
     }
 
     abstract public function handle(ActionRequest $request): ActionResponse;
+
+    /**
+     * A queued run's last word, called once after its last chunk with no
+     * records and the run's `jobId`: a `download` response becomes the
+     * job's file (its message the job's message), a `danger` one fails
+     * the job, and null (the default) leaves the job as its chunks left
+     * it. Nothing is flushed for it. The synchronous path never calls it.
+     */
+    public function finish(ActionRequest $request): ?ActionResponse
+    {
+        return null;
+    }
 }

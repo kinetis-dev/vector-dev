@@ -31,6 +31,10 @@ docker compose run --rm e2e test tests/tags.spec.ts        # one file
 docker compose run --rm e2e test -g "searches by SKU"      # by title
 ```
 
+The hosted project runs every spec except the `*.standalone.spec.ts`
+files against that bundle. The AI specs run there too and assert that
+the page reports no CSP violation (`support/csp.ts`).
+
 The `e2e` service is the Playwright image, with Chromium, and is not
 started by `docker compose up`. Everything after the service name goes
 to `playwright`. Its packages come from the workspace, installed by
@@ -44,6 +48,24 @@ host sees. The global setup also waits for the stack and loads the
 standalone admin once, so the dev server's first compile is not charged
 to the first test.
 
+## AI specs
+
+`ai.spec.ts` checks the demo as it ships, with no AI provider. The
+other `ai-*.spec.ts` files drive the AI features against the demo's
+scripted `fake` provider and are skipped unless the run says that is
+the provider, with `VECTOR_E2E_FAKE_AI=1`. The descriptor reports only
+that some provider is configured, and against a real one these specs
+would call the model, fail on its answers and cost money. Configure the
+fake provider in `backend/.env` (`VECTOR_AI_PROVIDERS=demo` and
+`VECTOR_AI_DEMO_TYPE=fake`), recreate `app`, then:
+
+```sh
+docker compose run --rm -e VECTOR_E2E_FAKE_AI=1 e2e
+```
+
+With the flag set, a stack that reports no AI feature fails these specs
+instead of skipping them.
+
 A failure keeps its trace and screenshot in `test-results/`. The HTML
 report is in `playwright-report/`, served with:
 
@@ -51,18 +73,19 @@ report is in `playwright-report/`, served with:
 docker compose run --rm -p 9323:9323 e2e show-report --host 0.0.0.0
 ```
 
-The hosted project tests the bundle last published, not the layer's
-current source: publish it again after changing the UI.
+The hosted project tests the bundle last installed, not the layer's
+current source: build and install it again after changing the UI.
 
 ## Documentation screenshots
 
 `tests/screenshots.standalone.spec.ts` is not a test. It captures the
 documentation's screenshots into `docs/_static/screenshots/`, as
 `<name>-light.png` and `<name>-dark.png`, and is skipped unless
-`VECTOR_SCREENSHOTS=1`:
+`VECTOR_SCREENSHOTS=1`. Its AI captures need the fake provider and
+`VECTOR_E2E_FAKE_AI=1`, as the AI specs do:
 
 ```sh
-docker compose run --rm -e VECTOR_SCREENSHOTS=1 e2e test tests/screenshots.standalone.spec.ts
+docker compose run --rm -e VECTOR_SCREENSHOTS=1 -e VECTOR_E2E_FAKE_AI=1 e2e test tests/screenshots.standalone.spec.ts
 ```
 
 Run it on the stock data set (`demo:seed --fresh`) with the flaky
@@ -115,6 +138,7 @@ uses `it.fails` the same way.
 playwright.config.ts    the two projects, timeouts, reporters
 support/global-setup.ts forwards the ports, waits for the stack, warms up the dev server
 support/fixtures.ts     accounts, signIn(), the admin/api/cleanup fixtures, unique()
+support/csp.ts          watchCsp(): the CSP violations a page reports
 support/screenshot-data.ts  the data the docs screenshots show, made through the API
 tests/                  the specs
 tests/screenshots.standalone.spec.ts  the docs screenshots, only with VECTOR_SCREENSHOTS=1

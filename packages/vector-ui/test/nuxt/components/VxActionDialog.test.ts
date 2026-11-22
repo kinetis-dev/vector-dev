@@ -7,7 +7,7 @@ import { resource } from '../fixtures'
 import type { VectorAction } from '#vector/app/types/vector'
 
 // What an action's answer asks the client to do. An `url` answer opens
-// in a new window — only where a link could go: an action may echo a
+// in a new window; only where a link could go: an action may echo a
 // record's value, and a `javascript:` URL opened from the admin runs as it.
 
 const action: VectorAction = { name: 'visit', label: 'Visit', icon: null, confirmation: null, destructive: false, standalone: false, showOnIndex: true, showOnDetail: true, fields: [] }

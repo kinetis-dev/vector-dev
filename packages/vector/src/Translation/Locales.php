@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Kinetis\Vector\Translation;
 
 /**
- * The languages Vector's UI ships — English, the base and every other
- * locale's fallback, and sixteen more — with their names in themselves and
+ * The languages Vector's UI ships (English, the base and every other
+ * locale's fallback, and sixteen more) with their names in themselves and
  * their direction. Which of them users may pick, and the default, is the
  * administrator's choice in the Languages settings group.
  */
@@ -14,11 +14,11 @@ final class Locales
 {
     /**
      * The UI's own locales: tag => its name in itself, in the order every
-     * list of languages shows them — the app bar's menu, the Languages
+     * list of languages shows them; the app bar's menu, the Languages
      * settings, the default-language choice. That order is the names'
      * Unicode root collation (CLDR's language-neutral order): Latin-script
      * names alphabetically, accents and case aside, then each other script
-     * as a group in the standard's order — Greek, Cyrillic, Hebrew, Arabic,
+     * as a group in the standard's order, Greek, Cyrillic, Hebrew, Arabic,
      * the Indic scripts, Thai, Hangul, Kana, Han. It is the same whatever
      * language the admin is shown in, so a list never reorders on a switch,
      * and nothing is pinned first. A language added here goes where that

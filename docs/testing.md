@@ -32,7 +32,7 @@ final class CatalogAdminTest extends ApplicationTestCase
 - The client itself has `schema()`, `me()`, `search()`, `badges()` and
   `job()`; `withHeaders()` switches identity.
 
-Every call answers a `VectorResponse` with chaining assertions —
+Every call answers a `VectorResponse` with chaining assertions:
 `assertRecord`, `assertTotal`, `assertIds`, `assertListed`,
 `assertEveryRecord`, `assertInvalid`, `assertForbidden`,
 `assertPermission`, `assertHasField`, `assertQueued` and more. `raw()`
@@ -40,7 +40,7 @@ is the framework's `TestResponse`, for anything else.
 
 On a resource that declares `withoutCount()`, a list page has no total:
 `assertTotal()` fails with a message saying so, and
-`assertHasMore()` — or `assertHasMore(false)` on the last page — checks
+`assertHasMore()` (or `assertHasMore(false)` on the last page) checks
 whether another page follows. `assertHasMore()` reads a cursor page's
 `hasMore` the same way.
 
@@ -65,5 +65,5 @@ PHPStan `kinetis.blockingCall` ignore.
 
 ## See also
 
-- {doc}`authorization` — what to assert about.
-- {doc}`rest-api` — what each call maps to.
+- {doc}`authorization`: what to assert about.
+- {doc}`rest-api`: what each call maps to.

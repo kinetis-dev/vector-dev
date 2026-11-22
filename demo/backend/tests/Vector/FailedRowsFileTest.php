@@ -41,7 +41,7 @@ final class FailedRowsFileTest extends TestCase
         self::assertSame(array_slice($rows, 0, count($kept)), $kept);
         self::assertSame($rows[count($kept)]['sku'], $last['sku']);
         self::assertSame(
-            sprintf('sku is taken. — %d more failed rows are not in this file, which holds at most 12 MiB.', count($rows) - count($kept) - 1),
+            sprintf('sku is taken. %d more failed rows are not in this file, which holds at most 12 MiB.', count($rows) - count($kept) - 1),
             $last['error'],
         );
     }

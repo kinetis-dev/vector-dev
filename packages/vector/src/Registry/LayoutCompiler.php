@@ -16,8 +16,8 @@ use Kinetis\Vector\Fields\Layout\Tabs;
  * The field list is every Field in declaration order, wherever it
  * sits. The layout is a tree of nodes: a top-level field keeps its
  * place; a field named inside a section or tab (by object or by name)
- * is placed there instead. Published per view — `form` (create and
- * update) and `show` — with the fields that view shows, and without a
+ * is placed there instead. Published per view, `form` (create and
+ * update) and `show`, with the fields that view shows, and without a
  * section or tab left empty.
  *
  * @phpstan-type LayoutNode array{kind: 'section'|'tabs'|'tab'|'field', label: string|null, description: string|null, collapsible: bool, collapsed: bool, columns: int|null, span: int|string|null, name: string|null, children: list<array<string, mixed>>|null}

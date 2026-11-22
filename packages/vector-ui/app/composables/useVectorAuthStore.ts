@@ -39,7 +39,7 @@ const MAX_DELAY = 2 ** 31 - 1
 
 /**
  * Bearer-mode session. The access token lives in memory for the tab and
- * is mirrored to sessionStorage — never localStorage — beside the refresh
+ * is mirrored to sessionStorage (never localStorage) beside the refresh
  * token when the application issues one (`/auth/login` answering
  * `refreshToken`). The session renews itself through `POST /auth/refresh`
  * when the access token has under two minutes left, and once more on a

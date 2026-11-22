@@ -1,4 +1,4 @@
-// node --test scripts/*.test.mjs — the release rules, and the mirror push
+// node --test scripts/*.test.mjs; the release rules, and the mirror push
 // on throwaway git repositories (skipped where git is not installed, as in
 // the demo's node container).
 import assert from 'node:assert/strict'
@@ -76,8 +76,9 @@ test("npm: every published version, none before the first publish", () => {
 
 test('every Composer product has a mirror of its own', () => {
     assert.equal(mirrorOf('vector'), 'https://github.com/kinetis-dev/vector.git')
-    assert.throws(() => mirrorOf('vector-ui'), /"vector-ui" is not a product released to a mirror; the mirror products are vector\./)
-    assert.deepEqual(Object.keys(MIRRORS), ['vector'])
+    assert.equal(mirrorOf('vector-ai'), 'https://github.com/kinetis-dev/vector-ai.git')
+    assert.throws(() => mirrorOf('vector-ui'), /"vector-ui" is not a product released to a mirror; the mirror products are vector, vector-ai\./)
+    assert.deepEqual(Object.keys(MIRRORS), ['vector', 'vector-ai'])
     // another Composer product would have a mirror of its own beside it
     const two = { vector: MIRRORS.vector, 'vector-addon': 'https://github.com/kinetis-dev/vector-addon.git' }
     assert.equal(mirrorOf('vector-addon', two), 'https://github.com/kinetis-dev/vector-addon.git')

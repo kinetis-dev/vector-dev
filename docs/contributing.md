@@ -1,7 +1,9 @@
 # Working on Vector
 
-Vector is developed in one repository: the two packages, and the demo
-application ({doc}`demo`) that consumes them the way an adopter would.
+Vector is developed in one repository: the packages (`kinetis/vector`
+and `@kinetis/vector-ui`, and the AI companion `kinetis/vector-ai`) and
+the demo application ({doc}`demo`) that consumes them the way an
+adopter would.
 Every command on this page runs from `demo/`, with the stack up and
 seeded.
 
@@ -9,12 +11,13 @@ seeded.
 
 ```text
 packages/vector/            kinetis/vector: registry, REST API, jobs, the queue dashboard (src/Queues/), MCP tools, migration stubs
-packages/vector-ui/         @kinetis/vector-ui, the Nuxt layer; its Vitest suite in test/nuxt/
+packages/vector-ui/         @kinetis/vector-ui, the Nuxt layer, the AI UI included; its Vitest suite in test/nuxt/
   hosted/                   the hosted bundle's build entry: the layer alone, built into dist/static
+packages/vector-ai/         kinetis/vector-ai: AI configuration, sealed provider keys, the ai settings group, filters, the assistant and its approvals, writing help, bulk rewrites, the usage ledger, migration stubs
 demo/docker-compose.yml     the stack: app, worker, nginx, frankenphp, mysql, postgres, redis, node; e2e and oha on demand
 demo/docker/                the PHP images (PHP-FPM and FrankenPHP) and their shared extension recipe, nginx, the Caddyfile, php.ini
 demo/bin/                   check-frankenphp and benchmark, for the FrankenPHP worker service
-demo/backend/               the demo application, kinetis/vector installed from ../../packages/vector
+demo/backend/               the demo application, kinetis/vector and kinetis/vector-ai installed from ../../packages
   src/Auth/                 both sign-ins, their throttling, the vector and mcp group middleware, impersonation
   src/Console/              demo:seed, and demo:queue-flaky, which queues the flaky job below
   src/Jobs/                 SyncWarehouseStockJob, a job that fails on purpose, for the queue dashboard
@@ -34,18 +37,24 @@ docs/                       this manual (Sphinx, MyST Markdown)
 bin/orbitron-mcp            launches the Orbitron MCP server for demo/backend
 ```
 
-Controllers, commands, entities and resources anywhere under `App\` or
-`Kinetis\Vector\` are discovered; there is no registry to edit. Nothing
+Controllers, commands, entities and resources anywhere under `App\`,
+`Kinetis\Vector\` or `Kinetis\VectorAi\` are discovered; there is no
+registry to edit. Nothing
 under `packages/` may reference `App\`.
 
-The demo installs `kinetis/vector` as a Composer `path` repository, so
-`vendor/composer/installed.json` keeps the package's `composer.json` as
-it was at the last install. After changing it, its `extra.kinetis` keys
-especially, reinstall the package so discovery sees the change:
+The demo installs `kinetis/vector` and `kinetis/vector-ai` as Composer
+`path` repositories, so `vendor/composer/installed.json` keeps each
+package's `composer.json` as it was at the last install. After changing
+one, its `extra.kinetis` keys especially, reinstall it so discovery sees
+the change:
 
 ```console
-docker compose exec app composer update kinetis/vector
+docker compose exec app composer update kinetis/vector kinetis/vector-ai
 ```
+
+`kinetis/vector-ai` requires `kinetis/vector` `^0.16`; the demo requires
+the path-installed `kinetis/vector` as `dev-main as 0.16.0` so it
+satisfies that.
 
 ## Tests
 
@@ -88,8 +97,10 @@ The end-to-end suite needs the hosted bundle installed
 ({doc}`demo`) and writes to the demo databases, so run it on its own,
 never beside PHPUnit. It signs in as its own admin, `e2e@vector.local`,
 and clears that account's saved preferences before each test, so it and
-a person using the demo do not disturb each other. See
-`demo/e2e/README.md`.
+a person using the demo do not disturb each other. The AI specs run
+only with the demo's `fake` provider configured and
+`VECTOR_E2E_FAKE_AI=1` passed to the run, so they never call a real
+model. See `demo/e2e/README.md`.
 
 ### Documentation screenshots
 
@@ -100,13 +111,17 @@ with pydata's `only-light` and `only-dark` classes, so the docs show the
 one matching their own theme. The spec is skipped unless
 `VECTOR_SCREENSHOTS=1`, so the normal run captures nothing.
 
-To regenerate them, start from the stock data set and the queue
-dashboard's failed jobs, then capture:
+The AI captures ask the demo's scripted `fake` provider, so each run
+shows the same answers: configure it in `backend/.env`
+(`VECTOR_AI_PROVIDERS=demo` and `VECTOR_AI_DEMO_TYPE=fake`, {doc}`demo`)
+and pass `VECTOR_E2E_FAKE_AI=1` to the run, which says that is the
+provider. To regenerate the screenshots, start from the stock data set and the
+queue dashboard's failed jobs, then capture:
 
 ```console
 docker compose exec --user www-data app vendor/bin/kinetis demo:seed --fresh
 docker compose exec --user www-data app vendor/bin/kinetis demo:queue-flaky --count=20 --failure=40
-docker compose run --rm -e VECTOR_SCREENSHOTS=1 e2e test tests/screenshots.standalone.spec.ts
+docker compose run --rm -e VECTOR_SCREENSHOTS=1 -e VECTOR_E2E_FAKE_AI=1 e2e test tests/screenshots.standalone.spec.ts
 ```
 
 Before it opens a page, the spec makes what the seed does not, through
@@ -118,6 +133,10 @@ the admin API as `e2e@vector.local` (`demo/e2e/support/screenshot-data.ts`):
 - a finished Excel export of the products, and a tags import with one
   refused row, with their notifications.
 
+The capture of the assistant proposing a change turns *Assistant may
+propose changes* on through the same API, and puts the AI settings back
+after it.
+
 Each of these is made only when it is missing, so a second run adds
 nothing; `demo:seed --fresh` removes them again. Run the capture after
 the flaky jobs have failed, so the *Failed jobs* tab has rows.
@@ -127,8 +146,11 @@ as `e2e@vector.local`. Both images of a pair come from one prepared page:
 the spec switches the emulated `prefers-color-scheme` in place. This
 relies on **Settings → Branding → Default theme** staying *System*. The
 capture saves nothing: it cancels every dialog and form, and aborts and
-fails on any request from the page that is not a read. Review the
-changed images before committing them.
+fails on any request from the page that is not a read, except the
+assistant's, the plain-language filter's and writing help's own
+requests, which change no record. The assistant's proposal stays
+pending: deciding it would be aborted. Review the changed images before
+committing them.
 
 ## Static analysis and builds
 
@@ -139,8 +161,10 @@ docker compose exec node pnpm lint
 docker compose exec node pnpm --filter frontend generate
 ```
 
-PHPStan runs at level 8 over the demo and `packages/vector/src`, with
-three Kinetis rules. `NoStaticPropertiesRule` flags a `static` property,
+PHPStan runs at level 8 over the demo, `packages/vector/src` and
+`packages/vector-ai/src`, with three Kinetis rules and kinetis/neuron's
+`NoWorkerUnsafeNeuronRule`, which flags the Neuron features that block,
+fork or keep state in a worker. `NoStaticPropertiesRule` flags a `static` property,
 which outlives every request a worker handles; `NoBlockingIoRule` flags
 a call that blocks the event loop instead of yielding;
 `NoProcessGlobalsRule` flags `exit` and `die`, the request superglobals,
@@ -154,8 +178,8 @@ is correct on a persistent worker.
 docker compose exec app composer psalm          # Psalm, types and taints; writes backend/psalm.sarif
 ```
 
-Psalm covers the demo's `src/` and `migrations/` and
-`packages/vector/src`, at its level 7 (Psalm's 1 is its strictest).
+Psalm covers the demo's `src/` and `migrations/`,
+`packages/vector/src` and `packages/vector-ai/src`, at its level 7 (Psalm's 1 is its strictest).
 Psalm 7 checks types and taints in one run. Request input reaches this
 code through PSR-7 and the framework's hydration, and SQL runs through
 Kinetis's own links. Psalm knows neither as a taint source or sink, so a
@@ -227,9 +251,9 @@ typescript-eslint supports TypeScript only below 6.1.
 The workflows in `.github/workflows/` run on pushes to `main` and on
 pull requests, each for the paths it covers:
 
-- `ci.yml` — on PHP 8.4 and 8.5, in the demo's own PHP image with
+- `ci.yml`: on PHP 8.4 and 8.5, in the demo's own PHP image with
   MySQL, PostgreSQL and Redis as services: `composer validate --strict`
-  for the package's and the demo's `composer.json` files, `composer audit`, the PHPUnit suite
+  for the packages' and the demo's `composer.json` files, `composer audit`, the PHPUnit suite
   (both placements of Vector's tables, as above), PHPStan and Psalm (one run, ordinary and
   taint issues together), and one more job on PHP 8.4 that removes
   `kinetis/queue-failed-jobs` from the demo, boots Vector without it and
@@ -239,25 +263,25 @@ pull requests, each for the paths it covers:
   `node scripts/check-vector-ui-pack.mjs --packed`, which fails unless
   npm would pack `vector-bundle.json` and every file it lists; and the
   strict build of this manual.
-- `monorepo-validate.yml` — `node scripts/validate-monorepo.mjs`: no
+- `monorepo-validate.yml`: `node scripts/validate-monorepo.mjs`: no
   `App\` reference under `packages/`.
-- `versions.yml` — `node scripts/validate-versions.mjs`: a pull request
+- `versions.yml`: `node scripts/validate-versions.mjs`: a pull request
   that changes files under `packages/vector` bumps `vector` in
   `packages.manifest.json` by one step, with `node scripts/bump.mjs`. One
   that changes files under `packages/vector-ui` bumps both `vector-ui`
   and `vector`, since `kinetis/vector` pins the UI release
   (`packages/vector/resources/ui.json`, which `bump.mjs vector-ui`
   moves); see {doc}`releasing`.
-- `infection.yml` — `composer infection:workers`, then
+- `infection.yml`: `composer infection:workers`, then
   `composer infection:vector` or `composer infection:queues`,
   when Vector's Registry, Query or Queues or the mutation setup
   changes; the mutated files are split over parallel jobs, each passing
   floors of its own and, for Registry and Query, `--filter`. The queue
   dashboard is one job of its own.
-- `sonarqube.yml` — the PHPUnit suite under pcov, its coverage of
+- `sonarqube.yml`: the PHPUnit suite under pcov, its coverage of
   `packages/vector/src` reported to
   SonarQube Cloud with its quality gate.
-- `semgrep.yml` — Semgrep SAST; `.semgrepignore` lists the reviewed
+- `semgrep.yml`: Semgrep SAST; `.semgrepignore` lists the reviewed
   false positives.
 
 `deploy-docs.yml` publishes this manual to `kinetis.dev/vector/docs/`
@@ -265,5 +289,5 @@ when `docs/` changes on `main`.
 
 ## See also
 
-- {doc}`demo` — the stack and its services.
-- {doc}`coding-agents` — the same work with an AI coding agent.
+- {doc}`demo`: the stack and its services.
+- {doc}`coding-agents`: the same work with an AI coding agent.

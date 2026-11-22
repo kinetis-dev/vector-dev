@@ -3,7 +3,7 @@ import { useLocale } from 'vuetify'
 
 // The footer of a list that cannot say how many records it has: an
 // uncounted (withoutCount) list shows the page it is on, a cursor list
-// not even that. Previous and next only — no total, no last page.
+// not even that. Previous and next only; no total, no last page.
 defineProps<{
     perPage: number
     perPageOptions: number[]

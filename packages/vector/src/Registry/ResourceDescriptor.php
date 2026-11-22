@@ -483,6 +483,17 @@ final readonly class ResourceDescriptor
         return $this->data['table_view']['cursorPaging'] ?? false;
     }
 
+    /**
+     * The resource's metadata bag, as #[Resource(meta: ...)] declared it;
+     * Vector never reads it.
+     *
+     * @return array<string, mixed>
+     */
+    public function meta(): array
+    {
+        return $this->data['meta'] ?? [];
+    }
+
     /** @return class-string<\Kinetis\Vector\Auth\ResourcePolicyInterface>|null */
     public function policy(): ?string
     {

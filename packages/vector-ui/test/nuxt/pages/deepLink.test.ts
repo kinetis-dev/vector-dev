@@ -12,8 +12,8 @@ import { schema } from '../fixtures'
 // extension module of the application defines (runtime config's
 // `extensions`): the `vector` layout the page declares loads the
 // descriptor, and the page is a loading bar until that module has
-// registered it, then the page. Wired as the plugin wires it — the real
-// window.Vector — with only the browser's import() replaced.
+// registered it, then the page. Wired as the plugin wires it (the real
+// window.Vector) with only the browser's import() replaced.
 
 const MODULE = '/vector-extensions/panel.js'
 const Panel = defineComponent({ setup: () => () => h('p', { class: 'panel' }, 'Stock panel') })

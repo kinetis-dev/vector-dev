@@ -44,7 +44,7 @@ const emitted = (wrapper: VueWrapper) => (wrapper.emitted('update:modelValue') ?
 /**
  * The safety property, whatever DOM runs the test: parsed, the output
  * holds nothing that runs, loads or styles. (happy-dom breaks DOMPurify,
- * so there the layer's fail-closed guard shows everything as text — still
+ * so there the layer's fail-closed guard shows everything as text, still
  * inert; the markup itself is checked where the sanitizer works, and in
  * Chromium by the end-to-end suite.)
  */

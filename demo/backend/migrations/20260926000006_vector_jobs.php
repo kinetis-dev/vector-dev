@@ -7,7 +7,7 @@ use Kinetis\Persistence\Contract\MysqlLink;
 use Kinetis\Persistence\Contract\PostgresLink;
 
 // Published by `kinetis vector:install`. One row per background job an
-// admin started — a queued action, an export, an import — with its
+// admin started (a queued action, an export, an import) with its
 // progress, its outcome and, for an export or a failed-rows file, the
 // file itself (bounded by MEDIUMBLOB: 16 MiB).
 return new class implements Migration

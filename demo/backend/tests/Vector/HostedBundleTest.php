@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * HostedBundle::verify(): a directory holds the @kinetis/vector-ui bundle
- * its vector-bundle.json describes — this package, this descriptor
+ * its vector-bundle.json describes; this package, this descriptor
  * contract, the expected version when one is given, and every listed
  * file with its listed hash. Each refusal is one line naming the cause
  * and `vector:install-ui` as the remedy. No database: files only.

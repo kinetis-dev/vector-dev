@@ -52,7 +52,7 @@ abstract class SettingsGroup
 
     /**
      * Request-time: what the values say together, once each field passed
-     * its own rules — a rule that spans fields. Nothing is saved while one
+     * its own rules; a rule that spans fields. Nothing is saved while one
      * violation remains.
      *
      * @param array<string, mixed> $values every field of the group, as stored

@@ -35,9 +35,12 @@ use Kinetis\Vector\VectorResource;
 /**
  * The one demo resource with explicit fields: it shows the authoring
  * model where derivation cannot know the intent (money, markdown, slug,
- * image), and hides the columns an admin never edits by hand.
+ * image), and hides the columns an admin never edits by hand. It opts
+ * in to AI (`ai.send` true, docs/ai.md) with its name, status, category
+ * and stock, which is all a model is told of it once the AI settings send
+ * only what opts in.
  */
-#[Resource(entity: Product::class, group: 'Catalog', icon: 'mdi-package-variant', title: 'name')]
+#[Resource(entity: Product::class, group: 'Catalog', icon: 'mdi-package-variant', title: 'name', meta: ['ai.send' => true])]
 final class ProductResource extends VectorResource
 {
     #[\Override]
@@ -55,16 +58,16 @@ final class ProductResource extends VectorResource
                 ->tab('Content', ['description', 'attributes', 'imageKey'])
                 ->tab('Publishing', ['isFeatured', 'releasedAt', 'tags']),
             Text::make('sku', 'SKU')->required()->max(40)->unique()->sortable()->searchable()->filterable(),
-            Text::make('name')->required()->max(200)->sortable()->searchable()->filterable(),
+            Text::make('name')->required()->max(200)->sortable()->searchable()->filterable()->meta('ai.send', true),
             Slug::make('slug')->from('name')->required()->max(220)->unique()->hideFromIndex(),
             Enum::make('status')->of(\App\Domain\ProductStatus::class)
                 ->colors(['draft' => 'warning', 'active' => 'success', 'archived' => 'grey'])
-                ->sortable()->filterable()->inlineEditable(),
+                ->sortable()->filterable()->inlineEditable()->meta('ai.send', true),
             // search matches the category's name too
-            BelongsTo::to('category', CategoryResource::class)->sortable()->filterable()->searchable(),
+            BelongsTo::to('category', CategoryResource::class)->sortable()->filterable()->searchable()->meta('ai.send', true),
             Money::make('priceCents', 'Price')->currencyField('currency')->sortable()->filterable()->summarize('avg')->inlineEditable(),
             Currency::make('currency')->allowed(['EUR', 'USD', 'GBP'])->filterable()->hideFromIndex(),
-            Number::make('stock')->sortable()->filterable()->summarize('sum')->component('stock-level')->inlineEditable(),
+            Number::make('stock')->sortable()->filterable()->summarize('sum')->component('stock-level')->inlineEditable()->meta('ai.send', true),
             Number::make('weightKg', 'Weight (kg)')->decimals(3)->hideFromIndex(),
             Boolean::make('isFeatured', 'Featured')->sortable()->filterable()->inlineEditable()
                 ->disabledWhen('status', 'eq', 'archived'),

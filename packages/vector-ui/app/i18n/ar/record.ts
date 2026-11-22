@@ -44,6 +44,10 @@ export default {
         revertTitle: 'إرجاع هذا التغيير؟',
         revertText: 'يعيد القيمة السابقة لـ {fields}. ويُسجَّل الإرجاع في سجل التغييرات أيضًا.',
         reverted: 'تم إرجاع التغيير.',
+        via: 'عبر {origin}',
+        origin: {
+            assistant: 'المساعد',
+        },
     },
     panel: {
         attach: 'ربط',

@@ -10,7 +10,7 @@ use Kinetis\QueryBuilder\Query;
 /**
  * A relation's choice list tells records apart as global search does:
  * each option carries the target's search subtitle and, when the record
- * has one, its search image field — from the same one statement.
+ * has one, its search image field, from the same one statement.
  */
 final class RelationOptionsTest extends VectorTestCase
 {

@@ -2,7 +2,7 @@
 import type { VectorQueueMetrics } from '#vector/app/types/vector'
 
 // The job metrics: GET /metrics for a watched queue (or all) over a window
-// of at most 7 days, the last hour by default — the window's totals,
+// of at most 7 days, the last hour by default; the window's totals,
 // attempts per minute as an inline SVG sparkline (no chart library), and
 // the totals per queue and per job class.
 const props = defineProps<{ queues: string[] }>()

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { VectorField } from '#vector/app/types/vector'
 
-// Edited as a decimal amount, held as minor units — the wire value, in as
+// Edited as a decimal amount, held as minor units; the wire value, in as
 // many decimals as the currency has (none for yen, three for dinars). The
 // text is what was typed until the field is left; only then, when the
 // value changes from outside, or when the currency changes, is it written

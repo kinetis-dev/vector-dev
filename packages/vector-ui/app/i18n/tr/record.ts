@@ -44,6 +44,10 @@ export default {
         revertTitle: 'Bu değişiklik geri alınsın mı?',
         revertText: 'Şu alanların önceki değerini geri getirir: {fields}. Geri alma işlemi de geçmişe kaydedilir.',
         reverted: 'Değişiklik geri alındı.',
+        via: '{origin} üzerinden',
+        origin: {
+            assistant: 'asistan',
+        },
     },
     panel: {
         attach: 'İlişkilendir',

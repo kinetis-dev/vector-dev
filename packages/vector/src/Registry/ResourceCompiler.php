@@ -186,8 +186,8 @@ final class ResourceCompiler
     }
 
     /**
-     * Compiles a field that maps no entity property — an action's or a
-     * settings group's input — inferring the value type from the field
+     * Compiles a field that maps no entity property (an action's or a
+     * settings group's input) inferring the value type from the field
      * type. A belongsTo resolves to a registered resource's slug.
      *
      * @param array<string, string> $slugByClass resource class => slug
@@ -349,7 +349,7 @@ final class ResourceCompiler
     /**
      * A money field priced in a related record's currency
      * (`currencyField('order.currency')`) has that relation carry the
-     * currency with its value — `{id, label, currency}` — so a list or a
+     * currency with its value (`{id, label, currency}`) so a list or a
      * record shows it without a request of its own. The related field must
      * be a text column of the target resource.
      *
@@ -386,8 +386,8 @@ final class ResourceCompiler
 
     /**
      * A repeater's rows are its child resource's fields, known only once
-     * every resource is compiled: the ones a row may write — or those the
-     * repeater names — never the field pointing back at the parent. A
+     * every resource is compiled: the ones a row may write (or those the
+     * repeater names) never the field pointing back at the parent. A
      * child field required to create a row must be among them, and a
      * soft-deleting child cannot be one, since leaving a row out deletes it.
      *
@@ -574,7 +574,26 @@ final class ResourceCompiler
             'badge' => self::badge($instance, $compiledFields, $class),
             'actions' => array_values($actions),
             'widgets' => WidgetCompiler::widgets($instance->widgets(), $class),
-        ] + array_filter(['searchRelations' => $searchRelations, 'fullText' => $fullText]);
+        ] + array_filter(['searchRelations' => $searchRelations, 'fullText' => $fullText, 'meta' => self::resourceMeta($attribute, $class)]);
+    }
+
+    /**
+     * The resource's metadata bag, checked as Field::meta() checks a field's.
+     *
+     * @param class-string $class
+     * @return array<string, mixed>
+     */
+    private static function resourceMeta(Resource $attribute, string $class): array
+    {
+        foreach ($attribute->meta as $key => $value) {
+            try {
+                Field::checkMeta($key, $value, '#[Resource]');
+            } catch (\InvalidArgumentException $e) {
+                throw ResourceCompileException::resource($class, $e->getMessage());
+            }
+        }
+
+        return $attribute->meta;
     }
 
     /**
@@ -724,8 +743,8 @@ final class ResourceCompiler
     }
 
     /**
-     * A field another field's display depends on — a money field's
-     * currency — is serialized with every view that shows the
+     * A field another field's display depends on (a money field's
+     * currency) is serialized with every view that shows the
      * dependent field, whether or not it is displayed itself.
      *
      * @param list<string> $visible
@@ -1165,7 +1184,8 @@ final class ResourceCompiler
         $name = $array['name'];
         $method = $array['computed']['method'] ?? throw ResourceCompileException::field($class, $name, 'is computed but names no method; call method()');
 
-        if (!method_exists($class, $method) || !(new \ReflectionMethod($class, $method))->isPublic() || (new \ReflectionMethod($class, $method))->isStatic()) {
+        // through ReflectionClass rather than `new ReflectionMethod`: a PHPStan rule this repository runs fails on that constructor's two signatures
+        if (!method_exists($class, $method) || !(new \ReflectionClass($class))->getMethod($method)->isPublic() || (new \ReflectionClass($class))->getMethod($method)->isStatic()) {
             throw ResourceCompileException::field($class, $name, "is computed by {$method}(), which is not a public instance method of the resource");
         }
 

@@ -1,0 +1,51 @@
+{
+    "name": "kinetis/vector-ai",
+    "description": "AI for the Kinetis Vector admin, on kinetis/neuron: plain-language filters, an assistant that reads and proposes changes a person approves, writing help in text, Markdown and rich-text inputs, and bulk rewrite proposals, with sealed provider keys, a model boundary and a daily token budget.",
+    "keywords": [
+        "kinetis",
+        "vector",
+        "admin",
+        "ai",
+        "llm"
+    ],
+    "homepage": "https://kinetis.dev/vector/docs/ai.html",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Alon Noy"
+        }
+    ],
+    "support": {
+        "docs": "https://kinetis.dev/vector/docs/ai.html",
+        "issues": "https://github.com/kinetis-dev/vector-dev/issues",
+        "source": "https://github.com/kinetis-dev/vector-dev"
+    },
+    "require": {
+        "php": ">=8.4 <8.6",
+        "ext-sodium": "*",
+        "kinetis/aws-sigv4": "^1.3.8",
+        "kinetis/framework": "^1.30.0",
+        "kinetis/mcp": "^1.9.1",
+        "kinetis/neuron": "^1.3.3",
+        "kinetis/query-builder": "^1.8.5",
+        "kinetis/revolt-http-client": "^1.9.2",
+        "kinetis/vector": "^0.16",
+        "neuron-core/neuron-ai": "^4.1.27",
+        "psr/http-message": "^2.0",
+        "psr/log": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Kinetis\\VectorAi\\": "src/"
+        }
+    },
+    "extra": {
+        "kinetis": {
+            "scan": "Kinetis\\VectorAi\\",
+            "bootstrap": "Kinetis\\VectorAi\\PackageBootstrap"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

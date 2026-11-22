@@ -33,7 +33,7 @@ use Psr\Http\Message\ServerRequestInterface;
  * carrying the configuration the bundle reads from `window.__VECTOR__`
  * (JSON-encoded so no value can close the tag) and the deployment's own
  * head fragment. Every inline script tag
- * in the document — the bundle's, this one, the deployer's — receives
+ * in the document (the bundle's, this one, the deployer's) receives
  * the response's nonce, so a strict Content-Security-Policy admits
  * exactly them. The extension URLs it lists are the deployment's
  * `VECTOR_UI_EXTENSIONS`.
@@ -132,7 +132,7 @@ final readonly class ShellController
         return is_string($nonce) && $nonce !== '' ? $nonce : base64_encode(random_bytes(18));
     }
 
-    /** Every `<script>` without a `src` — the bundle's own inline tags, the import map — gets the nonce. */
+    /** Every `<script>` without a `src` (the bundle's own inline tags, the import map) gets the nonce. */
     private static function nonceInlineScripts(string $html, string $nonce): string
     {
         return preg_replace_callback(

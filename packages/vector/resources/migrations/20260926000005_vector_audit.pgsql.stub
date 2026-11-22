@@ -11,6 +11,7 @@ use Kinetis\Persistence\Contract\PostgresLink;
 // changes the writer observed, and the impersonator when there was one.
 return new class implements Migration
 {
+    #[\Override]
     public function up(MysqlLink|PostgresLink $db): void
     {
         $db->execute(<<<'SQL'
@@ -29,6 +30,7 @@ return new class implements Migration
         $db->execute('CREATE INDEX vector_audit_actor_index ON vector_audit (actor_id, created_at)');
     }
 
+    #[\Override]
     public function down(MysqlLink|PostgresLink $db): void
     {
         $db->execute('DROP TABLE vector_audit');

@@ -27,7 +27,7 @@ const pruneDays = ref('30')
 // the action running: only its own button shows as loading, and no second one starts meanwhile
 const acting = ref<'retry' | 'forget' | 'prune' | null>(null)
 // a date field the browser could not read: a partly typed date keeps its value '' and fires no input event,
-// so each input's own validity is read whenever it matters — on input, change and blur, and at Apply
+// so each input's own validity is read whenever it matters, on input, change and blur, and at Apply
 const badInput = ref({ failedFrom: false, failedTo: false })
 const filterRow = ref<HTMLElement | null>(null)
 let request = 0
@@ -97,7 +97,7 @@ function toggle(id: string, on: boolean | null) {
     selected.value = next
 }
 
-/** Asks, then runs `action` once — a second click while one runs does nothing — and reloads the list either way. */
+/** Asks, then runs `action` once (a second click while one runs does nothing) and reloads the list either way. */
 async function guarded(kind: 'retry' | 'forget' | 'prune', title: string, text: string, action: () => Promise<void>) {
     if (acting.value !== null) return
     if (!await confirm({ title, text, confirmText: t('queues.actions.confirm'), cancelText: t('queues.actions.cancel'), destructive: true })) return

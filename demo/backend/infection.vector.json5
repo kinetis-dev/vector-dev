@@ -22,7 +22,7 @@
     //
     // Measured 2026-10-20 (CI's four shards together, four threads each,
     // this config's 60 s timeout): 1570 mutants, 1482 killed, 1 syntax
-    // error, 2 timed out, 0 not covered — MSI and covered MSI 94.6%
+    // error, 2 timed out, 0 not covered, MSI and covered MSI 94.6%
     // (mutation coverage 100%), matching a local run. The floors sit
     // about two points under it. The 68% measured 2026-10-06 was inflated:
     // mutants that let a refused bulk delete through emptied the
@@ -31,7 +31,7 @@
     //
     // Measured 2026-10-21, the "ListRequest and the other compilers"
     // shard alone (four threads, local): 643 mutants, 625 killed, 1
-    // syntax error, 0 timed out, 17 escaped — covered MSI 97.4%. Its 5
+    // syntax error, 0 timed out, 17 escaped, covered MSI 97.4%. Its 5
     // XlsxWriter escapes are equivalent or out of reach without a seam:
     // available() with openspout and zip both present, the read-back
     // failure after a successful close, array_pad to 3, the cast of a

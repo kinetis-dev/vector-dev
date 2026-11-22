@@ -41,6 +41,7 @@ export default {
         records: 'Datensätze',
         resources: 'Ressourcen',
         noMatch: 'Keine passenden Datensätze',
+        commands: 'Befehle',
     },
     inbox: {
         title: 'Benachrichtigungen',

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Markdown source. On the record page it is rendered: markdown-it with HTML
 // in the source turned off (raw HTML shows as text), then DOMPurify with the
-// same allow-list as rich text — the only other `v-html` in the layer. In a
+// same allow-list as rich text; the only other `v-html` in the layer. In a
 // list, the plain text, shortened.
 const props = defineProps<{ value: unknown, context: 'index' | 'show' }>()
 const text = computed(() => typeof props.value === 'string' ? props.value : '')

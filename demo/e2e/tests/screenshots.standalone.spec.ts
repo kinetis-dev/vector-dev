@@ -1,14 +1,14 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { API, Api, expect, test } from '../support/fixtures'
-import { HISTORY_PRODUCT, prepareScreenshotData } from '../support/screenshot-data'
+import { API, Api, expect, FAKE_AI, FAKE_AI_NEEDED, test } from '../support/fixtures'
+import { DELIVERY_NOTE, HISTORY_PRODUCT, prepareScreenshotData, SHIPPED_ORDER } from '../support/screenshot-data'
 import type { Locator, Page } from '@playwright/test'
 
 // The documentation's screenshots, not a test: docs/_static/screenshots/
 // <name>-light.png and <name>-dark.png, one pair per screen. Skipped unless
 // VECTOR_SCREENSHOTS=1, so the normal run neither captures nor slows down:
 //
-//   docker compose run --rm -e VECTOR_SCREENSHOTS=1 e2e test tests/screenshots.standalone.spec.ts
+//   docker compose run --rm -e VECTOR_SCREENSHOTS=1 -e VECTOR_E2E_FAKE_AI=1 e2e test tests/screenshots.standalone.spec.ts
 //
 // Each pair is one prepared state captured twice: the admin's theme is
 // Vuetify's "system" theme (while the Branding settings leave it at
@@ -17,12 +17,18 @@ import type { Locator, Page } from '@playwright/test'
 // suite account's preferences and resets the Languages settings, so every
 // page is in English.
 //
-// What `demo:seed --fresh` does not make — a product's history, saved
-// views, finished jobs and their notifications — is made first, through the
+// What `demo:seed --fresh` does not make (a product's history, saved
+// views, finished jobs and their notifications) is made first, through the
 // admin API (support/screenshot-data.ts), and only what is missing: a
 // second run adds nothing. The capture itself then only reads: no form or
 // dialog is submitted, and every request from the page that is not a read
-// is aborted and fails the capture (writes()).
+// is aborted and fails the capture (writes()), but the AI features' own
+// requests, which write no record.
+//
+// The AI captures need the demo's scripted `fake` provider
+// (VECTOR_AI_PROVIDERS=demo, VECTOR_AI_DEMO_TYPE=fake), declared to the
+// run with VECTOR_E2E_FAKE_AI=1, and ask it what App\Vector\Ai\DemoAiReplies
+// scripts, so each run shows the same answers.
 
 const OUT = fileURLToPath(new URL('../../../docs/_static/screenshots/', import.meta.url))
 
@@ -45,12 +51,21 @@ test.beforeAll(async ({ playwright }) => {
     await request.dispose()
 })
 
+/**
+ * The AI features' requests: the assistant's turn, a plain-language
+ * filter and writing help. Each answers from the model and writes no
+ * record (a proposal is stored pending; deciding it is a request to
+ * /vector/ai/approvals/…, which is not one of these).
+ */
+const AI_ASKS = new RegExp(`^${API}/vector/ai/(assistant|filters/[a-z0-9_-]+|writing/[a-z0-9_-]+/[A-Za-z0-9_]+)$`)
+
 /** Aborts every request from the page that could change the API's data, and lists them. */
 async function writes(page: Page): Promise<string[]> {
     const attempted: string[] = []
     await page.route(`${API}/**`, async (route) => {
         const request = route.request()
         if (['GET', 'HEAD', 'OPTIONS'].includes(request.method())) return route.continue()
+        if (request.method() === 'POST' && AI_ASKS.test(request.url())) return route.continue()
         attempted.push(`${request.method()} ${request.url()}`)
         return route.abort()
     })
@@ -320,6 +335,80 @@ test.describe('docs screenshots', () => {
         await page.goto('p/stock-overview')
         await expect(main(page).getByText('Stock overview').first()).toBeVisible()
         await pair(page, 'stock-overview')
+    })
+
+    test.describe('AI', () => {
+        test.beforeEach(async ({ api }) => {
+            expect(FAKE_AI, FAKE_AI_NEEDED).toBe(true)
+            const capabilities = await api.aiCapabilities()
+            expect(capabilities?.assistant && capabilities.filters && capabilities.writing, 'the AI captures need the fake provider: VECTOR_AI_PROVIDERS=demo, VECTOR_AI_DEMO_TYPE=fake').toBe(true)
+        })
+
+        /** The assistant's drawer, opened from the app bar, once it answered `prompt` with text containing `answer`. */
+        async function ask(page: Page, prompt: string, answer: string) {
+            await page.locator('[data-shell-action="ai-assistant"]').click()
+            const drawer = page.locator('[data-ai-assistant]')
+            await expect(drawer).toBeVisible()
+            await drawer.locator('[data-ai-assistant-input] textarea').fill(prompt)
+            await drawer.locator('[data-ai-assistant-send]').click()
+            await expect(drawer.locator('[data-ai-assistant-answer]').last()).toContainText(answer)
+            await expect(drawer.locator('[data-ai-assistant-streaming]')).toHaveCount(0)
+            return drawer
+        }
+
+        test('plain-language filter', async ({ admin: page }) => {
+            await page.goto('r/orders')
+            const input = page.locator('[data-ai-filters-input] input')
+            await input.fill('paid orders over 500')
+            await input.press('Enter')
+            await expect(page.locator('[data-ai-filters-explanation]')).toContainText('Paid orders with a total above 500.00.')
+            await expect(main(page).locator('.v-chip').filter({ hasText: 'Status' })).toBeVisible()
+            await pair(page, 'ai-filters')
+        })
+
+        test('assistant', async ({ admin: page }) => {
+            await page.goto('r/products')
+            await expect(rows(page)).toHaveCount(25)
+            const drawer = await ask(page, 'Which products are low on stock?', 'I listed the active products')
+            await expect(drawer.locator('a[data-record-link="products#1"]')).toBeVisible()
+            await pair(page, 'ai-assistant')
+        })
+
+        test('assistant proposing a change', async ({ admin: page, api }) => {
+            const settings = await api.settingsValues('ai')
+            const order = await api.show('orders', SHIPPED_ORDER)
+            expect([order.number, order.status], 'the seeded order').toEqual(['ORD-000184', 'paid'])
+            try {
+                await api.settings('ai', { ...settings, assistantWrites: true })
+                await page.goto(`r/orders/${SHIPPED_ORDER}`)
+                await expect(main(page).getByText('ORD-000184').first()).toBeVisible()
+                const drawer = await ask(page, 'Mark order ORD-000184 as shipped.', 'its status changes once you approve it')
+                // pending: neither Approve nor Reject is clicked, and deciding it would be aborted (writes())
+                const proposal = drawer.locator('[data-ai-approval]')
+                await expect(proposal).toHaveAttribute('data-ai-approval-state', 'pending')
+                await expect(proposal.locator('[data-ai-approval-field="status"] [data-ai-approval-to]')).toBeVisible()
+                await pair(page, 'ai-assistant-proposal')
+            } finally {
+                await api.settings('ai', settings)
+            }
+            expect((await api.show('orders', SHIPPED_ORDER)).status).toBe('paid')
+        })
+
+        test('writing help translating a field', async ({ admin: page }) => {
+            await page.goto(`r/orders/${SHIPPED_ORDER}/edit`)
+            const notes = page.getByRole('textbox', { name: 'Notes' })
+            // typed, never saved
+            await notes.fill(DELIVERY_NOTE)
+            const field = notes.locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " v-field ")][1]')
+            await field.locator('[data-input-addon="ai-writing"] [data-ai-writing-menu]').click()
+            await page.locator('[data-ai-writing-operation="translate"]').click()
+            await page.locator('[data-ai-writing-languages] [data-ai-writing-language="fr"]').click()
+            const popover = page.locator('[data-ai-writing-popover]')
+            await expect(popover.locator('[data-ai-writing-after]')).toHaveText('Laissez le colis chez le voisin du numéro 12 s\'il n\'y a personne.')
+            await expect(notes).toHaveValue(DELIVERY_NOTE)
+            await pair(page, 'ai-writing-translate')
+            await popover.locator('[data-ai-writing-discard]').click()
+        })
     })
 
     test('language menu', async ({ admin: page }) => {

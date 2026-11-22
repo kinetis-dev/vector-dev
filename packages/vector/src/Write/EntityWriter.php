@@ -12,7 +12,7 @@ use ReflectionProperty;
 
 /**
  * The default way a resource's values reach an entity: the entity is
- * allocated without its constructor — exactly as the ORM hydrates one —
+ * allocated without its constructor (exactly as the ORM hydrates one)
  * and each field's property is written by reflection. Every mapped
  * property the resource does not administer keeps its declared default
  * or becomes null where nullable; the compiler already refused a

@@ -1,20 +1,11 @@
+import { watchCsp } from '../support/csp'
 import { expect, test, unique } from '../support/fixtures'
 import type { Page } from '@playwright/test'
 
 // Rich text in a real browser: the product description (a document) and
 // ticket replies (Markdown), rendered through the schema and sanitized,
-// edited through the toolbar — and, hosted, under the strict CSP without
+// edited through the toolbar, and, hosted, under the strict CSP without
 // a single violation.
-
-/** Collects every CSP violation the page reports, from before its first script. */
-async function watchCsp(page: Page) {
-    await page.addInitScript(() => {
-        const seen: string[] = []
-        ;(window as unknown as { __csp: string[] }).__csp = seen
-        document.addEventListener('securitypolicyviolation', event => seen.push(`${event.violatedDirective} ${event.blockedURI}`))
-    })
-    return () => page.evaluate(() => (window as unknown as { __csp: string[] }).__csp)
-}
 
 async function productId(page: Page, sku: string): Promise<string> {
     await page.goto('r/products')

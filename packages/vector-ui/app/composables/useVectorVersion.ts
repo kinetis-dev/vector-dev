@@ -23,8 +23,8 @@ export function vectorUiRemedy(expected: string | null, hosted: boolean): string
 }
 
 /**
- * This UI's own release — the layer's package.json version, baked into
- * the build — against the one the descriptor says kinetis/vector pins.
+ * This UI's own release (the layer's package.json version, baked into
+ * the build) against the one the descriptor says kinetis/vector pins.
  * A mismatch is a warning, not a stop: the descriptor contract is what
  * must match (useVectorSchema refuses another), the release only should.
  * No pin on the server is no expectation, and no warning.

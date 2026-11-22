@@ -37,7 +37,7 @@ use Psr\Http\Message\ServerRequestInterface;
  * The queue dashboard's API, in Vector's own `vector` middleware group:
  * the application's authentication and VectorAccessInterface run first,
  * then {@see QueueDashboard} decides whether the dashboard is there at
- * all — a queue configured and the policy's view() — and every route
+ * all, a queue configured and the policy's view(), and every route
  * answers the Kernel's own 404 when it is not; the /failed routes answer
  * it too when kinetis/queue-failed-jobs is not wired. Then
  * QueueDashboardPolicyInterface decides each call. Sizes and clears go
@@ -47,11 +47,11 @@ use Psr\Http\Message\ServerRequestInterface;
  * JobSerializer::redact(), and never reach the audit trail.
  *
  * Every route asks the gate and the policy before anything else, and
- * resolves what it reads or changes — the queue backend, the failed-job
- * store, the browser, the retrier — from the request scope only
+ * resolves what it reads or changes (the queue backend, the failed-job
+ * store, the browser, the retrier) from the request scope only
  * afterwards: a method parameter would be built before the policy is
  * asked, so a refused caller would reach the database link (and see a
- * 500 when it is down) instead of a 403 — and a failed-jobs class would
+ * 500 when it is down) instead of a 403, and a failed-jobs class would
  * be loaded where kinetis/queue-failed-jobs is not installed.
  */
 #[RoutePrefix('/vector/queues')]
@@ -107,7 +107,7 @@ final readonly class QueuesController
      * What the policy lets the current actor do, so the UI can leave out
      * what it would refuse: `clear` per watched queue, as a JSON object
      * whatever the names. It reads nothing but the policy, and hides
-     * nothing on the server — every route still asks the policy itself.
+     * nothing on the server; every route still asks the policy itself.
      * Where kinetis/queue-failed-jobs is not wired there is no failed-job
      * action to take, so `retry`, `forget` and `prune` are false whatever
      * the policy says.
@@ -217,7 +217,7 @@ final readonly class QueuesController
             try {
                 $result = $this->find($store, $id) === null ? RetryResult::notFound($id) : $retrier->retry($id);
             } catch (\Throwable $e) {
-                // only the store itself throws here — a failed push is a Failed result — and it may have failed after the push, with the job back on its queue: the batch stops, every id before it is already audited, and this one is audited as an error before the 500
+                // only the store itself throws here (a failed push is a Failed result) and it may have failed after the push, with the job back on its queue: the batch stops, every id before it is already audited, and this one is audited as an error before the 500
                 try {
                     $this->record([$id], 'queue:retry', ['status' => 'error', 'class' => null, 'queue' => null]);
                 } catch (\Throwable) {
@@ -248,8 +248,8 @@ final readonly class QueuesController
     }
 
     /**
-     * Deletes every record older than `{"hours": n}` or `{"days": n}` —
-     * exactly one of them, a whole number from 1 — through the store's
+     * Deletes every record older than `{"hours": n}` or `{"days": n}`
+     * (exactly one of them, a whole number from 1) through the store's
      * own prune(), which spans every queue, watched or not.
      *
      * @return array{data: array{deleted: int, olderThanSeconds: int}}
@@ -284,7 +284,7 @@ final readonly class QueuesController
     /**
      * Discards every job waiting on a watched queue. The body's `confirm`
      * must be the queue's name exactly (422 otherwise); a backend without
-     * ClearableQueueInterface — SQS — is refused with 409.
+     * ClearableQueueInterface (SQS) is refused with 409.
      *
      * @return array{data: array{queue: string, cleared: int}}
      */
@@ -377,7 +377,7 @@ final readonly class QueuesController
         return $resolved;
     }
 
-    /** A record on a watched queue, or a 404 — the same for a malformed id, a missing record and one on another queue. */
+    /** A record on a watched queue, or a 404; the same for a malformed id, a missing record and one on another queue. */
     private function watched(SqlFailedJobStore $store, string $id): StoredFailedJob
     {
         return $this->find($store, $id) ?? throw RecordNotFoundException::of('failed jobs', $id);
@@ -398,11 +398,11 @@ final readonly class QueuesController
      */
     private function record(array $recordIds, string $event, array $changes): void
     {
-        $this->audit->record(self::AUDIT_RESOURCE, $recordIds, $event, $changes, $this->actor->actorId(), $this->actor->impersonatorId);
+        $this->audit->record(self::AUDIT_RESOURCE, $recordIds, $event, $changes, $this->actor->actorId(), $this->actor->impersonatorId, $this->actor->origin);
     }
 
     /**
-     * The bound queue backend, or null when building it throws — a
+     * The bound queue backend, or null when building it throws; a
      * factory that cannot reach its broker, say: the overview then lists
      * every queue with no size and no clear, rather than failing whole.
      */
@@ -422,7 +422,7 @@ final readonly class QueuesController
         return $queue;
     }
 
-    /** A backend that cannot answer — unreachable, not built, or with no count to give — has no size, rather than failing the overview. */
+    /** A backend that cannot answer (unreachable, not built, or with no count to give) has no size, rather than failing the overview. */
     private static function size(?QueueInterface $queue, string $name): ?int
     {
         if ($queue === null) {

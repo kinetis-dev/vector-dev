@@ -177,28 +177,57 @@ final readonly class InstallCommand
     }
 
     /**
-     * The connections other than $connection that already hold Vector's
-     * migrations.
+     * The connections other than $connection that already hold one of
+     * Vector's own migrations, by the file names its stubs publish: another
+     * package's migrations (kinetis/vector-ai's `*_vector_ai_*`, say) do
+     * not count.
      *
      * @return list<string>
      */
     private function otherPartitions(string $migrations, string $connection): array
     {
+        $names = self::migrationNames();
+        $holds = static function (string $directory) use ($names): bool {
+            foreach ($names as $name) {
+                if (is_file("{$directory}/{$name}")) {
+                    return true;
+                }
+            }
+
+            return false;
+        };
         $others = [];
 
-        if ($connection !== 'default' && glob("{$migrations}/*_vector_*.php") !== []) {
+        if ($connection !== 'default' && $holds($migrations)) {
             $others[] = 'default';
         }
 
         foreach (glob("{$migrations}/*", GLOB_ONLYDIR) ?: [] as $directory) {
             $name = basename($directory);
 
-            if ($name !== $connection && glob("{$directory}/*_vector_*.php") !== []) {
+            if ($name !== $connection && $holds($directory)) {
                 $others[] = $name;
             }
         }
 
         return $others;
+    }
+
+    /**
+     * The file name each of Vector's migration stubs is published under,
+     * whatever its dialect.
+     *
+     * @return list<string>
+     */
+    private static function migrationNames(): array
+    {
+        $names = [];
+
+        foreach (glob(dirname(__DIR__, 2) . '/resources/migrations/*.stub') ?: [] as $stub) {
+            $names[] = preg_replace('/\.[a-z]+\.stub$/', '.php', basename($stub)) ?? '';
+        }
+
+        return array_values(array_unique(array_filter($names, static fn (string $name): bool => str_ends_with($name, '.php'))));
     }
 
     /**

@@ -24,8 +24,8 @@ use Psr\Log\LoggerInterface;
 /**
  * VECTOR_QUEUE_METRICS=false: the dashboard is there, the metrics are
  * not. The listener writes nothing and logs nothing, and never builds the
- * metrics store — whose factory here counts its calls and builds a real
- * store on Vector's connection, or one on a database that is down — and
+ * metrics store (whose factory here counts its calls and builds a real
+ * store on Vector's connection, or one on a database that is down) and
  * /vector/queues/metrics is the Kernel's own 404 for an actor who may
  * view, before the query is validated.
  */
@@ -99,7 +99,7 @@ final class QueueMetricsDisabledTest extends MetricsTestCase
         self::assertSame([], $this->logger->at('warning'));
     }
 
-    /** A metrics database that is down — or a table that is missing — goes unnoticed: nothing asks it anything. */
+    /** A metrics database that is down (or a table that is missing) goes unnoticed: nothing asks it anything. */
     public function testABrokenMetricsDatabaseLogsNoWarning(): void
     {
         $this->broken = true;

@@ -34,7 +34,7 @@ own `mcp` middleware group, which the `vector` group's members do not
 join on their own. Its last member, `McpIdentityGuardMiddleware` at
 priority 0, answers `401` unless a middleware earlier in the group
 registered a `CurrentUserInterface`. With your authentication middleware
-in `vector` only, every caller of `POST /mcp` — admins included — gets
+in `vector` only, every caller of `POST /mcp` (admins included) gets
 `401`. Add it to the `mcp` group as well, as the example under
 [The `vector` middleware group](#the-vector-middleware-group) and the
 demo's `VectorAuthMiddleware` do.
@@ -103,7 +103,7 @@ both end up signed out.
 
 ## Protecting the sign-in
 
-Throttling failed sign-ins is your application's job — Vector never sees
+Throttling failed sign-ins is your application's job: Vector never sees
 a password. The demo shows the shape with the framework's
 `AttemptThrottle` on a Redis cache: five failures in fifteen minutes lock
 one e-mail from one client address, twenty lock the address, a success
@@ -158,8 +158,8 @@ A session does not end on its own: the UI renews the token before it
 runs out and polls badges and the inbox, so an open tab stays signed in.
 The layer's `app.config`
 `vector.idleMinutes` (30 by default; 0 turns it off) ends it, in both
-modes, when nobody has used the admin — no pointer, key, touch or
-scroll — for that long. Bearer mode revokes the refresh token and opens
+modes, when nobody has used the admin (no pointer, key, touch or
+scroll) for that long. Bearer mode revokes the refresh token and opens
 the login page with a notice and the way back to the page that was
 open; cookie mode posts the application's logout form. A tab that comes
 back into view after sleeping is checked at that moment too.
@@ -171,7 +171,7 @@ then.
 
 ## One API, both modes
 
-One middleware can accept both — a bearer token when one is sent, the
+One middleware can accept both: a bearer token when one is sent, the
 session otherwise, requiring the CSRF token only for a session. The demo
 application does exactly that.
 
@@ -199,6 +199,6 @@ limit is refused, and XLSX is not offered
 
 ## See also
 
-- {doc}`authorization` — what an admitted user may do.
-- {doc}`deployment` — choosing a mode.
-- {doc}`audit` — impersonation.
+- {doc}`authorization`: what an admitted user may do.
+- {doc}`deployment`: choosing a mode.
+- {doc}`audit`: impersonation.

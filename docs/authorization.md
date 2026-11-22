@@ -46,14 +46,14 @@ access policy admits may do everything.
 
 A user `viewAny()` refuses cannot reach a record by identifier either:
 show, audit, files, related lists and writes all answer `403`, as the
-list does. A relation value — a belongs-to choice, a many-to-many list —
+list does. A relation value (a belongs-to choice, a many-to-many list)
 must name a record the target resource's `scope()` lists for the
 writer; one outside it answers `not_found`, the same as one that does
 not exist.
 
 ## Row scope
 
-`scope()` on the resource narrows the query for a user — a sales rep
+`scope()` on the resource narrows the query for a user: a sales rep
 sees their own customers. It applies to every read: lists, counts,
 summaries, exports, badges and search.
 
@@ -103,11 +103,11 @@ answer as `permissions.setDefaultView`.
 
 ## Per-record permissions
 
-Every record the API returns carries what this user may do with it —
+Every record the API returns carries what this user may do with it:
 `update`, `delete`, `restore`, `forceDelete` and the `actions` they may
-run — and the UI shows exactly those buttons.
+run; the UI shows exactly those buttons.
 
 ## See also
 
-- {doc}`authentication` — who is admitted.
-- {doc}`audit` — what is recorded.
+- {doc}`authentication`: who is admitted.
+- {doc}`audit`: what is recorded.

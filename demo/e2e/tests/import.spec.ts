@@ -2,7 +2,7 @@ import { expect, test, unique } from '../support/fixtures'
 
 // Import by a key column: a file that names an existing tag and a new
 // one, imported as "Update or create" matched by the tag's unique name,
-// updates the one and creates the other — through the worker.
+// updates the one and creates the other, through the worker.
 
 test('an upsert import updates the matching record and creates the rest', async ({ admin: page, api, cleanup }) => {
     const existing = unique('E2E tag')

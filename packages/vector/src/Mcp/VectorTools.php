@@ -12,10 +12,13 @@ use Kinetis\McpProtocol\ToolResult;
 use Kinetis\Validation\Constraints\GreaterThan;
 use Kinetis\Validation\Constraints\LessThanOrEqual;
 use Kinetis\Validation\Exception\ValidationException;
+use Kinetis\Validation\ListOf;
 use Kinetis\Validation\ObjectMap;
 use Kinetis\Vector\Actions\ActionRunner;
 use Kinetis\Vector\Auth\VectorAccessInterface;
+use Kinetis\Vector\Exception\InvalidListRequestException;
 use Kinetis\Vector\Exception\VectorException;
+use Kinetis\Vector\Query\AggregateRequest;
 use Kinetis\Vector\Query\ListRequest;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Registry\VectorRegistry;
@@ -26,7 +29,7 @@ use Kinetis\Vector\Write\ValueConverter;
 /**
  * The admin API as MCP tools: the same services the controllers call,
  * the same policies, the same list grammar. Every tool injects
- * CurrentUserInterface, so over stdio — where no middleware runs — the
+ * CurrentUserInterface, so over stdio (where no middleware runs) the
  * class cannot be built and every tool fails closed; over HTTP the
  * application's middleware in the `mcp` group identifies the caller,
  * and the access policy is asked here as the `vector` group would.
@@ -82,9 +85,10 @@ final readonly class VectorTools
 
     /**
      * @param array<string, mixed> $filter field => value, or field => {op: value}
+     * @param list<string> $fields the fields each row carries, besides its id; empty for every field the list shows
      * @return array<string, mixed>|ToolResult
      */
-    #[McpTool(name: 'vector_query', description: 'List records of a resource with the admin list grammar: filter {field: value | {op: value}, or: [filter, ...], and: [filter, ...]}, q, sort "-field,other", page, perPage. A page carries total and lastPage, or, for a resource vector_describe marks withoutCount, null for both and hasMore')]
+    #[McpTool(name: 'vector_query', description: 'List records of a resource with the admin list grammar: filter {field: value | {op: value}, or: [filter, ...], and: [filter, ...]}, q, sort "-field,other", page, perPage. fields ["a", "b"] makes each row carry only those fields plus its id (name a money field\'s currency field too); without it a row carries every field the list shows. A page carries total and lastPage, or, for a resource vector_describe marks withoutCount, null for both and hasMore. To total, count, average or rank records, use vector_aggregate instead of reading every page')]
     public function query(
         string $resource,
         #[ObjectMap] array $filter = [],
@@ -92,12 +96,47 @@ final readonly class VectorTools
         string $sort = '',
         #[GreaterThan(0)] int $page = 1,
         #[GreaterThan(0), LessThanOrEqual(200)] int $perPage = 25,
+        #[ListOf('string')] array $fields = [],
     ): array|ToolResult {
-        return $this->guarded(function () use ($resource, $filter, $q, $sort, $page, $perPage): array {
+        return $this->guarded(function () use ($resource, $filter, $q, $sort, $page, $perPage, $fields): array {
             $descriptor = $this->reader->resource($resource);
+            $projection = self::projection($fields, $descriptor->slug());
             $params = ['page' => $page, 'perPage' => $perPage, 'filter' => self::stringify($filter), 'q' => $q, 'sort' => $sort];
 
-            return $this->reader->list($descriptor, ListRequest::fromQueryParams($params, $descriptor, $this->converter, $descriptor->maxPerPage()));
+            if ($projection !== null) {
+                // the list reads and serializes only these, and refuses one it does not publish
+                $params['columns'] = implode(',', $projection);
+            }
+
+            $answer = $this->reader->list($descriptor, ListRequest::fromQueryParams($params, $descriptor, $this->converter, $descriptor->maxPerPage()));
+
+            return $projection === null ? $answer : self::projected($answer, [$descriptor->primaryKeyField(), ...$projection]);
+        });
+    }
+
+    /**
+     * @param array<string, mixed> $filter field => value, or field => {op: value}: vector_query's grammar
+     * @param list<array<string, mixed>> $groupBy
+     * @param list<array<string, mixed>> $metrics
+     * @return array<string, mixed>|ToolResult
+     */
+    #[McpTool(name: 'vector_aggregate', description: 'Totals, counts, averages, minimums and maximums of a resource\'s records, computed by the database over every record the filter and q match (vector_query\'s grammar), optionally grouped. groupBy: 0 to 3 of {field, bucket?}: a choice, boolean, text or number field, a belongsTo (its key is {id, label}), or a date/datetime with bucket day|week|month|quarter|year (its key is the bucket\'s first day, YYYY-MM-DD, UTC). metrics: 1 to 6 of {fn: count|sum|avg|min|max, field?}: count takes no field, sum and avg a number or money field, min and max a number, money or date field; a metric\'s key is "count" or fn_field, such as sum_totalCents. sort: one metric key or group field, "-" first for descending (default: the first metric, descending). limit: groups returned, 1 to 100 (default 25); groupCount counts them all. Money is in minor units; a money field priced per record in a currency field is grouped by that currency too, so amounts in different currencies are never added together')]
+    public function aggregate(
+        string $resource,
+        #[ListOf(AggregateMetric::class)] array $metrics,
+        #[ListOf(AggregateGroup::class)] array $groupBy = [],
+        #[ObjectMap] array $filter = [],
+        string $q = '',
+        string $sort = '',
+        #[GreaterThan(0), LessThanOrEqual(AggregateRequest::MAX_LIMIT)] int $limit = AggregateRequest::DEFAULT_LIMIT,
+    ): array|ToolResult {
+        return $this->guarded(function () use ($resource, $metrics, $groupBy, $filter, $q, $sort, $limit): array {
+            $descriptor = $this->reader->resource($resource);
+            $this->reader->authorizeViewAny($descriptor);
+            // the rows a list of this filter and q would show: the same grammar, read the same way
+            $request = ListRequest::fromSelection(['filter' => self::stringify($filter), 'q' => $q], $descriptor, $this->converter);
+
+            return $this->reader->aggregate($descriptor, $request, AggregateRequest::fromArguments($groupBy, $metrics, $sort, $limit, $descriptor));
         });
     }
 
@@ -254,6 +293,45 @@ final readonly class VectorTools
         } catch (ValidationException $e) {
             return ToolResult::error(json_encode(['errors' => array_map(static fn (\Kinetis\Validation\Violation $v): array => ['path' => $v->path, 'code' => $v->code, 'message' => $v->message], $e->violations)], JSON_THROW_ON_ERROR));
         }
+    }
+
+    /**
+     * The field names a projection asks for, once each, or null for none.
+     *
+     * @param array<array-key, mixed> $fields
+     * @return list<string>|null
+     */
+    private static function projection(array $fields, string $slug): ?array
+    {
+        $names = [];
+
+        foreach ($fields as $name) {
+            if (!is_string($name) || trim($name) === '' || str_contains($name, ',')) {
+                throw new InvalidListRequestException("fields must name fields of {$slug}.");
+            }
+
+            $names[] = trim($name);
+        }
+
+        return $names === [] ? null : array_values(array_unique($names));
+    }
+
+    /**
+     * A page whose rows carry only $keep, and the markers a row always
+     * carries (`_version`, `_trashed`): what a list adds for a field's
+     * display (a computed value's sources, a money field's currency) goes.
+     *
+     * @param array<string, mixed> $page
+     * @param list<string> $keep
+     * @return array<string, mixed>
+     */
+    private static function projected(array $page, array $keep): array
+    {
+        $kept = array_flip([...$keep, '_version', '_trashed']);
+        $rows = is_array($page['data'] ?? null) ? $page['data'] : [];
+        $page['data'] = array_map(static fn (mixed $row): mixed => is_array($row) ? array_intersect_key($row, $kept) : $row, $rows);
+
+        return $page;
     }
 
     /**

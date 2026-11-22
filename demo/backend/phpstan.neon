@@ -6,16 +6,19 @@ parameters:
     paths:
         - src
         - ../../packages/vector/src
+        - ../../packages/vector-ai/src
         - migrations
         - bootstrap.php
         - public/index.php
         - tests
     ignoreErrors:
-        # Liveness-test setup and its lock holder, outside the observed operation.
+        # Liveness-test setup and its lock holder, outside the observed operation;
+        # the assistant's blocking provider, the control that shows the proof can fail.
         -
             identifier: kinetis.blockingCall
             paths:
                 - tests/Vector/LoopLivenessTest.php
+                - tests/Vector/Ai/AssistantLivenessTest.php
                 - tests/Fixtures/hold-products-lock.php
         # The test bootstrap owns its process: it gives each parallel worker its
         # own stores through the environment, $_SERVER included, before boot.
@@ -34,5 +37,10 @@ services:
             - phpstan.rules.rule
     -
         class: Kinetis\Linting\NoProcessGlobalsRule
+        tags:
+            - phpstan.rules.rule
+    # Neuron AI's features that block a worker, fork it or keep state between requests (kinetis/neuron)
+    -
+        class: Kinetis\Neuron\Linting\NoWorkerUnsafeNeuronRule
         tags:
             - phpstan.rules.rule

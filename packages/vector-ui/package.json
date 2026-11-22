@@ -1,6 +1,6 @@
 {
     "name": "@kinetis/vector-ui",
-    "version": "0.12.5",
+    "version": "0.13.0",
     "description": "The Kinetis Vector admin UI, as a Nuxt layer on Vuetify.",
     "keywords": [
         "kinetis",
@@ -41,6 +41,7 @@
     "scripts": {
         "prepare": "nuxt prepare",
         "prepack": "node ../../scripts/check-vector-ui-pack.mjs",
+        "generate:hosted": "node ../../scripts/build-hosted-bundle.mjs",
         "typecheck": "nuxt prepare && vue-tsc --noEmit",
         "lint": "eslint .",
         "test": "vitest run --passWithNoTests"
@@ -48,23 +49,23 @@
     "dependencies": {
         "@mdi/font": "^7.4.47",
         "@pinia/nuxt": "^1.0.3",
-        "@tiptap/core": "^3.34.0",
-        "@tiptap/extension-image": "^3.34.0",
-        "@tiptap/extension-link": "^3.34.0",
-        "@tiptap/extension-mention": "^3.34.0",
-        "@tiptap/extension-placeholder": "^3.34.0",
-        "@tiptap/extension-table": "^3.34.0",
-        "@tiptap/markdown": "^3.34.0",
-        "@tiptap/pm": "^3.34.0",
-        "@tiptap/starter-kit": "^3.34.0",
-        "@tiptap/suggestion": "^3.34.0",
-        "@tiptap/vue-3": "^3.34.0",
+        "@tiptap/core": "^3.35.0",
+        "@tiptap/extension-image": "^3.35.0",
+        "@tiptap/extension-link": "^3.35.0",
+        "@tiptap/extension-mention": "^3.35.0",
+        "@tiptap/extension-placeholder": "^3.35.0",
+        "@tiptap/extension-table": "^3.35.0",
+        "@tiptap/markdown": "^3.35.0",
+        "@tiptap/pm": "^3.35.0",
+        "@tiptap/starter-kit": "^3.35.0",
+        "@tiptap/suggestion": "^3.35.0",
+        "@tiptap/vue-3": "^3.35.0",
         "@vueuse/core": "^15.0.0",
         "@vueuse/nuxt": "^15.0.0",
-        "dompurify": "^3.4.17",
+        "dompurify": "^3.5.0",
         "markdown-it": "^15.0.3",
         "pinia": "^4.1.0",
-        "vue-i18n": "^11.4.19"
+        "vue-i18n": "^11.4.23"
     },
     "peerDependencies": {
         "nuxt": "^4.6.3",
@@ -75,15 +76,15 @@
     "devDependencies": {
         "@nuxt/test-utils": "^4.4.0",
         "@types/node": "^26.6.6",
-        "@vue/test-utils": "^2.5.1",
+        "@vue/test-utils": "^2.6.0",
         "happy-dom": "^21.0.4",
         "nuxt": "^4.6.4",
         "sass-embedded": "^1.108.2",
         "typescript": "~6.0.3",
-        "vitest": "^5.1.0",
-        "vue": "^3.5.45",
+        "vitest": "^5.1.1",
+        "vue": "^3.5.46",
         "vue-tsc": "^3.3.14",
-        "vuetify": "^4.3.3",
+        "vuetify": "^4.3.4",
         "vuetify-nuxt-module": "^1.0.0-rc.6"
     }
 }

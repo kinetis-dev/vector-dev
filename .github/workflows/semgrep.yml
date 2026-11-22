@@ -31,7 +31,7 @@ jobs:
 
       - name: Run Semgrep
         # Kinetis's rulesets, plus p/typescript for @kinetis/vector-ui and
-        # the demo frontend. --error makes a real finding fail the build —
+        # the demo frontend. --error makes a real finding fail the build,
         # .semgrepignore covers the known false positives (see that
         # file's own comments), confirmed clean (0 findings) before
         # adding this.

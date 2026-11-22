@@ -10,8 +10,8 @@ use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 
 /**
  * Every list of languages shows them in one order: their own names by
- * Unicode's root collation — Latin script alphabetically, accents and
- * case aside, then each other script as a group — the same in every
+ * Unicode's root collation (Latin script alphabetically, accents and
+ * case aside, then each other script as a group) the same in every
  * language the admin is shown in. The list ships in that order, so a
  * deployment needs no intl; this suite holds it there.
  */

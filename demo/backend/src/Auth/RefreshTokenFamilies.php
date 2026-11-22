@@ -12,7 +12,7 @@ use Psr\SimpleCache\CacheInterface;
  * Reuse detection for the API's refresh tokens, on the application cache
  * (Redis), as the OAuth 2.0 Security BCP describes it. A sign-in starts a
  * family; every refresh token rotated from it carries the family's id.
- * A redeemed token is remembered — by its hash, never the token itself —
+ * A redeemed token is remembered (by its hash, never the token itself)
  * until the session ends, so presenting it again is recognised as a
  * replay and revokes the whole family: whichever of the owner and a thief
  * renewed first, the other one's chain stops too.

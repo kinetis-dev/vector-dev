@@ -14,8 +14,8 @@ use Kinetis\Queue\QueueContract;
  * kinetis/queue-failed-jobs records on, FAILED_JOBS_DB_CONNECTION_NAME,
  * for the failed-job reads ({@see FailedJobBrowser}); the job metrics are
  * on Vector's own connection instead. Built by
- * {@see QueueDashboard::register()} on first resolve — only by a
- * failed-jobs route, once that package is wired — and closed with the
+ * {@see QueueDashboard::register()} on first resolve (only by a
+ * failed-jobs route, once that package is wired) and closed with the
  * application scope.
  */
 final readonly class FailedJobsLink

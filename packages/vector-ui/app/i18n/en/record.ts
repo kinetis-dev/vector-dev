@@ -44,6 +44,10 @@ export default {
         revertTitle: 'Revert this change?',
         revertText: 'Puts back the earlier value of {fields}. The revert is recorded in the history too.',
         reverted: 'Change reverted.',
+        via: 'via {origin}',
+        origin: {
+            assistant: 'assistant',
+        },
     },
     panel: {
         attach: 'Attach',

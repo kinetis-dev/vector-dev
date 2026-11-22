@@ -15,8 +15,8 @@ use League\Flysystem\StorageAttributes;
 
 /**
  * Deletes uploads no record uses. Only the folders of file and image
- * fields the registry declares are visited — `vector/{resource}/{field}/`,
- * one level deep — and only keys of the shape the upload endpoint issues;
+ * fields the registry declares are visited (`vector/{resource}/{field}/`,
+ * one level deep) and only keys of the shape the upload endpoint issues;
  * nothing outside Vector's own `vector/` prefix is ever listed. A file
  * younger than the grace period is kept, as an upload a form has not
  * saved yet may be.

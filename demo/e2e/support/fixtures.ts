@@ -7,10 +7,20 @@ export const API = 'http://localhost:8080'
 export const UI = 'http://localhost:3000/'
 
 /**
+ * Whether the run was told that the stack's AI provider is the demo's
+ * scripted `fake` one: `docker compose run --rm -e VECTOR_E2E_FAKE_AI=1 e2e`.
+ * The AI specs run only then. The descriptor says only that some provider
+ * is configured, and against a real one they would call the model, fail
+ * on its answers and cost money.
+ */
+export const FAKE_AI = process.env.VECTOR_E2E_FAKE_AI === '1'
+export const FAKE_AI_NEEDED = 'needs the fake AI provider (backend/.env: VECTOR_AI_PROVIDERS=demo, VECTOR_AI_DEMO_TYPE=fake) and VECTOR_E2E_FAKE_AI=1'
+
+/**
  * The seeded accounts (demo:seed). The suite's admin is its own, not the
  * admin a person signs in as: every test resets this account's saved
  * preferences, and some change them (its language), which would otherwise
- * reach — and be reached by — whoever uses the demo at the same time.
+ * reach (and be reached by) whoever uses the demo at the same time.
  */
 export const ADMIN = { email: 'e2e@vector.local', password: 'password', name: 'E2E Admin' }
 export const EDITOR = { email: 'editor@vector.local', password: 'password', name: 'Demo Editor' }
@@ -64,6 +74,13 @@ export class Api {
         if (Object.keys(saved).length > 0) await this.preferences(Object.fromEntries(Object.keys(saved).map(key => [key, null])))
     }
 
+    /** The descriptor's `capabilities.ai` for this account; undefined without kinetis/vector-ai. */
+    async aiCapabilities(): Promise<{ filters?: boolean, assistant?: boolean, writing?: boolean, excluded?: Record<string, unknown>, excludedFields?: Record<string, unknown>, noWriting?: Record<string, unknown> } | undefined> {
+        const response = await this.request.get(`${API}/vector/schema`, { headers: this.headers })
+        expect(response.ok()).toBeTruthy()
+        return (await response.json()).capabilities.ai
+    }
+
     /** A settings group's current values. */
     async settingsValues(group: string): Promise<Record<string, unknown>> {
         const response = await this.request.get(`${API}/vector/settings/${group}`, { headers: this.headers })
@@ -89,8 +106,8 @@ export class Api {
         return (await response.json()).data
     }
 
-    /** A record's history, newest first: `update`, `action:<name>`, … with the field changes. */
-    async audit(resource: string, id: unknown): Promise<{ event: string, changes: Record<string, unknown> }[]> {
+    /** A record's history, newest first: `update`, `action:<name>`, … with the field changes and who made them. */
+    async audit(resource: string, id: unknown): Promise<{ event: string, changes: Record<string, unknown>, actorId?: string | null, origin?: unknown }[]> {
         const response = await this.request.get(`${API}/vector/r/${resource}/${id}/audit`, { headers: this.headers })
         expect(response.ok(), await response.text()).toBeTruthy()
         return (await response.json()).data
@@ -163,7 +180,7 @@ export class Api {
  *
  * Hosted: the application's own sign-in form, which sets the session
  * cookie. Standalone: a token from /auth/login, placed where the admin
- * keeps it (sessionStorage) before any page script runs — on every load
+ * keeps it (sessionStorage) before any page script runs, on every load
  * of this page, so a test of signing out signs in through the form
  * instead (auth.standalone.spec.ts).
  */
@@ -188,7 +205,7 @@ export async function signIn(page: Page, mode: Mode, account: Account = ADMIN): 
 export class Cleanup {
     private readonly pending: { resource: string, name: string, force: boolean }[] = []
 
-    /** Removes every `resource` record whose search matches `name` once the test ends — for good with `force`. */
+    /** Removes every `resource` record whose search matches `name` once the test ends, for good with `force`. */
     byName(resource: string, name: string, force = false) {
         this.pending.push({ resource, name, force })
     }

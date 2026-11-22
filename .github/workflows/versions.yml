@@ -1,7 +1,7 @@
 name: Versions
 
-# Holds packages.manifest.json — the one place each product's version is
-# written — to scripts/version-policy.mjs: every version is canonical 0.x,
+# Holds packages.manifest.json (the one place each product's version is
+# written) to scripts/version-policy.mjs: every version is canonical 0.x,
 # vector-ui's package.json and each CHANGELOG agree with it, and a product
 # whose files changed is bumped exactly one step (scripts/bump.mjs, in the
 # pull request). release.yml publishes whatever version lands on main, so

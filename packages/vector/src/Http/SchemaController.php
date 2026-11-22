@@ -107,6 +107,8 @@ final readonly class SchemaController
                 'exportFormats' => array_values(array_filter($this->defaults->exportFormats, fn (string $format): bool => $format === 'csv' || $this->vectorQueue()->available())),
                 'uploads' => $this->scope->get(\Kinetis\Vector\Files\VectorStorage::class) instanceof \Kinetis\Vector\Files\VectorStorage
                     && $this->scope->get(\Kinetis\Vector\Files\VectorStorage::class)->available(),
+                // what each installed #[ShellContributor] offers this user, under its own name
+                ...$this->contributed($registry->contributors()),
             ],
             'branding' => isset($registry->settings()['branding']) ? $this->settings->values($registry->settingsGroup('branding')) : null,
             // the language this answer is in, and the ones this user may switch to
@@ -173,6 +175,31 @@ final readonly class SchemaController
             'failedJobs' => $queues && $dashboard->failedJobsWired(),
             'queueMetrics' => $queues && $dashboard->metricsEnabled(),
         ];
+    }
+
+    /**
+     * Each contributor's answer for this user, resolved from the request
+     * scope so it may depend on request-scoped services.
+     *
+     * @param array<string, class-string<ShellContributorInterface>> $contributors
+     * @return array<string, object>
+     */
+    private function contributed(array $contributors): array
+    {
+        $capabilities = [];
+
+        foreach ($contributors as $name => $class) {
+            $contributor = $this->scope->get($class);
+
+            if (!$contributor instanceof ShellContributorInterface) {
+                throw new \LogicException("{$class} does not implement " . ShellContributorInterface::class . '.');
+            }
+
+            // always a JSON object, an empty one too: the key's presence says the package is installed
+            $capabilities[$name] = (object) $contributor->capabilities($this->user);
+        }
+
+        return $capabilities;
     }
 
     private function vectorQueue(): \Kinetis\Vector\Jobs\VectorQueue

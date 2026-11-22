@@ -8,11 +8,11 @@ let ending: { token: string | null | undefined, done: Promise<void> } | null = n
 
 /**
  * The one HTTP client every Vector request goes through. Bearer mode
- * attaches the in-memory token — renewed first when it has under two
- * minutes left — and on a 401 renews it once and repeats the request
+ * attaches the in-memory token (renewed first when it has under two
+ * minutes left) and on a 401 renews it once and repeats the request
  * (a 401 for a token another request already renewed only repeats it),
- * sending the user to the login page — once, however many requests
- * that renewal failed — only when that fails too (a 401 means the
+ * sending the user to the login page (once, however many requests
+ * that renewal failed) only when that fails too (a 401 means the
  * request did nothing, so repeating even a POST is safe); cookie mode
  * (hosted) rides the application's session cookie, sends the CSRF token
  * on every unsafe method, and hands a 401 to the application's own login

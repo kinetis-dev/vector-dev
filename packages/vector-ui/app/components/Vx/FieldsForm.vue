@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { VectorField, VectorFieldState } from '#vector/app/types/vector'
 
-// A block of inputs for a loose field list — an action's dialog, a
-// settings group — sharing the record form's registry, rules and 422
+// A block of inputs for a loose field list (an action's dialog, a
+// settings group) sharing the record form's registry, rules and 422
 // mapping. The owner holds the values and the server errors.
 const props = defineProps<{
     fields: VectorField[]
@@ -39,6 +39,14 @@ function set(name: string, value: unknown) {
                 :error-messages="serverErrors[field.name] ?? []"
                 :record="values"
                 :resource="resource ?? ''"
+                @update:model-value="(v: unknown) => set(field.name, v)"
+            />
+            <VxInputAddons
+                :field="field"
+                :resource="resource ?? ''"
+                :record="values"
+                :model-value="values[field.name]"
+                :disabled="states[field.name]?.disabled === true"
                 @update:model-value="(v: unknown) => set(field.name, v)"
             />
         </v-col>

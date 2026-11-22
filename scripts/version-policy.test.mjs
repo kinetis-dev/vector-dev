@@ -1,4 +1,4 @@
-// node --test scripts/*.test.mjs — the one version policy every release tool shares.
+// node --test scripts/*.test.mjs; the one version policy every release tool shares.
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'

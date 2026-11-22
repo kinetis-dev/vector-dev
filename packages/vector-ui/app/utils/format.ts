@@ -15,8 +15,8 @@ export function setFormatLocale(locale: string | undefined): void {
 }
 
 // The server's ISO 4217 exponents for the codes that are not hundredths. The
-// server stores minor units, so its table — not the browser's CLDR data, which
-// differs for a few codes — decides where the decimal point goes.
+// server stores minor units, so its table (not the browser's CLDR data, which
+// differs for a few codes) decides where the decimal point goes.
 const minorUnitExceptions = new Map<string, number>()
 
 /** Takes the exponents the schema publishes. */
@@ -66,7 +66,7 @@ export function formatNumber(value: number, decimals?: number): string {
 
 /**
  * A money field's currency: its fixed one, or the one its currencyField
- * names in the record — through a relation for `order.currency`, whose
+ * names in the record, through a relation for `order.currency`, whose
  * value is the related record (or `{id, label, currency}`). Null when the
  * record does not say.
  */

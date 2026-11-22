@@ -41,6 +41,7 @@ export default {
         records: '레코드',
         resources: '리소스',
         noMatch: '일치하는 레코드가 없습니다',
+        commands: '명령',
     },
     inbox: {
         title: '알림',

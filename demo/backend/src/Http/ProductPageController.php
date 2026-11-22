@@ -15,7 +15,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
- * The shop's own product page — an application view, not the admin —
+ * The shop's own product page (an application view, not the admin)
  * showing how an application renders a rich-text value it stores:
  * Document::toHtml() turns the editor's JSON document into escaped HTML
  * through the same schema. Images are private uploads, so this public

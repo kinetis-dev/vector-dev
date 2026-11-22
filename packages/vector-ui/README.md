@@ -24,12 +24,19 @@ monorepo, beside its PHP package and a demo application.
 
 The admin UI for [`kinetis/vector`](https://packagist.org/packages/kinetis/vector):
 a Nuxt 4 layer on Vuetify 4 that renders the descriptor the API
-publishes — navigation, lists, forms, relation panels, actions,
-dashboards, jobs, settings — and contains no application knowledge. An
+publishes (navigation, lists, forms, relation panels, actions,
+dashboards, jobs, settings) and contains no application knowledge. An
 application is a Nuxt app that extends the layer, served as a static
 site on its own origin with a bearer token (standalone), or installed
 into the PHP application and served at `/vector/ui` behind its session
 (hosted).
+
+With [`kinetis/vector-ai`](https://packagist.org/packages/kinetis/vector-ai)
+on the server, the same layer shows AI features: plain-language
+filters, the assistant with its approval cards, writing help and the
+provider-key panel. They turn on from the descriptor's
+`capabilities.ai`; without it, the admin shows none of them and sends no
+AI request. See [AI](https://kinetis.dev/vector/docs/ai.html).
 
 The package also ships that hosted build, in `dist/static` with its
 `vector-bundle.json` manifest: `kinetis vector:install-ui` downloads it
@@ -52,8 +59,9 @@ export default defineNuxtConfig({
 
 `pnpm nuxt dev` for development, `pnpm nuxt generate` for a static site
 any web server hosts. The API allows the UI's origin through
-`CorsMiddleware` and offers the `POST /auth/login` endpoint the sign-in
-page calls; see
+`CorsMiddleware`, exposing `Retry-After` so the AI features can say
+when a spent daily budget renews, and offers the `POST /auth/login`
+endpoint the sign-in page calls; see
 [Deployment](https://kinetis.dev/vector/docs/deployment.html). Keep this
 package at the release your `kinetis/vector` pins: the admin shows a
 banner naming both versions when they differ.
@@ -77,4 +85,4 @@ Cells, inputs, widgets and runtime extensions:
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

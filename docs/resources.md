@@ -39,7 +39,78 @@ Material Design Icons name) and the `title` field that names a record in
 breadcrumbs, relations and search. `slug` overrides the URL name; by
 default the mapped table name is used with underscores replaced by dashes.
 `label` and `labelSingular` override the display names derived from the
-class.
+class. `meta` is a free-form metadata bag ({ref}`resource-meta`).
+
+(resource-meta)=
+
+## Metadata for other packages
+
+`#[Resource(meta: [...])]` and `Field::meta($key, $value)` attach
+namespaced metadata (`vendor.key`) that Vector publishes verbatim, as
+`meta` on the resource and on the field, in the descriptor
+(`GET /vector/schema`) and in `toArray()`. Vector itself never reads it;
+it is there for a package or a UI extension that builds on the
+descriptor. A value is a scalar, `null` or a list of those; anything
+else stops the compile.
+
+```php
+#[Resource(entity: Customer::class, meta: ['ai.send' => false])]
+final class CustomerResource extends VectorResource
+{
+    public function fields(): array
+    {
+        return [
+            Id::make(),
+            Text::make('name'),
+            Email::make('email')->meta('ai.send', false),
+        ];
+    }
+}
+```
+
+A resource or field that declares no meta publishes no `meta` key at
+all, in the descriptor or in `vector_describe`'s answer.
+A policy that hides fields keeps the meta of the fields it keeps.
+`kinetis/vector-ai` reads `ai.send` ({doc}`ai`).
+
+(shell-contributors)=
+
+## Shell contributors
+
+A package that builds on Vector tells the admin, per user, what it
+offers through `capabilities` in `GET /vector/schema`. A class
+implementing `Kinetis\Vector\Http\ShellContributorInterface` and carrying
+`#[ShellContributor(name: '...')]` is discovered like a settings group;
+on every schema request it is resolved from the request scope (so it
+may depend on request-scoped services) and its answer is published as
+`capabilities.<name>`:
+
+```php
+use Kinetis\Http\CurrentUserInterface;
+use Kinetis\Vector\Attributes\ShellContributor;
+use Kinetis\Vector\Http\ShellContributorInterface;
+
+#[ShellContributor(name: 'acme')]
+final readonly class AcmeCapabilities implements ShellContributorInterface
+{
+    public function __construct(private AcmePolicy $policy) {}
+
+    public function capabilities(CurrentUserInterface $user): array
+    {
+        return ['reports' => $this->policy->canRunReports($user)];
+    }
+}
+```
+
+The name is lowercase letters, digits and dashes, starting with a
+letter, at most 40 characters. A name that is malformed, taken twice, or
+one of the built-in keys (`impersonation`, `queue`, `queues`,
+`failedJobs`, `queueMetrics`, `exportFormats`, `uploads`) stops the
+compile. The answer is always a JSON object, and its key is absent when
+the package is not installed, which is how a UI extension tells
+({doc}`customizing-the-ui`). It is part of the descriptor's ETag, must
+not block, and must never carry a secret: the descriptor is sent to the
+browser.
 
 ## Several resources over one entity
 
@@ -52,7 +123,7 @@ entry are keyed by its slug.
 
 A relation that names its resource, `BelongsTo::to('owner',
 ProfileResource::class)`, links to that one. A relation that names none
-— a field derived from the entity's mapping — links to the entity's
+(a field derived from the entity's mapping) links to the entity's
 relation target: its only resource, or, when it has several, the one
 marked `relationTarget: true`:
 
@@ -110,7 +181,7 @@ These run on an instance the request container builds, so they may
 inject anything a controller may:
 
 - `scope(Query $query, CurrentUserInterface $user)` narrows the rows a
-  user sees — everywhere: lists, counts, exports, badges, search.
+  user sees everywhere: lists, counts, exports, badges, search.
 - `create()` builds a new entity from the validated values, and
   `apply()` writes them to a loaded one. Returning `null` or `false`
   leaves it to Vector's default writer.
@@ -174,7 +245,7 @@ others are matched with `LIKE`. The application creates the index; see
 
 The same match applies wherever `q` does: the list and its cursor pages,
 inline and queued exports, an `all` selection for a batch or an action,
-`vector_query`, and global search.
+`vector_query`, `vector_aggregate`, and global search.
 
 ## Global search
 
@@ -252,6 +323,6 @@ A resource in no navigation group shows `—` in the Group column.
 
 ## See also
 
-- {doc}`fields` — the field catalog.
-- {doc}`forms` — conditions, dependent choices and repeaters.
-- {doc}`authorization` — who may do what.
+- {doc}`fields`: the field catalog.
+- {doc}`forms`: conditions, dependent choices and repeaters.
+- {doc}`authorization`: who may do what.

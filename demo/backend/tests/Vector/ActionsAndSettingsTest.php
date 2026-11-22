@@ -78,7 +78,7 @@ final class ActionsAndSettingsTest extends VectorTestCase
         self::assertIsArray($draft);
         $id = (int) $draft['id'];
 
-        // every adjustment below lands on draft products — put every product back afterwards, should a broken filter widen it
+        // every adjustment below lands on draft products, put every product back afterwards, should a broken filter widen it
         $touched = (new Query($link))->table('products')->select('id', 'stock')->get();
 
         try {
@@ -198,11 +198,12 @@ final class ActionsAndSettingsTest extends VectorTestCase
     {
         $this->client->get('/vector/settings', headers: $this->adminHeaders())
             ->assertOk()
-            ->assertJsonPath('data.0.name', 'branding')
-            ->assertJsonPath('data.0.values.title', 'Vector');
+            // ordered by name: kinetis/vector-ai's `ai` group comes first in the demo
+            ->assertJsonPath('data.1.name', 'branding')
+            ->assertJsonPath('data.1.values.title', 'Vector');
         $this->client->get('/vector/schema', headers: $this->adminHeaders())
             ->assertOk()
-            ->assertJsonPath('settings.0.name', 'branding')
+            ->assertJsonPath('settings.1.name', 'branding')
             ->assertJsonPath('branding.primaryColor', '#1F5F8B');
 
         $this->client->request('PUT', '/vector/settings/branding', body: ['title' => '', 'primaryColor' => 'red', 'theme' => 'neon'], headers: $this->adminHeaders())

@@ -6,8 +6,8 @@ namespace App\Tests\Vector;
 
 /**
  * Refresh-token reuse detection: a sign-in starts a token family, and a
- * redeemed refresh token presented again revokes that whole family —
- * whoever renewed first, owner or thief — answering exactly what an
+ * redeemed refresh token presented again revokes that whole family
+ * (whoever renewed first, owner or thief) answering exactly what an
  * unknown token does. Logout revokes the family too; another sign-in's
  * family is untouched.
  */

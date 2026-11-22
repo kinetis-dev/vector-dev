@@ -294,8 +294,8 @@ final readonly class DemoSeedCommand
     }
 
     /**
-     * Stores a product image — a 96-pixel gradient in its category's
-     * colour — under the key an upload of it would get, or none without
+     * Stores a product image (a 96-pixel gradient in its category's
+     * colour) under the key an upload of it would get, or none without
      * storage.
      *
      * @param array{int, int, int} $rgb
@@ -349,7 +349,7 @@ final readonly class DemoSeedCommand
         $item = static fn (string $line): array => ['type' => 'listItem', 'content' => [['type' => 'paragraph', 'content' => [$text($line)]]]];
 
         return json_encode(['type' => 'doc', 'content' => [
-            ['type' => 'paragraph', 'content' => [$text($name, [['type' => 'bold']]), $text(" — a demo product in the {$category} category.")]],
+            ['type' => 'paragraph', 'content' => [$text($name, [['type' => 'bold']]), $text(": a demo product in the {$category} category.")]],
             ['type' => 'bulletList', 'content' => [$item('Two-year warranty'), $item('Free returns within 30 days')]],
             ['type' => 'paragraph', 'content' => [
                 $text('Read the '),

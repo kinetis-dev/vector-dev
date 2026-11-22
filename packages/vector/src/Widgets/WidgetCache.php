@@ -7,9 +7,9 @@ namespace Kinetis\Vector\Widgets;
 /**
  * A small per-worker memo for widget results: bound on the application
  * scope, so it survives requests by design, and bounded to MAX entries.
- * WidgetRunner builds the key — widget, range and the account it was
+ * WidgetRunner builds the key (widget, range and the account it was
  * computed for, or `shared` when the widget declared its result the
- * same for everyone — so nothing here ever answers one account with
+ * same for everyone) so nothing here ever answers one account with
  * another's numbers.
  */
 final class WidgetCache

@@ -62,8 +62,8 @@ html[data-theme="dark"] .bd-article section > p > strong:only-child { color: #F5
 
 ## Two ways to serve the admin
 
-**Standalone** — the UI is a static site on its own origin, calling the
-API with a bearer token. **Hosted** — your PHP application serves the
+**Standalone**: the UI is a static site on its own origin, calling the
+API with a bearer token. **Hosted**: your PHP application serves the
 same UI at `/vector/ui` behind its own session login, under a strict
 Content Security Policy. Both are first-class and run the same code.
 See {doc}`deployment`.
@@ -176,6 +176,7 @@ databases
 :hidden:
 
 mcp
+ai
 testing
 ```
 

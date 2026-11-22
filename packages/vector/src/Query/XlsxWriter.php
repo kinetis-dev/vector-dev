@@ -22,8 +22,8 @@ use OpenSpout\Writer\XLSX\Writer;
  * from the row when it names its currency.
  *
  * Queue worker only. openspout writes the sheet into a temporary folder
- * and zips it through ZipArchive on a real file path — blocking file I/O
- * a request worker cannot afford — so an XLSX export is always a job.
+ * and zips it through ZipArchive on a real file path (blocking file I/O
+ * a request worker cannot afford) so an XLSX export is always a job.
  */
 final class XlsxWriter
 {

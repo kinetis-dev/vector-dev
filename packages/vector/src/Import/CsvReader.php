@@ -171,7 +171,7 @@ final class CsvReader
         fseek($out, 0, SEEK_END);
         $note = sprintf('%d more failed rows are not in this file, which holds at most %d MiB.', count($rows) - $kept - 1, intdiv($maxBytes, 1048576));
         $last = $kept >= 0 ? self::guardedRow($headers, $rows[$kept]) : array_fill(0, count($headers), '');
-        $last[count($last) - 1] = $last[count($last) - 1] === '' ? $note : $last[count($last) - 1] . ' — ' . $note;
+        $last[count($last) - 1] = $last[count($last) - 1] === '' ? $note : $last[count($last) - 1] . ' ' . $note;
         fputcsv($out, $last, ',', '"', '\\', "\r\n");
     }
 

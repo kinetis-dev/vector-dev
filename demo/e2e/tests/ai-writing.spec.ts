@@ -1,0 +1,143 @@
+import { watchCsp } from '../support/csp'
+import { ADMIN, expect, FAKE_AI, FAKE_AI_NEEDED, test } from '../support/fixtures'
+
+// Writing help against the demo's `fake` AI provider, which shortens the
+// two texts App\Vector\Ai\DemoAiReplies scripts: an order's notes, from
+// the icon inside their textarea, and a product description's paragraph,
+// selected in the rich-text editor or, with nothing selected, as its whole
+// text. The answer shows beside the text (for
+// the notes, in a popover under the field); Replace puts it in
+// the input, and the admin saves it as their own edit. Needs the stack
+// configured with it (backend/.env: VECTOR_AI_PROVIDERS=demo,
+// VECTOR_AI_DEMO_TYPE=fake); skipped unless VECTOR_E2E_FAKE_AI=1
+// says so. ai.spec.ts covers the demo as it ships. In both projects;
+// hosted, under the shell's strict CSP without a violation.
+const LONG_NOTES = 'Please make sure to call the customer before the delivery, because the customer has asked us to call ahead before the parcel is delivered.'
+const SHORT_NOTES = 'Call the customer before delivery.'
+const LONG_DESCRIPTION = 'This lamp gives a warm and pleasant light that is very suitable for reading in the evening and for other quiet activities at home.'
+const SHORT_DESCRIPTION = 'A warm reading lamp for quiet evenings.'
+
+test.describe('AI, writing help', () => {
+    test.beforeEach(async ({ api }) => {
+        test.skip(!FAKE_AI, FAKE_AI_NEEDED)
+        expect((await api.aiCapabilities())?.writing, 'VECTOR_E2E_FAKE_AI=1, but the stack reports no AI writing').toBe(true)
+    })
+
+    test('shortens an order\'s notes, and the save is the admin\'s own edit', async ({ admin: page, api }) => {
+        const csp = await watchCsp(page)
+        const id = (await api.search('orders', ''))[0]!.id
+        const before = (await api.show('orders', id)).notes
+
+        try {
+            await page.goto(`r/orders/${id}/edit`)
+            const notes = page.getByRole('textbox', { name: 'Notes' })
+            await notes.fill(LONG_NOTES)
+            // the addon inside the notes' field, at its end
+            const field = notes.locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " v-field ")][1]')
+            const addon = field.locator('.v-field__append-inner [data-input-addon="ai-writing"]')
+            // the answer's popover, on the page's overlay
+            const popover = page.locator('[data-ai-writing-popover]')
+
+            const asked = page.waitForResponse(response => response.url().endsWith('/vector/ai/writing/orders/notes') && response.request().method() === 'POST')
+            await addon.locator('[data-ai-writing-menu]').click()
+            await page.locator('[data-ai-writing-operation="shorten"]').click()
+            expect((await asked).request().postDataJSON()).toMatchObject({ operation: 'shorten', text: LONG_NOTES, format: 'plain', recordId: String(id) })
+
+            await expect(popover.locator('[data-ai-writing-before]')).toHaveText(LONG_NOTES)
+            await expect(popover.locator('[data-ai-writing-after]')).toHaveText(SHORT_NOTES)
+            // nothing is in the input until Replace
+            await expect(notes).toHaveValue(LONG_NOTES)
+            await popover.locator('[data-ai-writing-replace]').click()
+            await expect(notes).toHaveValue(SHORT_NOTES)
+            await expect(popover).toBeHidden()
+
+            await page.getByRole('button', { name: 'Save', exact: true }).click()
+            await expect(page).toHaveURL(new RegExp(`/r/orders/${id}$`))
+            expect((await api.show('orders', id)).notes).toBe(SHORT_NOTES)
+
+            const [latest] = await api.audit('orders', id)
+            expect(latest!.event).toBe('update')
+            // the signed-in admin's own update
+            const admin = (await api.search('users', ADMIN.email)).find(user => user.email === ADMIN.email)!
+            expect(latest!.actorId).toBe(String(admin.id))
+            expect(latest!.origin ?? null).toBeNull()
+            expect(Object.keys(latest!.changes)).toContain('notes')
+        } finally {
+            await api.update('orders', id, { notes: before })
+        }
+        expect(await csp()).toEqual([])
+    })
+
+    test('shortens a selection in a rich-text description, and saves it', async ({ admin: page, api }) => {
+        const csp = await watchCsp(page)
+        const product = (await api.search('products', 'SKU-00044'))[0]!
+        const before = (await api.show('products', product.id)).description
+
+        try {
+            await page.goto(`r/products/${product.id}/edit`)
+            await page.getByRole('tab', { name: 'Content' }).click()
+            const editor = page.getByRole('textbox', { name: 'Description' })
+            const menu = page.locator('[data-editor-toolbar-item="ai-writing"] [data-ai-writing-menu]')
+            await editor.click()
+            await page.keyboard.press('ControlOrMeta+a')
+            await page.keyboard.type(LONG_DESCRIPTION)
+            await editor.locator('p').first().click({ clickCount: 3 })
+            await expect(menu).toBeEnabled()
+            const asked = page.waitForResponse(response => response.url().endsWith('/vector/ai/writing/products/description') && response.request().method() === 'POST')
+            await menu.click()
+            await page.locator('[data-ai-writing-operation="shorten"]').click()
+            expect((await asked).request().postDataJSON()).toMatchObject({ operation: 'shorten', text: LONG_DESCRIPTION, format: 'plain', recordId: String(product.id) })
+
+            const result = page.locator('[data-ai-writing-result]')
+            await expect(result.locator('[data-ai-writing-after]')).toHaveText(SHORT_DESCRIPTION)
+            await result.locator('[data-ai-writing-replace]').click()
+            await expect(editor).toHaveText(SHORT_DESCRIPTION)
+
+            await page.getByRole('button', { name: 'Save', exact: true }).click()
+            await expect(page).toHaveURL(new RegExp(`/r/products/${product.id}$`))
+            const stored = JSON.parse(String((await api.show('products', product.id)).description))
+            expect(JSON.stringify(stored)).toContain(SHORT_DESCRIPTION)
+            expect(JSON.stringify(stored)).not.toContain(LONG_DESCRIPTION)
+            expect((await api.audit('products', product.id))[0]!.origin ?? null).toBeNull()
+        } finally {
+            await api.update('products', product.id, { description: before })
+        }
+        expect(await csp()).toEqual([])
+    })
+
+    test('in a rich-text description with nothing selected it works on the whole text, and is disabled once the editor is blank', async ({ admin: page, api }) => {
+        const csp = await watchCsp(page)
+        const product = (await api.search('products', 'SKU-00044'))[0]!
+
+        await page.goto(`r/products/${product.id}/edit`)
+        await page.getByRole('tab', { name: 'Content' }).click()
+        const editor = page.getByRole('textbox', { name: 'Description' })
+        const menu = page.locator('[data-editor-toolbar-item="ai-writing"] [data-ai-writing-menu]')
+        await editor.click()
+        await page.keyboard.press('ControlOrMeta+a')
+        await page.keyboard.type(LONG_DESCRIPTION)
+        // a caret, no selection
+        await page.keyboard.press('End')
+        await expect(menu).toBeEnabled()
+        await expect(menu).toHaveAttribute('title', 'Writing help: works on the whole text, or on the part you select')
+
+        const asked = page.waitForResponse(response => response.url().endsWith('/vector/ai/writing/products/description') && response.request().method() === 'POST')
+        await menu.click()
+        await page.locator('[data-ai-writing-operation="shorten"]').click()
+        expect((await asked).request().postDataJSON()).toMatchObject({ operation: 'shorten', text: LONG_DESCRIPTION, format: 'plain', recordId: String(product.id) })
+        const result = page.locator('[data-ai-writing-result]')
+        await expect(result.locator('[data-ai-writing-before]')).toHaveText(LONG_DESCRIPTION)
+        await expect(result.locator('[data-ai-writing-after]')).toHaveText(SHORT_DESCRIPTION)
+        await result.locator('[data-ai-writing-discard]').click()
+        await expect(result).toBeHidden()
+
+        // nothing saved: the editor alone is emptied
+        await editor.click()
+        await page.keyboard.press('ControlOrMeta+a')
+        await page.keyboard.press('Delete')
+        await expect(editor).toHaveText('')
+        await expect(menu).toBeDisabled()
+        await expect(menu).toHaveAttribute('title', 'Write some text first')
+        expect(await csp()).toEqual([])
+    })
+})

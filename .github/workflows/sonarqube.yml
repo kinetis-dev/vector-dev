@@ -115,8 +115,8 @@ jobs:
 
       - name: Package coverage
         # pcov instruments only files under pcov.directory, which
-        # defaults to the working directory's src/ — the demo's, not the
-        # packages' — so it is pointed at packages/, covering the PHP
+        # defaults to the working directory's src/ (the demo's, not the
+        # packages') so it is pointed at packages/, covering the PHP
         # package, kinetis/vector.
         #
         # Each is installed from its path repository as a symlink
@@ -139,7 +139,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: SonarQube Cloud quality gate
-        # Fails the build if the gate fails — the scan step only uploads.
+        # Fails the build if the gate fails; the scan step only uploads.
         # Reads the scan's report-task.txt and polls SonarQube Cloud until
         # the gate resolves.
         uses: SonarSource/sonarqube-quality-gate-action@v1

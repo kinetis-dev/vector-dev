@@ -83,8 +83,8 @@ abstract class VectorResource
     }
 
     /**
-     * Whether the admin pages this resource's list by cursor — keyset on
-     * the identifier, without sort, grouping, page numbers or a total —
+     * Whether the admin pages this resource's list by cursor (keyset on
+     * the identifier, without sort, grouping, page numbers or a total)
      * instead of by page number. The REST API is unchanged: `page` and
      * `cursor` both keep working whichever is set.
      */
@@ -168,8 +168,8 @@ abstract class VectorResource
 
     /**
      * The field a global search result and a relation's choice list show
-     * under the title — a text, number or enum field, such as a SKU or an
-     * e-mail — or null for none.
+     * under the title (a text, number or enum field, such as a SKU or an
+     * e-mail) or null for none.
      */
     public function searchSubtitle(): ?string
     {

@@ -41,6 +41,7 @@ export default {
         records: 'Rekordy',
         resources: 'Zasoby',
         noMatch: 'Brak pasujących rekordów',
+        commands: 'Polecenia',
     },
     inbox: {
         title: 'Powiadomienia',

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { VectorWidget, VectorWidgetData } from '#vector/app/types/vector'
 
-// One widget card: loads its data for the selected range — and again in a
-// new language, whose labels the server translates — and renders the shape
+// One widget card: loads its data for the selected range (and again in a
+// new language, whose labels the server translates) and renders the shape
 // its type declares. A consuming app replaces a type through
 // app.config.vector.widgets, like fields and inputs.
 const props = defineProps<{

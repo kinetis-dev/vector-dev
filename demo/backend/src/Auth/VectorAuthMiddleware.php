@@ -25,8 +25,8 @@ use Psr\Http\Server\RequestHandlerInterface;
  * token the shell was given; a bearer request needs none, since a
  * browser never attaches a bearer header on its own.
  *
- * Registers the identity on the request scope as a DemoActor — the one
- * object Vector's policies, shell and log read — and the impersonation
+ * Registers the identity on the request scope as a DemoActor (the one
+ * object Vector's policies, shell and log read) and the impersonation
  * service that knows how this mode swaps identities. Registers nothing
  * when neither credential is present, so the shell redirects to login
  * and the API answers 401.

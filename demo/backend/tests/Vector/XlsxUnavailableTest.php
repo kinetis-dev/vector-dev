@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Vector;
 
-/** A deployment that offers CSV only — as one without openspout/openspout would. */
+/** A deployment that offers CSV only, as one without openspout/openspout would. */
 final class XlsxUnavailableTest extends VectorTestCase
 {
     protected function configOverrides(): array

@@ -41,6 +41,7 @@ export default {
         records: 'Records',
         resources: 'Resources',
         noMatch: 'Geen overeenkomende records',
+        commands: 'Opdrachten',
     },
     inbox: {
         title: 'Meldingen',

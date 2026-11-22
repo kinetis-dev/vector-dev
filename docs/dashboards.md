@@ -107,7 +107,7 @@ final class MainDashboard extends VectorDashboard
 
 A dashboard's name is its class name without `Dashboard`, in kebab-case
 (`MainDashboard` is `main`), unless `name()` says otherwise. The
-dashboard named `main` — or, without one, the first — is the admin's
+dashboard named `main` (or, without one, the first) is the admin's
 home page; the others appear in the navigation drawer under their own
 labels. `canView()` hides a whole dashboard from a user.
 
@@ -120,5 +120,5 @@ admin is never shown another's figures.
 
 ## See also
 
-- {doc}`resources` — badges, the other at-a-glance count.
-- {doc}`customizing-the-ui` — a renderer of your own for a widget type.
+- {doc}`resources`: badges, the other at-a-glance count.
+- {doc}`customizing-the-ui`: a renderer of your own for a widget type.

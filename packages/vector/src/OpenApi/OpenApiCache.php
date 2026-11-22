@@ -12,7 +12,7 @@ use Kinetis\Vector\Import\ImportRequest;
  * once per worker on AppScope: the components every document shares,
  * and each compiled field's and action's schemas. The registry is
  * compiled and cannot change under a worker, and a policy only ever
- * removes a field — it never alters one — so a schema kept here is the
+ * removes a field (it never alters one) so a schema kept here is the
  * same for every identity.
  * Which fields, actions and resources a document names is decided per
  * request, by {@see OpenApiDocument}.

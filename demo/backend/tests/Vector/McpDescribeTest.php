@@ -10,7 +10,7 @@ use Kinetis\QueryBuilder\Query;
 /**
  * The MCP index and description an agent works from: vector_resources
  * lists what this caller may see, vector_describe tells how to read and
- * write one resource — and what it says is what the writer enforces.
+ * write one resource, and what it says is what the writer enforces.
  */
 final class McpDescribeTest extends VectorTestCase
 {

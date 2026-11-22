@@ -6,6 +6,7 @@ namespace App\Vector;
 
 use App\Domain\Order;
 use App\Domain\OrderStatus;
+use App\Vector\Actions\TidyOrderNotes;
 use Kinetis\Vector\Attributes\Resource;
 use Kinetis\Vector\Fields\BelongsTo;
 use Kinetis\Vector\Fields\Currency;
@@ -31,7 +32,7 @@ final class OrderResource extends VectorResource
     {
         return [
             Id::make(),
-            Text::make('number')->required()->max(30)->sortable()->searchable()->filterable(), // orders.number is VARCHAR(30)
+            Text::make('number')->required()->max(30)->unique()->sortable()->searchable()->filterable(), // orders.number is VARCHAR(30), UNIQUE (orders_number_unique)
             BelongsTo::to('customer', CustomerResource::class)->sortable()->filterable(),
             Enum::make('status')->of(OrderStatus::class)
                 ->colors(['pending' => 'warning', 'paid' => 'info', 'shipped' => 'success', 'cancelled' => 'grey'])
@@ -45,6 +46,13 @@ final class OrderResource extends VectorResource
             DateTime::make('createdAt')->readonly()->hideFromForms()->hideFromIndex(),
             DateTime::make('updatedAt')->readonly()->hideFromForms()->hideFromIndex(),
         ];
+    }
+
+    /** Bulk AI proposals for the notes: a CSV to review and import, never a direct write. */
+    #[\Override]
+    public function actions(): array
+    {
+        return [TidyOrderNotes::class];
     }
 
     #[\Override]

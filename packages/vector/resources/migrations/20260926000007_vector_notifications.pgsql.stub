@@ -10,6 +10,7 @@ use Kinetis\Persistence\Contract\PostgresLink;
 // The inbox: one row per message to one admin, read or not.
 return new class implements Migration
 {
+    #[\Override]
     public function up(MysqlLink|PostgresLink $db): void
     {
         $db->execute(<<<'SQL'
@@ -27,6 +28,7 @@ return new class implements Migration
         $db->execute('CREATE INDEX vector_notifications_owner_index ON vector_notifications (owner_id, read_at, id)');
     }
 
+    #[\Override]
     public function down(MysqlLink|PostgresLink $db): void
     {
         $db->execute('DROP TABLE vector_notifications');

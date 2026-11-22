@@ -25,6 +25,9 @@ pnpm nuxt generate    # .output/public, for any web server
 The API registers `CorsMiddleware` for the UI's origin; see
 {doc}`authentication`.
 
+In both modes the admin carries the AI features of `kinetis/vector-ai`
+and shows them only when the API runs it ({doc}`ai`).
+
 ## Hosted
 
 The application serves the UI itself, behind its own session. The
@@ -51,11 +54,12 @@ vendor/bin/kinetis migrate
 vendor/bin/kinetis vector:install-ui
 ```
 
-and restart the workers. `vector:install` names a served UI that is
-missing, has no `vector-bundle.json`, or is not the pinned release.
-`vendor/bin/kinetis vector:install-ui --check` verifies the served
-directory against its manifest and the pin without the network: exit 0
-in sync, 1 otherwise. Run it in CI or a deploy's health step.
+and restart the workers (with AI, `composer update kinetis/vector
+kinetis/vector-ai` and `vector-ai:install` too). `vector:install` names
+a served UI that is missing, has no `vector-bundle.json`, or is not the
+pinned release. `vendor/bin/kinetis vector:install-ui --check` verifies
+the served directory against its manifest and the pin without the
+network: exit 0 in sync, 1 otherwise. Run it in CI or a deploy's health step.
 
 ### What `vector:install-ui` checks
 
@@ -155,7 +159,7 @@ policy).
 place of the application's, with `{nonce}` replaced by the same nonce;
 set it only when the shell needs a different policy. With neither set,
 the page draws a nonce of its own and carries no policy.
-`VECTOR_SHELL_HEAD` appends a raw fragment before `</head>` — deployment
+`VECTOR_SHELL_HEAD` appends a raw fragment before `</head>`: deployment
 configuration, and the only way to add script to the page.
 
 ## Production
@@ -195,7 +199,7 @@ worker for Vector's jobs ({doc}`jobs`), and schedule
   Refresh tokens are random values kept in the cache, not signed with
   it: they survive a rotation and renew into tokens signed with the new
   key. To sign everyone out, clear the cache's refresh tokens as well.
-- **Bearer mode:** `VECTOR_UI_ORIGIN` must be the UI's exact origin —
+- **Bearer mode:** `VECTOR_UI_ORIGIN` must be the UI's exact origin:
   scheme, host and port, no path. It is the only origin CORS allows.
 - **CSP:** `SECURITY_CSP` must contain `{nonce}` (or set
   `VECTOR_SHELL_CSP`); a policy without it blocks the shell's inline
@@ -223,11 +227,11 @@ worker for Vector's jobs ({doc}`jobs`), and schedule
 - An unused upload stays in storage until `vector:files:prune` runs and
   its grace period (24 hours by default) has passed; one an audit entry
   holds stays as long as that entry.
-- A download serves any stored key outside `vector/` — keys your
+- A download serves any stored key outside `vector/`: keys your
   application writes. A key under `vector/` is served only from that
   field's own `vector/{resource}/{field}/`.
 
 ## See also
 
-- {doc}`authentication` — the two credential modes.
-- {doc}`customizing-the-ui` — extensions and your own build.
+- {doc}`authentication`: the two credential modes.
+- {doc}`customizing-the-ui`: extensions and your own build.

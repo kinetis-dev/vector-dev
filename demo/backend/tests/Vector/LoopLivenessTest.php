@@ -18,7 +18,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  *
  * Every path runs twice: on the native drivers, as a persistent worker
  * gets them, the loop turns; on PDO, which blocks, the same request
- * reports that it did not — what shows the proof can fail.
+ * reports that it did not, what shows the proof can fail.
  */
 final class LoopLivenessTest extends VectorTestCase
 {
@@ -118,8 +118,8 @@ final class LoopLivenessTest extends VectorTestCase
     }
 
     /**
-     * Starts the lock holder, waits until it holds the lock — blocking
-     * setup, outside what LoopLiveness observes — and reports whether the
+     * Starts the lock holder, waits until it holds the lock (blocking
+     * setup, outside what LoopLiveness observes) and reports whether the
      * loop turned while $request ran against the locked table.
      */
     private function whileProductsAreLocked(callable $request): bool

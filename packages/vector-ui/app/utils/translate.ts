@@ -26,7 +26,7 @@ export function vt(key: string, params: Record<string, unknown> = {}, plural?: n
 /**
  * A resource label as it reads inside a sentence (`Create product`,
  * `Delete 3 products?`): lower-cased in the current language, except
- * where nouns keep their capital — German writes every noun with one.
+ * where nouns keep their capital, German writes every noun with one.
  */
 export function vnoun(label: string): string {
     const locale = instance ? String(instance.global.locale.value) : 'en'
@@ -35,7 +35,7 @@ export function vnoun(label: string): string {
 
 // `$vectorI18n` is declared here rather than left to Nuxt's generated plugin
 // types: NuxtApp inherits those from the type of every plugin module, a layer's
-// own plugins among them, and resolving that is circular — it leaves
+// own plugins among them, and resolving that is circular; it leaves
 // `useNuxtApp().$vectorI18n` unknown. Kept out of the plugin module, which is one
 // of those bases itself.
 declare module '#app' {

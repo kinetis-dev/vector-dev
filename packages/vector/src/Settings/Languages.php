@@ -11,7 +11,7 @@ use Kinetis\Vector\Fields\Enum;
 use Kinetis\Vector\Translation\Locales;
 
 /**
- * Which languages users may switch the admin to — all of them at first —
+ * Which languages users may switch the admin to (all of them at first)
  * and the one it opens in for a user who has not chosen: English unless
  * changed, and always one that is switched on, so at least one language
  * is on offer. Each user picks among the enabled ones from the app bar.

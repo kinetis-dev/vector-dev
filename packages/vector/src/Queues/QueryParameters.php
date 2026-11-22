@@ -7,8 +7,8 @@ namespace Kinetis\Vector\Queues;
 use Kinetis\Validation\Violation;
 
 /**
- * The query parameters the queue dashboard's filters share — the known
- * names, the single-valued strings, `queue` and `class` — each read into
+ * The query parameters the queue dashboard's filters share (the known
+ * names, the single-valued strings, `queue` and `class`) each read into
  * a value or a Violation appended to the caller's list, in the order the
  * caller reads them.
  *

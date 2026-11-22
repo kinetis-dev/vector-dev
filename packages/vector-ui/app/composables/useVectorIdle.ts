@@ -5,7 +5,7 @@ import { useEventListener, useIdle } from '@vueuse/core'
  * session otherwise never ends on its own: the store renews the token
  * before it runs out and the shell polls badges and the inbox, so an open
  * tab stays signed in for as long as it is open. This watches for a real
- * person — a pointer, a key, a touch, a scroll — and, once app config
+ * person (a pointer, a key, a touch, a scroll) and, once app config
  * `vector.idleMinutes` have passed without one, calls `onIdle` exactly
  * once. A tab that comes back into view after sleeping is checked at
  * that moment too, since a timer may not have fired meanwhile.

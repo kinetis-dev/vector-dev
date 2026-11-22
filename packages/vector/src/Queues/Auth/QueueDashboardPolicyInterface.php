@@ -10,8 +10,8 @@ use Kinetis\Vector\Auth\ActorContext;
  * Who may see and change the queue dashboard. Asked only for a request
  * Vector's own `vector` middleware group already admitted, so the actor
  * is always an authenticated user VectorAccessInterface let in. A false
- * view() hides the whole dashboard — `capabilities.queues` is false and
- * every route is a 404 — and any other false answer is a 403.
+ * view() hides the whole dashboard (`capabilities.queues` is false and
+ * every route is a 404) and any other false answer is a 403.
  *
  * Vector binds ViewOnlyQueueDashboardPolicy on AppScope; an
  * application binds its own implementation in bootstrap.php, which runs

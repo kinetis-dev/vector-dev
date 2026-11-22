@@ -15,7 +15,7 @@ use Kinetis\Vector\Registry\VectorRegistry;
 /**
  * A read-only introspection tool, as routes:list is for routes: displays
  * the resources, settings groups and dashboards Vector compiles, via a
- * fresh, live scan through its own DiscoveryContext — never reads or
+ * fresh, live scan through its own DiscoveryContext, never reads or
  * writes .kinetis-cache/. A compile error propagates with the registry's
  * own message, as it would from `kinetis build`.
  *

@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-Please report security vulnerabilities privately — **not** as a public
+Please report security vulnerabilities privately, **not** as a public
 GitHub issue.
 
 Go to the [Security tab](https://github.com/kinetis-dev/vector-dev/security/advisories/new)
@@ -11,7 +11,7 @@ thread visible only to you and the maintainers, with:
 
 - A description of the vulnerability and its impact
 - Steps to reproduce, or a proof-of-concept
-- The affected package(s) and version(s) — see "Scope" below
+- The affected package(s) and version(s), see "Scope" below
 - Whether you're aware of it being exploited in the wild
 
 You'll get an acknowledgment within **3 business days**. We'll keep you
@@ -25,7 +25,7 @@ version: `kinetis/vector` on Packagist (the PHP package: the resource
 registry, the REST admin API, background jobs and MCP tools) and
 `@kinetis/vector-ui` on npm (the admin UI). A report against either is
 in scope, and so is the hosted admin bundle `kinetis/vector` ships. If
-you're not sure which side a bug lives in, report it anyway — we'll
+you're not sure which side a bug lives in, report it anyway; we'll
 route it internally.
 
 The demo application in `demo/` exists to develop and test the
@@ -44,7 +44,7 @@ Before going live, work through the
 least 32 bytes, the exact `VECTOR_UI_ORIGIN`, a `SECURITY_CSP` with
 `{nonce}`, deployment-only `VECTOR_SHELL_HEAD` and
 `VECTOR_UI_EXTENSIONS`, and private upload storage outside `public/`.
-The same page lists the known limits — refresh-token reuse, impersonation
+The same page lists the known limits: refresh-token reuse, impersonation
 lifetime, tokens in `sessionStorage`, upload permission and orphaned
 files, and which stored keys a download serves.
 
@@ -53,7 +53,7 @@ files, and which stored keys a download serves.
 Only the **latest released minor** receives security fixes; expect the
 fix as a new patch release on that line, not backported indefinitely.
 Both packages share the version, so a fix ships in both. No version
-number is written here on purpose — it would be wrong after the next
+number is written here on purpose: it would be wrong after the next
 release;
 [packagist.org/packages/kinetis/vector](https://packagist.org/packages/kinetis/vector)
 always shows what is current.
@@ -68,7 +68,7 @@ report (usually much sooner for anything with a working exploit).
 
 ## What's Out of Scope
 
-- Vulnerabilities in third-party dependencies — report those upstream;
+- Vulnerabilities in third-party dependencies: report those upstream;
   we'll track and update once a fix is available.
 - Findings that require an already-compromised environment, or that
   only let an admin do what the application's own policies already

@@ -13,8 +13,8 @@ use Kinetis\Persistence\Contract\SqlLink;
 use Kinetis\QueryBuilder\Query;
 
 /**
- * The connection Vector's own tables live on — `vector_views`,
- * `vector_jobs`, `vector_audit` and the rest — which may differ from the
+ * The connection Vector's own tables live on (`vector_views`,
+ * `vector_jobs`, `vector_audit` and the rest) which may differ from the
  * connection the administered entities use. `VECTOR_DB_CONNECTION` names
  * it; unset, it is the default connection. MySQL and PostgreSQL are both
  * supported on either.

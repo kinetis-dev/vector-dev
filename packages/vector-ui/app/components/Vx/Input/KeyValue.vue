@@ -2,7 +2,7 @@
 import { fieldProps, type VectorField } from '#vector/app/types/vector'
 
 // A key-value field's entries as rows of two text inputs. The rows are the
-// editing state — a row may be half typed — and the model is the object
+// editing state (a row may be half typed) and the model is the object
 // they make: a row without a key is left out, a repeated key's last row wins.
 const props = defineProps<{ field: VectorField, rules?: unknown[], errorMessages: string[], record?: Record<string, unknown>, resource?: string, disabled?: boolean }>()
 const model = defineModel<Record<string, string> | null>()
@@ -14,7 +14,7 @@ const keyLabel = computed(() => String(fieldProps(props.field).keyLabel ?? t('fi
 const valueLabel = computed(() => String(fieldProps(props.field).valueLabel ?? t('fields.keyValue.value')))
 
 // Adopt a value set from outside (a record loaded), not the one these rows
-// just made — which comes back as the form's reactive copy, so by content.
+// just made, which comes back as the form's reactive copy, so by content.
 let emitted = ''
 watch(model, (value) => {
     if (JSON.stringify(value ?? {}) === emitted) return

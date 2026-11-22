@@ -21,7 +21,7 @@ final class Money extends Field
     /**
      * The field holding the currency: one of this record's (`currency`),
      * or one of a related record's through a belongsTo field
-     * (`order.currency` — a line priced in its order's currency).
+     * (`order.currency`; a line priced in its order's currency).
      */
     public function currencyField(string $field): static
     {

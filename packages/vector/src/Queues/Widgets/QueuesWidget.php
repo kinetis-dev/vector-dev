@@ -23,8 +23,8 @@ use Kinetis\Vector\Widgets\WidgetResult;
  * QueueDashboardPolicyInterface behind it decide what the card shows.
  * The widget's own answer therefore carries no data, and computing it
  * opens no database or queue connection. It has no range to choose and
- * nothing to cache. It is viewable exactly where the dashboard is — a
- * queue configured and the policy's view() — so a dashboard leaves the
+ * nothing to cache. It is viewable exactly where the dashboard is, a
+ * queue configured and the policy's view(), so a dashboard leaves the
  * card out wherever `capabilities.queues` is false.
  *
  * Built by the request container at request time, so the gate and the

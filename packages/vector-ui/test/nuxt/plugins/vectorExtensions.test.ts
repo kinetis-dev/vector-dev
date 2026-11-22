@@ -8,11 +8,13 @@ const curated = [
     // added for the queue dashboard's pages
     'VDialog', 'VTabs', 'VTab', 'VTabsWindow', 'VTabsWindowItem', 'VTooltip', 'VMenu', 'VList', 'VListItem', 'VExpansionPanels',
     'VExpansionPanel', 'VExpansionPanelTitle', 'VExpansionPanelText', 'VPagination', 'VDivider', 'VSkeletonLoader',
+    // added in version 2, for a shell action's side panel
+    'VNavigationDrawer', 'VToolbar', 'VProgressCircular', 'VBadge',
 ] as const
 
 describe('window.Vector', () => {
-    it('is version 1 of the extension API', () => {
-        expect(window.Vector?.version).toBe(1)
+    it('is version 2 of the extension API', () => {
+        expect(window.Vector?.version).toBe(2)
     })
 
     it.each(curated)('hands an extension Vuetify\'s own %s', (name) => {

@@ -9,7 +9,7 @@ import { resource } from '../fixtures'
 
 // The list's paging when the resource cannot be counted: an uncounted
 // (withoutCount) list by page number, a cursor (cursorPaging) list by the
-// cursors the API hands out — previous and next only, no total.
+// cursors the API hands out, previous and next only, no total.
 
 const query = (request: Received) => Object.fromEntries(new URL(request.path, 'http://x').searchParams)
 const rows = (ids: number[]) => ids.map(id => ({ id, name: `Tag ${id}`, color: '#000000' }))
@@ -82,6 +82,22 @@ describe('VxResourceTable, uncounted and by cursor', () => {
         await wrapper.get('input[aria-label="Search"]').setValue('tag')
         await vi.waitFor(() => expect(query(list.requests.at(-1)!).q).toBe('tag'), { timeout: 2000 })
         expect(query(list.requests.at(-1)!).cursor).toBe('')
+    })
+
+    it('reloads the page shown when its list key is refreshed, and not for another resource\'s', async () => {
+        let version = 1
+        const list = endpoint('/vector/r/tags', () => ({ body: { data: [{ id: 1, name: `Tag 1 v${version}`, color: '#000000' }], hasMore: false, perPage: 2 } }))
+        const wrapper = await mount({ withoutCount: true }, list)
+        const before = list.requests.length
+
+        version = 2
+        await refreshNuxtData('vector.list.posts')
+        await flushPromises()
+        expect(list.requests).toHaveLength(before)
+
+        await refreshNuxtData('vector.list.tags')
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Tag 1 v2'))
+        wrapper.unmount()
     })
 
     it('pages an uncounted list by number, without a total, next while another page follows', async () => {

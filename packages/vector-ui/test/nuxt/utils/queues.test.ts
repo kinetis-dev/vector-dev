@@ -4,7 +4,7 @@ import * as queues from '#vector/app/utils/queues'
 describe('the queue utilities', () => {
     // Nuxt's export scan once missed the declaration after QUEUE_WINDOWS' `as const`,
     // so QUEUE_DEFAULT_WINDOW was imported by hand. Each export is named below as a
-    // bare identifier — the auto-import, with no import of its own — so one the scan
+    // bare identifier (the auto-import, with no import of its own) so one the scan
     // misses is a ReferenceError here, and each must be the module's own export.
     it('are every one auto-imported', () => {
         const bare: Record<string, unknown> = {
