@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Kinetis\Vector\Console;
 
-use Composer\InstalledVersions;
 use Kinetis\Config\Config;
 use Kinetis\Console\Attributes\Command;
 use Kinetis\Console\CommandArguments;
@@ -12,6 +11,7 @@ use Kinetis\Console\Output;
 use Kinetis\Runtime\ProjectRoot;
 use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\Vector\Ui\HostedBundle;
+use Kinetis\Vector\Ui\TarballInstaller;
 use Kinetis\Vector\Ui\UiInstaller;
 use Kinetis\Vector\Ui\UiPin;
 use Kinetis\Vector\Ui\VectorUi;
@@ -231,19 +231,6 @@ final readonly class InstallCommand
     }
 
     /**
-     * The installed kinetis/vector version as Composer records it, or
-     * null when Composer does not know the package as installed.
-     */
-    private static function installedVersion(): ?string
-    {
-        try {
-            return InstalledVersions::getPrettyVersion(self::COMPOSER_PACKAGE);
-        } catch (\OutOfBoundsException) {
-            return null;
-        }
-    }
-
-    /**
      * The release an installed version names, without its leading "v",
      * or null for a dev install — a path repository or a branch.
      *
@@ -251,11 +238,7 @@ final readonly class InstallCommand
      */
     public static function release(?string $prettyVersion): ?string
     {
-        if ($prettyVersion === null || str_contains($prettyVersion, 'dev')) {
-            return null;
-        }
-
-        return str_starts_with($prettyVersion, 'v') ? substr($prettyVersion, 1) : $prettyVersion;
+        return TarballInstaller::release($prettyVersion);
     }
 
     /**
@@ -265,13 +248,14 @@ final readonly class InstallCommand
      */
     public static function devInstall(): bool
     {
-        return self::release(self::installedVersion()) === null;
+        return TarballInstaller::devInstall(self::COMPOSER_PACKAGE);
     }
 
     /**
      * The note to print when the UI served from $dir is not the pinned
      * release, or null when it is (or nothing is pinned): none installed,
-     * one without a vector-bundle.json, or another version.
+     * one without a vector-bundle.json, or another version. A bundle of
+     * another package that includes the pinned release is current.
      */
     private static function uiDrift(string $dir, ?UiPin $pin, bool $devInstall): ?string
     {
@@ -288,14 +272,24 @@ final readonly class InstallCommand
                 : "Note: no admin UI is installed in {$dir}. {$remedy}";
         }
 
-        $version = HostedBundle::read($manifest)?->version;
+        $bundle = HostedBundle::read($manifest);
 
-        if ($version === null) {
+        if ($bundle === null) {
             return "Note: the admin UI in {$dir} has a malformed " . HostedBundle::MANIFEST . ". {$remedy}";
         }
 
-        return UiInstaller::accepts($version, $pin->version, $devInstall)
-            ? null
-            : "Note: the admin UI in {$dir} is " . UiPin::PACKAGE . " {$version}; this kinetis/vector expects {$pin->version}. {$remedy}";
+        $version = $bundle->carries(UiPin::PACKAGE);
+
+        if ($version === null) {
+            return "Note: the admin UI in {$dir} is {$bundle->package} {$bundle->version}, which does not include " . UiPin::PACKAGE . ". {$remedy}";
+        }
+
+        if (UiInstaller::accepts($version, $pin->version, $devInstall)) {
+            return null;
+        }
+
+        return $bundle->package === UiPin::PACKAGE
+            ? "Note: the admin UI in {$dir} is " . UiPin::PACKAGE . " {$version}; this kinetis/vector expects {$pin->version}. {$remedy}"
+            : "Note: the admin UI in {$dir} is {$bundle->package} {$bundle->version}, built with " . UiPin::PACKAGE . " {$version}; this kinetis/vector expects {$pin->version}. Install the {$bundle->package} release built with it, then restart workers.";
     }
 }

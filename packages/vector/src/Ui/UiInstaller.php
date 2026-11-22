@@ -33,14 +33,15 @@ final readonly class UiInstaller
      * Installs the bundle staged in $stage into $target.
      *
      * @param ?string $expectedVersion as HostedBundle::verify() takes it
+     * @param array<string, string> $includes as HostedBundle::verify() takes them
      *
      * @throws \UnexpectedValueException when the stage is refused, or a directory of the
      *     target is a link or leads outside it; nothing was written
      * @throws UiInstallException when the target cannot be written
      */
-    public function install(string $stage, string $target, ?string $expectedVersion): HostedBundle
+    public function install(string $stage, string $target, ?string $expectedVersion, string $package = HostedBundle::PACKAGE, array $includes = [], string $command = 'vector:install-ui'): HostedBundle
     {
-        $bundle = HostedBundle::verify($stage, $expectedVersion);
+        $bundle = HostedBundle::verify($stage, $expectedVersion, $package, $includes, $command);
         $extra = array_values(array_diff(self::files($stage), [...array_keys($bundle->files), HostedBundle::MANIFEST]))[0] ?? null;
 
         if ($extra !== null) {
@@ -79,8 +80,8 @@ final readonly class UiInstaller
 
     /**
      * Whether a bundle of $version satisfies $expected: the same string,
-     * or a dev build (`dev-<sha>`) when kinetis/vector is itself a dev
-     * install. No semver: versions compare as plain strings.
+     * or a dev build (`dev-<sha>`) when the package that pins it is
+     * itself a dev install. No semver: versions compare as plain strings.
      */
     public static function accepts(string $version, string $expected, bool $devInstall): bool
     {

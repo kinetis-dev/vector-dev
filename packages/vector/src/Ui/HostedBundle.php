@@ -8,12 +8,15 @@ use Kinetis\Vector\Registry\VectorRegistry;
 
 /**
  * The hosted admin bundle in a directory, as its manifest
- * `vector-bundle.json` describes it: the @kinetis/vector-ui package and
- * version that built it, the vector-dev commit it was built from, the
- * descriptor contract it speaks and the sha256 of every file it ships.
- * The build script writes the manifest into `packages/vector-ui/dist/static`,
- * the npm package carries it, and `vector:install-ui` installs it beside
- * `index.html` in the served directory, where it may be read publicly.
+ * `vector-bundle.json` describes it: the npm package and version that
+ * built it, the vector-dev commit it was built from, the descriptor
+ * contract it speaks and the sha256 of every file it ships. A bundle
+ * built from Vector's layer plus another package's names, in the
+ * optional `includes`, each npm package and version it was built with:
+ * `{"@kinetis/vector-ui": "<x.y.z>"}`. The build script writes the
+ * manifest into the package's `dist/static`, the npm package carries it,
+ * and TarballInstaller installs it beside `index.html` in the served
+ * directory, where it may be read publicly.
  */
 final readonly class HostedBundle
 {
@@ -26,6 +29,7 @@ final readonly class HostedBundle
 
     /**
      * @param array<string, string> $files relative path => sha256
+     * @param array<string, string> $includes npm package => version
      */
     private function __construct(
         public string $package,
@@ -33,26 +37,39 @@ final readonly class HostedBundle
         public int $descriptorVersion,
         public string $source,
         public array $files,
+        public array $includes = [],
     ) {}
 
     /**
-     * Reads the manifest in $dir and checks the directory against it: the
-     * @kinetis/vector-ui package, this descriptor contract, $expectedVersion
-     * when one is given, and every listed file present with its listed
-     * hash. Files the manifest does not list are not this check's
-     * concern: the served directory may hold the deployment's own files
-     * beside it.
+     * The version of $package this bundle is, or includes; null when it
+     * is neither.
+     */
+    public function carries(string $package): ?string
+    {
+        return $package === $this->package ? $this->version : $this->includes[$package] ?? null;
+    }
+
+    /**
+     * Reads the manifest in $dir and checks the directory against it:
+     * $package, this descriptor contract, $expectedVersion when one is
+     * given, each of $includes at exactly its version, and every listed
+     * file present with its listed hash. Files the manifest does not list
+     * are not this check's concern: the served directory may hold the
+     * deployment's own files beside it.
      *
      * @param ?string $expectedVersion the version the bundle must be,
      *                                 compared as a plain string; null
      *                                 accepts any
+     * @param array<string, string> $includes npm package => the version
+     *                                        the bundle must include
+     * @param string $command the install command the remedy names
      *
      * @throws \UnexpectedValueException one line naming the cause and the remedy
      */
-    public static function verify(string $dir, ?string $expectedVersion): self
+    public static function verify(string $dir, ?string $expectedVersion, string $package = self::PACKAGE, array $includes = [], string $command = 'vector:install-ui'): self
     {
         $refuse = static fn(string $cause): \UnexpectedValueException
-            => new \UnexpectedValueException("The admin UI bundle in {$dir} does not verify: {$cause}. Run `vendor/bin/kinetis vector:install-ui` to install a verified one.");
+            => new \UnexpectedValueException("The admin UI bundle in {$dir} does not verify: {$cause}. Run `vendor/bin/kinetis {$command}` to install a verified one.");
 
         $manifest = $dir . '/' . self::MANIFEST;
 
@@ -62,8 +79,8 @@ final readonly class HostedBundle
 
         $bundle = self::read($manifest) ?? throw $refuse(self::MANIFEST . ' is malformed');
 
-        if ($bundle->package !== self::PACKAGE) {
-            throw $refuse("it was built for {$bundle->package}, not " . self::PACKAGE);
+        if ($bundle->package !== $package) {
+            throw $refuse("it was built for {$bundle->package}, not {$package}");
         }
 
         if ($bundle->descriptorVersion !== VectorRegistry::VERSION) {
@@ -72,6 +89,18 @@ final readonly class HostedBundle
 
         if ($expectedVersion !== null && $bundle->version !== $expectedVersion) {
             throw $refuse("it is version {$bundle->version}; {$expectedVersion} is expected");
+        }
+
+        foreach ($includes as $included => $version) {
+            $actual = $bundle->includes[$included] ?? null;
+
+            if ($actual === null) {
+                throw $refuse("it does not say which {$included} it was built with; {$version} is expected");
+            }
+
+            if ($actual !== $version) {
+                throw $refuse("it was built with {$included} {$actual}; {$version} is expected");
+            }
         }
 
         if (!isset($bundle->files['index.html'])) {
@@ -95,8 +124,9 @@ final readonly class HostedBundle
 
     /**
      * The manifest in $file, checked for shape only — every member present
-     * with its type and format, every listed path inside the bundle and
-     * every hash a sha256 — or null when it is missing or malformed. No
+     * with its type and format, every listed path inside the bundle, every
+     * hash a sha256 and, when `includes` is there, an object of package
+     * names and versions — or null when it is missing or malformed. No
      * file is hashed.
      */
     public static function read(string $file): ?self
@@ -130,7 +160,22 @@ final readonly class HostedBundle
             $files[$path] = $hash;
         }
 
-        return new self($data['package'], $data['version'], $data['descriptorVersion'], $data['source'], $files);
+        $includes = [];
+        $listed = $data['includes'] ?? [];
+
+        if (!is_array($listed)) {
+            return null;
+        }
+
+        foreach ($listed as $package => $version) {
+            if (!is_string($package) || $package === '' || $package === $data['package'] || !is_string($version) || preg_match(self::VERSION_PATTERN, $version) !== 1) {
+                return null;
+            }
+
+            $includes[$package] = $version;
+        }
+
+        return new self($data['package'], $data['version'], $data['descriptorVersion'], $data['source'], $files, $includes);
     }
 
     /**
