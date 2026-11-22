@@ -36,8 +36,8 @@ export default defineNuxtConfig({
 ```
 
 Against a backend without `kinetis/vector-ai` it renders the plain
-admin. This is the one way to deliver the AI layer: the hosted admin
-below does not include it. See {doc}`ai`.
+admin. Hosted, `vector-ai:install-ui` installs the AI layer
+({ref}`hosted admin with AI <hosted-ai-bundle>`). See {doc}`ai`.
 
 ## Hosted
 
@@ -56,6 +56,24 @@ vendor/bin/kinetis vector:install-ui    # the pinned @kinetis/vector-ui release
 then restart the workers: a worker reads `index.html` once, when it
 boots. Neither command needs Node.
 
+(hosted-ai-bundle)=
+With `kinetis/vector-ai` installed, install the admin with AI in place of
+the plain one, then restart the workers:
+
+```console
+vendor/bin/kinetis vector-ai:install-ui    # the pinned @kinetis/vector-ai-ui release
+```
+
+`@kinetis/vector-ai-ui` ships one complete bundle, built from
+`@kinetis/vector-ui` plus the AI layer, and `kinetis/vector-ai` pins its
+release in `resources/ui.json`. The command takes the options
+`vector:install-ui` takes and checks the bundle the same way; the bundle
+must also include the `@kinetis/vector-ui` release `kinetis/vector` pins.
+`vector:install-ui --check` and `vector:install` accept it as that
+release. A package that ships a bundle of its own, built from Vector's
+layer plus its own, installs it through `Kinetis\Vector\Ui\TarballInstaller`,
+as `vector-ai:install-ui` does.
+
 ### Upgrading
 
 ```console
@@ -65,7 +83,9 @@ vendor/bin/kinetis migrate
 vendor/bin/kinetis vector:install-ui
 ```
 
-and restart the workers. `vector:install` names a served UI that is
+and restart the workers (with AI, `composer update kinetis/vector
+kinetis/vector-ai`, `vector-ai:install`, and `vector-ai:install-ui` in
+place of `vector:install-ui`). `vector:install` names a served UI that is
 missing, has no `vector-bundle.json`, or is not the pinned release.
 `vendor/bin/kinetis vector:install-ui --check` verifies the served
 directory against its manifest and the pin without the network: exit 0
@@ -95,12 +115,15 @@ within fixed size and entry limits.
 
 The bundle carries a manifest, `vector-bundle.json`: the package and
 version that built it, the source commit, the descriptor version it
-speaks and the SHA-256 of every file. The bundle is staged in a private
+speaks, the SHA-256 of every file and, for a bundle built over
+`@kinetis/vector-ui` (`includes`), the release of it the bundle carries. The bundle is staged in a private
 temporary directory and checked against it first; it is refused, with
 exit 1 and nothing written to the served directory, when:
 
 - the manifest is missing or malformed, or lists no `index.html`;
 - it was built for another package or descriptor version;
+- it does not include the expected `@kinetis/vector-ui` release (a
+  bundle with AI);
 - it is not the expected release (a development build, `dev-<short
   commit>`, is accepted only when `kinetis/vector` is itself a
   development install);

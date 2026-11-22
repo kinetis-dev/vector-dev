@@ -258,29 +258,31 @@ extension in a worker image. Both images carry two:
 ## The hosted admin
 
 The hosted admin is the same UI served by the PHP application at
-`/vector/ui`, behind the session sign-in at `/login`. An application
-installs the published `@kinetis/vector-ui` release with
-`vector:install-ui`; the demo builds the bundle from this checkout and
-installs that build instead:
+`/vector/ui`, behind the session sign-in at `/login`. The demo serves
+the admin with AI ({doc}`ai`). An application installs the published
+`@kinetis/vector-ai-ui` release with `vector-ai:install-ui`; the demo
+builds the bundle from this checkout and installs that build instead:
 
 ```console
-docker compose exec node pnpm generate:hosted
-docker compose exec app vendor/bin/kinetis vector:install-ui --from=/workspace/packages/vector-ui/dist/static
+docker compose exec node pnpm --filter @kinetis/vector-ai-ui generate:hosted
+docker compose exec app vendor/bin/kinetis vector-ai:install-ui --from=/workspace/packages/vector-ai-ui/dist/static
 docker compose restart app frankenphp
 ```
 
-`pnpm generate:hosted` builds into `packages/vector-ui/dist/static`,
-labelled with `packages/vector-ui/package.json`'s version, which is the
-one `kinetis/vector` pins. `vector:install-ui --check` then exits 0.
+`generate:hosted` builds into `packages/vector-ai-ui/dist/static`,
+labelled with `packages/vector-ai-ui/package.json`'s version, which is
+the one `kinetis/vector-ai` pins, and naming the `@kinetis/vector-ui`
+release it includes, the one `kinetis/vector` pins.
+`vector-ai:install-ui --check` and `vector:install-ui --check` then exit 0.
+The plain admin is `pnpm generate:hosted` and `vector:install-ui
+--from=/workspace/packages/vector-ui/dist/static`.
 
-The hosted admin does not include the AI layer ({doc}`ai`), so the
-end-to-end suite's AI specs run standalone:
-`ai.standalone.spec.ts` against the demo as it ships, and
-`ai-filters.standalone.spec.ts`, `ai-assistant.standalone.spec.ts`,
-`ai-approval.standalone.spec.ts` (which turns *Assistant may propose
-changes* on for itself, and back) and `ai-writing.standalone.spec.ts`
-with the scripted `fake` provider configured as above; each skips
-itself on the other stack.
+The end-to-end suite's AI specs run in both modes, hosted against the
+admin with AI under the shell's strict CSP: `ai.spec.ts` against the
+demo as it ships, and `ai-filters.spec.ts`, `ai-assistant.spec.ts`,
+`ai-approval.spec.ts` (which turns *Assistant may propose changes* on
+for itself, and back) and `ai-writing.spec.ts` with the scripted `fake`
+provider configured as above; each skips itself on the other stack.
 
 Then open `http://localhost:8080/vector/ui`, or
 `http://localhost:8081/vector/ui` for the same admin under FrankenPHP.

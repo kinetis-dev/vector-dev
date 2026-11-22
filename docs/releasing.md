@@ -53,9 +53,10 @@ entry lists under `includes`. `kinetis/vector` includes
 `packages/vector-ui/package.json`. `vector:install-ui` installs that
 release, and the admin warns when it runs another. A change to the UI
 therefore releases `kinetis/vector` too, naming the new UI release.
-`kinetis/vector-ai` pins no UI: `@kinetis/vector-ai-ui` reaches an
-application through Nuxt `extends` only, so the two release
-independently.
+`kinetis/vector-ai` includes `packages/vector-ai-ui` the same way:
+`packages/vector-ai/resources/ui.json` pins the `@kinetis/vector-ai-ui`
+release whose hosted bundle `vector-ai:install-ui` installs, so a change
+to the AI layer releases `kinetis/vector-ai` too.
 
 (release-pairing)=
 ### The vector-ui/vector-ai-ui pairing
@@ -82,12 +83,14 @@ package and `vector` for the pin that names it:
 node scripts/bump.mjs vector-ui minor
 node scripts/bump.mjs vector patch
 node scripts/bump.mjs vector-ai-ui patch   # its @kinetis/vector-ui dependency moved
+node scripts/bump.mjs vector-ai patch      # its pin moved with vector-ai-ui
 ```
 
 Each bump is its own choice of `patch` or `minor`, with its own
 CHANGELOG entry. `bump.mjs vector-ui` prints the reminder to bump
 `vector` too, but does not bump it for you; `vector-ai-ui` you bump
-yourself, as the history check asks.
+yourself, as the history check asks. `bump.mjs vector-ai-ui` moves
+`kinetis/vector-ai`'s pin and prints the reminder to bump `vector-ai`.
 
 One change needs no bump: a `package.json` under a product's path whose
 only difference is in `devDependencies` entries for the test and
@@ -140,7 +143,10 @@ when that is set, and `HEAD^` otherwise.
   `{"package":"@kinetis/vector-ui","version":"X.Y.Z"}`, at the version
   in `packages/vector-ui/package.json`; and
   `packages/vector-ai-ui/package.json` depends on exactly the
-  `@kinetis/vector-ui` version `packages/vector/resources/ui.json` pins.
+  `@kinetis/vector-ui` version `packages/vector/resources/ui.json` pins;
+  and `packages/vector-ai/resources/ui.json` is exactly
+  `{"package":"@kinetis/vector-ai-ui","version":"X.Y.Z"}`, at the
+  version in `packages/vector-ai-ui/package.json`.
 - **History**, against the base (the pull request's merge base with its
   target, or what `main` pointed to before a push):
   - a product with files changed under its path, or under a directory
@@ -166,7 +172,7 @@ Each push to `main` runs the release:
 |---|---|
 | Decide what this round publishes | Reads the manifest, `package.json`, every CHANGELOG and the UI pin at the pushed commit and checks them again. Asks each Composer product's mirror whether tag `v<version>` exists, and npm whether `@kinetis/vector-ui@<version>` exists. Puts each release's notes, its CHANGELOG section, on the run's summary page. |
 | Publish @kinetis/vector-ui | Only when `@kinetis/vector-ui`'s version is not on npm yet. Builds the hosted bundle into `packages/vector-ui/dist/static` with `scripts/build-hosted-bundle.mjs --version=X.Y.Z`, the package's version, then runs `npm publish --provenance --tag latest` from `packages/vector-ui`, in the `npm-release` environment. The package's `prepack` refuses a missing bundle or one built for another version. |
-| Publish @kinetis/vector-ai-ui | Only when `@kinetis/vector-ai-ui`'s version is not on npm yet, and after the `@kinetis/vector-ui` job succeeded or had nothing to do, since it depends on that release. Publishes the layer as it is from `packages/vector-ai-ui` the same way; it carries no hosted bundle. |
+| Publish @kinetis/vector-ai-ui | Only when `@kinetis/vector-ai-ui`'s version is not on npm yet, and after the `@kinetis/vector-ui` job succeeded or had nothing to do, since it depends on that release. Builds its hosted bundle into `packages/vector-ai-ui/dist/static` with `scripts/build-hosted-bundle.mjs --package=vector-ai-ui --version=X.Y.Z`, naming the `@kinetis/vector-ui` release it includes, then publishes from `packages/vector-ai-ui` the same way. Its `prepack` refuses a missing bundle, one built for another version, or one including another `@kinetis/vector-ui` release than the package depends on. |
 | Split and push the mirror | One job per Composer product whose version is not on its mirror yet, one at a time in the manifest's order (`kinetis/vector` first, which `kinetis/vector-ai` requires), and only after every npm job succeeded or had nothing to do. Splits the product's path and writes its mirror's `main` and its `vX.Y.Z` tag. One mirror's failure does not stop the next; re-run the failed job. |
 
 A push that changes no version publishes nothing and succeeds. npm goes
@@ -232,8 +238,9 @@ A mirror's `main` is the pure split, S, of its product's path:
 from the monorepo's own commits, metadata included, so the same source
 always gives the same S. Each release's S descends from the last one's,
 so `main` only ever fast-forwards. The tag `vX.Y.Z` points at that same
-S. The hosted bundle is not in the mirror: it ships in
-`@kinetis/vector-ui`, which `vector:install-ui` downloads.
+S. The hosted bundles are not in the mirrors: they ship in
+`@kinetis/vector-ui` and `@kinetis/vector-ai-ui`, which
+`vector:install-ui` and `vector-ai:install-ui` download.
 
 ## One-time setup
 

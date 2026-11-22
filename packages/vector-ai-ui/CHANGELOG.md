@@ -14,6 +14,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   assistant is offered; a keypress something else already handled is
   left alone. Nothing on screen shows the shortcut.
 
+- The hosted admin with AI: the package ships `dist/static`, one
+  complete bundle built from `@kinetis/vector-ui` plus this layer
+  (`hosted/nuxt.config.ts`, `pnpm generate:hosted`), whose
+  `vector-bundle.json` names the `@kinetis/vector-ui` release it
+  includes. `vector-ai:install-ui` installs it. The `prepack` script
+  refuses a missing bundle, one built for another version, or one
+  including another `@kinetis/vector-ui` release than the package
+  depends on.
+
 ### Changed
 
 - Writing help in a rich-text or Markdown editor's toolbar works on the
@@ -59,6 +68,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A record link in an assistant answer opens the record from outside the
+  router too (a new tab): its `href` is under the app's base URL,
+  `/vector/ui` in the hosted admin.
 - An assistant answer that only proposed changes, with no text, is kept
   in the conversation sent back (as a short placeholder), so the
   decision's turn does not follow the question directly.

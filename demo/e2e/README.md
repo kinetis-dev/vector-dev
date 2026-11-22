@@ -14,11 +14,11 @@ project only; every other spec runs in both.
 ## Running it
 
 From `demo/`, with the stack up, migrated and seeded (see the root
-README), and the hosted bundle built and installed once:
+README), and the hosted admin with AI built and installed once:
 
 ```sh
-docker compose exec node pnpm generate:hosted
-docker compose exec app vendor/bin/kinetis vector:install-ui --from=/workspace/packages/vector-ui/dist/static
+docker compose exec node pnpm --filter @kinetis/vector-ai-ui generate:hosted
+docker compose exec app vendor/bin/kinetis vector-ai:install-ui --from=/workspace/packages/vector-ai-ui/dist/static
 docker compose restart app
 ```
 
@@ -30,6 +30,10 @@ docker compose run --rm e2e test --project hosted          # one project
 docker compose run --rm e2e test tests/tags.spec.ts        # one file
 docker compose run --rm e2e test -g "searches by SKU"      # by title
 ```
+
+The hosted project runs every spec against that bundle, the AI specs
+included, which assert that the page reports no CSP violation
+(`support/csp.ts`).
 
 The `e2e` service is the Playwright image, with Chromium, and is not
 started by `docker compose up`. Everything after the service name goes
@@ -51,8 +55,8 @@ report is in `playwright-report/`, served with:
 docker compose run --rm -p 9323:9323 e2e show-report --host 0.0.0.0
 ```
 
-The hosted project tests the bundle last published, not the layer's
-current source: publish it again after changing the UI.
+The hosted project tests the bundle last installed, not the layers'
+current source: build and install it again after changing either UI.
 
 ## Documentation screenshots
 
@@ -115,6 +119,7 @@ uses `it.fails` the same way.
 playwright.config.ts    the two projects, timeouts, reporters
 support/global-setup.ts forwards the ports, waits for the stack, warms up the dev server
 support/fixtures.ts     accounts, signIn(), the admin/api/cleanup fixtures, unique()
+support/csp.ts          watchCsp(): the CSP violations a page reports
 support/screenshot-data.ts  the data the docs screenshots show, made through the API
 tests/                  the specs
 tests/screenshots.standalone.spec.ts  the docs screenshots, only with VECTOR_SCREENSHOTS=1

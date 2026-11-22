@@ -73,6 +73,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that writing help is not offered on (`WritingGuard::offers()`). The
   admin reads both; the endpoint refuses those fields either way.
 
+- `vector-ai:install-ui` installs the hosted admin with AI, the bundle
+  `@kinetis/vector-ai-ui` ships, into `VECTOR_UI_DIR` in place of
+  Vector's plain one, through kinetis/vector's `TarballInstaller`, with
+  the options of `vector:install-ui`. The bundle must be the release
+  `resources/ui.json` pins (`@kinetis/vector-ai-ui` 0.1.0) and include
+  the `@kinetis/vector-ui` release kinetis/vector pins; `--check` holds
+  the served bundle to both.
+
 ### Changed
 
 - `vector_query`'s page size follows its projection: 25 rows without

@@ -30,10 +30,12 @@ them on the connection Vector's own tables are on
 (`VECTOR_DB_CONNECTION`); the command notes it when they differ. The
 package needs `ext-sodium`.
 
-The AI layer reaches the admin in standalone mode ({doc}`deployment`):
-your Nuxt app extends `@kinetis/vector-ai-ui` instead of
-`@kinetis/vector-ui`: `extends: ['@kinetis/vector-ai-ui']`. The hosted
-admin that `vector:install-ui` installs does not include the AI layer.
+The AI layer reaches the admin in both modes ({doc}`deployment`).
+Standalone, your Nuxt app extends `@kinetis/vector-ai-ui` instead of
+`@kinetis/vector-ui`: `extends: ['@kinetis/vector-ai-ui']`. Hosted,
+`vendor/bin/kinetis vector-ai:install-ui` installs the bundle
+`@kinetis/vector-ai-ui` ships in place of the plain one, then restart the
+workers ({ref}`hosted admin with AI <hosted-ai-bundle>`).
 
 The standalone admin is on another origin, so add `Retry-After` to your
 `CorsMiddleware`'s `exposedHeaders`: a browser hides any header CORS does

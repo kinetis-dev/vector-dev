@@ -64,9 +64,9 @@ export default defineNuxtConfig({
 
 Extend this layer instead of `@kinetis/vector-ui`: it extends
 `@kinetis/vector-ui` itself, and depends on exactly the release your
-`kinetis/vector` pins. The AI layer reaches a standalone admin only; the
-hosted admin that `kinetis vector:install-ui` installs does not include
-it. Add `Retry-After` to the API's `CorsMiddleware` `exposedHeaders`, so
+`kinetis/vector` pins. The package also ships the hosted admin with AI,
+in `dist/static`: `kinetis vector-ai:install-ui` installs it in place of
+the plain one, so a PHP deployment needs no Node. Add `Retry-After` to the API's `CorsMiddleware` `exposedHeaders`, so
 the admin can say when a spent daily budget renews. See
 [AI](https://kinetis.dev/vector/docs/ai.html).
 

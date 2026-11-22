@@ -76,8 +76,8 @@ Installing this package auto-registers, via `extra.kinetis`:
   `POST /vector/ai/writing/{resource}/{field}`, and
   `GET /vector/ai/credentials` with `PUT` and
   `DELETE /vector/ai/credentials/{provider}`.
-- **Commands** on `vendor/bin/kinetis`: `vector-ai:install` and
-  `vector-ai:approvals:prune`.
+- **Commands** on `vendor/bin/kinetis`: `vector-ai:install`,
+  `vector-ai:install-ui` and `vector-ai:approvals:prune`.
 - **The `ai` settings group**, *AI assistant*: each feature's switch,
   provider and model, the daily token budget, the assistant's limits and
   what record data a model is sent.
@@ -135,9 +135,11 @@ later and [`kinetis/vector`](https://packagist.org/packages/kinetis/vector)
 on another connection. Schedule `vector:jobs:reap`, then
 `vector-ai:approvals:prune`, hourly.
 
-The AI layer reaches a standalone admin: extend `@kinetis/vector-ai-ui`
-instead of `@kinetis/vector-ui` (see its README). The hosted admin that
-`vector:install-ui` installs does not include it. Full documentation:
+The AI layer reaches both admins. Standalone, extend
+`@kinetis/vector-ai-ui` instead of `@kinetis/vector-ui` (see its README).
+Hosted, `vendor/bin/kinetis vector-ai:install-ui` installs the bundle
+`@kinetis/vector-ai-ui` ships, the release `resources/ui.json` pins, in
+place of the plain one; restart the workers after it. Full documentation:
 [kinetis.dev/vector/docs/ai.html](https://kinetis.dev/vector/docs/ai.html).
 
 ## License
