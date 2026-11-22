@@ -43,9 +43,9 @@ The package needs `ext-sodium`.
    command says so when they differ.
 
 2. Restart the workers. The admin needs nothing more, in either mode
-   ({doc}`deployment`): the hosted bundle `vector:install-ui` installs
-   and the standalone layer are the same `@kinetis/vector-ui`, and it
-   shows the AI features once the API publishes `capabilities.ai`.
+   ({doc}`deployment`). The hosted bundle that `vector:install-ui`
+   installs and the standalone layer are the same `@kinetis/vector-ui`.
+   It shows the AI features once the API publishes `capabilities.ai`.
 
 3. Standalone only: add `Retry-After` to your `CorsMiddleware`'s
    `exposedHeaders`. The admin is on another origin, and a browser hides
@@ -99,11 +99,11 @@ The boot stops on:
 - a Bedrock provider without a region;
 - a malformed `VECTOR_AI_KEY`.
 
-Each worker builds one HTTP client per provider origin, pinned to that
-base URL and bounded by `VECTOR_AI_TIMEOUT` and
-`VECTOR_AI_MAX_RESPONSE_BYTES`, and one signing client per Bedrock
-region. Parallel tool calls, which would fork the worker, are never
-turned on.
+Each worker builds one HTTP client per provider origin and one signing
+client per Bedrock region. An HTTP client is pinned to its base URL and
+bounded by `VECTOR_AI_TIMEOUT` and `VECTOR_AI_MAX_RESPONSE_BYTES`.
+
+Parallel tool calls are never turned on: they would fork the worker.
 
 ## The AI settings
 
@@ -166,11 +166,23 @@ How a stored key is kept:
 
 | Route | Does |
 |---|---|
-| `GET /vector/ai/credentials` | Lists each configured provider: `set`, `managedBy` (`environment`, `admin`, or `null` for a type that takes no key) and `storable`. A stored key adds `updatedAt` and `updatedBy`, and, when it cannot be used, `problem`: `sealedWithAnotherKey` is `true` when another `VECTOR_AI_KEY` sealed it, and absent when the server has no `VECTOR_AI_KEY` to open it (`storable` is then `false`). Never the key. |
+| `GET /vector/ai/credentials` | Lists each configured provider's key status (below). Never the key. |
 | `PUT /vector/ai/credentials/{provider}` | Seals and stores `{"key": "..."}`. `403` without `VECTOR_AI_KEY`, `404` for an unknown provider, `409` for one the environment manages or that takes no key. |
 | `DELETE /vector/ai/credentials/{provider}` | Removes the stored key. |
 
 All three ask the access policy's `canConfigure()`.
+
+Each provider in the list carries:
+
+- `set`;
+- `managedBy`: `environment`, `admin`, or `null` for a type that takes
+  no key;
+- `storable`;
+- for a stored key, `updatedAt` and `updatedBy`;
+- for a stored key that cannot be used, `problem`. Beside it,
+  `sealedWithAnotherKey` is `true` when another `VECTOR_AI_KEY` sealed
+  the key, and absent when the server has no `VECTOR_AI_KEY` to open it
+  (`storable` is then `false`).
 
 (ai-access)=
 ## Who may use AI
@@ -194,13 +206,13 @@ Every AI route is in the `vector` middleware group.
 ## Data sent to the model
 
 One class, `Kinetis\VectorAi\Governance\ModelBoundary`, decides what
-any feature may send a model.
+any feature may send a model. Three rules apply.
 
 **Never sent**, whatever is configured:
 
 - password, file and image fields;
-- every field the user's `viewField` policy hides from them (the
-  resource is read as they see it).
+- every field the user's `viewField` policy hides from them. The
+  resource is read as they see it.
 
 **Sent by default**: everything else. A resource or a field opts out
 through the metadata bag ({ref}`resource-meta`):
@@ -210,10 +222,13 @@ through the metadata bag ({ref}`resource-meta`):
 Email::make('email')->meta('ai.send', false),                     // nor this field
 ```
 
-**Allow-list.** With *Record data sent to the model* set to only fields
-marked to send, a resource is sent only when it opts in with
-`meta: ['ai.send' => true]`, and within it only the fields that opt in
-with `meta('ai.send', true)`.
+**Allow-list**: with *Record data sent to the model* set to only fields
+marked to send,
+
+- a resource is sent only when it opts in with
+  `meta: ['ai.send' => true]`;
+- within it, only the fields that opt in with `meta('ai.send', true)`
+  are sent.
 
 Vector publishes the bag and never reads it; `kinetis/vector-ai` does.
 
@@ -222,86 +237,109 @@ plain-language filter answers `403`, and the admin hides it.
 
 ### Fields in a tool answer
 
-The assistant reads record data only through its tools, and every tool
-answer passes the boundary (`record()`, `page()`, `toolResult()`).
-Writing help and bulk rewrites check the field against the boundary
-before they send it ({ref}`ai-writing`).
+The assistant reads record data only through its tools. Every tool
+answer passes the boundary (`record()`, `page()`, `toolResult()`)
+before the model sees it. Writing help and bulk rewrites check the field
+against the boundary before they send it ({ref}`ai-writing`).
 
-- **A record** keeps the fields above, plus:
+Each kind of answer is cut as follows.
 
-  - its primary key, which names the record (`products#12`) and is no
-    data of its own;
-  - its `_trashed` marker;
-  - its `_version`: the optimistic lock a proposed `vector_update`
-    passes back, so an approval made after someone else changed the
-    record is refused.
+**A record** keeps the fields the rules above allow, plus three that
+carry no data of their own:
 
-  A relation (`{id, label, …}`) always keeps its id, and follows its
-  target's field governance for the rest:
+- its primary key, which names the record (`products#12`);
+- its `_trashed` marker;
+- its `_version`, the optimistic lock a proposed `vector_update` passes
+  back. An approval made after someone else changed the record is then
+  refused.
 
-  - the label (the target's title field) only when the target may be
-    sent and so may its title field (or the title is its primary key);
-  - each column it carries along (an order's currency, say) only when
-    that field of the target may be sent.
+A relation in a record (`{id, label, …}`) always keeps its id. The rest
+follows its target's field governance:
 
-  A one-to-one value (`{id, label}`) follows the same rules. A to-many
-  relation is only its count. Every string longer than 2,000 characters
-  is cut and marked `… [truncated]`.
+- the label (the target's title field) is kept only when the target may
+  be sent and so may its title field (or the title is its primary key);
+- each column it carries along (an order's currency, say) is kept only
+  when that field of the target may be sent.
 
-- **A page** is at most 25 records and its position (`currentPage`,
-  `total`, …). Its summaries are never sent, since they could total a
-  field kept back. A query that projects `fields` may carry more rows,
-  each narrower: at most min(200, ⌊1000 / the number of fields⌋).
+A one-to-one value (`{id, label}`) follows the same rules. A to-many
+relation is sent as its count only. Every string longer than 2,000
+characters is cut and marked `… [truncated]`.
 
-- **A description** (`vector_describe`) is cut like a record. An
-  excluded field is left out even where it is the title or a searched
-  field. It describes exactly what a query may use: search only where
-  `q` is allowed (below), and as the default sort the order a query that
-  names none gets. Actions, rules, defaults and conditions, which only a
-  write needs, are left out.
+**A page** is at most 25 records plus its position (`currentPage`,
+`total`, …). Its summaries are never sent, since they could total a
+field kept back. A query that projects `fields` may carry more rows,
+each narrower: at most min(200, ⌊1000 / the number of fields⌋).
 
-- **A query** (`vector_query`) may filter and sort only on the fields a
-  record keeps, in `or` and `and` groups too. It may search with `q`
-  only where every field the search matches may be sent: each searched
-  column, the full-text index's columns, and each searched relation with
-  its target's title. Otherwise which records match, and how they rank,
-  would tell the model what a kept field holds.
+**A description** (`vector_describe`) is cut like a record:
 
-  Such a query, or a projection (`fields`) naming a kept field, is
-  refused before it runs, as a tool error that does not name the field.
-  A query that names no sort is ordered by the resource's default sort
-  without its excluded fields, or by its primary key when none is left.
+- An excluded field is left out, even where it is the title or a
+  searched field.
+- It describes exactly what a query may use: search only where `q` is
+  allowed (below), and, as the default sort, the order a query that
+  names none gets.
+- Actions, rules, defaults and conditions are left out. Only a write
+  needs them.
 
-  In the demo, users search and sort by their email, which opts out: the
-  assistant may not search users, nor sort or filter them by email.
+**A query** (`vector_query`) may filter and sort only on the fields a
+record keeps, in `or` and `and` groups too.
 
-- **An aggregate** (`vector_aggregate`) is refused the same way when its
-  `groupBy`, a metric, its `filter`, its `sort` or its `q` touches a
-  kept field. So is a money metric whose currency field is kept, since
-  that currency becomes a group key. Its answer is sent with strings
-  cut. A belongsTo group key keeps its id, and its label only when the
-  related resource's title field may be sent. An answer naming a field
-  the boundary would not send is refused whole.
+It may search with `q` only where every field the search matches may be
+sent:
 
-- **A widget** (`vector_widget`) computes its own figures, and its data
-  is sent with strings cut. It is refused when it is a resource widget
-  of a kept resource, when its `link` leads to one (`/r/{slug}…`), or
-  when it is a table whose rows link to records of one.
+- each searched column;
+- the full-text index's columns;
+- each searched relation, with its target's title.
 
-  In a table, a row key that is a field of the resource its link leads
-  to (the row's `_link`, else the table's `link`), and that the boundary
-  would not send, is left out with its column. The demo's low-stock
-  table lists products by SKU, name and stock; under the allow-list it
-  loses its SKU column, because products' SKU does not opt in.
+Otherwise which records match, and how they rank, would tell the model
+what a kept field holds.
 
-  A key that is no field of that resource, or a widget that shows an
-  excluded field in its own words, has no field to cut by. Keeping that
-  from the model is the widget author's job: opt the resource out, or do
-  not write such a widget.
+A query that breaks these rules, or a projection (`fields`) naming a
+kept field, is refused before it runs. The tool error does not name the
+field.
 
-- **Any other tool's** answer is refused, unless the boundary lists the
-  tool as carrying no record data: `vector_resources`, which lists slugs
-  and labels only.
+A query that names no sort is ordered by the resource's default sort
+without its excluded fields, or by its primary key when none is left.
+
+In the demo, users search and sort by their email, which opts out. The
+assistant may not search users, nor sort or filter them by email.
+
+**An aggregate** (`vector_aggregate`) is refused the same way when any
+of these touches a kept field:
+
+- its `groupBy`;
+- a metric;
+- its `filter`, `sort` or `q`.
+
+So is a money metric whose currency field is kept, since that currency
+becomes a group key.
+
+Its answer is sent with strings cut. A belongsTo group key keeps its id,
+and keeps its label only when the related resource's title field may be
+sent. An answer naming a field the boundary would not send is refused
+whole.
+
+**A widget** (`vector_widget`) computes its own figures, and its data
+is sent with strings cut. It is refused when:
+
+- it is a resource widget of a kept resource;
+- its `link` leads to a kept resource (`/r/{slug}…`);
+- it is a table whose rows link to records of a kept resource.
+
+In a table, some row keys are left out with their column: a key that is
+a field of the resource the row's link leads to (the row's `_link`, else
+the table's `link`), and that the boundary would not send. The demo's
+low-stock table lists products by SKU, name and stock. Under the
+allow-list it loses its SKU column, because products' SKU does not opt
+in.
+
+A key that is no field of that resource has no field to cut by, and
+neither has a widget that shows an excluded field in its own words.
+Keeping that from the model is the widget author's job: opt the
+resource out, or do not write such a widget.
+
+**Any other tool's** answer is refused, unless the boundary lists the
+tool as carrying no record data. One tool is listed:
+`vector_resources`, which lists slugs and labels only.
 
 (ai-filters)=
 ## Plain-language filters
