@@ -35,7 +35,7 @@ final readonly class CommandHelp
      */
     public static function print(Output $output, string $class, string $method, array $forms = ['']): int
     {
-        $attributes = new \ReflectionMethod($class, $method)->getAttributes(Command::class);
+        $attributes = new \ReflectionClass($class)->getMethod($method)->getAttributes(Command::class);
 
         if ($attributes === []) {
             throw new \LogicException("{$class}::{$method} declares no #[Command].");
