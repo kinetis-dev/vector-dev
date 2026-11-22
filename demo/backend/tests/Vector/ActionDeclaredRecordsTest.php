@@ -17,8 +17,8 @@ use Kinetis\Vector\Registry\VectorRegistry;
  * An action that declares the records it acted on
  * (ActionResponse::withRecords()) has only those logged and audited, and
  * `affected` is their count; one it was not handed is ignored. An
- * action that declares nothing keeps the old behaviour: every record
- * audited, and an `affected` of 0 reported as the selection's size. The
+ * action that declares nothing has every record audited, and an
+ * `affected` of 0 reported as the selection's size. The
  * actions are the test's own, added to products; they write nothing.
  */
 final class ActionDeclaredRecordsTest extends VectorTestCase
@@ -76,7 +76,7 @@ final class ActionDeclaredRecordsTest extends VectorTestCase
         self::assertSame([[]], $this->logged('declares-none'), 'the run itself is still logged');
     }
 
-    public function testDeclaringNothingKeepsAuditingEveryRecordAndCountsTheSelection(): void
+    public function testDeclaringNothingAuditsEveryRecordAndCountsTheSelection(): void
     {
         $ids = $this->productIds(3);
 

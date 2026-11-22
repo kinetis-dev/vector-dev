@@ -47,7 +47,7 @@ use Psr\Log\LogLevel;
  * provider's words, which can quote the prompt. The exception itself is
  * attached to the log line only under APP_ENV=development. Once the
  * browser has gone, a failure writes no error frame; the stop its leaving
- * caused is logged at info, any other failure as before.
+ * caused is logged at info, any other failure as above.
  */
 final class AssistantFailureTest extends AssistantTestCase
 {
@@ -165,7 +165,7 @@ final class AssistantFailureTest extends AssistantTestCase
         self::assertStringNotContainsString(BrokenWidget::SECRET, json_encode($logger->records, JSON_THROW_ON_ERROR), 'a log line carried the exception\'s message');
     }
 
-    public function testSpec7ATypeErrorInAToolAfterTheBrowserLeftIsLoggedAsAnErrorNotClientGone(): void
+    public function testATypeErrorInAToolAfterTheBrowserLeftIsLoggedAsAnErrorNotClientGone(): void
     {
         $logger = new RecordingLogger();
         [$assistant, $scope] = $this->assistant($logger, 9);
@@ -192,7 +192,7 @@ final class AssistantFailureTest extends AssistantTestCase
         self::assertStringNotContainsString(BrokenWidget::SECRET, json_encode($logger->records, JSON_THROW_ON_ERROR));
     }
 
-    public function testSpec1TheBrowserGoneBeforeTheFirstStepSendsNoRequestAndChargesNothing(): void
+    public function testTheBrowserGoneBeforeTheFirstStepSendsNoRequestAndChargesNothing(): void
     {
         $logger = new RecordingLogger();
         [$assistant, $scope] = $this->assistant($logger, 21);
@@ -216,7 +216,7 @@ final class AssistantFailureTest extends AssistantTestCase
         self::assertNull($logger->find('An AI provider call failed.'));
     }
 
-    public function testSpec2AnAnswerStoppedMidwayIsChargedTheReportedInputAndTheStreamedOutput(): void
+    public function testAnAnswerStoppedMidwayIsChargedTheReportedInputAndTheStreamedOutput(): void
     {
         $logger = new RecordingLogger();
         [$assistant, $scope] = $this->assistant($logger, 22);
@@ -241,7 +241,7 @@ final class AssistantFailureTest extends AssistantTestCase
         self::assertSame('client_gone', $logger->find('An assistant run ended after the browser left.')['context']['outcome'] ?? null);
     }
 
-    public function testSpec3AStreamStoppedBeforeAnyTextIsADepartureEstimatedWithNoWarning(): void
+    public function testAStreamStoppedBeforeAnyTextIsADepartureEstimatedWithNoWarning(): void
     {
         $logger = new RecordingLogger();
         [$assistant, $scope] = $this->assistant($logger, 23);
@@ -266,7 +266,7 @@ final class AssistantFailureTest extends AssistantTestCase
         self::assertSame(ProviderException::class, $gone['context']['exception_class']);
     }
 
-    public function testSpec4AProviderRefusalWhileTheBrowserIsGoneButTheSignalNotFiredIsAFailure(): void
+    public function testAProviderRefusalWhileTheBrowserIsGoneButTheSignalNotFiredIsAFailure(): void
     {
         $logger = new RecordingLogger();
         [$assistant, $scope] = $this->assistant($logger, 24);
@@ -295,7 +295,7 @@ final class AssistantFailureTest extends AssistantTestCase
         self::assertSame(['failed:refused', 0, 0], [$rows[0]['outcome'], (int) $rows[0]['input_tokens'], (int) $rows[0]['output_tokens']]);
     }
 
-    public function testSpec5AStreamCutAfterSomeTextIsAFailureEstimated(): void
+    public function testAStreamCutAfterSomeTextIsAFailureEstimated(): void
     {
         $logger = new RecordingLogger();
         [$assistant, $scope] = $this->assistant($logger, 25);
@@ -322,7 +322,7 @@ final class AssistantFailureTest extends AssistantTestCase
         self::assertGreaterThan(0, (int) $rows[0]['output_tokens']);
     }
 
-    public function testSpec6ACallThatNeverConnectedCostsNothingHoweverOftenItIsRetried(): void
+    public function testACallThatNeverConnectedCostsNothingHoweverOftenItIsRetried(): void
     {
         $logger = new RecordingLogger();
         [$assistant, $scope] = $this->assistant($logger, 26);
@@ -350,7 +350,7 @@ final class AssistantFailureTest extends AssistantTestCase
         }
     }
 
-    public function testSpec8AStreamStoppedCleanlyIsClientGoneNeverAnswered(): void
+    public function testAStreamStoppedCleanlyIsClientGoneNeverAnswered(): void
     {
         $logger = new RecordingLogger();
         [$assistant, $scope] = $this->assistant($logger, 28);

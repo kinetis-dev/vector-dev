@@ -17,8 +17,8 @@ use Kinetis\VectorAi\Http\ApprovalController;
 use NeuronAI\Chat\Messages\ToolResultMessage;
 
 /**
- * Idea 2, phase 2: the assistant proposes a write, which changes nothing
- * until the admin approves it — then exactly the stored arguments run, as
+ * The assistant proposes a write, which changes nothing until the admin
+ * approves it — then exactly the stored arguments run, as
  * the admin, recorded `origin = 'assistant'`. Decisions are idempotent
  * (409), bound to the actor and the impersonator (404), and expire (410).
  */

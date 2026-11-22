@@ -8,9 +8,9 @@ use Kinetis\VectorAi\Feature;
 use Kinetis\VectorAi\Shell\AiShellContributor;
 
 /**
- * With a provider configured, a model resolvable and the switches on, the
- * features this release ships are offered — plain-language filters, the
- * assistant and writing help — and the others are not; `excluded` names
+ * With a provider configured, a model resolvable and the default switches,
+ * plain-language filters, the assistant and writing help are offered, and
+ * proposing changes is offered once its own switch is on; `excluded` names
  * the resources kept from the model (the demo's profiles opt out), and
  * `excludedFields` the fields kept back of the others, and `noWriting`
  * the text fields writing help is off for — the demo's unique strings,

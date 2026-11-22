@@ -15,8 +15,8 @@ use Kinetis\VectorAi\Secrets\CredentialStore;
 /**
  * capabilities.ai decides whether a provider, a model and a key are there
  * from the configuration alone: a provider that needs a key is
- * offered with one stored under VECTOR_AI_KEY as it is now, and not
- * without one — as before — but no provider is built to tell, so a
+ * offered with one stored under the current VECTOR_AI_KEY, and not
+ * without one, but no provider is built to tell, so a
  * transport the schema never uses cannot turn it off.
  */
 final class AiCapabilitiesKeysTest extends AiTestCase
