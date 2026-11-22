@@ -20,7 +20,7 @@ import WritingResult from './WritingResult.vue'
 // create, where the page names no record of this field's resource, and
 // only where writing help is offered for this field.
 
-/** The part of a Tiptap editor this item uses; the layer does not depend on Tiptap itself. */
+/** The part of a Tiptap editor this item uses. */
 interface Chain {
     focus: () => Chain
     insertContentAt: (range: { from: number, to: number }, content: unknown) => Chain

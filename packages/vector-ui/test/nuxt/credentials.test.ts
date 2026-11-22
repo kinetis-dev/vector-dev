@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
-import VxAiCredentials from '#vector-ai/app/components/VxAi/Credentials.vue'
+import VxAiCredentials from '#vector/app/components/VxAi/Credentials.vue'
 import { DESCRIPTOR_VERSION } from '#vector/app/composables/useVectorSchema'
 import { endpoint, standaloneApi } from './endpoints'
 
@@ -19,10 +19,6 @@ describe('the AI provider-key panel', () => {
     afterEach(() => {
         cleanups.splice(0).forEach(cleanup => cleanup())
         useState('vector.schema').value = null
-    })
-
-    it('registers itself under the ai settings group', () => {
-        expect(useVectorExtensions().settingsAddons.get('ai')).toBeDefined()
     })
 
     it('renders nothing, and asks nothing, without capabilities.ai', async () => {

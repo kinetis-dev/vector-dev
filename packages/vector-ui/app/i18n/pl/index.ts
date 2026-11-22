@@ -1,4 +1,5 @@
 import actions from './actions'
+import ai from './ai'
 import common from './common'
 import dashboard from './dashboard'
 import fields from './fields'
@@ -10,4 +11,4 @@ import settings from './settings'
 import shell from './shell'
 
 /** Polish (machine translation): one object per area of the UI, mirroring en. */
-export default { common, shell, list, record, actions, dashboard, jobs, queues, settings, fields }
+export default { common, shell, list, record, actions, dashboard, jobs, queues, settings, fields, ai }

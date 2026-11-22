@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
-import VxAiFilterAsk from '#vector-ai/app/components/VxAi/FilterAsk.vue'
+import VxAiFilterAsk from '#vector/app/components/VxAi/FilterAsk.vue'
 import { DESCRIPTOR_VERSION } from '#vector/app/composables/useVectorSchema'
 import type { VectorResource } from '#vector/app/types/vector'
 import { endpoint, standaloneApi } from './endpoints'
@@ -40,13 +40,6 @@ describe('the plain-language filter', () => {
     afterEach(() => {
         cleanups.splice(0).forEach(cleanup => cleanup())
         useState('vector.schema').value = null
-    })
-
-    it('registers in the list toolbar, through the admin\'s extension points', () => {
-        expect(useVectorExtensions().listToolbar.get('ai-filters')).toBeDefined()
-        // the same points window.Vector v2 hands a runtime extension
-        expect(window.Vector?.version).toBe(2)
-        expect(typeof window.Vector?.defineListToolbarItem).toBe('function')
     })
 
     it.each([

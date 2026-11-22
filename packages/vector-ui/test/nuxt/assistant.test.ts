@@ -3,7 +3,7 @@ import { defineComponent, h, nextTick } from 'vue'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
 import { VApp } from 'vuetify/components'
-import VxAiAssistant from '#vector-ai/app/components/VxAi/Assistant.vue'
+import VxAiAssistant from '#vector/app/components/VxAi/Assistant.vue'
 import { DESCRIPTOR_VERSION } from '#vector/app/composables/useVectorSchema'
 import { endpoint, standaloneApi, type Received } from './endpoints'
 import type * as follow from '../../app/utils/followScroll'
@@ -92,10 +92,6 @@ describe('the assistant', () => {
         assistant.reset()
         assistant.open.value = false
         useState('vector.schema').value = null
-    })
-
-    it('registers its app-bar action through the admin\'s extension points', () => {
-        expect(useVectorExtensions().shellActions.get('ai-assistant')).toBeDefined()
     })
 
     it.each([

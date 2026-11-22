@@ -5,7 +5,7 @@ import { flushPromises } from '@vue/test-utils'
 import { VApp } from 'vuetify/components'
 import VxInputText from '#vector/app/components/Vx/Input/Text.vue'
 import VxInputTextarea from '#vector/app/components/Vx/Input/Textarea.vue'
-import VxAiWritingToolbarItem from '#vector-ai/app/components/VxAi/WritingToolbarItem.vue'
+import VxAiWritingToolbarItem from '#vector/app/components/VxAi/WritingToolbarItem.vue'
 import { DESCRIPTOR_VERSION } from '#vector/app/composables/useVectorSchema'
 import { endpoint, standaloneApi } from './endpoints'
 
@@ -109,13 +109,6 @@ describe('writing help', () => {
         useState('vector.schema').value = null
         useVectorAuthStore().$reset()
         document.body.querySelectorAll('.v-overlay-container').forEach(container => container.replaceChildren())
-    })
-
-    it('registers inside text inputs and in the editors\' toolbars, through the admin\'s extension points', () => {
-        const { inputAddons, editorToolbar } = useVectorExtensions()
-        expect(inputAddons.get('ai-writing')?.types).toEqual(['string', 'text'])
-        expect(inputAddons.get('ai-writing')?.placement).toBe('inner')
-        expect(editorToolbar.get('ai-writing')).toBeDefined()
     })
 
     describe('inside a text input', () => {

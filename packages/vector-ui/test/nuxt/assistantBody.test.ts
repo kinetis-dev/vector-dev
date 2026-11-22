@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { ASSISTANT_BODY_HEADROOM, ASSISTANT_MAX_BODY_BYTES, ASSISTANT_MAX_MESSAGE_CHARS, ASSISTANT_MAX_MESSAGES, TRUNCATED_MARK, fitAssistantMessages, jsonBytes, type AssistantMessage } from '#vector-ai/app/utils/assistantBody'
+import { ASSISTANT_BODY_HEADROOM, ASSISTANT_MAX_BODY_BYTES, ASSISTANT_MAX_MESSAGE_CHARS, ASSISTANT_MAX_MESSAGES, TRUNCATED_MARK, fitAssistantMessages, jsonBytes, type AssistantMessage } from '#vector/app/utils/assistantBody'
 
 // What a turn of the assistant sends: within the server's caps, measured
 // in the UTF-8 bytes the fetch sends, and opening with the user.
@@ -10,7 +10,7 @@ const body = (messages: AssistantMessage[]) => ({ conversationId: 'c_1', message
 
 describe('the assistant\'s request body', () => {
     it('has the caps AssistantController enforces', () => {
-        // the suite runs from the layer's own directory, beside kinetis/vector-ai's
+        // the suite runs from this package's own directory, beside kinetis/vector-ai's
         const controller = readFileSync(resolve(process.cwd(), '../vector-ai/src/Http/AssistantController.php'), 'utf8')
 
         expect(controller).toContain(`public const int MAX_BODY = ${ASSISTANT_MAX_BODY_BYTES};`)

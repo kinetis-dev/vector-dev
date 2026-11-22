@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { aiCapabilities, aiFailureMessage, aiOffered, aiStatusOf } from '#vector-ai/app/utils/aiAvailability'
+import { aiCapabilities, aiFailureMessage, aiOffered, aiStatusOf } from '#vector/app/utils/aiAvailability'
 
 // The layer's one check of whether the admin offers an AI feature, and its
 // one wording of a failed AI call, which the filter, writing help and the

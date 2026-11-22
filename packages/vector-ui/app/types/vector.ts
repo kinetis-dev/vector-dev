@@ -481,6 +481,30 @@ export interface VectorMenuGroup {
     resources: string[]
 }
 
+/**
+ * `capabilities.ai` as GET /vector/schema publishes it for the signed-in
+ * user (kinetis/vector-ai's AiShellContributor): which AI features the
+ * admin offers them (each flag the very check its endpoint makes) and
+ * what is kept from the model.
+ */
+export interface AiCapabilities {
+    filters?: boolean
+    assistant?: boolean
+    assistantWrites?: boolean
+    writing?: boolean
+    /** The resources kept from the model whole, `{slug: true}`. */
+    excluded?: Record<string, unknown>
+    /** The fields kept back of the others, `{slug: [field, …]}`. */
+    excludedFields?: Record<string, unknown>
+    /**
+     * The text fields writing help is not offered on, `{slug: [field, …]}`:
+     * kept back, a unique string (an identifier, such as a SKU), or a field
+     * with the `ai.writing` meta false. When absent, writing help is off
+     * only where something is kept back.
+     */
+    noWriting?: Record<string, unknown>
+}
+
 export interface VectorSchema {
     version: number
     resources: Record<string, VectorResource>
@@ -492,9 +516,10 @@ export interface VectorSchema {
      * `queues`: the queue dashboard is there for this user (a queue configured, the policy lets them view);
      * `failedJobs`: it shows failed jobs too (kinetis/queue-failed-jobs installed and wired). Absent is false.
      * `queueMetrics`: it shows the job metrics too (VECTOR_QUEUE_METRICS not turned off). Absent is false.
+     * `ai`: the AI features kinetis/vector-ai offers this user; absent where it is not installed.
      * Any other key is a package's own, published by its #[ShellContributor] under its name: an object.
      */
-    capabilities: { impersonation: boolean, queue: boolean, uploads?: boolean, exportFormats?: VectorExportFormat[], queues?: boolean, failedJobs?: boolean, queueMetrics?: boolean } & { [contributor: string]: unknown }
+    capabilities: { impersonation: boolean, queue: boolean, uploads?: boolean, exportFormats?: VectorExportFormat[], queues?: boolean, failedJobs?: boolean, queueMetrics?: boolean, ai?: AiCapabilities } & { [contributor: string]: unknown }
     branding: VectorBranding | null
     /** The language this descriptor is in, and the ones this user may switch to. */
     i18n?: VectorSchemaI18n

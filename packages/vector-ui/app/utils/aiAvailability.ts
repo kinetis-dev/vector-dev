@@ -1,40 +1,18 @@
-/**
- * `capabilities.ai` as GET /vector/schema publishes it for the signed-in
- * user (kinetis/vector-ai's AiShellContributor): which AI features the
- * admin offers them (each flag the very check its endpoint makes) and
- * what is kept from the model.
- */
-export interface AiCapabilities {
-    filters?: boolean
-    assistant?: boolean
-    assistantWrites?: boolean
-    writing?: boolean
-    /** The resources kept from the model whole, `{slug: true}`. */
-    excluded?: Record<string, unknown>
-    /** The fields kept back of the others, `{slug: [field, …]}`. */
-    excludedFields?: Record<string, unknown>
-    /**
-     * The text fields writing help is not offered on, `{slug: [field, …]}`:
-     * kept back, a unique string (an identifier, such as a SKU), or a field
-     * with the `ai.writing` meta false. When absent, writing help is off
-     * only where something is kept back.
-     */
-    noWriting?: Record<string, unknown>
-}
+import type { AiCapabilities } from '../types/vector'
 
 /** A feature `capabilities.ai` flags. */
 export type AiFeature = 'filters' | 'assistant' | 'assistantWrites' | 'writing'
 
 /** A descriptor's `capabilities.ai`: undefined before the descriptor, and where kinetis/vector-ai is not installed. */
-export function aiCapabilities(schema: { capabilities?: object } | null | undefined): AiCapabilities | undefined {
-    return (schema?.capabilities as { ai?: AiCapabilities } | undefined)?.ai
+export function aiCapabilities(schema: { capabilities?: { ai?: AiCapabilities, [key: string]: unknown } } | null | undefined): AiCapabilities | undefined {
+    return schema?.capabilities?.ai
 }
 
 /**
  * Whether the admin offers $feature: the server's flag for this user and,
  * when given, $resource not kept from the model and $field not one kept
  * back of it, nor, for writing help, one of `noWriting`. The one check
- * every part of the layer asks; the server refuses anything else anyway.
+ * every AI part asks; the server refuses anything else anyway.
  */
 export function aiOffered(ai: AiCapabilities | undefined, feature: AiFeature, resource?: string, field?: string): boolean {
     if (ai?.[feature] !== true) return false

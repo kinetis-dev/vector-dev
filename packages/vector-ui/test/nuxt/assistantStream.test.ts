@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createDataStreamParser, readDataStream, type DataStreamFrame } from '#vector-ai/app/utils/assistantStream'
-import { linkRecords } from '#vector-ai/app/utils/recordLinks'
+import { createDataStreamParser, readDataStream, type DataStreamFrame } from '#vector/app/utils/assistantStream'
+import { linkRecords } from '#vector/app/utils/recordLinks'
 
 // The data-stream parser, fed the way a network feeds it, and the record
 // links an answer's `resource#id` references become.

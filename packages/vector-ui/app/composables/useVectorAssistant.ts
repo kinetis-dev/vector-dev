@@ -81,7 +81,7 @@ function newId(): string {
  * The assistant's conversation: the browser's own, replayed to POST
  * /vector/ai/assistant on every turn (the user's and the assistant's text
  * only), and kept in shared state so the drawer survives navigation,
- * for one signed-in user: the layer
+ * for one signed-in user: the AI plugin
  * forgets it when the user changes or signs out. A turn streams in the Vercel AI SDK
  * data-stream protocol; where the runtime cannot stream (501) the same
  * turn is asked again for the whole answer as JSON.
