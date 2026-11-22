@@ -18,6 +18,16 @@ export interface FollowScroll {
     stop(): void
 }
 
+interface Frames {
+    request: (callback: FrameRequestCallback) => number
+    cancel: (handle: number) => void
+}
+
+const browserFrames: Frames = {
+    request: callback => requestAnimationFrame(callback),
+    cancel: handle => cancelAnimationFrame(handle),
+}
+
 /**
  * Keeps $el scrolled to the end of its output while the output arrives,
  * gliding there rather than jumping when much arrives at once. Scrolling
@@ -26,10 +36,7 @@ export interface FollowScroll {
  */
 export function followScroll(
     el: HTMLElement,
-    frames: { request: (callback: FrameRequestCallback) => number, cancel: (handle: number) => void } = {
-        request: callback => requestAnimationFrame(callback),
-        cancel: handle => cancelAnimationFrame(handle),
-    },
+    frames: Frames = browserFrames,
 ): FollowScroll {
     let following = true
     /** Where the view was when last seen, to tell a reader scrolling up from the view's own scrolling. */

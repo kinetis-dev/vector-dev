@@ -42,7 +42,7 @@ export function createDataStreamParser(onFrame: (frame: DataStreamFrame) => void
     return {
         push(chunk) {
             // CRLF is normalized on the whole buffer, so a pair split across two chunks is too
-            buffer = (buffer + chunk).replace(/\r\n/g, '\n')
+            buffer = (buffer + chunk).replaceAll('\r\n', '\n')
             let end = buffer.indexOf('\n\n')
             while (end !== -1) {
                 emit(buffer.slice(0, end))

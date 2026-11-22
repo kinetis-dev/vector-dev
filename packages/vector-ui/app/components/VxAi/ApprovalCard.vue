@@ -80,9 +80,9 @@ const decidable = computed(() => props.approval.state === 'pending' || props.app
             <v-table v-if="changes.length" density="compact" class="text-caption" data-ai-approval-changes>
                 <thead>
                     <tr>
-                        <th>{{ t('ai.assistant.approval.field') }}</th>
-                        <th v-if="approval.before !== null">{{ t('ai.assistant.approval.from') }}</th>
-                        <th>{{ t('ai.assistant.approval.to') }}</th>
+                        <th scope="col">{{ t('ai.assistant.approval.field') }}</th>
+                        <th v-if="approval.before !== null" scope="col">{{ t('ai.assistant.approval.from') }}</th>
+                        <th scope="col">{{ t('ai.assistant.approval.to') }}</th>
                     </tr>
                 </thead>
                 <tbody>
