@@ -32,7 +32,7 @@ final class AssistantApprovalsTest extends ApprovalsTestCase
         self::assertSame('approval', $approval['type']);
         self::assertMatchesRegularExpression('/^apr_[a-z2-7]{26}$/', $approval['id']);
         self::assertSame('vector_update', $approval['tool']);
-        self::assertSame($this->update($this->stock + 5), $approval['arguments']);
+        self::assertSame(self::keySorted($this->update($this->stock + 5)), self::keySorted($approval['arguments']));
         self::assertSame('products', $approval['resource']);
         self::assertSame((string) $this->product, $approval['recordId']);
         $expires = new \DateTimeImmutable($approval['expiresAt']);
@@ -79,7 +79,7 @@ final class AssistantApprovalsTest extends ApprovalsTestCase
         self::assertSame('update', $latest['event']);
         self::assertSame(self::ACTOR_PREFIX . '01', $latest['actorId']);
         self::assertSame('assistant', $latest['origin']);
-        self::assertSame(['from' => $this->stock, 'to' => $this->stock + 5], $latest['changes']['stock']);
+        self::assertSame(self::keySorted(['from' => $this->stock, 'to' => $this->stock + 5]), self::keySorted($latest['changes']['stock']));
 
         // one usage row for the approval: who, the feature and the outcome; no tokens
         $usage = array_values(array_filter($this->usageRows(1), static fn (array $r): bool => $r['feature'] === 'assistant-writes'));
@@ -97,7 +97,7 @@ final class AssistantApprovalsTest extends ApprovalsTestCase
         $again = $this->decide($approval['id'])->assertStatus(409)->json();
         self::assertIsArray($again);
         self::assertSame('executed', $again['status']);
-        self::assertSame($first['result'], $again['result']);
+        self::assertSame(self::keySorted($first['result']), self::keySorted($again['result']));
         self::assertCount(1, $this->auditRows(), 'nothing ran twice');
         $this->decide($approval['id'], 'reject')->assertStatus(409)->assertJsonPath('status', 'executed');
     }
@@ -330,7 +330,7 @@ final class AssistantApprovalsTest extends ApprovalsTestCase
         $frames = $this->turn([DemoAiReplies::RESTOCK])['frames'];
         $approvals = self::ofType($frames, 'data-approval');
         self::assertCount(1, $approvals);
-        self::assertSame(['resource' => 'products', 'id' => DemoAiReplies::RESTOCKED, 'values' => ['stock' => 42]], $approvals[0]['data']['arguments']);
+        self::assertSame(self::keySorted(['resource' => 'products', 'id' => DemoAiReplies::RESTOCKED, 'values' => ['stock' => 42]]), self::keySorted($approvals[0]['data']['arguments']));
         self::assertSame(DemoAiReplies::RESTOCK_ANSWER, self::text($frames));
         // the run read the record before proposing: the card shows its stock before the change
         self::assertSame('vector_get', self::ofType($frames, 'tool-input-start')[0]['toolName']);
@@ -354,7 +354,7 @@ final class AssistantApprovalsTest extends ApprovalsTestCase
         $frames = $this->turn([DemoAiReplies::SHIP])['frames'];
         $approvals = self::ofType($frames, 'data-approval');
         self::assertCount(1, $approvals);
-        self::assertSame(['resource' => 'orders', 'id' => DemoAiReplies::SHIPPED, 'values' => ['status' => 'shipped']], $approvals[0]['data']['arguments']);
+        self::assertSame(self::keySorted(['resource' => 'orders', 'id' => DemoAiReplies::SHIPPED, 'values' => ['status' => 'shipped']]), self::keySorted($approvals[0]['data']['arguments']));
         self::assertSame(DemoAiReplies::SHIP_ANSWER, self::text($frames));
         self::assertSame('vector_get', self::ofType($frames, 'tool-input-start')[0]['toolName']);
         self::assertSame('pending', $this->row($approvals[0]['data']['id'])['status'] ?? null);
@@ -560,5 +560,23 @@ final class AssistantApprovalsTest extends ApprovalsTestCase
         }
 
         return $errors;
+    }
+
+    /**
+     * The value with the keys of every object sorted and lists left in order:
+     * MySQL JSON columns reorder object keys, Postgres keeps insertion order.
+     */
+    private static function keySorted(mixed $value): mixed
+    {
+        if (!is_array($value)) {
+            return $value;
+        }
+
+        $value = array_map(self::keySorted(...), $value);
+        if (!array_is_list($value)) {
+            ksort($value);
+        }
+
+        return $value;
     }
 }
