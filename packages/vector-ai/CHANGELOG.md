@@ -70,8 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `capabilities.ai.noWriting`, `{slug: [field, …]}` like
   `excludedFields`: per resource the user may list and the model may be
   sent, the `string`, `text`, `markdown` and `richtext` fields they see
-  that writing help is not offered on (`WritingGuard::offers()`). It
-  adds to `excludedFields`, which an older admin still reads alone.
+  that writing help is not offered on (`WritingGuard::offers()`). The
+  admin reads both; the endpoint refuses those fields either way.
 
 ### Changed
 

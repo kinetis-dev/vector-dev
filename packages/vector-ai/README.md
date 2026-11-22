@@ -39,9 +39,9 @@ The UI half is a separate package,
   signed-in person, and streams its answer. It cannot change anything
   itself: where an administrator allows it, it proposes a change, which
   runs only once the person approves it.
-- **Writing help.** Under a text input, and in the toolbar of a Markdown
-  or rich-text editor, it rewrites, shortens, corrects or translates the
-  text. The answer is put in the input for the person to review and save
+- **Writing help.** Behind an icon inside a text input, at the field's
+  end, and in the toolbar of a Markdown or rich-text editor, it rewrites,
+  shortens, corrects or translates the text. The answer is put in the input for the person to review and save
   as their own edit; the server never writes it.
 - **Bulk rewrite proposals.** The queued `ProposeRewrites` action leaves
   a CSV of proposed texts on its job, which the admin reviews and imports
