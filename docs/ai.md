@@ -322,12 +322,12 @@ list's search, and the list filters at once.
 - The sentence stays in the field, to refine and send again.
 
 ```{image} _static/screenshots/ai-filters-light.png
-:alt: The Orders list filtered by the sentence "paid orders over 500": the note below the field explains the filter and offers Undo, and the chips Status is Paid and Total > 500.00 sit above a list of paid orders
+:alt: The Orders list filtered by the sentence “paid orders over 500”: the note below the field explains the filter and offers Undo, and the chips Status is Paid and Total over 500.00 sit above a list of paid orders
 :class: only-light
 ```
 
 ```{image} _static/screenshots/ai-filters-dark.png
-:alt: The Orders list filtered by the sentence "paid orders over 500": the note below the field explains the filter and offers Undo, and the chips Status is Paid and Total > 500.00 sit above a list of paid orders
+:alt: The Orders list filtered by the sentence “paid orders over 500”: the note below the field explains the filter and offers Undo, and the chips Status is Paid and Total over 500.00 sit above a list of paid orders
 :class: only-dark
 ```
 
@@ -423,12 +423,12 @@ Every record it used is named as `resource#id`, which the drawer links
 to the record's page.
 
 ```{image} _static/screenshots/ai-assistant-light.png
-:alt: The assistant's drawer beside the Products list: the question "Which products are low on stock?", the vector_query it read with, and its answer linking products#1
+:alt: The assistant's drawer beside the Products list: the question “Which products are low on stock?”, the vector_query it read with, and its answer linking products#1
 :class: only-light
 ```
 
 ```{image} _static/screenshots/ai-assistant-dark.png
-:alt: The assistant's drawer beside the Products list: the question "Which products are low on stock?", the vector_query it read with, and its answer linking products#1
+:alt: The assistant's drawer beside the Products list: the question “Which products are low on stock?”, the vector_query it read with, and its answer linking products#1
 :class: only-dark
 ```
 
@@ -725,12 +725,12 @@ record.
 The id is 128 random bits in base32, stored without its `apr_` prefix.
 
 ```{image} _static/screenshots/ai-assistant-proposal-light.png
-:alt: The assistant's drawer beside order ORD-000184 after "Mark order ORD-000184 as shipped.": the reads it made, its answer, and a pending card proposing the status from paid to shipped, with Reject and Approve
+:alt: The assistant's drawer beside order ORD-000184 after “Mark order ORD-000184 as shipped.”: the reads it made, its answer, and a pending card proposing the status from paid to shipped, with Reject and Approve
 :class: only-light
 ```
 
 ```{image} _static/screenshots/ai-assistant-proposal-dark.png
-:alt: The assistant's drawer beside order ORD-000184 after "Mark order ORD-000184 as shipped.": the reads it made, its answer, and a pending card proposing the status from paid to shipped, with Reject and Approve
+:alt: The assistant's drawer beside order ORD-000184 after “Mark order ORD-000184 as shipped.”: the reads it made, its answer, and a pending card proposing the status from paid to shipped, with Reject and Approve
 :class: only-dark
 ```
 
