@@ -2621,7 +2621,7 @@
                 "filterable": true,
                 "readonly": false,
                 "inline": false,
-                "unique": false,
+                "unique": true,
                 "help": null,
                 "component": null,
                 "views": [

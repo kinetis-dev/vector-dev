@@ -63,7 +63,8 @@ final class AiCapabilitiesConfiguredTest extends AiTestCase
         self::assertSame(['sku'], $noWriting['products'] ?? null);
         self::assertSame(['name'], $noWriting['tags'] ?? null);
         self::assertSame(['number'], $noWriting['tickets'] ?? null);
-        self::assertCount(3, $noWriting, 'no other text field is a unique string');
+        self::assertSame(['number'], $noWriting['orders'] ?? null);
+        self::assertCount(4, $noWriting, 'no other text field is a unique string');
 
         // proposing changes is off until its own switch is on
         $this->client->request('PUT', '/vector/settings/ai', body: ['assistantWrites' => true], headers: $this->adminHeaders())->assertOk();

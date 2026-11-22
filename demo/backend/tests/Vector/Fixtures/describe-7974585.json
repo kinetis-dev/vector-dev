@@ -926,6 +926,7 @@
                 ],
                 "required": true,
                 "nullable": false,
+                "unique": true,
                 "rules": [
                     "NotBlank",
                     "MaxLength(30)"

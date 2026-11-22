@@ -12,7 +12,8 @@ use Kinetis\Vector\Registry\VectorRegistry;
  * Which text fields writing help is on for (WritingGuard::helps()), as
  * POST /vector/ai/writing/{resource}/{field} decides it and
  * `capabilities.ai.noWriting` tells the admin: products' SKU as the demo
- * defines it (a writable unique string, an identifier) is refused;
+ * defines it (a writable unique string, an identifier) is refused, and
+ * so is orders' number, unique as orders_number_unique holds it;
  * tags' name, a unique string that opts in with `ai.writing` true, is
  * helped; products' name, opted out with `ai.writing` false, is refused
  * yet still sent to the model (`ai.send` true), so excludedFields does
@@ -88,6 +89,21 @@ final class WritingEligibilityTest extends WritingTestCase
         self::assertSame(['imageKey'], $ai['excludedFields']['products'] ?? null, 'writing help off keeps nothing from the model');
         self::assertSame(['sku', 'name'], $ai['noWriting']['products'] ?? null);
         self::assertArrayNotHasKey('tags', $ai['noWriting'], 'a unique string that opts in is offered');
-        self::assertArrayNotHasKey('orders', $ai['noWriting']);
+        self::assertSame(['number'], $ai['noWriting']['orders'] ?? null);
+    }
+
+    public function testAnOrderNumberIsRefusedAndListedAsNoWriting(): void
+    {
+        $this->scriptWriting(['ORD-0001' => 'ORD-0002']);
+        $order = (string) $this->shop()->table('orders')->orderBy('id', 'ASC')->value('id');
+
+        $this->write('orders', 'number', ['operation' => 'rewrite', 'text' => 'ORD-0001', 'recordId' => $order])
+            ->assertStatus(403)
+            ->assertJsonPath('error', 'Writing help is off for this field of Orders.');
+        self::assertSame([], $this->calls());
+
+        $ai = $this->client->get('/vector/schema', headers: $this->aiHeaders())->assertOk()->json()['capabilities']['ai'] ?? null;
+        self::assertIsArray($ai);
+        self::assertContains('number', $ai['noWriting']['orders'] ?? [], 'the admin shows no writing help on it');
     }
 }

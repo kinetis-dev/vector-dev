@@ -111,7 +111,8 @@ final class ResourcesPerEntityTest extends TestCase
      * its entity, is among them. Products and tickets have since declared
      * a searchable relation and full-text search, products and users their
      * `ai.send` metadata (docs/ai.md), orders their bulk AI rewrite
-     * action (TidyOrderNotes), and the fixture holds them with those
+     * action (TidyOrderNotes) and their number's `unique()` (the
+     * orders_number_unique key), and the fixture holds them with those
      * declarations.
      */
     public function testEveryExistingDescriptorIsUnchanged(): void

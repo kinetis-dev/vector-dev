@@ -153,11 +153,11 @@ final class WritingTest extends WritingTestCase
 
     public function testAnAnswerOverTheFieldsMaximumIsCutAndFlagged(): void
     {
-        // orders' number is at most 30 characters
-        $this->scriptWriting(['ORD-2026-000123 (rush order, call first)' => str_repeat('N', 50)]);
-        $cut = $this->write('orders', 'number', ['operation' => 'rewrite', 'text' => 'ORD-2026-000123 (rush order, call first)', 'recordId' => $this->orderId()])->assertOk()->json();
+        // products' name is at most 200 characters
+        $this->scriptWriting(['Garden spade' => str_repeat('N', 250)]);
+        $cut = $this->write('products', 'name', ['operation' => 'rewrite', 'text' => 'Garden spade', 'recordId' => $this->productId()])->assertOk()->json();
         self::assertIsArray($cut);
-        self::assertSame(str_repeat('N', 30), $cut['text']);
+        self::assertSame(str_repeat('N', 200), $cut['text']);
         self::assertTrue($cut['truncated']);
 
         // the notes name no maximum: four times the input
