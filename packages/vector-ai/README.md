@@ -128,7 +128,7 @@ vendor/bin/kinetis migrate
 ```
 
 Requires PHP 8.4 or 8.5 with `ext-sodium`,
-[`kinetis/framework`](https://github.com/kinetis-dev/framework) 1.29.1
+[`kinetis/framework`](https://github.com/kinetis-dev/framework) 1.30.0
 or later and [`kinetis/vector`](https://packagist.org/packages/kinetis/vector)
 0.16, on MySQL or PostgreSQL.
 `vector-ai:install` publishes the migrations into `migrations/`, or

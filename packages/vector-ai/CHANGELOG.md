@@ -95,7 +95,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `vector-ai:install --help` and `-h` print the command's usage instead of publishing its migrations, and `vector-ai:approvals:prune --help` prunes nothing.
 - A projected `vector_query` naming no `perPage` is given at most its resource's own `maxPerPage()`, not a size the list would refuse.
 
 - A model's reasoning written inline is no longer read as its answer:
@@ -227,7 +226,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Requires `kinetis/framework` ^1.29.0 and `kinetis/neuron` ^1.3. The
+- Requires `kinetis/framework` ^1.30.0, whose console answers `--help` and
+  `-h` on every command with its usage and description without running
+  it, and `kinetis/neuron` ^1.3.3. The
   assistant learns that the browser left from the request's
   `Kinetis\Runtime\ClientConnectionInterface` instead of calling
   `connection_aborted()`, and `Assistant::stream()` takes that
