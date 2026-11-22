@@ -1,56 +1,71 @@
 # AI
 
-`kinetis/vector-ai` adds AI to the admin: **plain-language filters**
-({ref}`ai-filters`); the **assistant** ({ref}`ai-assistant`), which
-reads, and, where an administrator allows it, **proposes changes a
-person approves** ({ref}`ai-approvals`); **writing help**
-({ref}`ai-writing`); and **bulk rewrite proposals** as a CSV to review
-and import ({ref}`ai-bulk`). Every feature rests on the same
-foundations: the operator configuration, the sealed provider keys, the
-`ai` settings group, the access policy, the model boundary, the usage
-ledger and the AI layer's provider-key panel.
+`kinetis/vector-ai` adds AI to the admin:
+
+- **Plain-language filters**: describe the records you want, and the
+  list filters itself ({ref}`ai-filters`).
+- **The assistant**: a drawer that answers questions about your data
+  ({ref}`ai-assistant`) and, where an administrator allows it, proposes
+  changes a person approves ({ref}`ai-approvals`).
+- **Writing help**: rewrite, shorten, correct or translate a text field
+  ({ref}`ai-writing`).
+- **Bulk rewrite proposals**: a CSV of rewrites for many records, to
+  review and import ({ref}`ai-bulk`).
 
 It is a companion product: the Composer package `kinetis/vector-ai`
-and the Nuxt layer `@kinetis/vector-ai-ui`, built on
+and the Nuxt layer `@kinetis/vector-ai-ui`. It is built on
 [`kinetis/neuron`](https://kinetis.dev/docs/neuron.html), so every
 provider call suspends the calling Fiber instead of blocking the worker.
 
+Every feature rests on the same foundations, each described once on this
+page: the operator configuration, the `ai` settings group, sealed
+provider keys, the access policy, the model boundary and the usage
+ledger.
+
 ## Installing
 
-```console
-composer require kinetis/vector-ai
-vendor/bin/kinetis vector-ai:install      # the credentials, usage, approvals and rewrites tables
-vendor/bin/kinetis migrate
-```
+The package needs `ext-sodium`.
 
-`vector-ai:install` publishes four migrations, `vector_ai_credentials`,
-`vector_ai_usage`, `vector_ai_approvals` and `vector_ai_rewrites`, the way `vector:install` publishes Vector's: into
-`migrations/`, or `migrations/<name>/` with `--connection=<name>`. Put
-them on the connection Vector's own tables are on
-(`VECTOR_DB_CONNECTION`); the command notes it when they differ. The
-package needs `ext-sodium`.
+1. Install the package and its tables:
 
-The AI layer reaches the admin in both modes ({doc}`deployment`).
-Standalone, your Nuxt app extends `@kinetis/vector-ai-ui` instead of
-`@kinetis/vector-ui`: `extends: ['@kinetis/vector-ai-ui']`. Hosted,
-`vendor/bin/kinetis vector-ai:install-ui` installs the bundle
-`@kinetis/vector-ai-ui` ships in place of the plain one, then restart the
-workers ({ref}`hosted admin with AI <hosted-ai-bundle>`).
+   ```console
+   composer require kinetis/vector-ai
+   vendor/bin/kinetis vector-ai:install      # the credentials, usage, approvals and rewrites tables
+   vendor/bin/kinetis migrate
+   ```
 
-The standalone admin is on another origin, so add `Retry-After` to your
-`CorsMiddleware`'s `exposedHeaders`: a browser hides any header CORS does
-not expose, and without it the admin can say only that today's budget is
-spent, not when it renews.
+   `vector-ai:install` publishes four migrations: `vector_ai_credentials`,
+   `vector_ai_usage`, `vector_ai_approvals` and `vector_ai_rewrites`.
+   Like `vector:install`, it writes them to `migrations/`, or to
+   `migrations/<name>/` with `--connection=<name>`. Put them on the
+   connection Vector's own tables use (`VECTOR_DB_CONNECTION`); the
+   command says so when they differ.
+
+2. Add the AI layer to the admin, in either mode ({doc}`deployment`):
+
+   - **Standalone**: your Nuxt app extends `@kinetis/vector-ai-ui`
+     instead of `@kinetis/vector-ui`: `extends: ['@kinetis/vector-ai-ui']`.
+   - **Hosted**: `vendor/bin/kinetis vector-ai:install-ui` installs the
+     bundle `@kinetis/vector-ai-ui` ships in place of the plain one. Then
+     restart the workers ({ref}`hosted admin with AI <hosted-ai-bundle>`).
+
+3. Standalone only: add `Retry-After` to your `CorsMiddleware`'s
+   `exposedHeaders`. The admin is on another origin, and a browser hides
+   any header CORS does not expose. Without it, the admin can say that
+   today's budget is spent, but not when it renews.
+
+4. Configure a provider ({ref}`ai-operator`).
 
 Each `@kinetis/vector-ai-ui` release depends on exactly the
 `@kinetis/vector-ui` release `kinetis/vector` pins
-({ref}`release-pairing`). Against a backend
-without `kinetis/vector-ai`, the layer renders nothing of its own.
+({ref}`release-pairing`). Against a backend without `kinetis/vector-ai`,
+the layer renders nothing of its own.
 
+(ai-operator)=
 ## Operator configuration
 
-The operator lists the providers the admin may call, and configures each
-under its own keys. Everything is read once, at boot; a value that
+The operator lists the providers the admin may call and configures each
+under its own keys. Everything is read once, at boot. A value that
 cannot work stops the boot with a message naming its key.
 
 ```ini
@@ -66,9 +81,9 @@ VECTOR_AI_MAX_RESPONSE_BYTES=4194304
 VECTOR_AI_MAX_OUTPUT_TOKENS=2048
 ```
 
-`<NAME>` is the provider's name in upper case, a dash written as an
+`<NAME>` is the provider's name in upper case, with a dash written as an
 underscore: `local-llm`'s type is `VECTOR_AI_LOCAL_LLM_TYPE`. The keys
-are scoped the way named connections' are (`Config::scopedKey()`).
+are scoped like a named connection's (`Config::scopedKey()`).
 
 | Type | Talks to | Key |
 |---|---|---|
@@ -77,24 +92,28 @@ are scoped the way named connections' are (`Config::scopedKey()`).
 | `openai-like` | an OpenAI-compatible server at `BASE_URL` (`https://`, or `http://` for one you run) | optional |
 | `ollama` | an Ollama server at `BASE_URL` (`http://` allowed) | none |
 | `bedrock` | Amazon Bedrock in `REGION`, signed with the default AWS credential chain | none |
-| `fake` | nothing: replays scripted replies, for tests and demos | none |
+| `fake` | nothing: replays scripted replies, for tests and demos ({ref}`ai-testing`) | none |
 
-The boot stops on an unknown type, a provider listed without a type, a
-`BASE_URL` that is not `https://` (where `http://` is not allowed), one
-with credentials in it, a key for a type that takes none, a Bedrock
-provider without a region, or a malformed `VECTOR_AI_KEY`.
+The boot stops on:
 
-At boot the package builds one HTTP client per provider origin, pinned
-to that base URL, bounded by `VECTOR_AI_TIMEOUT` and
+- an unknown type, or a listed provider without a type;
+- a `BASE_URL` that is not `https://` where `http://` is not allowed, or
+  one with credentials in it;
+- a key for a type that takes none;
+- a Bedrock provider without a region;
+- a malformed `VECTOR_AI_KEY`.
+
+Each worker builds one HTTP client per provider origin, pinned to that
+base URL and bounded by `VECTOR_AI_TIMEOUT` and
 `VECTOR_AI_MAX_RESPONSE_BYTES`, and one signing client per Bedrock
-region, shared by every request of the worker. The provider object a
-call uses is built fresh for that call, over the shared client; parallel
-tool calls, which would fork the worker, are never turned on.
+region. Parallel tool calls, which would fork the worker, are never
+turned on.
 
 ## The AI settings
 
 The **AI assistant** group on the Settings page holds what an
-administrator decides:
+administrator decides. Who may change it is the access policy's
+`canConfigure()` ({ref}`ai-access`).
 
 | Setting | Default | |
 |---|---|---|
@@ -102,154 +121,191 @@ administrator decides:
 | Assistant may propose changes (`assistantWrites`) | off | every change it proposes still waits for a person ({ref}`ai-approvals`) |
 | Provider and model per feature | empty | a provider `VECTOR_AI_PROVIDERS` lists, and a model on its allow-list; empty uses the only provider, and its first allowed model |
 | Daily token budget per user | 200000 | input and output tokens a person may spend a day (UTC); 0 turns AI off |
-| Tool calls per assistant run (`maxToolCallsPerRun`) | 8 | at most 20; a proposal counts as one |
+| Tool calls per assistant run (`maxToolCallsPerRun`) | 8 | 1 to 20; a proposal counts as one |
 | Minutes a proposed change waits for approval (`approvalMinutes`) | 15 | 1 to 120 |
-| Record data sent to the model | every field | or only fields marked to send; see below |
+| Record data sent to the model | every field | or only fields marked to send ({ref}`ai-boundary`) |
 
-Saving refuses a provider that is not configured and a model off its
-provider's allow-list. Who may manage the group is the access policy's
-`canConfigure()`.
+Saving refuses a provider that is not configured, and a model off its
+provider's allow-list.
 
-API keys are **not** settings: settings are stored, and served to the
-Settings page, in plain text.
+API keys are not settings: settings are stored in plain text and served
+to the Settings page. Keys have their own store ({ref}`ai-keys`).
 
+(ai-keys)=
 ## Provider keys
 
-A provider's key comes from the environment (`VECTOR_AI_<NAME>_KEY`) or,
-when the environment gives none, from an administrator, on the Settings
-page under the AI group. An administrator's key is sealed with libsodium
-(AEAD XChaCha20-Poly1305) under `VECTOR_AI_KEY`, with a fresh random
-nonce for every write and the provider's name as additional data, and
-stored in `vector_ai_credentials`: a sealed key copied into another
-provider's row does not open there. It is never shown again: no endpoint, page,
-error or log line returns it. Storing and removing a key are recorded in
-Vector's audit trail ({doc}`audit`) under the resource
-`vector-ai:credentials` and the provider's name, with the event `set` or
-`delete` and the actor (and impersonator): who changed which provider's
-key, never the key.
+A provider's key comes from the environment (`VECTOR_AI_<NAME>_KEY`).
+When the environment gives none, an administrator stores one on the
+Settings page, in the AI group.
 
-Generate `VECTOR_AI_KEY` once, and keep it with your other secrets:
+Stored keys are sealed under `VECTOR_AI_KEY`. Generate it once and keep
+it with your other secrets:
 
 ```console
 php -r 'echo "base64:", base64_encode(random_bytes(32)), PHP_EOL;'
 ```
 
-Without it, an administrator cannot store keys (the endpoint answers
-`403`, "Set VECTOR_AI_KEY to store provider keys"); keys from the
-environment still work. Each sealed row records the id of the key that
-sealed it (the first 8 hex characters of its SHA-256), so after
-`VECTOR_AI_KEY` changes, a row sealed under the old one is reported as
-*sealed with another key; re-enter it*, never silently misread. A row
-stored before `VECTOR_AI_KEY` was removed is reported as present but
-unusable until it is set again.
+Without it, an administrator cannot store keys: the endpoint answers
+`403`, "Set VECTOR_AI_KEY to store provider keys". Keys from the
+environment still work.
+
+How a stored key is kept:
+
+- It is sealed with libsodium (AEAD XChaCha20-Poly1305), with a fresh
+  random nonce for every write and the provider's name as additional
+  data. A sealed key copied into another provider's row does not open
+  there.
+- It is stored in `vector_ai_credentials` and never shown again: no
+  endpoint, page, error or log line returns it.
+- Each row records the id of the key that sealed it (the first 8 hex
+  characters of its SHA-256). After `VECTOR_AI_KEY` changes, a row
+  sealed under the old one is reported as *sealed with another key;
+  re-enter it*, never misread.
+- A row stored before `VECTOR_AI_KEY` was removed is reported as present
+  but unusable until the key is set again.
+- Storing and removing a key are recorded in the audit trail
+  ({doc}`audit`): resource `vector-ai:credentials`, the provider's name,
+  the event `set` or `delete`, and the actor (and impersonator). The
+  key itself is never recorded.
 
 | Route | Does |
 |---|---|
-| `GET /vector/ai/credentials` | Each configured provider: `set`, `managedBy` (`environment`, `admin`, or `null` for a type that takes no key), `storable`, and for a stored key `updatedAt`, `updatedBy`, and, when it cannot be used, `problem`: `sealedWithAnotherKey` is `true` when it was sealed with another `VECTOR_AI_KEY`, and absent when the server has no `VECTOR_AI_KEY` to open it (`storable` is then `false`). Never the key. |
-| `PUT /vector/ai/credentials/{provider}` | `{"key": "..."}`: seals and stores it. `403` without `VECTOR_AI_KEY`, `404` for an unknown provider, `409` for one the environment manages or that takes no key. |
+| `GET /vector/ai/credentials` | Lists each configured provider: `set`, `managedBy` (`environment`, `admin`, or `null` for a type that takes no key) and `storable`. A stored key adds `updatedAt` and `updatedBy`, and, when it cannot be used, `problem`: `sealedWithAnotherKey` is `true` when another `VECTOR_AI_KEY` sealed it, and absent when the server has no `VECTOR_AI_KEY` to open it (`storable` is then `false`). Never the key. |
+| `PUT /vector/ai/credentials/{provider}` | Seals and stores `{"key": "..."}`. `403` without `VECTOR_AI_KEY`, `404` for an unknown provider, `409` for one the environment manages or that takes no key. |
 | `DELETE /vector/ai/credentials/{provider}` | Removes the stored key. |
 
-All three are in the `vector` middleware group and ask the access
-policy's `canConfigure()`.
+All three ask the access policy's `canConfigure()`.
 
+(ai-access)=
 ## Who may use AI
 
-`Kinetis\VectorAi\Auth\AiAccessInterface` decides who may use each
-feature (`canUse($user, Feature $feature)`) and who may configure AI
-(`canConfigure($user)`). The default admits everyone the Vector access
-policy admits. Bind your own on AppScope, as you bind
-`VectorAccessInterface`; it holds no request state.
+`Kinetis\VectorAi\Auth\AiAccessInterface` decides two things:
+
+- `canUse($user, Feature $feature)`: who may use each feature;
+- `canConfigure($user)`: who may manage the AI settings and keys.
+
+The default admits everyone the Vector access policy admits. Bind your
+own on AppScope, as you bind `VectorAccessInterface`, and keep request
+state out of it:
 
 ```php
 $app->instance(AiAccessInterface::class, new MyAiAccess());
 ```
 
+Every AI route is in the `vector` middleware group.
+
 (ai-boundary)=
 ## What a model is sent
 
-`Kinetis\VectorAi\Governance\ModelBoundary` is the one place that
-decides it, for every feature. Some fields are never sent, whatever is
-configured: password, file and image fields, and every field the
-user's `viewField` policy hides from them (the resource is read as they
-see it). Beyond those, by default a feature may send the model a
-resource's fields, except those a resource or field opts out of with
-the metadata bag ({ref}`resource-meta`):
+One class, `Kinetis\VectorAi\Governance\ModelBoundary`, decides what
+any feature may send a model.
+
+**Never sent**, whatever is configured:
+
+- password, file and image fields;
+- every field the user's `viewField` policy hides from them (the
+  resource is read as they see it).
+
+**Sent by default**: everything else. A resource or a field opts out
+through the metadata bag ({ref}`resource-meta`):
 
 ```php
 #[Resource(entity: Customer::class, meta: ['ai.send' => false])]   // nothing of this resource
 Email::make('email')->meta('ai.send', false),                     // nor this field
 ```
 
-The *Record data sent to the model* setting switches to an allow-list:
-then only a resource that opts in with `meta: ['ai.send' => true]`, and
-within it only the fields that opt in with `meta('ai.send', true)`, are
-sent. Vector publishes the bag and never reads it; `kinetis/vector-ai`
-does. A resource kept from the model whole offers no AI at all: its
+**Allow-list.** With *Record data sent to the model* set to only fields
+marked to send, a resource is sent only when it opts in with
+`meta: ['ai.send' => true]`, and within it only the fields that opt in
+with `meta('ai.send', true)`.
+
+Vector publishes the bag and never reads it; `kinetis/vector-ai` does.
+
+A resource kept from the model whole offers no AI at all: its
 plain-language filter answers `403`, and the admin hides it.
 
-Record data reaches a model only through the assistant's tools, and
-only through the boundary (`record()`, `page()`, `toolResult()`):
+### What each tool answer keeps
 
-- **A record** keeps the fields above, and its primary key always: the
-  key names the record (`products#12`) and is no data of its own. Its
-  `_trashed` marker and its `_version` stay too: `_version` is the
-  optimistic lock a proposed `vector_update` passes back, so an
-  approval made after someone else changed the record is refused. A
-  relation (`{id, label, …}`) always keeps its id, and follows its
-  target's own field governance for the rest: the label (the target's
-  title field) only when the target may be sent and its title field
-  may be too (or is its primary key); each column it carries along (an
-  order's currency, say) only when that field of the target may be sent.
-  A one-to-one value (`{id, label}`) follows the same rules; a to-many
-  relation is only its count. Every string longer than 2,000
-  characters is cut there and marked `… [truncated]`.
+The assistant reads record data only through its tools, and every tool
+answer passes the boundary (`record()`, `page()`, `toolResult()`).
+Writing help and bulk rewrites check the field against the boundary
+before they send it ({ref}`ai-writing`).
+
+- **A record** keeps the fields above, plus:
+
+  - its primary key, which names the record (`products#12`) and is no
+    data of its own;
+  - its `_trashed` marker;
+  - its `_version`: the optimistic lock a proposed `vector_update`
+    passes back, so an approval made after someone else changed the
+    record is refused.
+
+  A relation (`{id, label, …}`) always keeps its id, and follows its
+  target's field governance for the rest:
+
+  - the label (the target's title field) only when the target may be
+    sent and so may its title field (or the title is its primary key);
+  - each column it carries along (an order's currency, say) only when
+    that field of the target may be sent.
+
+  A one-to-one value (`{id, label}`) follows the same rules. A to-many
+  relation is only its count. Every string longer than 2,000 characters
+  is cut and marked `… [truncated]`.
+
 - **A page** is at most 25 records and its position (`currentPage`,
-  `total`, …); never its summaries, which could total a field kept back.
-  A query that projects `fields` may carry more rows, each narrower: at
-  most min(200, ⌊1000 / the number of fields⌋).
-- **A description** (`vector_describe`) is cut like a record: no
-  excluded field, nor one named as the title or a searched field. It
-  describes exactly what a query may use: search only where `q` is let
-  through (below), and as the default sort the order a query that names
-  none is given. What only a write needs (actions, rules, defaults,
-  conditions) is left out.
+  `total`, …). Its summaries are never sent, since they could total a
+  field kept back. A query that projects `fields` may carry more rows,
+  each narrower: at most min(200, ⌊1000 / the number of fields⌋).
+
+- **A description** (`vector_describe`) is cut like a record. An
+  excluded field is left out even where it is the title or a searched
+  field. It describes exactly what a query may use: search only where
+  `q` is allowed (below), and as the default sort the order a query that
+  names none gets. Actions, rules, defaults and conditions, which only a
+  write needs, are left out.
+
 - **A query** (`vector_query`) may filter and sort only on the fields a
-  record keeps (its primary key and the fields above, in `or` and
-  `and` groups too) and search with `q` only where every field search
-  matches may be sent: each searched column, the full-text index's
-  columns, and each searched relation with its target's title. Which
-  records a term or a condition matches, and how they rank, would
-  otherwise tell the model what a field kept back holds, so such a query
-  is refused before it runs, as a tool error that does not name the
-  field. A query that names no sort is ordered by the resource's default
-  sort without its excluded fields, by its primary key when none is
-  left. In the demo, users search and sort by their email, which opts
-  out: the assistant may not search users, nor sort or filter them by
-  email. A projection (`fields`) naming such a field is refused the same
-  way.
+  record keeps, in `or` and `and` groups too. It may search with `q`
+  only where every field the search matches may be sent: each searched
+  column, the full-text index's columns, and each searched relation with
+  its target's title. Otherwise which records match, and how they rank,
+  would tell the model what a kept field holds.
+
+  Such a query, or a projection (`fields`) naming a kept field, is
+  refused before it runs, as a tool error that does not name the field.
+  A query that names no sort is ordered by the resource's default sort
+  without its excluded fields, or by its primary key when none is left.
+
+  In the demo, users search and sort by their email, which opts out: the
+  assistant may not search users, nor sort or filter them by email.
+
 - **An aggregate** (`vector_aggregate`) is refused the same way when its
   `groupBy`, a metric, its `filter`, its `sort` or its `q` touches a
-  field kept from the model, and so is a money metric whose currency
-  field is, since that currency becomes a group key. Its answer is sent
-  with strings cut; a belongsTo group key keeps its id, and its label
-  only when the related resource's title field may be sent. An answer
-  naming a field the boundary would not send is refused whole.
-- **A widget** (`vector_widget`) computes its own figures: its data is
-  sent with strings cut, unless it is a resource widget of a resource
-  kept from the model, any widget whose `link` leads to one
-  (`/r/{slug}…`), or a table whose rows link to records of one; then it
-  is refused. A table row's key that is a field of the resource its link
-  leads to (the row's `_link`, or else the table's `link`), and one the
-  boundary would not send of it, is left out, with its column: the demo's
-  low-stock table, which lists products by SKU, name and stock, loses
-  its SKU column under the allow-list, where products' SKU does not opt
-  in. A key that is no field of that resource, or a widget that shows an
-  excluded field in its own words, has no field to cut by: that is the
-  widget author's to keep from the model, by opting its resource out or
-  by not writing such a widget.
-- **Any other tool's** answer is refused, unless the boundary lists it as
-  carrying no record data (`vector_resources`, which lists slugs and
-  labels only).
+  kept field. So is a money metric whose currency field is kept, since
+  that currency becomes a group key. Its answer is sent with strings
+  cut. A belongsTo group key keeps its id, and its label only when the
+  related resource's title field may be sent. An answer naming a field
+  the boundary would not send is refused whole.
+
+- **A widget** (`vector_widget`) computes its own figures, and its data
+  is sent with strings cut. It is refused when it is a resource widget
+  of a kept resource, when its `link` leads to one (`/r/{slug}…`), or
+  when it is a table whose rows link to records of one.
+
+  In a table, a row key that is a field of the resource its link leads
+  to (the row's `_link`, else the table's `link`), and that the boundary
+  would not send, is left out with its column. The demo's low-stock
+  table lists products by SKU, name and stock; under the allow-list it
+  loses its SKU column, because products' SKU does not opt in.
+
+  A key that is no field of that resource, or a widget that shows an
+  excluded field in its own words, has no field to cut by. Keeping that
+  from the model is the widget author's job: opt the resource out, or do
+  not write such a widget.
+
+- **Any other tool's** answer is refused, unless the boundary lists the
+  tool as carrying no record data: `vector_resources`, which lists slugs
+  and labels only.
 
 (ai-filters)=
 ## Plain-language filters
@@ -1003,6 +1059,7 @@ It is logged with the category and the provider's status only: a
 provider's error body can quote the prompt, and its request carries the
 key.
 
+(ai-testing)=
 ## Testing
 
 The `fake` provider type replays replies keyed by the SHA-256 of the
