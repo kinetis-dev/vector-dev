@@ -45,13 +45,13 @@ final readonly class AssistantController
     /**
      * The largest request body taken, in bytes. The admin trims the
      * conversation it sends to fit it, measured in UTF-8 bytes:
-     * `ASSISTANT_MAX_BODY_BYTES` in @kinetis/vector-ai-ui
+     * `ASSISTANT_MAX_BODY_BYTES` in @kinetis/vector-ui
      * (app/utils/assistantBody.ts), which its test suite checks against
      * this constant.
      */
     public const int MAX_BODY = 65536;
 
-    /** The most messages one turn replays; `ASSISTANT_MAX_MESSAGES` in @kinetis/vector-ai-ui, checked the same way. */
+    /** The most messages one turn replays; `ASSISTANT_MAX_MESSAGES` in @kinetis/vector-ui, checked the same way. */
     public const int MAX_MESSAGES = 40;
 
     /** The longest conversation id. */

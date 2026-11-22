@@ -9,9 +9,7 @@ namespace Kinetis\Vector\Ui;
  * `resources/ui.json` pins it: `{"package":"@kinetis/vector-ui",
  * "version":"<x.y.z>"}` and nothing else. `vector:install-ui` installs
  * that version by default, and the dashboard warns when the UI it runs
- * is another. The pin names the npm package, not the Composer one. A
- * package that ships its own hosted bundle pins it the same way, read
- * with its package name as the one expected.
+ * is another. The pin names the npm package, not the Composer one.
  */
 final readonly class UiPin
 {
@@ -31,11 +29,9 @@ final readonly class UiPin
     }
 
     /**
-     * @param string $package the npm package the pin must name
-     *
      * @throws \UnexpectedValueException naming why the pin is unusable
      */
-    public static function fromFile(string $path, string $package = self::PACKAGE): self
+    public static function fromFile(string $path): self
     {
         $contents = is_file($path) ? file_get_contents($path) : false;
 
@@ -52,10 +48,10 @@ final readonly class UiPin
         if (
             !is_array($data)
             || array_keys($data) !== ['package', 'version']
-            || $data['package'] !== $package
+            || $data['package'] !== self::PACKAGE
             || !is_string($data['version'])
         ) {
-            throw new \UnexpectedValueException("The UI pin {$path} is malformed: it must be exactly {\"package\":\"{$package}\",\"version\":\"<x.y.z>\"}.");
+            throw new \UnexpectedValueException("The UI pin {$path} is malformed: it must be exactly {\"package\":\"" . self::PACKAGE . '","version":"<x.y.z>"}.');
         }
 
         if (preg_match(self::EXACT_VERSION, $data['version']) !== 1) {
@@ -66,10 +62,10 @@ final readonly class UiPin
     }
 
     /** The pin, or null when it is missing or malformed: no expectation. */
-    public static function tryFromFile(string $path, string $package = self::PACKAGE): ?self
+    public static function tryFromFile(string $path): ?self
     {
         try {
-            return self::fromFile($path, $package);
+            return self::fromFile($path);
         } catch (\UnexpectedValueException) {
             return null;
         }

@@ -1,14 +1,12 @@
 #!/usr/bin/env node
-// What a package that ships a hosted bundle packs: the bundle in
-// dist/static, which its install command installs. @kinetis/vector-ui by
-// default; --package=vector-ai-ui for @kinetis/vector-ai-ui.
+// What @kinetis/vector-ui packs: the hosted bundle in dist/static, which
+// `vector:install-ui` installs.
 //
-//     node scripts/check-vector-ui-pack.mjs [--package=…]            prepack: the bundle is built, for this version
-//     node scripts/check-vector-ui-pack.mjs [--package=…] --packed   CI: npm would pack every file of it
+//     node scripts/check-vector-ui-pack.mjs            prepack: the bundle is built, for this version
+//     node scripts/check-vector-ui-pack.mjs --packed   CI: npm would pack every file of it
 //
 // The prepack check refuses to pack without a bundle, or with one built for
-// another package or version, or, for a composed bundle, with another
-// version of what it includes than the package depends on. --packed packs the package with npm, as the release
+// another version. --packed packs the package with npm, as the release
 // publishes it, lists the tarball, and refuses unless it holds
 // vector-bundle.json and every file it lists — dotfiles included, which
 // npm's own rules could drop. The tarball is listed rather than npm's
@@ -20,37 +18,14 @@ import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { HOSTED_PACKAGES, PACKAGE, resolveIncludes } from './build-hosted-bundle.mjs'
 
 /** Where the bundle sits in the package. */
 export const BUNDLE_DIR = 'dist/static'
 
-const USAGE = `Usage: check-vector-ui-pack.mjs [--package=${Object.keys(HOSTED_PACKAGES).join('|')}] [--packed]`
+const packageDir = fileURLToPath(new URL('../packages/vector-ui', import.meta.url))
 
-/** The package directory (vector-ui by default) and whether to check the packed tarball. */
-export function parseArgs(argv) {
-    let pkg = 'vector-ui'
-    let packed = false
-
-    for (const arg of argv) {
-        if (arg.startsWith('--package=') && Object.hasOwn(HOSTED_PACKAGES, arg.slice('--package='.length))) {
-            pkg = arg.slice('--package='.length)
-        } else if (arg === '--packed') {
-            packed = true
-        } else {
-            throw new Error(`Unknown argument ${arg}. ${USAGE}`)
-        }
-    }
-
-    return { package: pkg, packed }
-}
-
-/**
- * Why dir cannot be packed as version of the package named, or null when
- * it can. includes names, for a composed bundle, each included package's
- * version its manifest must carry.
- */
-export async function packProblem(dir, version, { name = PACKAGE, includes = undefined } = {}) {
+/** Why dir cannot be packed as version, or null when it can. */
+export async function packProblem(dir, version) {
     if (!await stat(`${dir}/index.html`).then(s => s.isFile(), () => false)) {
         return `${dir}/index.html is missing: build the hosted bundle before packing.`
     }
@@ -67,26 +42,7 @@ export async function packProblem(dir, version, { name = PACKAGE, includes = und
         return `${dir}/vector-bundle.json is version ${manifest?.version}, not ${version}: build the hosted bundle with --version=${version}.`
     }
 
-    if (manifest.package !== name) {
-        return `${dir}/vector-bundle.json was built for ${manifest.package}, not ${name}: build this package's hosted bundle.`
-    }
-
-    for (const [included, at] of Object.entries(includes ?? {})) {
-        if (manifest.includes?.[included] !== at) {
-            return `${dir}/vector-bundle.json includes ${included} ${manifest.includes?.[included]}, not ${at}, the release ${name} depends on: build the hosted bundle again.`
-        }
-    }
-
     return null
-}
-
-/** The HOSTED_PACKAGES entry, directory and package.json of the package named. */
-async function hostedPackage(pkg) {
-    const dir = fileURLToPath(new URL(`../packages/${pkg}`, import.meta.url))
-    const packageJson = JSON.parse(await readFile(`${dir}/package.json`, 'utf8'))
-    const entry = HOSTED_PACKAGES[pkg]
-
-    return { dir, packageJson, expect: { name: entry.name, includes: resolveIncludes(entry, packageJson) } }
 }
 
 /**
@@ -115,10 +71,9 @@ export function missingFromPack(packed, manifest) {
     return wanted.filter(file => !have.has(file))
 }
 
-async function checkPacked(pkg) {
-    const { dir: packageDir, packageJson, expect } = await hostedPackage(pkg)
-    const version = packageJson.version
-    const problem = await packProblem(`${packageDir}/${BUNDLE_DIR}`, version, expect)
+async function checkPacked() {
+    const version = JSON.parse(await readFile(`${packageDir}/package.json`, 'utf8')).version
+    const problem = await packProblem(`${packageDir}/${BUNDLE_DIR}`, version)
 
     if (problem !== null) {
         return [problem]
@@ -154,26 +109,21 @@ async function checkPacked(pkg) {
         return missing.map(file => `${file} is in the bundle but npm would not pack it.`)
     }
 
-    console.log(`${expect.name} ${version} packs vector-bundle.json and all ${Object.keys(manifest.files).length} files it lists.`)
+    console.log(`@kinetis/vector-ui ${version} packs vector-bundle.json and all ${Object.keys(manifest.files).length} files it lists.`)
 
     return []
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
-    let args
+    const args = process.argv.slice(2)
 
-    try {
-        args = parseArgs(process.argv.slice(2))
-    } catch (error) {
-        console.error(error.message)
+    if (args.length > 1 || (args.length === 1 && args[0] !== '--packed')) {
+        console.error('Usage: check-vector-ui-pack.mjs [--packed]')
         process.exitCode = 2
-    }
-
-    if (args !== undefined) {
-        const { dir, expect } = await hostedPackage(args.package)
-        const problems = args.packed
-            ? await checkPacked(args.package)
-            : [await packProblem(`${dir}/${BUNDLE_DIR}`, process.env.npm_package_version, expect)].filter(problem => problem !== null)
+    } else {
+        const problems = args[0] === '--packed'
+            ? await checkPacked()
+            : [await packProblem(`${packageDir}/${BUNDLE_DIR}`, process.env.npm_package_version)].filter(problem => problem !== null)
 
         problems.forEach(problem => console.error(problem))
         process.exitCode = problems.length === 0 ? 0 : 1

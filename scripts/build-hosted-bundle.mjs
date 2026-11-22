@@ -1,22 +1,20 @@
 #!/usr/bin/env node
-// Builds a package's hosted admin bundle into packages/<package>/dist/static
-// and writes its manifest, vector-bundle.json: the package and version that
-// built it, the vector-dev commit, the descriptor contract it speaks, the
-// npm packages and versions it was built with (`includes`, for a bundle
-// composed over @kinetis/vector-ui) and the sha256 of every file. The npm
-// package ships that directory, and its install command refuses a bundle
-// that does not match its manifest, so a stale build is never installed.
+// Builds the hosted admin bundle into packages/vector-ui/dist/static and
+// writes its manifest, vector-bundle.json: the package and version that
+// built it, the vector-dev commit, the descriptor contract it speaks and
+// the sha256 of every file. The @kinetis/vector-ui npm package ships that
+// directory, and `vector:install-ui` refuses a bundle that does not match
+// its manifest, so a stale build is never installed.
 //
-//     node scripts/build-hosted-bundle.mjs                  @kinetis/vector-ui, at its package.json version
+//     node scripts/build-hosted-bundle.mjs                  @kinetis/vector-ui's package.json version
 //     node scripts/build-hosted-bundle.mjs --version=0.9.0  the same, named: it must be that version
 //     node scripts/build-hosted-bundle.mjs --dev            a dev build: version dev-<short sha>
-//     node scripts/build-hosted-bundle.mjs --package=vector-ai-ui [--version=… | --dev]
 //
-// The bundle is labelled with its package's version in its package.json:
-// it ships inside that package, and the install command installs it as
-// that version. Each package's `pnpm generate:hosted` runs this script. A
-// dev build, which an install command accepts only on a dev install, is
-// never packed (scripts/check-vector-ui-pack.mjs).
+// The bundle is labelled with @kinetis/vector-ui's version in its
+// package.json: it ships inside that package, and `vector:install-ui`
+// installs it as that version. `pnpm generate:hosted` runs this script.
+// A dev build, which `vector:install-ui` accepts only on a dev install of
+// kinetis/vector, is never packed (scripts/check-vector-ui-pack.mjs).
 import { execFileSync, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
@@ -29,40 +27,24 @@ import { parseVersion } from './version-policy.mjs'
 export const MANIFEST = 'vector-bundle.json'
 export const PACKAGE = '@kinetis/vector-ui'
 
-/**
- * The packages that ship a hosted bundle, by their directory under
- * packages/: the npm package, and the npm packages the bundle is built
- * with, at the exact version the package's package.json depends on.
- */
-export const HOSTED_PACKAGES = {
-    'vector-ui': { name: PACKAGE, includes: [] },
-    'vector-ai-ui': { name: '@kinetis/vector-ai-ui', includes: [PACKAGE] },
-}
-
 const root = fileURLToPath(new URL('..', import.meta.url))
+const dist = path.join(root, 'packages/vector-ui/dist/static')
+const output = path.join(root, 'packages/vector-ui/hosted/.output/public')
 const registry = path.join(root, 'packages/vector/src/Registry/VectorRegistry.php')
+const uiPackage = path.join(root, 'packages/vector-ui/package.json')
 
-const USAGE = `Usage: build-hosted-bundle.mjs [--package=${Object.keys(HOSTED_PACKAGES).join('|')}] [--version=<x.y.z> | --dev]`
-
-/** The package directory named (vector-ui by default), the version named or null for package.json's, and whether this is a dev build. */
+/** The version named, or null for package.json's; and whether this is a dev build. */
 export function parseArgs(argv) {
-    let pkg = 'vector-ui'
     let version = null
     let dev = false
 
     for (const arg of argv) {
-        if (arg.startsWith('--package=')) {
-            pkg = arg.slice('--package='.length)
-
-            if (!Object.hasOwn(HOSTED_PACKAGES, pkg)) {
-                throw new Error(`--package=${pkg} ships no hosted bundle. ${USAGE}`)
-            }
-        } else if (arg.startsWith('--version=')) {
+        if (arg.startsWith('--version=')) {
             version = arg.slice('--version='.length)
         } else if (arg === '--dev') {
             dev = true
         } else {
-            throw new Error(`Unknown argument ${arg}. ${USAGE}`)
+            throw new Error(`Unknown argument ${arg}. Usage: build-hosted-bundle.mjs [--version=<x.y.z> | --dev]`)
         }
     }
 
@@ -70,37 +52,11 @@ export function parseArgs(argv) {
         throw new Error('--dev builds dev-<short sha>; it takes no --version.')
     }
 
-    return { package: pkg, version, dev }
-}
-
-/**
- * What the manifest's `includes` names for the package with this
- * HOSTED_PACKAGES entry and package.json: each included npm package at
- * the exact version the package depends on. Undefined when it includes
- * none.
- */
-export function resolveIncludes(entry, packageJson) {
-    if (entry.includes.length === 0) {
-        return undefined
-    }
-
-    const includes = {}
-
-    for (const name of entry.includes) {
-        const version = packageJson.dependencies?.[name]
-
-        if (typeof version !== 'string' || parseVersion(version) === null) {
-            throw new Error(`${entry.name} must depend on exactly one ${name} release (X.Y.Z), not ${JSON.stringify(version)}: its bundle includes it.`)
-        }
-
-        includes[name] = version
-    }
-
-    return includes
+    return { version, dev }
 }
 
 /** The manifest version: package.json's, the one named and checked against it, or dev-<12-hex short sha>. */
-export function resolveVersion(requested, packageVersion, source, dev = false, name = PACKAGE) {
+export function resolveVersion(requested, packageVersion, source, dev = false) {
     if (dev) {
         return `dev-${source.slice(0, 12)}`
     }
@@ -114,7 +70,7 @@ export function resolveVersion(requested, packageVersion, source, dev = false, n
     }
 
     if (requested !== packageVersion) {
-        throw new Error(`--version=${requested} differs from ${name}'s version ${packageVersion} in its package.json; the bundle ships in that release.`)
+        throw new Error(`--version=${requested} differs from @kinetis/vector-ui's version ${packageVersion} in its package.json; the bundle ships in that release.`)
     }
 
     return requested
@@ -156,14 +112,14 @@ async function sha256(file) {
 }
 
 /** Writes dir/vector-bundle.json describing every other file in dir, and returns it. */
-export async function writeManifest(dir, { package: name = PACKAGE, version, descriptorVersion, source, includes }) {
+export async function writeManifest(dir, { version, descriptorVersion, source }) {
     const files = {}
 
     for (const file of await listFiles(dir)) {
         files[file] = await sha256(path.join(dir, file))
     }
 
-    const manifest = { package: name, version, descriptorVersion, source, ...(includes === undefined ? {} : { includes }), files }
+    const manifest = { package: PACKAGE, version, descriptorVersion, source, files }
     await writeFile(path.join(dir, MANIFEST), `${JSON.stringify(manifest, null, 4)}\n`)
 
     return manifest
@@ -215,19 +171,14 @@ export async function headCommit(repo) {
 }
 
 async function main() {
-    const { package: pkg, version: requested, dev } = parseArgs(process.argv.slice(2))
-    const entry = HOSTED_PACKAGES[pkg]
-    const packageDir = path.join(root, 'packages', pkg)
-    const dist = path.join(packageDir, 'dist/static')
-    const output = path.join(packageDir, 'hosted/.output/public')
+    const { version: requested, dev } = parseArgs(process.argv.slice(2))
     const source = await headCommit(root)
 
-    const packageJson = JSON.parse(await readFile(path.join(packageDir, 'package.json'), 'utf8'))
-    const version = resolveVersion(requested, packageJson.version, source, dev, entry.name)
-    const includes = resolveIncludes(entry, packageJson)
+    const packageVersion = JSON.parse(await readFile(uiPackage, 'utf8')).version
+    const version = resolveVersion(requested, packageVersion, source, dev)
     const descriptor = descriptorVersion(await readFile(registry, 'utf8'))
 
-    const build = spawnSync('pnpm', ['--filter', entry.name, 'exec', 'nuxt', 'generate', 'hosted'], {
+    const build = spawnSync('pnpm', ['--filter', '@kinetis/vector-ui', 'exec', 'nuxt', 'generate', 'hosted'], {
         cwd: root,
         env: { ...process.env, NUXT_APP_BASE_URL: '/vector/ui/' },
         stdio: 'inherit',
@@ -238,10 +189,9 @@ async function main() {
     }
 
     await copyBundle(output, dist)
-    const manifest = await writeManifest(dist, { package: entry.name, version, descriptorVersion: descriptor, source, includes })
-    const built = includes === undefined ? '' : `, built with ${Object.entries(includes).map(([name, at]) => `${name} ${at}`).join(', ')}`
+    const manifest = await writeManifest(dist, { version, descriptorVersion: descriptor, source })
 
-    console.log(`Built the hosted admin bundle ${entry.name} ${version} (${Object.keys(manifest.files).length} files, descriptor version ${descriptor}${built}) into packages/${pkg}/dist/static.`)
+    console.log(`Built the hosted admin bundle ${version} (${Object.keys(manifest.files).length} files, descriptor version ${descriptor}) into packages/vector-ui/dist/static.`)
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {

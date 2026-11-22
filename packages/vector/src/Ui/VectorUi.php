@@ -18,9 +18,8 @@ use Kinetis\Config\Config;
  * It also holds the two UI versions, read once at boot without hashing:
  * the @kinetis/vector-ui version this kinetis/vector pins
  * (`resources/ui.json`), which the descriptor publishes so the dashboard
- * can warn about drift, and the @kinetis/vector-ui version the served
- * directory's `vector-bundle.json` names: the bundle's own, or the one a
- * composed bundle includes. Either is null when its file is missing or
+ * can warn about drift, and the version the served directory's
+ * `vector-bundle.json` names. Either is null when its file is missing or
  * malformed; neither stops the worker from booting.
  */
 final readonly class VectorUi
@@ -83,7 +82,7 @@ final readonly class VectorUi
             $csp === '' ? null : $csp,
             array_values(array_filter(array_map('trim', explode(',', $config->string('VECTOR_UI_EXTENSIONS', ''))))),
             UiPin::tryFromFile($pinFile ?? UiPin::path())?->version,
-            HostedBundle::read($dir . '/' . HostedBundle::MANIFEST)?->carries(UiPin::PACKAGE),
+            HostedBundle::read($dir . '/' . HostedBundle::MANIFEST)?->version,
         );
     }
 }

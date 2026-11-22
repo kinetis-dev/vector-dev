@@ -196,33 +196,6 @@ final class InstallCommandTest extends TestCase
             mkdir($dir, 0755, true);
             UiFixtures::bundle($dir, '0.0.1');
         }, 'is @kinetis/vector-ui 0.0.1; this kinetis/vector expects ' . UiPin::fromFile(UiPin::path())->version];
-
-        yield 'another package including none' => [static function (string $dir): void {
-            mkdir($dir, 0755, true);
-            UiFixtures::bundle($dir, '2.0.0', [], ['package' => '@acme/admin-plus']);
-        }, 'is @acme/admin-plus 2.0.0, which does not include @kinetis/vector-ui'];
-    }
-
-    public function testItSaysNothingAboutAComposedBundleIncludingThePinnedRelease(): void
-    {
-        mkdir($this->root . '/ui', 0755, true);
-        UiFixtures::bundle($this->root . '/ui', '2.0.0', [], ['package' => '@acme/admin-plus', 'includes' => ['@kinetis/vector-ui' => UiPin::fromFile(UiPin::path())->version]]);
-
-        [$status, $output] = $this->install();
-
-        self::assertSame(0, $status);
-        self::assertStringNotContainsString('admin UI', $output);
-    }
-
-    public function testItNotesAComposedBundleIncludingAnotherRelease(): void
-    {
-        mkdir($this->root . '/ui', 0755, true);
-        UiFixtures::bundle($this->root . '/ui', '2.0.0', [], ['package' => '@acme/admin-plus', 'includes' => ['@kinetis/vector-ui' => '0.0.1']]);
-
-        [$status, $output] = $this->install();
-
-        self::assertSame(0, $status);
-        self::assertStringContainsString('is @acme/admin-plus 2.0.0, built with @kinetis/vector-ui 0.0.1; this kinetis/vector expects ' . UiPin::fromFile(UiPin::path())->version . '. Install the @acme/admin-plus release built with it, then restart workers.', $output);
     }
 
     /**

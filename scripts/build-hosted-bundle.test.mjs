@@ -6,7 +6,7 @@ import { lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { after, before, test } from 'node:test'
-import { copyBundle, descriptorVersion, HOSTED_PACKAGES, headCommit, listFiles, parseArgs, resolveIncludes, resolveVersion, writeManifest } from './build-hosted-bundle.mjs'
+import { copyBundle, descriptorVersion, headCommit, listFiles, parseArgs, resolveVersion, writeManifest } from './build-hosted-bundle.mjs'
 
 const source = '0123456789abcdef0123456789abcdef01234567'
 let dir
@@ -80,46 +80,11 @@ test("a release version must be canonical X.Y.Z and @kinetis/vector-ui's package
 })
 
 test('arguments: --version or --dev, not both', () => {
-    assert.deepEqual(parseArgs([]), { package: 'vector-ui', version: null, dev: false })
-    assert.deepEqual(parseArgs(['--version=0.9.0']), { package: 'vector-ui', version: '0.9.0', dev: false })
-    assert.deepEqual(parseArgs(['--dev']), { package: 'vector-ui', version: null, dev: true })
+    assert.deepEqual(parseArgs([]), { version: null, dev: false })
+    assert.deepEqual(parseArgs(['--version=0.9.0']), { version: '0.9.0', dev: false })
+    assert.deepEqual(parseArgs(['--dev']), { version: null, dev: true })
     assert.throws(() => parseArgs(['--dev', '--version=0.9.0']), /takes no --version/)
     assert.throws(() => parseArgs(['--release']), /Unknown argument --release/)
-})
-
-test('arguments: --package names a package that ships a hosted bundle, vector-ui by default', () => {
-    assert.deepEqual(parseArgs(['--package=vector-ai-ui', '--version=0.1.0']), { package: 'vector-ai-ui', version: '0.1.0', dev: false })
-    assert.deepEqual(parseArgs(['--package=vector-ui', '--dev']), { package: 'vector-ui', version: null, dev: true })
-    assert.throws(() => parseArgs(['--package=vector']), /--package=vector ships no hosted bundle/)
-    assert.throws(() => parseArgs(['--package=']), /ships no hosted bundle/)
-})
-
-test("a composed bundle includes the exact @kinetis/vector-ui release its package.json depends on", () => {
-    assert.equal(resolveIncludes(HOSTED_PACKAGES['vector-ui'], { dependencies: {} }), undefined)
-    assert.deepEqual(resolveIncludes(HOSTED_PACKAGES['vector-ai-ui'], { dependencies: { '@kinetis/vector-ui': '0.13.0' } }), { '@kinetis/vector-ui': '0.13.0' })
-    assert.throws(() => resolveIncludes(HOSTED_PACKAGES['vector-ai-ui'], { dependencies: { '@kinetis/vector-ui': '^0.13.0' } }), /must depend on exactly one @kinetis\/vector-ui release/)
-    assert.throws(() => resolveIncludes(HOSTED_PACKAGES['vector-ai-ui'], {}), /must depend on exactly one @kinetis\/vector-ui release/)
-})
-
-test("the repository's vector-ai-ui includes the @kinetis/vector-ui it depends on", async () => {
-    const ai = JSON.parse(await readFile(new URL('../packages/vector-ai-ui/package.json', import.meta.url), 'utf8'))
-
-    assert.deepEqual(resolveIncludes(HOSTED_PACKAGES['vector-ai-ui'], ai), { '@kinetis/vector-ui': ai.dependencies['@kinetis/vector-ui'] })
-})
-
-test('a composed bundle\'s manifest names its package and what it includes, before its files', async () => {
-    const written = await writeManifest(dir, { package: '@kinetis/vector-ai-ui', version: '0.1.0', descriptorVersion: 6, source, includes: { '@kinetis/vector-ui': '0.13.0' } })
-    const manifest = JSON.parse(await readFile(path.join(dir, 'vector-bundle.json'), 'utf8'))
-
-    assert.deepEqual(manifest, written)
-    assert.deepEqual(Object.keys(manifest), ['package', 'version', 'descriptorVersion', 'source', 'includes', 'files'])
-    assert.equal(manifest.package, '@kinetis/vector-ai-ui')
-    assert.deepEqual(manifest.includes, { '@kinetis/vector-ui': '0.13.0' })
-    assert.deepEqual(Object.keys(manifest.files), await listFiles(dir))
-})
-
-test("a named version must be the named package's", () => {
-    assert.throws(() => resolveVersion('0.2.0', '0.1.0', source, false, '@kinetis/vector-ai-ui'), /differs from @kinetis\/vector-ai-ui's version 0\.1\.0 in its package\.json/)
 })
 
 test('the descriptor version is read from VectorRegistry', async () => {
