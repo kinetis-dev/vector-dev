@@ -4,7 +4,8 @@ import { ADMIN, expect, test } from '../support/fixtures'
 // Writing help against the demo's `fake` AI provider, which shortens the
 // two texts App\Vector\Ai\DemoAiReplies scripts: an order's notes, from
 // the icon inside their textarea, and a product description's paragraph,
-// selected in the rich-text editor. The answer shows beside the text (for
+// selected in the rich-text editor or, with nothing selected, as its whole
+// text. The answer shows beside the text (for
 // the notes, in a popover under the field); Replace puts it in
 // the input, and the admin saves it as their own edit. Needs the stack
 // configured with it (backend/.env: VECTOR_AI_PROVIDERS=demo,
@@ -79,10 +80,6 @@ test.describe('AI, writing help', () => {
             await editor.click()
             await page.keyboard.press('ControlOrMeta+a')
             await page.keyboard.type(LONG_DESCRIPTION)
-            // nothing selected, nothing to work on
-            await page.keyboard.press('End')
-            await expect(menu).toBeDisabled()
-
             await editor.locator('p').first().click({ clickCount: 3 })
             await expect(menu).toBeEnabled()
             const asked = page.waitForResponse(response => response.url().endsWith('/vector/ai/writing/products/description') && response.request().method() === 'POST')
@@ -104,6 +101,42 @@ test.describe('AI, writing help', () => {
         } finally {
             await api.update('products', product.id, { description: before })
         }
+        expect(await csp()).toEqual([])
+    })
+
+    test('in a rich-text description with nothing selected it works on the whole text, and is disabled once the editor is blank', async ({ admin: page, api }) => {
+        const csp = await watchCsp(page)
+        const product = (await api.search('products', 'SKU-00044'))[0]!
+
+        await page.goto(`r/products/${product.id}/edit`)
+        await page.getByRole('tab', { name: 'Content' }).click()
+        const editor = page.getByRole('textbox', { name: 'Description' })
+        const menu = page.locator('[data-editor-toolbar-item="ai-writing"] [data-ai-writing-menu]')
+        await editor.click()
+        await page.keyboard.press('ControlOrMeta+a')
+        await page.keyboard.type(LONG_DESCRIPTION)
+        // a caret, no selection
+        await page.keyboard.press('End')
+        await expect(menu).toBeEnabled()
+        await expect(menu).toHaveAttribute('title', 'Writing help: works on the whole text, or on the part you select')
+
+        const asked = page.waitForResponse(response => response.url().endsWith('/vector/ai/writing/products/description') && response.request().method() === 'POST')
+        await menu.click()
+        await page.locator('[data-ai-writing-operation="shorten"]').click()
+        expect((await asked).request().postDataJSON()).toMatchObject({ operation: 'shorten', text: LONG_DESCRIPTION, format: 'plain', recordId: String(product.id) })
+        const result = page.locator('[data-ai-writing-result]')
+        await expect(result.locator('[data-ai-writing-before]')).toHaveText(LONG_DESCRIPTION)
+        await expect(result.locator('[data-ai-writing-after]')).toHaveText(SHORT_DESCRIPTION)
+        await result.locator('[data-ai-writing-discard]').click()
+        await expect(result).toBeHidden()
+
+        // nothing saved: the editor alone is emptied
+        await editor.click()
+        await page.keyboard.press('ControlOrMeta+a')
+        await page.keyboard.press('Delete')
+        await expect(editor).toHaveText('')
+        await expect(menu).toBeDisabled()
+        await expect(menu).toHaveAttribute('title', 'Write some text first')
         expect(await csp()).toEqual([])
     })
 })
