@@ -16,7 +16,9 @@
 //   - kinetis/vector's resources/ui.json pins exactly the vector-ui
 //     release in packages/vector-ui/package.json (see checkPin());
 //   - @kinetis/vector-ai-ui depends on exactly the @kinetis/vector-ui
-//     release kinetis/vector pins (see checkPairing()).
+//     release kinetis/vector pins (see checkPairing());
+//   - kinetis/vector-ai's resources/ui.json pins exactly the vector-ai-ui
+//     release in packages/vector-ai-ui/package.json (see checkAiPin()).
 //
 // history, against a comparison base:
 //   - a product whose files under its path changed has its version bumped,
@@ -215,7 +217,53 @@ export function checkConsistency(manifest, read) {
         }
     }
 
-    return [...problems, ...checkPin(manifest, read), ...checkPairing(manifest, read)]
+    return [...problems, ...checkPin(manifest, read), ...checkPairing(manifest, read), ...checkAiPin(manifest, read)]
+}
+
+/**
+ * The problems of kinetis/vector-ai's UI pin, `<vector-ai path>/resources/ui.json`:
+ * exactly `{"package": "@kinetis/vector-ai-ui", "version": "<x.y.z>"}`,
+ * at the version packages/vector-ai-ui/package.json carries. It names the
+ * release whose hosted bundle `vector-ai:install-ui` installs;
+ * scripts/bump.mjs moves it with vector-ai-ui's version. Checked only when
+ * the manifest lists both products.
+ */
+export function checkAiPin(manifest, read) {
+    const ai = manifest.packages['vector-ai']
+    const aiUi = manifest.packages['vector-ai-ui']
+
+    if (ai === undefined || aiUi === undefined) {
+        return []
+    }
+
+    const file = `${ai.path}/${PIN_FILE}`
+    const json = read(file)
+
+    if (json === null) {
+        return [`vector-ai: ${file} is missing; it pins the ${aiUi.name} release vector-ai:install-ui installs`]
+    }
+
+    let pin
+
+    try {
+        pin = JSON.parse(json)
+    } catch {
+        return [`vector-ai: ${file} is not valid JSON`]
+    }
+
+    if (pin === null || typeof pin !== 'object' || Array.isArray(pin) || Object.keys(pin).sort().join() !== 'package,version' || pin.package !== aiUi.name) {
+        return [`vector-ai: ${file} must be exactly {"package": "${aiUi.name}", "version": "<x.y.z>"}`]
+    }
+
+    const npm = read(`${aiUi.path}/package.json`)
+    const version = npm === null ? aiUi.version : JSON.parse(npm).version
+    const where = npm === null ? `the manifest's ${aiUi.name}` : `${aiUi.path}/package.json`
+
+    if (pin.version !== version) {
+        return [`vector-ai: ${file} pins ${aiUi.name} ${pin.version}, but ${where} is at ${version}; run scripts/bump.mjs vector-ai-ui, which moves the pin with it`]
+    }
+
+    return []
 }
 
 /**

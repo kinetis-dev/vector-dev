@@ -16,6 +16,9 @@
         "vector-ai": {
             "name": "kinetis/vector-ai",
             "path": "packages/vector-ai",
+            "includes": [
+                "packages/vector-ai-ui"
+            ],
             "version": "0.1.0"
         },
         "vector-ai-ui": {

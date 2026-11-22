@@ -167,6 +167,14 @@ export function bump(repo, key, component, { date = today() } = {}) {
         writes.push([file, setDependencyVersion(readFileSync(file, 'utf8'), entry.name, to, `${aiUi.path}/package.json`)])
     }
 
+    // kinetis/vector-ai pins the @kinetis/vector-ai-ui release whose hosted bundle vector-ai:install-ui installs
+    const ai = manifest.packages['vector-ai']
+
+    if (key === 'vector-ai-ui' && ai !== undefined && existsSync(path.join(repo, ai.path, PIN_FILE))) {
+        const pin = path.join(repo, ai.path, PIN_FILE)
+        writes.push([pin, setPinVersion(readFileSync(pin, 'utf8'), to, `${ai.path}/${PIN_FILE}`)])
+    }
+
     for (const [file, contents] of writes) {
         writeFileSync(file, contents)
     }
