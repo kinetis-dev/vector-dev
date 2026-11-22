@@ -229,6 +229,14 @@ jobs:
           npm install --global npm@^11.5.1
           pnpm install --frozen-lockfile
 
+      - name: Build the hosted admin bundle with AI
+        # Into packages/vector-ai-ui/dist/static, labelled with the version
+        # being published and the @kinetis/vector-ui release it includes:
+        # the package's prepack refuses any other.
+        env:
+          VERSION: ${{ needs.plan.outputs.ai_ui_version }}
+        run: node scripts/build-hosted-bundle.mjs --package=vector-ai-ui --version="$VERSION"
+
       - name: What would be published
         working-directory: packages/vector-ai-ui
         run: |
@@ -280,6 +288,15 @@ jobs:
         env:
           VERSION: ${{ needs.plan.outputs.ai_ui_version }}
         run: echo "::notice::@kinetis/vector-ai-ui@${VERSION} is already on npm; nothing to publish."
+
+      - name: Build the hosted admin bundle with AI
+        if: steps.npm.outputs.published != 'true'
+        # Into packages/vector-ai-ui/dist/static, labelled with the version
+        # being published and the @kinetis/vector-ui release it includes:
+        # the package's prepack refuses any other.
+        env:
+          VERSION: ${{ needs.plan.outputs.ai_ui_version }}
+        run: node scripts/build-hosted-bundle.mjs --package=vector-ai-ui --version="$VERSION"
 
       - name: Publish @kinetis/vector-ai-ui
         if: steps.npm.outputs.published != 'true'
