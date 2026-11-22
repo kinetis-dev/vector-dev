@@ -8,8 +8,8 @@ use Kinetis\Config\Config;
 
 /**
  * Seals the provider keys administrators enter, with libsodium's AEAD
- * XChaCha20-Poly1305 (IETF) under VECTOR_AI_KEY — 32 bytes, given as
- * `base64:<…>` — and a random 24-byte nonce for every write. Without
+ * XChaCha20-Poly1305 (IETF) under VECTOR_AI_KEY (32 bytes, given as
+ * `base64:<…>`) and a random 24-byte nonce for every write. Without
  * VECTOR_AI_KEY it seals nothing: storing a key is refused.
  *
  * Every value is sealed for a context, authenticated with it as

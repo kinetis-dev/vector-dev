@@ -7,22 +7,22 @@ namespace Kinetis\VectorAi\Approvals;
 use DateTimeImmutable;
 
 /**
- * One row of `vector_ai_approvals`: a change the assistant proposed — a
- * write tool and the arguments it would be called with — for one actor
+ * One row of `vector_ai_approvals`: a change the assistant proposed (a
+ * write tool and the arguments it would be called with) for one actor
  * (and impersonator), and where it stands.
  */
 final readonly class Approval
 {
     /**
-     * Why a row left `executing` without its request settling it — the
-     * worker died, or the request was cut off — is failed with
+     * Why a row left `executing` without its request settling it (the
+     * worker died, or the request was cut off) is failed with
      * (ApprovalStore::failStale()): the change may or may not have been made.
      */
     public const string UNKNOWN_OUTCOME = 'The outcome is unknown: the request that ran it did not finish. Check the record\'s History.';
 
     /**
      * What an execution that threw is failed with: never the exception's
-     * text, and never "nothing changed" — the write may have committed
+     * text, and never "nothing changed"; the write may have committed
      * before the exception was thrown.
      */
     public const string MAY_HAVE_CHANGED = 'The change failed, but it may have been made before it did. Check the record\'s History.';

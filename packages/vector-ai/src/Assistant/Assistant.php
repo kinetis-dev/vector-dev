@@ -42,7 +42,7 @@ use Psr\Log\LoggerInterface;
 
 /**
  * The assistant: one agent run over Vector's six read tools, each a
- * GovernedTool, as this request's user — and, where AiAvailability
+ * GovernedTool, as this request's user, and, where AiAvailability
  * permits Feature::AssistantWrites (its switch and the assistant's on, and
  * AiAccessInterface letting this user use both),
  * Vector's four write tools as ProposingTools, which only propose: each
@@ -78,8 +78,8 @@ final readonly class Assistant
 
     /**
      * The assistant turn put between two user-role turns that would
-     * otherwise be adjacent — an approval's outcome right after the
-     * admin's message, or two of their messages — since a provider such
+     * otherwise be adjacent (an approval's outcome right after the
+     * admin's message, or two of their messages) since a provider such
      * as Bedrock refuses roles that do not alternate.
      */
     public const string BRIDGE = '(No answer was recorded for this turn.)';
@@ -120,7 +120,7 @@ final readonly class Assistant
 
     /**
      * Whether this run may propose changes: AiAvailability::permits() of
-     * Feature::AssistantWrites — the very predicate the approve endpoint
+     * Feature::AssistantWrites; the very predicate the approve endpoint
      * asks, so nothing is proposed that could not be approved. When not,
      * the agent is given none of the write tools.
      */
@@ -131,7 +131,7 @@ final readonly class Assistant
 
     /**
      * The system prompt: the assistant's role and rules, this user's
-     * locale and the page they are on — its path and record id as the
+     * locale and the page they are on; its path and record id as the
      * browser sent them, and the resource's label, when that resource is
      * one this user sees and the model may be told of. Nothing names a
      * resource kept from the model: neither its slug, nor a record of it,
@@ -161,8 +161,8 @@ final readonly class Assistant
 
     /**
      * The page's path when it names nothing kept from the model: a path
-     * under `/r/{slug}` only when that slug — the path's own, whatever the
-     * request says the resource is — may be sent; any other path as it is.
+     * under `/r/{slug}` only when that slug (the path's own, whatever the
+     * request says the resource is) may be sent; any other path as it is.
      */
     private function sendablePath(?string $path): ?string
     {
@@ -177,9 +177,9 @@ final readonly class Assistant
      * The run as Server-Sent Events in the Vercel AI SDK data-stream
      * protocol, each proposal announced in a `data-approval` frame right
      * after the tool result that stored it. Only the answer reaches the
-     * browser, and so the conversation it replays: a reasoning part — the
+     * browser, and so the conversation it replays: a reasoning part (the
      * reasoning a model writes inline, which ProviderResolver's
-     * InlineReasoningProvider streams as reasoning, or a provider's own — is
+     * InlineReasoningProvider streams as reasoning, or a provider's own) is
      * counted toward the usage estimate but never written. It starts when the response is
      * emitted. $connection is the request's, and decides only whether a
      * frame is written; $signal is the one the provider's stream asks
@@ -200,11 +200,11 @@ final readonly class Assistant
     }
 
     /**
-     * The run answered whole: its final text — without the reasoning a model
+     * The run answered whole: its final text, without the reasoning a model
      * writes inline, which ProviderResolver's InlineReasoningProvider takes
      * out of it; the tools it called, in order,
      * each with whether it answered (`ok`) or was an error the model was
-     * told of — as the stream tells them apart by `tool-output-available`
+     * told of, as the stream tells them apart by `tool-output-available`
      * and `tool-output-error`; and the changes it proposed, each as its
      * `approval` frame.
      *
@@ -292,7 +292,7 @@ final readonly class Assistant
     /**
      * The run's events, its end logged; each proposal's `data-approval`
      * frame follows the event during which its tool stored it. The run is
-     * driven by hand, one step — one advance of its generator — at a time,
+     * driven by hand, one step (one advance of its generator) at a time,
      * and the connection is asked before every step: advancing is what
      * sends a provider request and runs a tool, and an unstarted generator
      * already does on valid() or current(). Once the browser has gone, the
@@ -300,15 +300,15 @@ final readonly class Assistant
      *
      * How it ends:
      *
-     * - a departure — the application stopped it: the DepartureSignal fired
+     * - a departure; the application stopped it: the DepartureSignal fired
      *   and the stream stopped (cleanly, or with the ProviderException a
      *   stream stopped before any text raises), or the run was not advanced
-     *   because the browser had gone — is logged at info as outcome
+     *   because the browser had gone, is logged at info as outcome
      *   `client_gone` (gone()), whatever call was in flight charged by the
      *   ledger;
      * - anything else is a failure, whether or not the browser is still
-     *   there — a provider's refusal, a cut stream, a tool's exception, a
-     *   runaway model, a database error — logged by failed(): a warning for
+     *   there (a provider's refusal, a cut stream, a tool's exception, a
+     *   runaway model, a database error) logged by failed(): a warning for
      *   a provider's failure, an error for the run's own; its error frame is
      *   written only while the browser is there;
      * - a run that ends cleanly is `answered`, unless the signal fired.
@@ -404,13 +404,13 @@ final readonly class Assistant
         $this->ended($provider, $ledger, $budget, $started);
     }
 
-    /** Whether $event is part of a reasoning part — `reasoning-start`, `-delta` or `-end` — which no browser is sent. */
+    /** Whether $event is part of a reasoning part (`reasoning-start`, `-delta` or `-end`) which no browser is sent. */
     private static function isReasoning(ProtocolEvent $event): bool
     {
         return str_starts_with($event->type, 'reasoning-');
     }
 
-    /** The text $event streams back from the model — its answer, reasoning or a tool call's arguments — for the ledger's estimate. */
+    /** The text $event streams back from the model (its answer, reasoning or a tool call's arguments) for the ledger's estimate. */
     private static function streamedText(ProtocolEvent $event): string
     {
         $text = match ($event->type) {
@@ -455,8 +455,8 @@ final readonly class Assistant
     }
 
     /**
-     * A departure (told()): an info line, as a run's end is — never the
-     * provider's failure — with how many steps the run was advanced (0:
+     * A departure (told()): an info line, as a run's end is (never the
+     * provider's failure) with how many steps the run was advanced (0:
      * the browser had gone before its first request), and what stopped it
      * by class and place but no exception. A call in flight is charged by
      * the ledger, as the departure's.
@@ -523,7 +523,7 @@ final readonly class Assistant
 
     /**
      * The `data-approval` frames of the proposals stored since the last
-     * call, through the adapter's own custom-data encoding — or, once the
+     * call, through the adapter's own custom-data encoding, or, once the
      * adapter has finished the message, the same frame directly.
      *
      * @return Generator<int, ProtocolEvent, mixed, void>
@@ -547,12 +547,12 @@ final readonly class Assistant
 
     /**
      * The conversation as the agent takes it. A `{role: "approval", id}`
-     * message — what the admin's browser sends once they decided on a
-     * proposal — becomes a turn telling the model the outcome, read from
+     * message (what the admin's browser sends once they decided on a
+     * proposal) becomes a turn telling the model the outcome, read from
      * this actor's own row (never from the browser) and its result passed
      * through ModelBoundary::toolResult(). Wherever two user-role turns
-     * would be adjacent — such a turn after the admin's message, or any
-     * user turn after another, as an edited conversation can send — a
+     * would be adjacent (such a turn after the admin's message, or any
+     * user turn after another, as an edited conversation can send) a
      * BRIDGE assistant turn goes between them, so the roles alternate.
      * Every turn before the first user-role one is dropped: the browser
      * trims a long conversation from its start, and a provider such as
@@ -635,8 +635,8 @@ final readonly class Assistant
     /**
      * Why a failed approval failed, as the model may be told it: this
      * package's own failure texts, which quote nothing, as they are; the
-     * tool's refusal — a validation, policy or hook message, which can
-     * quote record values and fields kept from the model — only through
+     * tool's refusal (a validation, policy or hook message, which can
+     * quote record values and fields kept from the model) only through
      * ModelBoundary::writeFailure().
      *
      * @return array<string, mixed>

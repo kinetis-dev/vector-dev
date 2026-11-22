@@ -10,7 +10,7 @@ use Kinetis\Vector\Store\SettingsStore;
 /**
  * The `ai` settings group's values for this request, read once on first
  * use (the defaults where nothing is stored). Request-scoped: the values
- * it keeps end with the request — and with each chunk of a queued
+ * it keeps end with the request, and with each chunk of a queued
  * action, which Vector runs on a request scope of its own, so a change
  * saved while a job runs is read by its next chunk.
  */

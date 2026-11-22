@@ -22,7 +22,7 @@ use Psr\Http\Message\ServerRequestInterface;
 /**
  * POST /vector/ai/filters/{resource}: a sentence as a filter of one
  * resource, `{text, timezone?, current?: {filter}}` in, `{filter, groups,
- * q, explanation, unresolved}` out — the list's own grammar, validated by
+ * q, explanation, unresolved}` out; the list's own grammar, validated by
  * the list's own validator (FilterTranslator). Nothing is applied here:
  * the admin applies it through the ordinary list request, which
  * validates it again.

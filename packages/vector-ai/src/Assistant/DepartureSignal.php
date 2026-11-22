@@ -10,7 +10,7 @@ use Kinetis\Runtime\ClientConnectionInterface;
  * Whether the application itself stopped an assistant run's provider
  * stream because the browser left. shouldStop() is the closure a stream
  * asks before every event it reads (StoppableHttpClient, through
- * ProviderResolver::for()); once it answered true — the connection gone —
+ * ProviderResolver::for()); once it answered true (the connection gone)
  * the stream closes, and fired() is true for the rest of the run. That is
  * the one way a stream stops, so fired() is the only evidence that a
  * provider's failure was the departure's doing rather than the provider's:

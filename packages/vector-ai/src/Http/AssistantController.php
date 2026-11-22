@@ -25,14 +25,14 @@ use Psr\Http\Message\ServerRequestInterface;
  * context?: {path, resource, recordId}}` in. The answer streams as
  * Server-Sent Events in the Vercel AI SDK data-stream protocol, a change
  * the assistant proposed as a `data-approval` frame; with `Accept:
- * application/json` it comes whole, `{text, toolCalls, approvals}` — what
+ * application/json` it comes whole, `{text, toolCalls, approvals}`, what
  * the admin falls back to where the runtime cannot stream (RoadRunner
  * answers a stream with 501).
  *
  * The conversation is the browser's: it is replayed on every turn, holds
  * the user's and the assistant's text, and the ids of proposals the admin
  * decided on (`{role: "approval", id: "apr_…"}`), whose outcome the server
- * reads from its own row — and authorizes nothing: every tool runs as this
+ * reads from its own row, and authorizes nothing: every tool runs as this
  * request's user, and nothing in it can execute a change. Asked in this order, before any frame
  * is sent: whether the feature is on, configured and this user's (403,
  * AiAvailability::provider()), the day's token budget (429 until midnight

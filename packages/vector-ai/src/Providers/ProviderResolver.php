@@ -35,14 +35,14 @@ use NeuronAI\Providers\OpenAILike;
  * over the app-scoped transport (never an empty HTTP client, which would
  * make Neuron block the worker on curl) and under the feature's own
  * deadline when it has a shorter one (Feature::timeout(); a Bedrock
- * call keeps its signing client's) — VECTOR_AI_TIMEOUT otherwise — and parallel tool calls, which
+ * call keeps its signing client's) (VECTOR_AI_TIMEOUT otherwise) and parallel tool calls, which
  * fork the worker, are never turned on. Every provider, the `fake` one
  * included, is wrapped in Neuron's InlineReasoningProvider: the reasoning
  * a model writes inline, between `<thinking>` or `<think>` tags, streams
- * as reasoning and is taken out of the text of every answer — a chat, a
- * stream or a structured call alike — so no caller sees it as the answer.
- * Built per request — the request
- * container autowires it, and wipes it with the request — so what
+ * as reasoning and is taken out of the text of every answer (a chat, a
+ * stream or a structured call alike) so no caller sees it as the answer.
+ * Built per request (the request
+ * container autowires it, and wipes it with the request) so what
  * resolvable() remembers of each provider's stored key is one request's.
  */
 final readonly class ProviderResolver
@@ -50,7 +50,7 @@ final readonly class ProviderResolver
     /**
      * Whether a key is stored for each provider, by name, once resolvable()
      * asked: every feature on one provider shares one lookup. This
-     * resolver's own, and so one request's — never shared.
+     * resolver's own, and so one request's, never shared.
      *
      * @var \ArrayObject<string, bool>
      */

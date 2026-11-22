@@ -17,8 +17,8 @@ use stdClass;
  * A tool's arguments checked the way McpDispatcher::callTool() checks
  * them, without calling the tool: the same plan (McpDispatcher::derivePlan()),
  * the same Hydrator paths for each argument, the same closed arguments
- * object, so the violations — and the `{"errors": [...]}` feedback the
- * model reads (KinetisMcpApplication::validationFeedback()) — are the
+ * object, so the violations, and the `{"errors": [...]}` feedback the
+ * model reads (KinetisMcpApplication::validationFeedback()), are the
  * ones an MCP client would get. ScopedMcpTool's conversion of the
  * model's arguments is mirrored too (hydration()), so what is checked
  * here is what the approval later dispatches.

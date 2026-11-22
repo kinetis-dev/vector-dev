@@ -6,7 +6,7 @@ namespace Kinetis\VectorAi\Approvals;
 
 /**
  * An approval's id: 128 random bits in lowercase base32 (RFC 4648's
- * alphabet), 26 characters — what `vector_ai_approvals.id` stores. The
+ * alphabet), 26 characters, what `vector_ai_approvals.id` stores. The
  * model, the stream and the endpoints name it with PREFIX in front
  * (`apr_…`); the prefix is never stored.
  */

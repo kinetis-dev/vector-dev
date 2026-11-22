@@ -12,7 +12,7 @@ use Kinetis\Vector\Store\JobStore;
 
 /**
  * `vector_ai_rewrites`, on Vector's own connection: what one run of
- * ProposeRewrites — one Vector job — made of each record, one row per
+ * ProposeRewrites (one Vector job) made of each record, one row per
  * (job, record key), unique on that pair. A row is the proposed text
  * (PROPOSED), or a record left out (SKIPPED, with why), one whose
  * provider call failed or answered nothing (FAILED, with its category or
@@ -24,8 +24,8 @@ use Kinetis\Vector\Store\JobStore;
  *
  * The rows hold record text until the run has ended: finish() builds
  * the CSV from them, and deleteEnded() removes them once the job is no
- * longer queued or running — done, which Vector marks in the same write
- * that saves the file, or failed — so a save that fails loses nothing
+ * longer queued or running (done, which Vector marks in the same write
+ * that saves the file, or failed) so a save that fails loses nothing
  * before the job ends. Built per request.
  */
 final readonly class RewriteStore
@@ -46,8 +46,8 @@ final readonly class RewriteStore
     public function __construct(private VectorDatabase $db) {}
 
     /**
-     * Which of $recordKeys job $jobId already has a row for — each done,
-     * whatever its status — in one query.
+     * Which of $recordKeys job $jobId already has a row for (each done,
+     * whatever its status) in one query.
      *
      * @param list<string> $recordKeys
      * @return array<string, true>
@@ -75,7 +75,7 @@ final readonly class RewriteStore
 
     /**
      * What job $jobId's proposals add to its CSV, at most: for each, its
-     * key and text with every quote doubled, plus ROW_FRAMING — the sum of
+     * key and text with every quote doubled, plus ROW_FRAMING; the sum of
      * ProposeRewrites::rowBytes() over the stored rows.
      */
     public function bytes(int $jobId): int
@@ -152,7 +152,7 @@ final readonly class RewriteStore
     }
 
     /**
-     * Deletes the rows of every job no longer queued or running — done,
+     * Deletes the rows of every job no longer queued or running, done,
      * its CSV saved on the job, or failed or reaped as stalled; how many
      * rows.
      */

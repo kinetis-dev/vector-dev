@@ -6,7 +6,7 @@ namespace Kinetis\VectorAi\Assistant;
 
 /**
  * How many tool calls one assistant run may make (`maxToolCallsPerRun`),
- * and those it made — their names for the run's log line, each with
+ * and those it made, their names for the run's log line, each with
  * whether it answered or was a tool error for the whole answer's
  * `toolCalls` (settle(), asked by the tool once it has its result). One per run,
  * shared by every GovernedTool of it: Neuron runs a clone of a tool for
@@ -55,7 +55,7 @@ final class ToolBudget
         return $this->made;
     }
 
-    /** Records whether call $call — numbered as take() numbered it — answered, rather than being a tool error. */
+    /** Records whether call $call, numbered as take() numbered it, answered, rather than being a tool error. */
     public function settle(int $call, bool $ok): void
     {
         if (isset($this->calls[$call])) {

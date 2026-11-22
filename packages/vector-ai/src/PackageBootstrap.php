@@ -14,9 +14,9 @@ use Kinetis\VectorAi\Secrets\SecretBox;
 
 /**
  * Wiring only, mirroring Kinetis\Vector\PackageBootstrap: binds the
- * request-neutral, immutable objects every request shares — the parsed
+ * request-neutral, immutable objects every request shares (the parsed
  * configuration, the transports built over it and the box that seals
- * provider keys — and the default access policy, which an application
+ * provider keys) and the default access policy, which an application
  * replaces by binding its own AiAccessInterface on AppScope. Everything
  * request-scoped (the resolver, the credential store, the ledger) is
  * built per request by the request container. An invalid VECTOR_AI_*

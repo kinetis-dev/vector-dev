@@ -12,7 +12,7 @@ use Kinetis\Vector\Database\VectorDatabase;
 /**
  * `vector_ai_approvals`, on Vector's own connection: the changes the
  * assistant proposed and where each stands. The row is the whole state
- * of a proposal — nothing about it is kept in the worker — and every
+ * of a proposal (nothing about it is kept in the worker) and every
  * change of status is one conditional UPDATE on the status it leaves, so
  * two requests deciding the same row cannot both win. Built per request.
  */
@@ -29,7 +29,7 @@ final readonly class ApprovalStore
     /**
      * How deep stored arguments and results may nest, as json_decode()
      * counts it: what reading a row back allows, and so what storable()
-     * lets a proposal be saved with and settle() a result — one that read could not decode
+     * lets a proposal be saved with and settle() a result; one that read could not decode
      * could never be approved or rejected.
      */
     public const int MAX_DEPTH = 64;
@@ -101,7 +101,7 @@ final readonly class ApprovalStore
 
     /**
      * The approval $publicId names when it is $actorId's, proposed under
-     * the same impersonator — none, or the same one — as now; otherwise
+     * the same impersonator (none, or the same one) as now; otherwise
      * null, whether it does not exist or is someone else's.
      */
     public function owned(string $publicId, string $actorId, ?string $impersonatorId): ?Approval
@@ -133,7 +133,7 @@ final readonly class ApprovalStore
     }
 
     /**
-     * Moves a pending row to $to; whether this call did it — false when it
+     * Moves a pending row to $to; whether this call did it, false when it
      * was no longer pending, or, for any $to but `expired`, when it is past
      * its expiry: the same UPDATE asks both, so a proposal that expires
      * between the caller's check and this cannot be approved or rejected.
@@ -153,8 +153,8 @@ final readonly class ApprovalStore
     }
 
     /**
-     * Fails every row still `executing` that was approved before $before —
-     * only $id when given — with Approval::UNKNOWN_OUTCOME: its request did
+     * Fails every row still `executing` that was approved before $before
+     * (only $id when given) with Approval::UNKNOWN_OUTCOME: its request did
      * not settle it (the worker died, or the request was cut off), so
      * whether the change was made is unknown. One conditional UPDATE, which
      * never executes anything again; how many it failed. Callers pass
@@ -184,8 +184,8 @@ final readonly class ApprovalStore
 
     /**
      * Records how an execution ended: `executed` with the result, or `failed`
-     * with why. Returns the result as it is stored — TOO_DEEP in place of one
-     * too deep to read back — so the approve response says what every later
+     * with why. Returns the result as it is stored (TOO_DEEP in place of one
+     * too deep to read back) so the approve response says what every later
      * read does. The row is written only while it is still `executing`: when
      * failStale() took it first (an execution past EXECUTING_MINUTES), the
      * row keeps its unknown-outcome failure and the value returned here is
@@ -252,7 +252,7 @@ final readonly class ApprovalStore
 
     /**
      * $result as stored: as it was, when a row can read it back at
-     * MAX_DEPTH; otherwise TOO_DEEP in its place — a record with deeply
+     * MAX_DEPTH; otherwise TOO_DEEP in its place; a record with deeply
      * nested JSON makes a result no read could decode, and the change was
      * made all the same: the approval settles, and every later read of the
      * conversation still works.

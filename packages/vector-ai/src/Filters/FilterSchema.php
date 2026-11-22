@@ -13,7 +13,7 @@ namespace Kinetis\VectorAi\Filters;
  * where a Condition is `{ field, op, value }`, `field` one of those
  * fields, `op` one of the operators any of them admits, and `value` a
  * string, a list of strings (two for `between`, any for `in`/`nin`) or
- * `{ lookup }` — a relation's record named in words. `anyOf` holds groups,
+ * `{ lookup }`; a relation's record named in words. `anyOf` holds groups,
  * each a list of alternatives, each the conditions that must hold
  * together; groups are one level deep.
  *

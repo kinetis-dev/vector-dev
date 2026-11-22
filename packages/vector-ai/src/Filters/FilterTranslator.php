@@ -29,15 +29,15 @@ use NeuronAI\Exceptions\NeuronException;
  * An admin's sentence as a filter of one resource. The model is told the
  * resource as ModelBoundary lets it be told and asked, in one structured
  * call, for the JSON object FilterSchema describes. Its answer is then
- * made a list filter and put through ListRequest::fromQueryParams() — the
- * validator the list and vector_query use — as this user's list would
+ * made a list filter and put through ListRequest::fromQueryParams() (the
+ * validator the list and vector_query use) as this user's list would
  * be: a field it does not admit, or an operator, fails there. A failed
  * answer gets one repair turn quoting the exact reason; a second failure
  * is the admin's 422. A relation named in words is looked up with
  * ResourceService::options() under this user's scope: one match becomes
  * its id, several become an `unresolved` choice, none is a 422.
  *
- * Every call — the repair turn too — is one row of the usage ledger. No
+ * Every call (the repair turn too) is one row of the usage ledger. No
  * prompt, sentence, answer or provider error body is logged: a failed
  * call is logged by AiFailureMapper with its category and status. Built
  * per request.
@@ -110,7 +110,7 @@ final readonly class FilterTranslator
     }
 
     /**
-     * One structured call, recorded in the usage ledger whatever its end —
+     * One structured call, recorded in the usage ledger whatever its end:
      * an answer, a provider failure, or anything else the provider throws,
      * which then propagates as it was.
      *

@@ -16,16 +16,16 @@ use NeuronAI\Tools\ToolOutput;
 /**
  * One of Vector's read tools (an McpTools tool) as the assistant may call
  * it. Before the call: the run's ToolBudget is asked; `vector_query` is
- * clamped by a size rule — at most MAX_PER_PAGE rows without `fields`,
+ * clamped by a size rule, at most MAX_PER_PAGE rows without `fields`,
  * and with `fields` naming n fields at most
  * min(200, floor(1000 / n)) (ModelBoundary::maxRows()), a size it names
- * none of filled in no larger than the resource's maxPerPage() — and to
+ * none of filled in no larger than the resource's maxPerPage(), and to
  * MAX_PAGE pages; a resource ModelBoundary keeps from the model is refused, and so
  * is a query whose filter, sort or `fields` names a field
  * ModelBoundary::sends() refuses, an aggregate whose groupBy, metrics,
- * filter or sort does — a money metric's currency field included, since
- * it becomes a group key — and either whose `q` would search one
- * (ModelBoundary::searches()) — as tool errors the model reads, so the
+ * filter or sort does (a money metric's currency field included, since
+ * it becomes a group key) and either whose `q` would search one
+ * (ModelBoundary::searches()), as tool errors the model reads, so the
  * run goes on. Membership, order and totals would tell the model what
  * the record answer leaves out; for the same reason a query
  * that names no sort is given ModelBoundary::defaultSort() when the
@@ -80,7 +80,7 @@ final class GovernedTool extends Tool
         return $this->inner->getInputSchema();
     }
 
-    /** The call, its outcome — an answer, or a tool error — recorded in the run's ToolBudget. */
+    /** The call, its outcome (an answer, or a tool error) recorded in the run's ToolBudget. */
     #[\Override]
     public function execute(): void
     {
@@ -90,7 +90,7 @@ final class GovernedTool extends Tool
     }
 
     /**
-     * Records in $budget whether call $call — the made()th before it ran —
+     * Records in $budget whether call $call, the made()th before it ran,
      * answered with $result rather than a tool error, when the budget let
      * it run. Shared with ProposingTool.
      */
@@ -170,8 +170,8 @@ final class GovernedTool extends Tool
 
     /**
      * Why a query or an aggregate may not run, or null when it may: a field
-     * its filter names — in an `or` or `and` group too; `trashed` is no
-     * field — that sends() refuses, or one its sort, a query's `fields` or
+     * its filter names, in an `or` or `and` group too; `trashed` is no
+     * field; that sends() refuses, or one its sort, a query's `fields` or
      * an aggregate's groupBy and metrics name (aggregated()), or a `q` on a
      * resource searches() refuses. Arguments of the wrong shape are left
      * to the dispatcher.
@@ -196,9 +196,9 @@ final class GovernedTool extends Tool
     }
 
     /**
-     * The field names a sort names, parsed as ListRequest parses it — a
+     * The field names a sort names, parsed as ListRequest parses it (a
      * comma-separated list, each entry trimmed, an empty one skipped, a
-     * leading `-` for descending — so `,` names none, and the list falls
+     * leading `-` for descending) so `,` names none, and the list falls
      * back to its default sort. Null for a sort that is no string, which
      * the dispatcher refuses.
      *
@@ -214,8 +214,8 @@ final class GovernedTool extends Tool
     }
 
     /**
-     * The field names an aggregate's groupBy, metrics and sort name — a
-     * metric key such as `sum_totalCents` names its field, `count` none —
+     * The field names an aggregate's groupBy, metrics and sort name (a
+     * metric key such as `sum_totalCents` names its field, `count` none)
      * and the currency field of each money metric priced per record, which
      * the aggregate makes a group key of its own.
      *
@@ -305,7 +305,7 @@ final class GovernedTool extends Tool
 
     /**
      * $arguments with ModelBoundary::defaultSort() as the sort when they
-     * name none — no sort, or one of separators alone (sorted()) — and the
+     * name none, no sort, or one of separators alone (sorted()), and the
      * resource's own default sort orders by a field kept from the model;
      * otherwise as they are.
      *
@@ -328,8 +328,8 @@ final class GovernedTool extends Tool
     }
 
     /**
-     * `perPage` at most ModelBoundary::maxRows() of its `fields` —
-     * MAX_PER_PAGE without them — and `page` at most MAX_PAGE, whatever the
+     * `perPage` at most ModelBoundary::maxRows() of its `fields`
+     * (MAX_PER_PAGE without them) and `page` at most MAX_PAGE, whatever the
      * model asked; a value that is no number is left to the dispatcher to
      * refuse. A query that names no perPage is given the most its size
      * rule allows, and never more than its resource's own maxPerPage().

@@ -22,7 +22,7 @@ use Kinetis\VectorAi\Settings\DataDefault;
  * builds it. Its rules, in order:
  *
  * 1. Always kept back, whatever is configured: password, file and image
- *    fields, and every field this user's `viewField` policy hides — the
+ *    fields, and every field this user's `viewField` policy hides; the
  *    resource is read through ResourceService::visible() first.
  * 2. A resource opts out whole with `#[Resource(meta: ['ai.send' => false])]`.
  * 3. A field opts out with `->meta('ai.send', false)`.
@@ -31,7 +31,7 @@ use Kinetis\VectorAi\Settings\DataDefault;
  * sense inverts: only a resource, and within it only a field, that opts
  * in with `ai.send` true is sent. Built per request: the user and the
  * settings are this request's, and so is what it remembers of how each
- * resource looks to the user (visible()) — a queued action's chunk runs
+ * resource looks to the user (visible()); a queued action's chunk runs
  * on a scope of its own, so that is one chunk's.
  */
 final readonly class ModelBoundary
@@ -71,7 +71,7 @@ final readonly class ModelBoundary
 
     /**
      * Each resource as this user sees it, by slug, once asked (visible()):
-     * this boundary's own, and so one request's or one job's — never shared.
+     * this boundary's own, and so one request's or one job's, never shared.
      *
      * @var \ArrayObject<string, ResourceDescriptor>
      */
@@ -97,7 +97,7 @@ final readonly class ModelBoundary
 
     /**
      * What a model is told of $resource: its fields as this user sees them
-     * and the rules above let through — per field its name, label, type,
+     * and the rules above let through, per field its name, label, type,
      * filter operators, choices (capped the way vector_describe caps them),
      * how a money or date value is written, and the label of a relation's
      * target where that target may be sent too. No record data.
@@ -143,7 +143,7 @@ final readonly class ModelBoundary
 
     /**
      * One record as a model may be sent it: the fields the rules above let
-     * through, and the primary key always — it names the record, as
+     * through, and the primary key always; it names the record, as
      * `resource#id`, and is no data of its own; so are `_trashed` and
      * `_version`, the lock vector_update checks. A belongsTo or hasOne keeps
      * its id, and its label and carried columns only as far as the target
@@ -213,7 +213,7 @@ final readonly class ModelBoundary
     /**
      * One page of a list as a model may be sent it: record() on each row,
      * at most $maxRows of them (MAX_ROWS unless said), and the page's
-     * position — no summaries, which could total a field kept back.
+     * position; no summaries, which could total a field kept back.
      * `omittedRows` counts the rows left out.
      *
      * @param array<array-key, mixed> $page a page as ResourceService::list() answers it
@@ -248,14 +248,14 @@ final readonly class ModelBoundary
      *   through; `vector_get`: record() of its `data`;
      * - `vector_aggregate`: aggregate();
      * - `vector_widget`: the widget's data, strings cut and a table's
-     *   columns withheld by its linked resource left out — refused for a
+     *   columns withheld by its linked resource left out, refused for a
      *   resource widget of a resource kept from the model, a widget whose
      *   link leads to one, and a table whose rows link to records of one;
      * - `vector_resources`, listed in PASSES: the index as it is, strings cut;
      * - the result of an approved write the assistant proposed (ProposingTool):
      *   `vector_create` and `vector_update`, record() of its `data`;
      *   `vector_delete`, the id it deleted; `vector_run_action`, the
-     *   response's `type` and `message` only — never a download's contents
+     *   response's `type` and `message` only, never a download's contents
      *   or a URL;
      * - any other tool: refused.
      *
@@ -304,12 +304,12 @@ final readonly class ModelBoundary
 
     /**
      * What a model may be told of why an approved write to $resource
-     * failed, in place of $error — the refusal Vector's tool answered
+     * failed, in place of $error; the refusal Vector's tool answered
      * with, whose text can quote record values and fields the rules above
      * keep back, from a validation, policy or hook message alike. A
      * validation refusal (`{"errors": [{path, code, message}, …]}`) is
      * INVALID with, for each violation of a field sends() lets through,
-     * its field and code — never its message — and how many others there
+     * its field and code (never its message) and how many others there
      * were; any other refusal is REFUSED.
      *
      * @return array{error: string, fields?: list<array{field: string, code: string}>, otherFields?: int}
@@ -380,11 +380,11 @@ final readonly class ModelBoundary
      * Whether this user may make the write $tool would propose, as far as
      * Vector's own permissions tell before it is made: `vector_create`,
      * the resource's `create`; `vector_update` and `vector_delete`, that
-     * record's `update` or `delete` — a forced delete its policy's
+     * record's `update` or `delete`, a forced delete its policy's
      * `forceDelete` instead, never `delete`, asked through the gate of a
      * live record as of a trashed one, as Vector's own forced delete
      * (RecordWriter::batch()) asks it, and refused outright for a resource
-     * that does not soft-delete, which Vector refuses too — read as this
+     * that does not soft-delete, which Vector refuses too, read as this
      * user: a record they cannot see is no record they may write. Any
      * other tool: true.
      * Approving still enforces all of it.
@@ -424,9 +424,9 @@ final readonly class ModelBoundary
 
     /**
      * Whether this user may delete $record of $resource for good: what
-     * RecordWriter::batch() asks of a forced delete — the policy's
+     * RecordWriter::batch() asks of a forced delete (the policy's
      * `forceDelete`, through the gate, of a live record as of one in the
-     * trash — and false for a resource that does not soft-delete, which it
+     * trash) and false for a resource that does not soft-delete, which it
      * refuses. Not recordPermissions()' `forceDelete`, which is false for
      * a live record: it says whether to offer the trash's button.
      *
@@ -444,7 +444,7 @@ final readonly class ModelBoundary
     }
 
     /**
-     * Whether a model may be sent $name of $visible — and so may name it
+     * Whether a model may be sent $name of $visible, and so may name it
      * in a filter or a sort: the primary key always; otherwise a field
      * this user sees that the rules above let through. Nothing of a
      * resource kept from the model. The one field rule record(),
@@ -470,7 +470,7 @@ final readonly class ModelBoundary
     /**
      * The fields of $resource this user sees that sends() refuses, in the
      * resource's order: every one of them for a resource kept from the
-     * model, otherwise those the rules above keep back — never the primary
+     * model, otherwise those the rules above keep back, never the primary
      * key. The answer sends() gives field by field, with the resource read
      * as this user sees it once rather than once a field.
      *
@@ -501,8 +501,8 @@ final readonly class ModelBoundary
 
     /**
      * Whether a model may search $visible with `q`: it is searchable, every
-     * field search matches — by LIKE, by its full-text index or, for a
-     * belongsTo, by the related record's title — passes sends(), and each
+     * field search matches (by LIKE, by its full-text index or, for a
+     * belongsTo, by the related record's title) passes sends(), and each
      * searched relation's title could be sent as its label is
      * (reference()). Otherwise which records a term matches would tell
      * the model what those fields hold.
@@ -539,7 +539,7 @@ final readonly class ModelBoundary
     /**
      * The order a list of $visible takes when the model names none: the
      * resource's default sort without the fields sends() refuses, or its
-     * primary key when none is left — an order by a field kept back would
+     * primary key when none is left; an order by a field kept back would
      * tell the model how its values rank.
      *
      * @return list<array{field: string, order: 'asc'|'desc'}>
@@ -553,9 +553,9 @@ final readonly class ModelBoundary
     }
 
     /**
-     * $resource as this user sees it — ResourceService::visible(), which
-     * drops the fields their `viewField` policy hides — asked once per
-     * resource for the life of this boundary — one request's, or one chunk's —
+     * $resource as this user sees it, ResourceService::visible(), which
+     * drops the fields their `viewField` policy hides, asked once per
+     * resource for the life of this boundary (one request's, or one chunk's)
      * however many rows, search columns and references read it; not at all
      * when this request's VisibleResources already decided it, as GET
      * /vector/schema does for every resource. Asking it again of a resource it
@@ -578,8 +578,8 @@ final readonly class ModelBoundary
 
     /**
      * vector_describe's answer for a model that only reads: its fields cut
-     * as record() cuts a record — the primary key and what the rules let
-     * through — and every other place a field is named (the title field,
+     * as record() cuts a record (the primary key and what the rules let
+     * through) and every other place a field is named (the title field,
      * the default sort) cut the same way. Search is described only where
      * searches() lets `q` through, and the default sort is defaultSort():
      * what is described is what GovernedTool lets a query use. What only a
@@ -620,7 +620,7 @@ final readonly class ModelBoundary
 
     /**
      * vector_aggregate's answer as a model may be sent it: refused whole
-     * when a group key or metric names a field sends() refuses — which
+     * when a group key or metric names a field sends() refuses, which
      * GovernedTool keeps from being asked; each belongsTo key through
      * reference(), so its label goes when the related resource's title
      * field may not be sent; every string cut.
@@ -671,7 +671,7 @@ final readonly class ModelBoundary
      * widget computes its own figures, so there is no field to cut by but
      * one: a table row's key that is a field of the resource its link
      * (the row's own, or the table's) leads to, and one the boundary would
-     * not send of it, is left out — with its column.
+     * not send of it, is left out, with its column.
      *
      * @param array<array-key, mixed> $arguments
      * @param array<array-key, mixed> $result
@@ -756,7 +756,7 @@ final readonly class ModelBoundary
 
     /**
      * One field's value: a belongsTo or hasOne reference, `{id, label}`,
-     * through reference() — under the target's own rules — every string
+     * through reference() (under the target's own rules) every string
      * cut. A hasMany or manyToMany value is only its count.
      *
      * @param array<string, mixed> $field a compiled field
@@ -776,7 +776,7 @@ final readonly class ModelBoundary
 
     /**
      * A belongsTo or hasOne value, `{id, label, ...carried}`, as a model may be sent
-     * it: the id always; the label — the target's title field — only when
+     * it: the id always; the label (the target's title field) only when
      * the target may be sent and its title field passes the rules (or is
      * its primary key); each carried column only when that target field
      * passes them. What is left is cut like any other value.

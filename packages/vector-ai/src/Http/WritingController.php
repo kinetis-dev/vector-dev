@@ -30,10 +30,10 @@ use Psr\Http\Message\ServerRequestInterface;
  * The body is read first (422). Then, as this request's user and failing
  * closed: the resource (404); a password field, refused by its type
  * before anything else (403); the field as this user sees it (404); a
- * text, Markdown or rich-text field (403); one writing help is on for —
+ * text, Markdown or rich-text field (403); one writing help is on for,
  * not a unique string unless it opts in with `ai.writing` true, nor one
  * with `ai.writing` false (WritingGuard::helps(), 403); one they may write in the
- * view the request is for — `create` without `recordId`, `update` with
+ * view the request is for, `create` without `recordId`, `update` with
  * it, the record read as they may read it and its own `update` decided
  * (403, or 404 for no such record); one ModelBoundary lets a model be
  * sent (403); the feature on, configured and theirs to use (403); the
@@ -78,7 +78,7 @@ final readonly class WritingController
     /**
      * Refuses unless this user may write $field in the view the request
      * is for: without a record, a create they may make with the field on
-     * its form; with one, that record — read as they may read it — and an
+     * its form; with one, that record (read as they may read it) and an
      * update of it they may make with the field on the update form.
      *
      * @param array<string, mixed> $field

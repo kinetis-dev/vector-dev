@@ -23,17 +23,17 @@ use Psr\Http\Message\ResponseInterface;
  * AI endpoint and `capabilities.ai` (AiShellContributor) give:
  *
  * - permits(): the feature's switch in the `ai` settings is on and
- *   AiAccessInterface lets this user use it — and, for
+ *   AiAccessInterface lets this user use it, and, for
  *   Feature::AssistantWrites, the same of Feature::Assistant: writes are
  *   the assistant's;
  * - offered(): permits(), and the operator configured a provider and the
- *   daily token budget is above 0 — what a feature that calls a model
+ *   daily token budget is above 0, what a feature that calls a model
  *   asks before its provider;
  * - provider(): offered(), and the resolver's provider for it, or a 403;
- * - budgetSpent(): the 429 a spent daily budget is answered with — the
+ * - budgetSpent(): the 429 a spent daily budget is answered with; the
  *   one place every AI endpoint's 429 comes from;
  * - availableNow(): of some features, those offered() with tokens left
- *   today and a provider, model and key the resolver would find — what
+ *   today and a provider, model and key the resolver would find, what
  *   `capabilities.ai` publishes.
  *
  * Built per request: the user and the settings are this request's.
@@ -94,7 +94,7 @@ final readonly class AiAvailability
 
     /**
      * Of $features, those this user may use right now: offered(), tokens
-     * left of today's budget — read once, and only when one is offered —
+     * left of today's budget (read once, and only when one is offered)
      * and a provider, model and key ProviderResolver::resolvable() would
      * find, decided without building a provider or opening a key, so
      * GET /vector/schema can ask it on every request.

@@ -22,9 +22,9 @@ use Kinetis\VectorAi\Writing\WritingOperation;
 /**
  * Writing help across many records, as proposals the admin reviews
  * (docs/ai.md, "Bulk rewrite proposals"): a queued action that sends one
- * field of each selected record to AI — one single-shot writing call per
+ * field of each selected record to AI, one single-shot writing call per
  * record, its text delimited and labelled as content (WritingAssistant),
- * so no record steers another — and leaves its job one CSV,
+ * so no record steers another, and leaves its job one CSV,
  * `<key field>,<field>`, of the proposed texts. It writes nothing to a
  * record. A resource opts in by listing a subclass, which names field()
  * and operation(), in its `actions()`.
@@ -44,8 +44,8 @@ use Kinetis\VectorAi\Writing\WritingOperation;
  * (its row stays until the prune, as every row does).
  *
  * A chunk reads what it needs of the store and the ledger once, at its
- * start — which of its records are done, today's budget left, the CSV's
- * bytes so far — and counts on in memory as it goes: each call's tokens
+ * start (which of its records are done, today's budget left, the CSV's
+ * bytes so far) and counts on in memory as it goes: each call's tokens
  * off the budget, each record's outcome into done. Another request's
  * spending in the meantime shows at the next chunk.
  *
@@ -374,7 +374,7 @@ abstract class ProposeRewrites extends VectorAction
     }
 
     /**
-     * The field as the run is configured, its provider and its guidance —
+     * The field as the run is configured, its provider and its guidance,
      * refused, before any provider call, when writing help may not run on
      * it for this user.
      *

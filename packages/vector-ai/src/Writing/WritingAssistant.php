@@ -17,8 +17,8 @@ use NeuronAI\Exceptions\NeuronException;
  * Writing help for one field's text: one chat call with the operation's
  * fixed system prompt (WritingOperation), and a user turn holding the
  * person's guidance, if any, then their text between OPEN and CLOSE,
- * labelled as content to transform. The answer is cleaned — control
- * characters but `\n` and `\t` stripped — and cut at the field's cap
+ * labelled as content to transform. The answer is cleaned (control
+ * characters but `\n` and `\t` stripped) and cut at the field's cap
  * (cap()). Nothing is written: the admin puts the text in the input, and
  * the person saves it as their own edit.
  *
@@ -116,7 +116,7 @@ final readonly class WritingAssistant
     /**
      * @param array<string, mixed> $field the compiled field the text is for
      * @param 'plain'|'markdown' $format
-     * @param-out int $tokens the tokens the call spent, input and output, as the usage ledger records them — 0 when it failed
+     * @param-out int $tokens the tokens the call spent, input and output, as the usage ledger records them, 0 when it failed
      * @return array{text: string, operation: string, model: string, truncated: bool}
      * @throws \Kinetis\VectorAi\Failure\AiFailure when the provider fails
      */

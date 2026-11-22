@@ -14,7 +14,7 @@ use Kinetis\VectorAi\Providers\ResolvedProvider;
 
 /**
  * What decides whether a field's text may be sent for writing help, as
- * this request's (or job's) user — the one set of rules the writing
+ * this request's (or job's) user; the one set of rules the writing
  * endpoint and the bulk ProposeRewrites action both ask, failing closed:
  *
  * - field(): a password field is refused by its type before anything
@@ -46,7 +46,7 @@ final readonly class WritingGuard
      * The field meta key that turns writing help off (false) or on (true)
      * for one field, whatever its uniqueness: `->meta('ai.writing', false)`.
      * Only TYPES are ever helped, and it is independent of
-     * ModelBoundary::META_KEY — a field with writing help off may still be
+     * ModelBoundary::META_KEY; a field with writing help off may still be
      * sent to the model, and one turned on is still kept back by `ai.send`.
      */
     public const string META_KEY = 'ai.writing';
@@ -87,7 +87,7 @@ final readonly class WritingGuard
     /**
      * Whether writing help is on for $field, by its own definition: one of
      * TYPES; then its META_KEY, true or false, when it has one; otherwise
-     * not a `string` field marked unique — a unique short string is an
+     * not a `string` field marked unique; a unique short string is an
      * identifier (a SKU, a code), not prose. Asks nothing of the user or
      * the model boundary: field() and offers() add those.
      *

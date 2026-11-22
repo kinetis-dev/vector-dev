@@ -29,24 +29,24 @@ use NeuronAI\Workflow\Observability\WorkflowError;
  *
  * - a complete answer: the tokens it reported, `answered`;
  * - an answer the departure stopped (StoppableHttpClient::STOP_REASON):
- *   the input reported, or estimated when none was — Anthropic reports it
- *   up front, OpenAI only at the end that never comes — and the larger of
+ *   the input reported, or estimated when none was (Anthropic reports it
+ *   up front, OpenAI only at the end that never comes) and the larger of
  *   the output reported and the estimate of what streamed back,
  *   `client_gone`, with `:estimated` when either side was estimated;
  * - a stream the departure stopped before any text (the DepartureSignal
  *   fired and Neuron raised a ProviderException): estimated,
- *   `client_gone:estimated` — and not handed to AiFailureMapper, which
+ *   `client_gone:estimated`, and not handed to AiFailureMapper, which
  *   would log it as the provider's failure;
  * - a failure after the provider streamed anything: estimated,
- *   `failed:<category>:estimated`; one with nothing streamed — no
+ *   `failed:<category>:estimated`; one with nothing streamed (no
  *   connection, an HTTP refusal, a Bedrock refusal, a timeout before the
- *   first byte — costs nothing, `failed:<category>` at 0 and 0;
+ *   first byte) costs nothing, `failed:<category>` at 0 and 0;
  * - a call still in flight when the run was abandoned (settle()): as the
  *   two rows above, by whether anything streamed.
  *
  * An estimate is ESTIMATE_BYTES bytes a token: of the instructions and the
  * conversation as sent, each call's newest message and the text streamed
- * back — not the tool definitions, which are sent too. The usage table has
+ * back, not the tool definitions, which are sent too. The usage table has
  * no column for it, so its outcome is marked `:estimated`. Each side is
  * the larger of the reported and the estimated, never their sum. The
  * daily budget is an abuse limit, not a bill.
@@ -75,10 +75,10 @@ final class AssistantLedger
     /** The bytes the call in flight streamed back so far: what an output estimate counts. */
     private int $streamedBytes = 0;
 
-    /** The exception the run ended on, as its WorkflowError reported it — before the error frames it sends — or null. */
+    /** The exception the run ended on, as its WorkflowError reported it (before the error frames it sends) or null. */
     private ?\Throwable $exception = null;
 
-    /** Whether the run is over (settle()): events after it — a dropped run's own release — record and map nothing. */
+    /** Whether the run is over (settle()): events after it (a dropped run's own release) record and map nothing. */
     private bool $closed = false;
 
     /**
@@ -117,8 +117,8 @@ final class AssistantLedger
     }
 
     /**
-     * Closes the run: the call still in flight, if any — the run abandoned
-     * when the browser left, or failed outside the call's own events — is
+     * Closes the run: the call still in flight, if any (the run abandoned
+     * when the browser left, or failed outside the call's own events) is
      * recorded as $outcome, estimated when anything streamed back and at 0
      * otherwise; nothing after this records or maps anything.
      */
@@ -136,8 +136,8 @@ final class AssistantLedger
     }
 
     /**
-     * Whether $e is the departure's doing: the DepartureSignal fired — the
-     * application stopped the stream — and Neuron raised what a stopped
+     * Whether $e is the departure's doing: the DepartureSignal fired (the
+     * application stopped the stream) and Neuron raised what a stopped
      * stream raises. Anything else is a failure, whoever is left to see it.
      */
     public function isDeparture(\Throwable $e): bool
@@ -176,7 +176,7 @@ final class AssistantLedger
     {
         $this->started = hrtime(true);
         $this->streamedBytes = 0;
-        // the call's newest message — a tool's result, an approval's outcome — on top of what came before
+        // the call's newest message (a tool's result, an approval's outcome) on top of what came before
         $this->contextBytes += strlen((string) json_encode($event->message, JSON_INVALID_UTF8_SUBSTITUTE));
     }
 
@@ -194,7 +194,7 @@ final class AssistantLedger
             return;
         }
 
-        // stopped by the departure: what was reported so far, and estimates for what was not — the larger, never the sum
+        // stopped by the departure: what was reported so far, and estimates for what was not; the larger, never the sum
         $estimatedIn = $in <= 0;
         $streamed = $this->estimatedOutput();
         $this->record(
@@ -208,7 +208,7 @@ final class AssistantLedger
     /**
      * The run failed: remembered for told(), which may have stopped reading
      * it before the failure itself was thrown. While a provider call was in
-     * flight, the call is recorded — as the departure's when the signal
+     * flight, the call is recorded, as the departure's when the signal
      * fired on a stopped stream (never mapped: AiFailureMapper logs the
      * provider's failures), as the provider's failure otherwise.
      */

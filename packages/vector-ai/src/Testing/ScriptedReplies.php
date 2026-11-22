@@ -6,7 +6,7 @@ namespace Kinetis\VectorAi\Testing;
 
 /**
  * What a `fake` provider answers, keyed by the sha256 of the last text
- * block of the last user message — for a one-block message, its whole
+ * block of the last user message, for a one-block message, its whole
  * text; for a filter request, the admin's sentence, which follows the
  * resource's schema. An application's test binds one on AppScope, and
  * every ScriptedProvider the resolver builds replays it. The default,

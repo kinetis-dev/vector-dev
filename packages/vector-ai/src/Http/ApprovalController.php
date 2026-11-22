@@ -34,35 +34,35 @@ use Psr\Log\LoggerInterface;
  *
  * 1. 403 unless the assistant and its writes (`assistantEnabled`,
  *    `assistantWrites`) are on and AiAccessInterface lets this user use
- *    both (Feature::Assistant, Feature::AssistantWrites) — a switch turned
+ *    both (Feature::Assistant, Feature::AssistantWrites); a switch turned
  *    off stops what was proposed before it, too.
  * 2. 404 unless the row is this user's and was proposed under the same
  *    impersonator as now, null-safe: another user's proposal, and one an
  *    impersonation that has since ended (or begun) proposed, are as
  *    unknown as one that does not exist.
  * 3. 410 when it was still pending past its expiry, which marks it
- *    `expired` — or had expired already. The UPDATE that decides it asks
+ *    `expired`, or had expired already. The UPDATE that decides it asks
  *    the expiry too, so one that expires after this check is 410 as well.
- * 4. 409 when it is no longer pending — one conditional UPDATE moves it
- *    from `pending`, so of two requests only one wins — with its
+ * 4. 409 when it is no longer pending (one conditional UPDATE moves it
+ *    from `pending`, so of two requests only one wins) with its
  *    `status`, and its `result` when `executed` or `failed`: a retried
  *    approval reads what the first did, and nothing runs twice. A row
  *    still `executing` ApprovalStore::EXECUTING_MINUTES after it was
- *    approved is first failed with Approval::UNKNOWN_OUTCOME — its request
- *    did not finish — so the answer is that definite `failed`, never a
+ *    approved is first failed with Approval::UNKNOWN_OUTCOME (its request
+ *    did not finish) so the answer is that definite `failed`, never a
  *    second execution.
  *
  * An approval then registers ActorContext(user, impersonator, origin:
  * `assistant`) on the request scope before anything that writes is
- * resolved, and calls the tool through McpTools — VectorTools under this
+ * resolved, and calls the tool through McpTools, VectorTools under this
  * user, with Vector's policy, validation, version check, hooks and audit,
  * the audit rows marked `origin = 'assistant'`. The row keeps the
  * outcome: `executed` with the tool's result, or `failed` with the tool's
- * own refusal, or with Approval::MAY_HAVE_CHANGED when it threw — the
+ * own refusal, or with Approval::MAY_HAVE_CHANGED when it threw; the
  * write may have committed before the exception. A row naming a tool
  * outside ProposingTool::TOOLS is `failed` without dispatching anything. Answers
  * `{status, result}`. One log line and one usage row per approval: who,
- * the approval id, the tool and the outcome — never its arguments or
+ * the approval id, the tool and the outcome, never its arguments or
  * result.
  */
 #[RoutePrefix('/vector/ai')]
@@ -206,7 +206,7 @@ final readonly class ApprovalController
 
     /**
      * 409: the row as it stands now, with its result when it was executed
-     * or failed — or 410 when it is still pending because it expired
+     * or failed, or 410 when it is still pending because it expired
      * between decidable() and the UPDATE, which refused it for that.
      */
     private function conflict(Approval $approval): ResponseInterface
@@ -228,7 +228,7 @@ final readonly class ApprovalController
 
     /**
      * Calls the row's tool with the row's arguments, through McpTools,
-     * resolved now — after the ActorContext above was registered.
+     * resolved now, after the ActorContext above was registered.
      *
      * @return array{ApprovalStatus, mixed, ?string} the outcome, what the row keeps of it, and a failure's category
      */
@@ -264,7 +264,7 @@ final readonly class ApprovalController
         }
 
         if ($result instanceof ToolOutput) {
-            // the tool's own refusal — Vector's policy, validation or a stale version — as an MCP client would read it
+            // the tool's own refusal (Vector's policy, validation or a stale version) as an MCP client would read it
             return [ApprovalStatus::Failed, ['error' => $result->isError() ? $result->getText() : self::FAILED], 'refused'];
         }
 

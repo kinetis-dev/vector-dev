@@ -17,7 +17,7 @@ use NeuronAI\Tools\ToolCall;
 /**
  * The `fake` provider type: Neuron's FakeAIProvider replaying the replies
  * a ScriptedReplies keys by the sha256 of the last text block of the last
- * user message, for tests and demos that must not reach a model — a chat,
+ * user message, for tests and demos that must not reach a model; a chat,
  * a stream or a structured call alike. It records every request it saw
  * (getRecorded(), from FakeAIProvider), and hands each to the replies'
  * ScriptedCalls when they carry one. A message no reply is scripted for
@@ -27,8 +27,8 @@ use NeuronAI\Tools\ToolCall;
  *
  * A message whose reply is scripted as turns (ScriptedReplies::of())
  * starts a run that calls tools: each call answers with the turn for the
- * rounds of tool results since that message — a ToolCallMessage asking for
- * its `toolCalls`, or text — so the next call sees the results, and the
+ * rounds of tool results since that message (a ToolCallMessage asking for
+ * its `toolCalls`, or text) so the next call sees the results, and the
  * request log keeps every one.
  *
  * Built for one call by ProviderResolver, like every provider.
@@ -80,7 +80,7 @@ class ScriptedProvider extends FakeAIProvider
         }
     }
 
-    /** The last text block of the last user message among $messages — a tool result is none — or '' when there is none. */
+    /** The last text block of the last user message among $messages (a tool result is none) or '' when there is none. */
     public static function lastUserMessage(Message ...$messages): string
     {
         return self::turnOf(...$messages)[0];

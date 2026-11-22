@@ -27,7 +27,7 @@ use Psr\Http\Message\ServerRequestInterface;
 /**
  * The provider keys an administrator enters, for the providers whose key
  * the environment does not give: listed by status, sealed and stored, or
- * removed. A key goes in and never comes out — no answer, error or log
+ * removed. A key goes in and never comes out; no answer, error or log
  * line carries it. Every route asks AiAccessInterface::canConfigure().
  *
  * Storing and removing a key is recorded in Vector's audit trail

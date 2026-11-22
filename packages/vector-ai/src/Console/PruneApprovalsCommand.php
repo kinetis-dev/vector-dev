@@ -16,14 +16,14 @@ use Kinetis\VectorAi\Approvals\ApprovalStore;
  * expiry `expired`; fails every proposal still `executing` more than
  * ApprovalStore::EXECUTING_MINUTES after it was approved, whose request
  * did not finish, with the unknown-outcome error (never running it
- * again); then deletes every decided one — executed, rejected, expired or
- * failed — decided more than `--days=<n>` days ago (DEFAULT_DAYS when
+ * again); then deletes every decided one (executed, rejected, expired or
+ * failed) decided more than `--days=<n>` days ago (DEFAULT_DAYS when
  * absent), and prints the counts. A proposal executing for less than that
  * bound is left alone. An approval already refuses an expired proposal,
  * and fails a stale executing one, on its own; nothing deletes the rows on
  * its own: run this from a scheduler. It also deletes the rows of
- * `vector_ai_rewrites` — the record texts a ProposeRewrites run keeps,
- * which its finish() leaves in place — of every job that ended, done
+ * `vector_ai_rewrites`, the record texts a ProposeRewrites run keeps,
+ * which its finish() leaves in place, of every job that ended, done
  * included (done with its file, failed, or marked failed as stalled by
  * `vector:jobs:reap`); a job still queued or running keeps them, so a
  * scheduler runs the reap first. The counts go to stdout, a refused

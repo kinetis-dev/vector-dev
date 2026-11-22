@@ -73,7 +73,7 @@ final class ProposingTool extends Tool
         return $this->definition->inputSchema;
     }
 
-    /** The call, its outcome — proposed, or a tool error — recorded in the run's ToolBudget. */
+    /** The call, its outcome (proposed, or a tool error) recorded in the run's ToolBudget. */
     #[\Override]
     public function execute(): void
     {
