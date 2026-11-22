@@ -135,22 +135,66 @@ to the Settings page. Keys have their own store ({ref}`ai-keys`).
 (ai-keys)=
 ## Provider keys
 
-A provider's key comes from the environment (`VECTOR_AI_<NAME>_KEY`).
-When the environment gives none, an administrator stores one on the
-Settings page, in the AI group.
+An `openai` or `anthropic` provider needs an API key, and an
+`openai-like` provider may take one. `bedrock`, `ollama` and `fake`
+providers take no key, and nothing in this section applies to them.
 
-Stored keys are sealed under `VECTOR_AI_KEY`. Generate it once and keep
-it with your other secrets:
+A provider gets its key in one of two ways. Choose one per provider.
 
-```console
-php -r 'echo "base64:", base64_encode(random_bytes(32)), PHP_EOL;'
+### The operator sets it in the environment
+
+Put the key beside the provider's other settings:
+
+```ini
+VECTOR_AI_PROVIDERS=openai
+VECTOR_AI_OPENAI_TYPE=openai
+VECTOR_AI_OPENAI_KEY=sk-...
 ```
 
-Without it, an administrator cannot store keys: the endpoint answers
-`403`, "Set VECTOR_AI_KEY to store provider keys". Keys from the
-environment still work.
+It is read at boot, like the rest of the operator configuration, and
+nothing else is needed. The key status reports it as managed by the
+environment, and an administrator cannot replace or remove it from the
+admin. Use this when whoever deploys the server holds the key.
 
-How a stored key is kept:
+### An administrator enters it in the admin
+
+Use this when the key belongs to whoever runs the admin, and should not
+sit in the server's environment.
+
+The server never stores an entered key in plain text. It encrypts the
+key with `VECTOR_AI_KEY`, a secret kept in the environment, outside the
+database, so a copy of the database alone does not reveal any key.
+
+1. When installing, generate `VECTOR_AI_KEY` once:
+
+   ```console
+   php -r 'echo "base64:", base64_encode(random_bytes(32)), PHP_EOL;'
+   ```
+
+2. Add it to the environment, and list the provider without a key:
+
+   ```ini
+   VECTOR_AI_KEY=base64:...
+   VECTOR_AI_PROVIDERS=openai
+   VECTOR_AI_OPENAI_TYPE=openai
+   ```
+
+3. Restart the application.
+
+4. An administrator enters the provider's key on the Settings page, in
+   the AI group.
+
+Without `VECTOR_AI_KEY`, saving a key fails: the endpoint answers `403`,
+"Set VECTOR_AI_KEY to store provider keys".
+
+Keep `VECTOR_AI_KEY` with your other secrets, and do not change it. A key
+stored under one `VECTOR_AI_KEY` does not open under another: after a
+change, every stored key is reported as *sealed with another key;
+re-enter it*, and an administrator has to enter each one again. With
+`VECTOR_AI_KEY` removed, stored keys are reported as present but
+unusable until it is set back.
+
+### How a stored key is kept
 
 - It is sealed with libsodium (AEAD XChaCha20-Poly1305), with a fresh
   random nonce for every write and the provider's name as additional
@@ -159,15 +203,16 @@ How a stored key is kept:
 - It is stored in `vector_ai_credentials` and never shown again: no
   endpoint, page, error or log line returns it.
 - Each row records the id of the key that sealed it (the first 8 hex
-  characters of its SHA-256). After `VECTOR_AI_KEY` changes, a row
-  sealed under the old one is reported as *sealed with another key;
-  re-enter it*, never misread.
-- A row stored before `VECTOR_AI_KEY` was removed is reported as present
-  but unusable until the key is set again.
+  characters of its SHA-256), which is how a key sealed under another
+  `VECTOR_AI_KEY` is recognized rather than misread.
 - Storing and removing a key are recorded in the audit trail
   ({doc}`audit`): resource `vector-ai:credentials`, the provider's name,
   the event `set` or `delete`, and the actor (and impersonator). The
   key itself is never recorded.
+
+### The key endpoints
+
+The Settings page manages stored keys through these routes:
 
 | Route | Does |
 |---|---|
