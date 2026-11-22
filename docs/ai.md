@@ -23,7 +23,7 @@ page: the operator configuration, the `ai` settings group, sealed
 provider keys, the access policy, the model boundary and the usage
 ledger.
 
-## Installing
+## Installation
 
 The package needs `ext-sodium`.
 
@@ -185,7 +185,7 @@ Each provider in the list carries:
   (`storable` is then `false`).
 
 (ai-access)=
-## Who may use AI
+## The access policy
 
 `Kinetis\VectorAi\Auth\AiAccessInterface` decides two things:
 
@@ -235,7 +235,7 @@ Vector publishes the bag and never reads it; `kinetis/vector-ai` does.
 A resource kept from the model whole offers no AI at all: its
 plain-language filter answers `403`, and the admin hides it.
 
-### Fields in a tool answer
+### The boundary for each tool
 
 The assistant reads record data only through its tools. Every tool
 answer passes the boundary (`record()`, `page()`, `toolResult()`)
@@ -365,9 +365,10 @@ list's search. The list filters at once.
 :class: only-dark
 ```
 
-### The filter request
+### Turning a sentence into a filter
 
-`POST /vector/ai/filters/{resource}`:
+The admin's sentence goes to the server, which answers with a filter.
+The request is `POST /vector/ai/filters/{resource}`:
 
 ```json
 { "text": "orders over $500 from last week that haven't shipped", "timezone": "Europe/Berlin",
@@ -408,7 +409,7 @@ bar's choice list, under the user's scope:
   note for the admin to pick a candidate;
 - none is a `422`.
 
-### What the model is told
+### The filter prompt
 
 The model sees the resource as {ref}`the boundary <ai-boundary>` allows.
 For each field it gets:
@@ -427,6 +428,8 @@ it is asked for:
 - `q`;
 - an explanation.
 
+### Validation and repair
+
 The list's validator is the gate. The schema names the fields and the
 operators, but not which operators each field takes. The answer goes
 through `ListRequest::fromQueryParams()`, as the list's and
@@ -439,6 +442,8 @@ through `ListRequest::fromQueryParams()`, as the list's and
 Either way the model gets **one** repair turn, quoting the exact reason.
 A second refusal is a `422` for the admin.
 
+### Status codes
+
 | Status | When |
 |---|---|
 | `404` | No such resource. |
@@ -446,6 +451,8 @@ A second refusal is a `422` for the admin.
 | `422` | The answer is still invalid after one repair (a lookup on a relation whose records the user may not list counts as invalid), a lookup matches nothing, or an ambiguous lookup sits inside an "any of" group. |
 | `429` | Today's token budget is spent ({ref}`ai-usage`). |
 | `502` to `504` | The provider failed ({ref}`ai-failures`). |
+
+### Usage, timeouts and logging
 
 Each provider call, the repair turn included, is a usage row with the
 feature `filters`.
@@ -572,7 +579,7 @@ A repeated tool gets one chip with its count (*Read with vector_query
 ×3*). A call that was a tool error (a field the model guessed, a page
 out of range) gets no chip.
 
-### Inline reasoning is not part of the answer
+### Inline reasoning
 
 Some models write their reasoning into the text itself:
 
@@ -720,13 +727,13 @@ carries the message, which can quote data. Only under
 (`exception_message`) and the exception itself attached.
 
 (ai-approvals)=
-## The assistant proposing changes
+## Changes the assistant proposes
 
 The assistant can propose creates, updates, deletes and actions.
 Nothing changes until the person approves the proposal on a card in the
 drawer, and the change then runs as theirs.
 
-### Turning it on
+### Access to the write tools
 
 The person gets the write tools when all of these hold:
 
@@ -742,7 +749,7 @@ input schemas: `vector_create`, `vector_update`, `vector_delete` and
 `vector_run_action`. Otherwise it is given none of the four, not even
 their descriptions.
 
-### What a proposal does
+### The write tool call
 
 Calling a write tool **changes nothing**. The call:
 
@@ -803,7 +810,7 @@ The id is 128 random bits in base32, stored without its `apr_` prefix.
 :class: only-dark
 ```
 
-### Approving or rejecting
+### Approval and rejection
 
 The person decides with `POST /vector/ai/approvals/{id}/approve` or
 `POST /vector/ai/approvals/{id}/reject`. The body is empty, and any body
@@ -845,7 +852,7 @@ outcome is unknown: the request that ran it did not finish. Check the
 record's History.* That `409` is the answer, and the row is never
 executed again.
 
-### After the decision
+### The turn after a decision
 
 The drawer sends the next turn with the decision (`{"role": "approval",
 "id": …}`). The server reads the outcome from the row and passes the
@@ -895,7 +902,7 @@ An approval is also one usage row with the feature `assistant-writes`,
 no tokens, and the outcome `approval:executed` or `approval:failed`.
 
 (ai-prune)=
-### Sweeping old rows
+### The prune command
 
 Nothing deletes the table's rows on its own. Run this from a scheduler,
 hourly for example:
@@ -923,7 +930,7 @@ Approvals do not wait for the sweep: an expired proposal is refused with
 `410`, and a stale executing one answers `failed`, whether or not the
 sweep has run.
 
-### What the model can and cannot do
+### Safeguards
 
 - **It can only propose.** No code path lets the model, or a request
   body, run a write except the person's approval, which runs the stored
@@ -948,7 +955,7 @@ through Vector's ordinary write path, as their own edit. The server
 never writes it, and the record's history shows the person's update like
 any other.
 
-### Where it appears
+### The writing menu
 
 - **Text inputs**: a `string` or `text` field on a resource's create
   page or on a record's edit page, and nowhere else: not a list's bulk
@@ -994,7 +1001,7 @@ holds no text.
 - A Markdown answer is shown only through the admin's own Markdown
   sanitizer.
 
-### Which fields
+### Eligible fields
 
 Writing help works on `string`, `text`, `markdown` and `richtext`
 fields, except a `string` field marked `->unique()`: that is an
@@ -1036,7 +1043,7 @@ when `ai.send` keeps it. Vector itself never reads the key
 
 A broken rule is a `422` naming it. A body over 256 KiB is a `413`.
 
-### Who may ask, about what
+### Request checks
 
 Once the body passes, these checks run in this order. Each fails
 closed, and the model is asked nothing until all of them hold.
@@ -1104,7 +1111,7 @@ Nothing changes until the admin reviews the CSV and imports it in
 ordinary import row of theirs: validated, authorized by the `update`
 policy, hooked and audited as their own update, with no `origin`.
 
-### Adding it to a resource
+### Resource setup
 
 Nothing registers the action. A resource opts in by listing a subclass,
 which names the field and the operation, in its `actions()`:
@@ -1161,7 +1168,7 @@ If a check stops holding after a chunk has run (writing help switched
 off, the key removed), the rest of the selection is not sent
 (`unavailable`). The job still ends with the CSV of what was proposed.
 
-### Per record
+### Calls per record
 
 These records are left out, never sent, and counted:
 
@@ -1248,7 +1255,7 @@ The job's message counts:
 - the answers cut at the cap;
 - the records not sent, by why (`budget`, `file_full`, `unavailable`).
 
-### Applying it
+### Review and import
 
 1. Review the file: delete the rows you do not want, and edit any you
    do.
@@ -1271,7 +1278,7 @@ Review the CSV in a text editor, or import a spreadsheet's export of it
 only after checking those cells.
 ```
 
-### Delivered twice, billed once
+### Chunk redelivery
 
 Vector delivers a chunk at least once ({doc}`jobs`). Every record's
 outcome (the proposed text, or why it was left out) is written to
@@ -1308,7 +1315,7 @@ CSV, which stays on the job row as an export's file does. Vector does
 not re-run a failed job, so its rows let an operator recover the
 proposals by hand until the sweep deletes them.
 
-### Rich text
+### Rich-text fields
 
 Prefer bulk proposals on `string`, `text` and `markdown` fields. A
 `richtext` field's stored value (HTML, or the editor's JSON document) is
@@ -1377,7 +1384,7 @@ The numbers are each call's own, never a counter kept in the worker:
 the tokens its answer reported or, for an assistant call that ended
 without them, an estimate.
 
-### How an assistant call is billed
+### Assistant call billing
 
 The charge depends on whether the provider produced output, not on
 whether an HTTP status is known. A provider reports most of a call's
@@ -1404,7 +1411,7 @@ A failure that produced nothing costs nothing, however often it is
 retried: the budget is an abuse limit, not a bill.
 
 (ai-departures)=
-### When the browser leaves
+### Browser departures
 
 A run counts as ended by the browser leaving only when the application
 itself stopped it:
