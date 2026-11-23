@@ -435,6 +435,32 @@ final class ProposeRewritesTest extends WritingTestCase
         self::assertSame([(string) $ids[0]], array_column($rows, 'id'));
     }
 
+    public function testATextOverTheCapIsSkippedAndNeverSent(): void
+    {
+        $ids = $this->orders(2);
+        $this->scriptTidy($ids);
+        $this->shop()->table('orders')->where('id', '=', $ids[1])->update(['notes' => str_repeat('n', \Kinetis\VectorAi\Writing\WritingAssistant::MAX_TEXT + 1)]);
+
+        $job = $this->runAction('tidy-order-notes', $ids)->assertJsonPath('data.status', 'done')->json();
+        self::assertIsArray($job);
+
+        self::assertCount(1, $this->calls());
+        $message = (string) $job['data']['result']['message'];
+        self::assertStringContainsString('for 1 record(s)', $message);
+        self::assertStringContainsString('Left out 1 that were longer than 20000 characters.', $message);
+    }
+
+    public function testARunOutsideABackgroundJobIsRefused(): void
+    {
+        $ids = $this->orders(1);
+        $this->scriptTidy($ids);
+
+        $response = $this->inJob(static fn (ActionRunner $runner, ResourceDescriptor $orders): ActionResponse => $runner->runNow($orders, 'tidy-order-notes', $ids, []));
+
+        self::assertSame(['type' => 'danger', 'message' => 'Rewrite proposals run only as a background job.'], array_intersect_key($response->toArray(), ['type' => true, 'message' => true]));
+        self::assertSame([], $this->calls());
+    }
+
     public function testASpentBudgetStopsTheCallsKeepsWhatWasProposedAndSaysSo(): void
     {
         $ids = $this->orders(4);
