@@ -189,6 +189,54 @@ final class FiltersTranslationTest extends FiltersTestCase
         self::assertSame(['status' => ['in' => 'paid,pending']], $body['filter']);
     }
 
+    /** @return iterable<string, array{array<string, mixed>, string}> */
+    public static function unusableAnswers(): iterable
+    {
+        $paid = ['field' => 'status', 'op' => 'eq', 'value' => 'paid'];
+
+        yield 'a condition that is no object' => [['conditions' => ['status = paid'], 'anyOf' => [], 'q' => null, 'explanation' => 'x'], 'each condition must be an object with field, op and value.'];
+        yield 'a condition without its value' => [self::answer([['field' => 'status', 'op' => 'eq']]), 'each condition must be an object with field, op and value.'];
+        yield 'a number for a value' => [self::answer([['field' => 'status', 'op' => 'eq', 'value' => 3]]), 'the value of "status" must be a string, a list of strings or {"lookup": words}.'];
+        yield 'a list holding a number' => [self::answer([['field' => 'status', 'op' => 'in', 'value' => ['paid', 3]]]), 'the value of "status" must be a string, a list of strings or {"lookup": words}.'];
+        yield 'an object without a lookup' => [self::answer([['field' => 'status', 'op' => 'eq', 'value' => ['words' => 'paid']]]), 'the value of "status" must be a string, a list of strings or {"lookup": words}.'];
+        yield 'a lookup on a field that is no relation' => [self::answer([['field' => 'status', 'op' => 'eq', 'value' => ['lookup' => 'paid']]]), '"status" is not a relation: write its value, not a lookup.'];
+        yield 'an empty anyOf alternative' => [self::answer([$paid], [[[]]]), 'every anyOf alternative needs at least one condition.'];
+        yield 'an empty alternative after a valid one' => [self::answer([], [[[$paid], []]]), 'every anyOf alternative needs at least one condition.'];
+        yield 'an anyOf group that is no list' => [['conditions' => [], 'anyOf' => [['status' => 'paid']], 'q' => null, 'explanation' => 'x'], 'each anyOf group must be a list.'];
+        yield 'an alternative that is no list' => [['conditions' => [], 'anyOf' => [['paid']], 'q' => null, 'explanation' => 'x'], 'each anyOf alternative must be a list.'];
+        yield 'conditions that are no list' => [['conditions' => ['status' => 'paid'], 'anyOf' => [], 'q' => null, 'explanation' => 'x'], 'conditions must be a list.'];
+        yield 'a q that is no string' => [['conditions' => [$paid], 'anyOf' => [], 'q' => 5, 'explanation' => 'x'], 'q must be a string or null.'];
+    }
+
+    /** @param array<string, mixed> $answer */
+    #[\PHPUnit\Framework\Attributes\DataProvider('unusableAnswers')]
+    public function testAnUnusableAnswerGetsOneRepairTurnNamingWhy(array $answer, string $refusal): void
+    {
+        $this->script(['paid orders' => $answer]);
+
+        $this->ask('orders', 'paid orders')->assertStatus(422);
+
+        self::assertSame(self::repair($refusal), $this->repairText());
+    }
+
+    public function testAnAnyOfOfSeveralAlternativesIsAGroupAndAnEmptyGroupIsNone(): void
+    {
+        $this->script(['paid or pending orders' => self::answer(
+            [['field' => 'placedAt', 'op' => 'between', 'value' => '2026-11-21T00:00:00+02:00,2026-11-21T23:59:59+02:00']],
+            [
+                [[['field' => 'status', 'op' => 'eq', 'value' => 'paid']], [['field' => 'status', 'op' => 'eq', 'value' => 'pending']]],
+                [],
+            ],
+            '  ',
+        )]);
+
+        $body = $this->ask('orders', 'paid or pending orders')->assertOk()->json();
+
+        self::assertSame(['placedAt' => ['between' => '2026-11-21T00:00:00+02:00,2026-11-21T23:59:59+02:00']], $body['filter']);
+        self::assertSame([[['status' => ['eq' => 'paid']], ['status' => ['eq' => 'pending']]]], $body['groups']);
+        self::assertNull($body['q']);
+    }
+
     /** @return iterable<string, array{mixed, string}> */
     public static function zones(): iterable
     {
