@@ -407,7 +407,27 @@ final class GovernedToolTest extends AiTestCase
         self::assertSame(['vector_query', 'vector_query', 'vector_query'], $budget->names());
     }
 
-    private function governed(RecordingTool $inner, ToolBudget $budget): GovernedTool
+    /** @return iterable<string, array{string|ToolOutput, ToolOutput}> */
+    public static function unreadableAnswers(): iterable
+    {
+        yield 'a tool error' => [ToolOutput::error('No such widget.'), ToolOutput::error('No such widget.')];
+        yield 'a tool output that is no error' => [ToolOutput::text('{}'), ToolOutput::error('The tool answered in a form the assistant cannot read.')];
+        yield 'text that is not JSON' => ['not json', ToolOutput::error('The tool answered in a form the assistant cannot read.')];
+    }
+
+    #[DataProvider('unreadableAnswers')]
+    public function testAnAnswerThatIsNoJsonTextIsAToolError(string|ToolOutput $answer, ToolOutput $expected): void
+    {
+        $budget = new ToolBudget(8);
+        $tool = $this->governed(new AnsweringTool('vector_resources', $answer), $budget);
+        $tool->setInputs([]);
+        $tool->execute();
+
+        self::assertEquals($expected, $tool->getResult());
+        self::assertSame([['name' => 'vector_resources', 'ok' => false]], $budget->calls());
+    }
+
+    private function governed(Tool $inner, ToolBudget $budget): GovernedTool
     {
         $this->scope ??= $this->app->createRequestScope();
         $this->scope->instance(CurrentUserInterface::class, new DemoActor(1, 'Admin', true));
@@ -439,5 +459,20 @@ final class RecordingTool extends Tool
 
         $this->received = $this->inputs;
         $this->setResult(json_encode($this->answer, JSON_THROW_ON_ERROR));
+    }
+}
+
+/** An inner tool that answers with $answer as it is: a ToolOutput, or text that need not be JSON. */
+final class AnsweringTool extends Tool
+{
+    public function __construct(string $name, private readonly string|ToolOutput $answer)
+    {
+        $this->name = $name;
+    }
+
+    #[\Override]
+    public function execute(): void
+    {
+        $this->setResult($this->answer);
     }
 }

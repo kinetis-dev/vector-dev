@@ -116,6 +116,78 @@ final class InstallCommandTest extends TestCase
         self::assertStringEndsWith("Note: Vector's own tables are on the \"default\" connection (VECTOR_DB_CONNECTION); kinetis/vector-ai's tables belong beside them.\n", $output);
     }
 
+    /** @return iterable<string, array{list<string>, array<string, string>, int, string}> */
+    public static function refusals(): iterable
+    {
+        yield '--connection without a value' => [['--connection'], ['DB_CONNECTION' => 'mysql'], 2, "--connection needs a value: --connection=<name>.\n"];
+        yield 'an invalid connection name' => [['--connection=Admin'], ['DB_CONNECTION' => 'mysql'], 2, "Invalid connection name \"Admin\" from --connection: a connection name is lowercase ASCII letters and digits, starting with a letter.\n"];
+        yield 'the reserved connection name' => [['--connection=app'], ['DB_CONNECTION' => 'mysql'], 2, "The connection name \"app\" from --connection is reserved: its DB_NAME key, DB_APP_NAME, is also the default connection's DB_APP_NAME.\n"];
+        yield 'no dialect' => [[], [], 1, "DB_CONNECTION is not set, so the \"default\" connection's dialect is unknown. Configure the connection first.\n"];
+        yield 'no dialect for a named connection' => [['--connection=admin'], ['DB_CONNECTION' => 'mysql'], 1, 'DB_ADMIN_CONNECTION is not set, so the "admin" connection\'s dialect is unknown. Configure the connection first.' . "\n"];
+        yield 'an unsupported dialect' => [[], ['DB_CONNECTION' => 'sqlite'], 1, "DB_CONNECTION is \"sqlite\"; kinetis/vector-ai supports mysql and pgsql.\n"];
+    }
+
+    /**
+     * @param list<string> $argv
+     * @param array<string, string> $env
+     */
+    #[DataProvider('refusals')]
+    public function testARefusalWritesNothingAndExitsNonZero(array $argv, array $env, int $exit, string $error): void
+    {
+        [$status, $output, $errors] = $this->install($argv, $env);
+
+        self::assertSame($exit, $status);
+        self::assertSame('', $output);
+        self::assertSame($error, $errors);
+        self::assertDirectoryDoesNotExist($this->root . '/migrations');
+    }
+
+    public function testATargetThatCannotBeCreatedIsAnError(): void
+    {
+        // a file where the directory would go
+        file_put_contents($this->root . '/migrations', '');
+
+        [$status, $output, $errors] = @$this->install([], ['DB_CONNECTION' => 'mysql']);
+
+        self::assertSame(1, $status);
+        self::assertSame('', $output);
+        self::assertSame("Could not create {$this->root}/migrations.\n", $errors);
+    }
+
+    public function testAMigrationThatCannotBeWrittenStopsThePublishing(): void
+    {
+        mkdir($this->root . '/migrations');
+        $first = self::MIGRATIONS[0];
+        // a dangling link where the first migration's file would go: it is not there, and cannot be written
+        symlink($this->root . '/missing/' . $first . '.php', "{$this->root}/migrations/{$first}.php");
+
+        [$status, $output, $errors] = @$this->install([], ['DB_CONNECTION' => 'mysql']);
+
+        self::assertSame(1, $status);
+        self::assertSame('', $output);
+        self::assertSame("Could not write {$this->root}/migrations/{$first}.php.\n", $errors);
+        self::assertSame([$first . '.php'], self::listing($this->root . '/migrations'));
+    }
+
+    public function testOnlyTheMissingMigrationsArePublished(): void
+    {
+        mkdir($this->root . '/migrations');
+        file_put_contents($this->root . '/migrations/' . self::MIGRATIONS[1] . '.php', 'kept');
+
+        [$status, $output, $errors] = $this->install([], ['DB_CONNECTION' => 'mysql']);
+
+        self::assertSame(0, $status);
+        self::assertSame('', $errors);
+        self::assertSame(
+            'Published migrations/' . self::MIGRATIONS[0] . ".php\n"
+            . 'Published migrations/' . self::MIGRATIONS[2] . ".php\n"
+            . 'Published migrations/' . self::MIGRATIONS[3] . ".php\n"
+            . "Run `vendor/bin/kinetis migrate` to apply.\n",
+            $output,
+        );
+        self::assertStringEqualsFile($this->root . '/migrations/' . self::MIGRATIONS[1] . '.php', 'kept');
+    }
+
     /**
      * @param list<string> $argv
      * @param array<string, string> $env

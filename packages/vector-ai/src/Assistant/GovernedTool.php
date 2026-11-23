@@ -139,6 +139,18 @@ final class GovernedTool extends Tool
             $arguments = $this->ordered($visible, $arguments);
         }
 
+        $this->run($arguments);
+    }
+
+    /**
+     * Runs the inner tool on $arguments and sets its answer, through
+     * ModelBoundary::toolResult(), as this call's result; a refusal or an
+     * answer the assistant cannot read is a tool error.
+     *
+     * @param array<array-key, mixed> $arguments
+     */
+    private function run(array $arguments): void
+    {
         try {
             $this->inner->setInputs($arguments);
             $this->inner->execute();

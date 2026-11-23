@@ -106,38 +106,54 @@ final class AiSettings extends SettingsGroup
                 continue; // the assistant's provider and model
             }
 
-            $providerField = $feature->providerSetting();
-            $modelField = $feature->modelSetting();
-            $name = trim((string) ($values[$providerField] ?? ''));
-            $model = trim((string) ($values[$modelField] ?? ''));
+            $violation = $this->violation($feature, $values);
 
-            if ($name === '') {
-                // the provider the resolver falls back to, when there is one
-                $provider = $this->config->soleProvider();
-
-                if ($provider === null) {
-                    continue;
-                }
-
-                $name = $provider->name;
-            } else {
-                $provider = $this->config->provider($name);
-            }
-
-            if ($provider === null) {
-                $known = array_keys($this->config->providers);
-                $violations[] = new Violation([$providerField], 'unknown_provider', $known === []
-                    ? 'No AI provider is configured; the operator lists them in VECTOR_AI_PROVIDERS.'
-                    : "is not a configured provider: " . implode(', ', $known) . '.');
-
-                continue;
-            }
-
-            if ($model !== '' && !$provider->allows($model)) {
-                $violations[] = new Violation([$modelField], 'model_not_allowed', "is not a model {$name} allows: " . implode(', ', $provider->models) . '.');
+            if ($violation !== null) {
+                $violations[] = $violation;
             }
         }
 
         return $violations;
+    }
+
+    /**
+     * What is wrong with $feature's provider or, on a known provider, its
+     * model; null when nothing is.
+     *
+     * @param array<string, mixed> $values
+     */
+    private function violation(Feature $feature, array $values): ?Violation
+    {
+        $providerField = $feature->providerSetting();
+        $modelField = $feature->modelSetting();
+        $name = trim((string) ($values[$providerField] ?? ''));
+        $model = trim((string) ($values[$modelField] ?? ''));
+
+        if ($name === '') {
+            // the provider the resolver falls back to, when there is one
+            $provider = $this->config->soleProvider();
+
+            if ($provider === null) {
+                return null;
+            }
+
+            $name = $provider->name;
+        } else {
+            $provider = $this->config->provider($name);
+        }
+
+        if ($provider === null) {
+            $known = array_keys($this->config->providers);
+
+            return new Violation([$providerField], 'unknown_provider', $known === []
+                ? 'No AI provider is configured; the operator lists them in VECTOR_AI_PROVIDERS.'
+                : "is not a configured provider: " . implode(', ', $known) . '.');
+        }
+
+        if ($model !== '' && !$provider->allows($model)) {
+            return new Violation([$modelField], 'model_not_allowed', "is not a model {$name} allows: " . implode(', ', $provider->models) . '.');
+        }
+
+        return null;
     }
 }

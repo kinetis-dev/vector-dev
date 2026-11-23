@@ -102,25 +102,7 @@ final class ToolArguments
             /** @var class-string $dtoClass */
             $dtoClass = $param['dtoClass'];
 
-            if ($value === null) {
-                return $param['allowsNull'] === true ? [] : [Hydrator::nullNotAllowedViolation([$name])];
-            }
-
-            if ($value instanceof JsonObject) {
-                $value = $value->toArray();
-            }
-
-            if (!is_array($value)) {
-                return [is_object($value) ? Hydrator::notAnInstanceViolation([$name], $dtoClass) : Hydrator::objectExpectedViolation([$name], $value)];
-            }
-
-            try {
-                Hydrator::hydrate($dtoClass, $value, null, InputSource::Json);
-            } catch (ValidationException $e) {
-                return $e->violations;
-            }
-
-            return [];
+            return self::dtoViolations($value, $param, $name, $dtoClass);
         }
 
         /** @var list<array{class: class-string<\Kinetis\Validation\Constraint>, args: array<int|string, mixed>}> $constraints */
@@ -132,5 +114,35 @@ final class ToolArguments
             : Hydrator::resolveScalar(InputSource::Json, [$name], $value, $scalarType, $param['allowsNull'] === true, $constraints);
 
         return $violations;
+    }
+
+    /**
+     * The violations of $value for a parameter bound to the DTO $dtoClass.
+     *
+     * @param array<string, mixed> $param one entry of McpDispatcher::derivePlan()
+     * @param class-string $dtoClass
+     * @return list<\Kinetis\Validation\Violation>
+     */
+    private static function dtoViolations(mixed $value, array $param, string $name, string $dtoClass): array
+    {
+        if ($value === null) {
+            return $param['allowsNull'] === true ? [] : [Hydrator::nullNotAllowedViolation([$name])];
+        }
+
+        if ($value instanceof JsonObject) {
+            $value = $value->toArray();
+        }
+
+        if (!is_array($value)) {
+            return [is_object($value) ? Hydrator::notAnInstanceViolation([$name], $dtoClass) : Hydrator::objectExpectedViolation([$name], $value)];
+        }
+
+        try {
+            Hydrator::hydrate($dtoClass, $value, null, InputSource::Json);
+        } catch (ValidationException $e) {
+            return $e->violations;
+        }
+
+        return [];
     }
 }
