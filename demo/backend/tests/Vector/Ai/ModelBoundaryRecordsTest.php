@@ -301,6 +301,70 @@ final class ModelBoundaryRecordsTest extends AiTestCase
         self::assertSame($stat('/r/users?filter[isAdmin]=true'), $boundary->toolResult('vector_widget', ['widget' => 'x', 'dashboard' => 'main'], $stat('/r/users?filter[isAdmin]=true')));
     }
 
+    public function testAWriteFailureNamesOnlyTheFieldsAndCodesAModelMayBeTold(): void
+    {
+        [$boundary] = $this->boundary();
+        $errors = static fn (mixed ...$violations): string => json_encode(['errors' => $violations], JSON_THROW_ON_ERROR);
+
+        self::assertSame(['error' => ModelBoundary::REFUSED], $boundary->writeFailure('users', 'This record changed since it was read.'));
+        self::assertSame(['error' => ModelBoundary::REFUSED], $boundary->writeFailure('users', null));
+        self::assertSame(['error' => ModelBoundary::REFUSED], $boundary->writeFailure('users', '{"message":"no"}'));
+        self::assertSame(['error' => ModelBoundary::REFUSED], $boundary->writeFailure('users', '{"errors":"no"}'));
+
+        // users' email is kept from the model: it is counted, never named; a code a model may not be told is `invalid`
+        self::assertSame(
+            ['error' => ModelBoundary::INVALID, 'fields' => [['field' => 'name', 'code' => 'too_long'], ['field' => 'name', 'code' => 'invalid'], ['field' => 'name', 'code' => 'invalid']], 'otherFields' => 4],
+            $boundary->writeFailure('users', $errors(
+                ['path' => ['values', 'name'], 'code' => 'too_long', 'message' => 'Too long: "Ada Lovelace…"'],
+                ['path' => ['values', 'email'], 'code' => 'email', 'message' => 'ada@'],
+                ['path' => ['name'], 'code' => 'not a code!', 'message' => 'x'],
+                ['path' => ['name'], 'message' => 'x'],
+                ['path' => ['values'], 'code' => 'required', 'message' => 'x'],
+                ['path' => [], 'code' => 'invalid', 'message' => 'x'],
+                'not an object',
+            )),
+        );
+        // every field is counted, none named, for a resource a model may not be sent
+        self::assertSame(
+            ['error' => ModelBoundary::INVALID, 'fields' => [], 'otherFields' => 1],
+            $boundary->writeFailure('profiles', $errors(['path' => ['values', 'name'], 'code' => 'required', 'message' => 'x'])),
+        );
+        self::assertSame(['error' => ModelBoundary::INVALID, 'fields' => []], $boundary->writeFailure('users', $errors()));
+    }
+
+    public function testATableLinkedAsAWholeLeavesOutWhatItsResourceKeepsBackFromEveryRow(): void
+    {
+        [$boundary] = $this->boundary();
+        $table = ['data' => [
+            'type' => 'table',
+            'columns' => [['key' => 'name'], ['key' => 'email'], 'not a column', ['label' => 'No key']],
+            'rows' => ['not a row', ['id' => 1, 'name' => 'Ada', 'email' => 'ada@example.com'], ['id' => 2, 'email' => 'bo@example.com', '_link' => '/r/products/2']],
+            'link' => '/r/users?filter[isAdmin]=true',
+        ]];
+
+        self::assertSame(['data' => [
+            'type' => 'table',
+            'columns' => [['key' => 'name'], 'not a column', ['label' => 'No key']],
+            // a row's own link decides for it: `email` is no field of products
+            'rows' => ['not a row', ['id' => 1, 'name' => 'Ada'], ['id' => 2, 'email' => 'bo@example.com', '_link' => '/r/products/2']],
+            'link' => '/r/users?filter[isAdmin]=true',
+        ]], $boundary->toolResult('vector_widget', ['widget' => 'x', 'dashboard' => 'main'], $table));
+    }
+
+    public function testAnAggregateGroupingOrComputingOnAFieldKeptBackIsRefusedWhole(): void
+    {
+        [$boundary] = $this->boundary();
+        $answer = static fn (array $key, array $metrics): array => ['groups' => [['key' => ['isAdmin' => true], 'metrics' => ['count' => 2]], ['key' => $key, 'metrics' => $metrics]], 'groupCount' => 2, 'truncated' => false, 'extra' => 'dropped'];
+
+        self::assertSame(
+            ['groups' => [['key' => ['isAdmin' => true], 'metrics' => ['count' => 2]], ['key' => ['isAdmin' => false], 'metrics' => ['count' => 1, 'max_name' => 'Zed']]], 'groupCount' => 2, 'truncated' => false],
+            $boundary->toolResult('vector_aggregate', ['resource' => 'users'], $answer(['isAdmin' => false], ['count' => 1, 'max_name' => 'Zed'])),
+        );
+        self::assertSame(['error' => ModelBoundary::UNAVAILABLE], $boundary->toolResult('vector_aggregate', ['resource' => 'users'], $answer(['email' => 'a@b'], ['count' => 1])));
+        self::assertSame(['error' => ModelBoundary::UNAVAILABLE], $boundary->toolResult('vector_aggregate', ['resource' => 'users'], $answer(['isAdmin' => false], ['max_email' => 'a@b'])));
+        self::assertSame(['error' => ModelBoundary::UNAVAILABLE], $boundary->toolResult('vector_aggregate', ['resource' => 'users'], $answer(['isAdmin' => false], ['median_name' => 'x'])));
+    }
+
     /**
      * The demo's registry with $meta set on resources (`slug`) and fields
      * (`slug.field`), as `#[Resource(meta: …)]` and `->meta()` would.

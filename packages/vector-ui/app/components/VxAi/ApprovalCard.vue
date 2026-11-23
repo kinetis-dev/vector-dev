@@ -15,7 +15,7 @@ const host = useVectorHost()
 const { t } = useVectorT()
 
 /** Arguments shown in their own rows rather than as the change's fields. */
-const NAMED = ['resource', 'id', 'values']
+const NAMED = new Set(['resource', 'id', 'values'])
 
 const frame = computed(() => props.approval.frame)
 const resource = computed(() => frame.value.resource === null ? undefined : host.schema.value?.resources?.[frame.value.resource])
@@ -54,7 +54,7 @@ const changes = computed<Row[]>(() => {
 
 /** The call's other arguments (an action's name and ids, a delete's force, a version), as they are. */
 const others = computed(() => Object.entries(frame.value.arguments)
-    .filter(([name]) => !NAMED.includes(name))
+    .filter(([name]) => !NAMED.has(name))
     .map(([name, value]) => ({ name, value: show(value) })))
 
 const expires = computed(() => formatDateTime(frame.value.expiresAt))

@@ -342,17 +342,7 @@ final readonly class Assistant
                     break;
                 }
 
-                $event = $events->current();
-
-                if ($event instanceof ProtocolEvent) {
-                    // reasoning is streamed back as much as the answer is, but only the answer is the browser's
-                    $ledger->streamed(self::streamedText($event));
-
-                    if (!self::isReasoning($event) && !self::left($connection)) {
-                        yield $event;
-                    }
-                }
-
+                yield from self::forwarded($events->current(), $ledger, $connection);
                 yield from self::unlessGone(self::announced($adapter, $proposals), $connection);
             }
 
@@ -366,18 +356,58 @@ final readonly class Assistant
                 return;
             }
 
-            // empty when the run already sent its error frame; nobody reads one once the browser has gone
-            if (!self::left($connection)) {
-                foreach ($adapter->error($e) as $frame) {
-                    yield $frame;
-                }
-            }
-
+            yield from self::errorFrames($e, $adapter, $connection);
             $this->failed($e, $provider, $ledger, $budget, $started);
 
             return;
         }
 
+        $this->concluded($finished, $provider, $ledger, $budget, $started, $steps);
+    }
+
+    /**
+     * $event, when it is a protocol event, counted by the ledger and
+     * written while the browser is there, unless it is reasoning.
+     *
+     * @return Generator<int, ProtocolEvent, mixed, void>
+     */
+    private static function forwarded(mixed $event, AssistantLedger $ledger, ClientConnectionInterface $connection): Generator
+    {
+        if (!$event instanceof ProtocolEvent) {
+            return;
+        }
+
+        // reasoning is streamed back as much as the answer is, but only the answer is the browser's
+        $ledger->streamed(self::streamedText($event));
+
+        if (!self::isReasoning($event) && !self::left($connection)) {
+            yield $event;
+        }
+    }
+
+    /**
+     * The error frames of a run that failed with $e, while the browser is
+     * there: empty when the run already sent its error frame; nobody
+     * reads one once the browser has gone.
+     *
+     * @return Generator<int, ProtocolEvent, mixed, void>
+     */
+    private static function errorFrames(\Throwable $e, VercelAIAdapter $adapter, ClientConnectionInterface $connection): Generator
+    {
+        if (!self::left($connection)) {
+            foreach ($adapter->error($e) as $frame) {
+                yield $frame;
+            }
+        }
+    }
+
+    /**
+     * How a run that did not throw ends (told()): one advanced no further
+     * is the failure its ledger remembered, else gone(); one the departure
+     * stopped is gone(); any other is `answered`.
+     */
+    private function concluded(bool $finished, ResolvedProvider $provider, AssistantLedger $ledger, ToolBudget $budget, int $started, int $steps): void
+    {
         if (!$finished) {
             // advanced no further: after a step the run failed in, it is that failure's to say how it ended
             $e = $ledger->exception();
@@ -607,7 +637,8 @@ final readonly class Assistant
 
         $resource = $approval->resource();
         $sendable = $resource !== null && $this->boundary->sendable($resource) !== null;
-        $target = $sendable ? ' to ' . $resource . ($approval->recordId() === null ? '' : '#' . $approval->recordId()) : '';
+        $record = $approval->recordId() === null ? '' : '#' . $approval->recordId();
+        $target = $sendable ? ' to ' . $resource . $record : '';
         $status = match ($approval->status) {
             ApprovalStatus::Pending => 'pending: the admin has not decided yet',
             ApprovalStatus::Executing => 'approved, and being executed',

@@ -30,7 +30,7 @@ export function linkRecords(html: string, slugs: ReadonlySet<string>, base: stri
             fragment.append(value.slice(last, at))
             const link = document.createElement('a')
             link.setAttribute('href', `${base}/r/${encodeURIComponent(slug)}/${encodeURIComponent(id)}`)
-            link.setAttribute('data-record-link', `${slug}#${id}`)
+            link.dataset.recordLink = `${slug}#${id}`
             link.textContent = whole
             fragment.append(link)
             last = at + whole.length

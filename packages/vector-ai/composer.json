@@ -30,7 +30,7 @@
         "kinetis/neuron": "^1.3.3",
         "kinetis/query-builder": "^1.8.5",
         "kinetis/revolt-http-client": "^1.9.2",
-        "kinetis/vector": "^0.16",
+        "kinetis/vector": "^0.17",
         "neuron-core/neuron-ai": "^4.1.27",
         "psr/http-message": "^2.0",
         "psr/log": "^3.0"

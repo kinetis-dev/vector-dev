@@ -185,7 +185,7 @@ final readonly class AiConfig
             return $default;
         }
 
-        if (preg_match('/^[1-9][0-9]{0,9}$/D', $raw) !== 1) {
+        if (preg_match('/^[1-9]\d{0,9}$/D', $raw) !== 1) {
             throw new \InvalidArgumentException("{$key} is \"{$raw}\", not a positive whole number.");
         }
 

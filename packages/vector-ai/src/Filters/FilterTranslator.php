@@ -174,22 +174,11 @@ final readonly class FilterTranslator
         $groups = [];
 
         foreach (self::listOf($answer['anyOf'] ?? [], 'anyOf') as $group) {
-            $alternatives = [];
-
-            foreach (self::listOf($group, 'each anyOf group') as $alternative) {
-                $conditions = $this->conditions(self::listOf($alternative, 'each anyOf alternative'), $visible, $fields, $unresolved, false);
-
-                if ($conditions === []) {
-                    throw new UnusableAnswerException('every anyOf alternative needs at least one condition.');
-                }
-
-                $alternatives[] = $conditions;
-            }
+            $alternatives = $this->alternatives($group, $visible, $fields, $unresolved);
 
             // "any of" one alternative is that alternative: its conditions join
             // the others, unless one would take the place of a condition already there
-            if (count($alternatives) === 1 && array_all($alternatives[0], static fn (array $ops, string $name): bool => array_intersect_key($ops, $filter[$name] ?? []) === []
-                && !array_any($unresolved, static fn (array $u): bool => $u['field'] === $name && isset($ops[$u['op']])))) {
+            if (count($alternatives) === 1 && self::joins($alternatives[0], $filter, $unresolved)) {
                 $filter = array_merge_recursive($filter, $alternatives[0]);
             } elseif ($alternatives !== []) {
                 $groups[] = $alternatives;
@@ -219,6 +208,45 @@ final readonly class FilterTranslator
         $explanation = mb_substr(trim((string) preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $explanation)), 0, self::MAX_EXPLANATION);
 
         return new FilterTranslation($filter, $groups, $q, $explanation, $unresolved);
+    }
+
+    /**
+     * One anyOf group's alternatives, each one filter object's conditions.
+     *
+     * @param array<string, array<string, mixed>> $fields
+     * @param list<array{field: string, op: string, text: string, candidates: list<array{id: int|string, label: string}>}> $unresolved
+     * @return list<array<string, array<string, string>>>
+     * @throws UnusableAnswerException
+     */
+    private function alternatives(mixed $group, ResourceDescriptor $visible, array $fields, array &$unresolved): array
+    {
+        $alternatives = [];
+
+        foreach (self::listOf($group, 'each anyOf group') as $alternative) {
+            $conditions = $this->conditions(self::listOf($alternative, 'each anyOf alternative'), $visible, $fields, $unresolved, false);
+
+            if ($conditions === []) {
+                throw new UnusableAnswerException('every anyOf alternative needs at least one condition.');
+            }
+
+            $alternatives[] = $conditions;
+        }
+
+        return $alternatives;
+    }
+
+    /**
+     * Whether $alternative's conditions may join $filter: none takes the
+     * place of a condition already there, or of a lookup still unresolved.
+     *
+     * @param array<string, array<string, string>> $alternative
+     * @param array<string, array<string, string>> $filter
+     * @param list<array{field: string, op: string, text: string, candidates: list<array{id: int|string, label: string}>}> $unresolved
+     */
+    private static function joins(array $alternative, array $filter, array $unresolved): bool
+    {
+        return array_all($alternative, static fn (array $ops, string $name): bool => array_intersect_key($ops, $filter[$name] ?? []) === []
+            && !array_any($unresolved, static fn (array $u): bool => $u['field'] === $name && isset($ops[$u['op']])));
     }
 
     /**
@@ -257,30 +285,49 @@ final readonly class FilterTranslator
                 throw new UnusableAnswerException("\"{$name}\" has the operator \"{$op}\" twice in one object.");
             }
 
-            $value = $condition['value'];
+            $value = $this->conditionValue($condition['value'], $visible, $fields[$name], $name, $op, $unresolved, $topLevel);
 
-            if (is_array($value) && array_key_exists('lookup', $value)) {
-                $value = $this->lookup($visible, $fields[$name], $op, $value['lookup'], $unresolved, $topLevel);
-
-                if ($value === null) {
-                    continue; // several match: someone picks one
-                }
-            } elseif (is_array($value) && array_is_list($value) && array_all($value, static fn (mixed $v): bool => is_string($v))) {
-                // the list's grammar, and the admin's filter bar, carry a list as `a,b,c`:
-                // a comma inside one value would split it into two without a word
-                if (array_any($value, static fn (string $v): bool => str_contains($v, ','))) {
-                    throw new UnusableAnswerException("a value in the list for \"{$name}\" contains a comma, which a list filter cannot hold; leave that value out, or filter \"{$name}\" another way.");
-                }
-
-                $value = implode(',', $value);
-            } elseif (!is_string($value)) {
-                throw new UnusableAnswerException("the value of \"{$name}\" must be a string, a list of strings or {\"lookup\": words}.");
+            if ($value === null) {
+                continue; // several match: someone picks one
             }
 
             $filter[$name][$op] = $value;
         }
 
         return $filter;
+    }
+
+    /**
+     * A condition's value as the list filter takes it: a lookup's one
+     * match, a list of strings joined by commas, or the string itself;
+     * null for a lookup several records match, with its `unresolved`
+     * entry.
+     *
+     * @param array<string, mixed> $field the field $name names
+     * @param list<array{field: string, op: string, text: string, candidates: list<array{id: int|string, label: string}>}> $unresolved
+     * @throws UnusableAnswerException
+     */
+    private function conditionValue(mixed $value, ResourceDescriptor $visible, array $field, string $name, string $op, array &$unresolved, bool $topLevel): ?string
+    {
+        if (is_array($value) && array_key_exists('lookup', $value)) {
+            return $this->lookup($visible, $field, $op, $value['lookup'], $unresolved, $topLevel);
+        }
+
+        if (is_array($value) && array_is_list($value) && array_all($value, static fn (mixed $v): bool => is_string($v))) {
+            // the list's grammar, and the admin's filter bar, carry a list as `a,b,c`:
+            // a comma inside one value would split it into two without a word
+            if (array_any($value, static fn (string $v): bool => str_contains($v, ','))) {
+                throw new UnusableAnswerException("a value in the list for \"{$name}\" contains a comma, which a list filter cannot hold; leave that value out, or filter \"{$name}\" another way.");
+            }
+
+            return implode(',', $value);
+        }
+
+        if (!is_string($value)) {
+            throw new UnusableAnswerException("the value of \"{$name}\" must be a string, a list of strings or {\"lookup\": words}.");
+        }
+
+        return $value;
     }
 
     /**

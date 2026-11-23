@@ -152,14 +152,7 @@ abstract class ProposeRewrites extends VectorAction
         try {
             [$visible, $field, $provider, $instructions] = $this->configured($request->resource);
         } catch (AiRequestException $e) {
-            // the first chunk fails the job; a later one keeps what earlier chunks made, for finish() to deliver
-            if (!$this->store->started($request->jobId)) {
-                return ActionResponse::danger($e->getMessage());
-            }
-
-            $unsent = $this->leaveOutRest($request, 'unavailable');
-
-            return ActionResponse::message("Writing help is no longer available to this run: {$unsent} record(s) in this chunk were not sent.")->withRecords([]);
+            return $this->unavailable($request, $request->jobId, $e);
         }
 
         $name = $this->field();
@@ -176,16 +169,10 @@ abstract class ProposeRewrites extends VectorAction
         $budget = $this->availability->remaining();
 
         foreach ($request->records as $record) {
-            $id = $record[$key] ?? null;
-
-            if (!is_int($id) && !is_string($id)) {
-                continue;
-            }
-
-            $id = (string) $id;
+            $id = self::recordKey($record, $key);
 
             // done in an earlier delivery of this chunk, or earlier in this one: never sent twice
-            if (isset($done[$id])) {
+            if ($id === null || isset($done[$id])) {
                 continue;
             }
 
@@ -193,15 +180,7 @@ abstract class ProposeRewrites extends VectorAction
             $done[$id] = true;
 
             $text = $record[$name] ?? null;
-            $left = match (true) {
-                !self::encodable($id) => [RewriteStore::SKIPPED, 'unencodable'],
-                !$this->guard->mayUpdate($visible, $record) => [RewriteStore::SKIPPED, 'forbidden'],
-                !is_string($text) || trim($text) === '' => [RewriteStore::SKIPPED, 'empty'],
-                mb_strlen($text) > WritingAssistant::MAX_TEXT => [RewriteStore::SKIPPED, 'too_long'],
-                $bytes >= $limit => [RewriteStore::BUDGET, 'file_full'],
-                $budget <= 0 => [RewriteStore::BUDGET, 'budget'],
-                default => null,
-            };
+            $left = $this->leftOut($visible, $record, $id, $text, $bytes >= $limit, $budget);
 
             if ($left !== null) {
                 $this->store->leaveOut($request->jobId, $id, $left[0], $left[1]);
@@ -215,9 +194,7 @@ abstract class ProposeRewrites extends VectorAction
             try {
                 $answer = $this->writing->write($provider, $field, $operation, $text, $format, $this->targetLocale(), $instructions, $tokens);
             } catch (\Throwable $e) {
-                // its category only: the message can quote the provider's answer
-                $failure = $e instanceof AiFailure ? $e : $this->failures->map($e);
-                $this->store->leaveOut($request->jobId, $id, RewriteStore::FAILED, $failure->category->value);
+                $this->leaveOutFailed($request->jobId, $id, $e);
 
                 continue;
             } finally {
@@ -225,26 +202,98 @@ abstract class ProposeRewrites extends VectorAction
                 $budget -= $tokens;
             }
 
-            if (trim($answer['text']) === '') {
-                $this->store->leaveOut($request->jobId, $id, RewriteStore::FAILED, 'empty_answer');
-
+            if (!$this->proposed($request->jobId, $id, $answer)) {
                 continue;
             }
 
-            // the CSV could not carry it: the importer would read its last backslash as escaping the closing quote
-            if (!self::encodable($answer['text'])) {
-                $this->store->leaveOut($request->jobId, $id, RewriteStore::SKIPPED, 'unencodable');
-
-                continue;
-            }
-
-            $this->store->propose($request->jobId, $id, $answer['text'], $answer['truncated']);
             $bytes += self::rowBytes($id, $answer['text']);
             $proposed[] = $id;
         }
 
         // only the records proposed for are audited; one done in an earlier delivery is not declared again
         return ActionResponse::message('Proposed ' . count($proposed) . ' rewrite(s) in this chunk.')->withRecords($proposed);
+    }
+
+    /**
+     * The answer to a chunk the guard refused: the first chunk fails the
+     * job; a later one keeps what earlier chunks made, for finish() to
+     * deliver, and records the rest of its records as not sent.
+     */
+    private function unavailable(ActionRequest $request, int $jobId, AiRequestException $e): ActionResponse
+    {
+        if (!$this->store->started($jobId)) {
+            return ActionResponse::danger($e->getMessage());
+        }
+
+        $unsent = $this->leaveOutRest($request, 'unavailable');
+
+        return ActionResponse::message("Writing help is no longer available to this run: {$unsent} record(s) in this chunk were not sent.")->withRecords([]);
+    }
+
+    /**
+     * A record's key as text, or null when it has none.
+     *
+     * @param array<string, mixed> $record
+     */
+    private static function recordKey(array $record, string $key): ?string
+    {
+        $id = $record[$key] ?? null;
+
+        return is_int($id) || is_string($id) ? (string) $id : null;
+    }
+
+    /**
+     * Why record $id is not sent, as a RewriteStore status and reason, in
+     * the order they are asked; null when it is sent.
+     *
+     * @param array<string, mixed> $record
+     * @return array{string, string}|null
+     */
+    private function leftOut(ResourceDescriptor $visible, array $record, string $id, mixed $text, bool $fileFull, int $budget): ?array
+    {
+        return match (true) {
+            !self::encodable($id) => [RewriteStore::SKIPPED, 'unencodable'],
+            !$this->guard->mayUpdate($visible, $record) => [RewriteStore::SKIPPED, 'forbidden'],
+            !is_string($text) || trim($text) === '' => [RewriteStore::SKIPPED, 'empty'],
+            mb_strlen($text) > WritingAssistant::MAX_TEXT => [RewriteStore::SKIPPED, 'too_long'],
+            $fileFull => [RewriteStore::BUDGET, 'file_full'],
+            $budget <= 0 => [RewriteStore::BUDGET, 'budget'],
+            default => null,
+        };
+    }
+
+    /** Records record $id's call as failed, by its category only: the message can quote the provider's answer. */
+    private function leaveOutFailed(int $jobId, string $id, \Throwable $e): void
+    {
+        $failure = $e instanceof AiFailure ? $e : $this->failures->map($e);
+        $this->store->leaveOut($jobId, $id, RewriteStore::FAILED, $failure->category->value);
+    }
+
+    /**
+     * Records $answer as record $id's proposal; false, with the reason it
+     * is left out recorded instead, for an empty answer or one the CSV
+     * could not carry.
+     *
+     * @param array{text: string, operation: string, model: string, truncated: bool} $answer
+     */
+    private function proposed(int $jobId, string $id, array $answer): bool
+    {
+        if (trim($answer['text']) === '') {
+            $this->store->leaveOut($jobId, $id, RewriteStore::FAILED, 'empty_answer');
+
+            return false;
+        }
+
+        // the CSV could not carry it: the importer would read its last backslash as escaping the closing quote
+        if (!self::encodable($answer['text'])) {
+            $this->store->leaveOut($jobId, $id, RewriteStore::SKIPPED, 'unencodable');
+
+            return false;
+        }
+
+        $this->store->propose($jobId, $id, $answer['text'], $answer['truncated']);
+
+        return true;
     }
 
     /**
@@ -318,7 +367,7 @@ abstract class ProposeRewrites extends VectorAction
         $out = fopen('php://memory', 'r+');
 
         if ($out === false) {
-            throw new \RuntimeException('Could not open a memory stream.');
+            throw new CsvStreamException('Could not open a memory stream.');
         }
 
         fwrite($out, "\xEF\xBB\xBF");

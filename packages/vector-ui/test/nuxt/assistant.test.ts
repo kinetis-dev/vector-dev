@@ -128,6 +128,41 @@ describe('the assistant', () => {
         }
     })
 
+    it('follows navigation in its context line, and a record link navigates inside the admin', async () => {
+        standaloneApi()
+        const turn = endpoint('/vector/ai/assistant', STREAMED, 'POST')
+        cleanups.push(turn.unregister)
+        const auth = useVectorAuthStore()
+        auth.$patch({ user: { id: 1, name: 'Ada' }, token: 'token', expiresAt: Date.now() + 3_600_000 })
+        cleanups.push(() => auth.$patch({ user: null, token: null, expiresAt: 0 }))
+        const router = useRouter()
+        const before = router.currentRoute.value.fullPath
+        const base = useAppConfig().vector.basePath
+        await router.push(base === '' ? '/' : base)
+        try {
+            const wrapper = await mount()
+            cleanups.push(() => wrapper.unmount())
+            await wrapper.find('[data-ai-assistant-toggle]').trigger('click')
+            await flushPromises()
+            expect(wrapper.find('[data-ai-assistant-context]').text()).toBe('Dashboard')
+
+            // the drawer stays open across navigation, and says which page the questions are about now
+            await router.push(`${base}/r/products`)
+            await flushPromises()
+            expect(wrapper.find('[data-ai-assistant-context]').text()).not.toBe('Dashboard')
+            expect(wrapper.find('[data-ai-assistant-context]').text()).toContain('Products')
+
+            await ask(wrapper, 'Which products are low on stock?')
+            await wrapper.find('[data-ai-assistant-answer] a[data-record-link]').trigger('click', { button: 0 })
+            await flushPromises()
+            await vi.waitFor(() => expect(router.currentRoute.value.path).toBe(`${base}/r/products/3`))
+            expect(wrapper.find('[data-ai-assistant-context]').text()).toContain('3')
+        } finally {
+            await router.push(before)
+            await flushPromises()
+        }
+    })
+
     it('streams an answer, and links the records the admin knows', async () => {
         standaloneApi()
         const turn = endpoint('/vector/ai/assistant', STREAMED, 'POST')

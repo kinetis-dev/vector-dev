@@ -23,14 +23,13 @@ import ApprovalCard from './ApprovalCard.vue'
 // heard, only when capabilities.ai.assistant is on.
 
 /** The tools that only propose a change. */
-const PROPOSING = ['vector_create', 'vector_update', 'vector_delete', 'vector_run_action']
+const PROPOSING = new Set(['vector_create', 'vector_update', 'vector_delete', 'vector_run_action'])
 
 // the layout's own attributes (data-shell-action) go on the button: the drawer is elsewhere
 defineOptions({ inheritAttrs: false })
 
 const host = useVectorHost()
 const appConfig = useAppConfig()
-const route = useRoute()
 const router = useRouter()
 const { t } = useVectorT()
 const { open, draft, turns, busy, refused, send, retry, reset, decide } = useVectorAssistant()
@@ -43,7 +42,7 @@ const slugs = computed(() => new Set(Object.keys(host.schema.value?.resources ??
 
 /** Which page the questions are about, in words. */
 const contextLine = computed(() => {
-    void route.fullPath // follows navigation
+    // follows navigation: host.context() reads the router's current route
     const ctx = host.context()
     const resource = ctx.resource === undefined ? undefined : host.schema.value?.resources?.[ctx.resource]
     if (resource === undefined) return ctx.path === '/' ? t('shell.home.title') : t('ai.assistant.context.page', { path: ctx.path })
@@ -61,10 +60,10 @@ function html(content: string): string {
 
 /** A record link in an answer navigates inside the admin, rather than reloading it. */
 function follow(event: MouseEvent) {
-    const link = (event.target as Element | null)?.closest('a[data-record-link]')
+    const link = (event.target as Element | null)?.closest<HTMLElement>('a[data-record-link]')
     if (!link || event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return
     event.preventDefault()
-    const [slug = '', id = ''] = (link.getAttribute('data-record-link') ?? '').split('#')
+    const [slug = '', id = ''] = (link.dataset.recordLink ?? '').split('#')
     void navigateTo(`${appConfig.vector.basePath}/r/${encodeURIComponent(slug)}/${encodeURIComponent(id)}`)
 }
 
@@ -77,7 +76,7 @@ function onKeydown(event: KeyboardEvent) {
 
 /** The chip of a tool, with how many times when more than once. */
 function chipLabel(name: string, count: number): string {
-    const proposing = PROPOSING.includes(name)
+    const proposing = PROPOSING.has(name)
     if (count === 1) return t(proposing ? 'ai.assistant.proposingTool' : 'ai.assistant.tool', { name })
     return t(proposing ? 'ai.assistant.proposingToolTimes' : 'ai.assistant.toolTimes', { name, count })
 }
@@ -132,7 +131,7 @@ onBeforeUnmount(() => {
                             <v-sheet v-if="turn.role === 'user'" color="primary" variant="tonal" rounded class="pa-2 ms-8 text-body-2 vx-ai-assistant__user">{{ turn.content }}</v-sheet>
                             <div v-else class="me-4">
                                 <div v-if="toolChips(turn.tools).length" class="d-flex flex-wrap ga-1 mb-1" data-ai-assistant-tools>
-                                    <v-chip v-for="chip in toolChips(turn.tools)" :key="chip.name" size="x-small" variant="outlined" :prepend-icon="PROPOSING.includes(chip.name) ? 'mdi-pencil-outline' : 'mdi-database-search-outline'" data-ai-assistant-tool>{{ chipLabel(chip.name, chip.count) }}</v-chip>
+                                    <v-chip v-for="chip in toolChips(turn.tools)" :key="chip.name" size="x-small" variant="outlined" :prepend-icon="PROPOSING.has(chip.name) ? 'mdi-pencil-outline' : 'mdi-database-search-outline'" data-ai-assistant-tool>{{ chipLabel(chip.name, chip.count) }}</v-chip>
                                 </div>
                                 <!-- eslint-disable-next-line vue/no-v-html -- Markdown sanitized by the admin's own renderer; the record links are built, not parsed -->
                                 <div v-if="turn.content" class="text-body-2 vx-ai-assistant__answer" data-ai-assistant-answer @click="follow" v-html="html(turn.content)" />

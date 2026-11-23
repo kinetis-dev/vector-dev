@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-23
+
 ### Added
 
 - The assistant has `vector_aggregate` among its reads, governed like
@@ -92,6 +94,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a log formatter may print the attached exception's class alone. No
   other environment logs the message, and the client still gets only
   "The run failed."
+- `ProposeRewrites::csvWithin()` throws
+  `Kinetis\VectorAi\Actions\CsvStreamException`, which extends
+  `\RuntimeException`, when it cannot open its memory stream: the message
+  is unchanged and every existing catch still applies. The methods
+  SonarQube found too complex (the assistant's and writing help's body
+  checks, the assistant's run, the filter translator, the model
+  boundary's write failures, aggregates and widgets, the bulk rewrites,
+  the settings group, tool arguments, the governed tool and
+  `vector-ai:install`) delegate to private helpers, with every check,
+  message and its order, output and exit code unchanged.
 
 ### Fixed
 
@@ -226,6 +238,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Requires `kinetis/vector` ^0.17, whose `vector_aggregate` MCP tool the
+  assistant reads with.
 - Requires `kinetis/framework` ^1.30.0, whose console answers `--help` and
   `-h` on every command with its usage and description without running
   it, and `kinetis/neuron` ^1.3.3. The

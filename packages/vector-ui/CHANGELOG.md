@@ -7,11 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-23
+
 ### Added
 
 - A resource's list reloads the page it shows on
   `refreshNuxtData('vector.list.<slug>')`, or on `refreshNuxtData()`
   with no keys, as a page loaded with `useAsyncData` does.
+
+### Changed
+
+- Clears SonarQube findings in the assistant's drawer, its approval card
+  and `useVectorAssistant()`: their fixed lists are Sets, a record link's
+  `data-record-link` is read and written through `dataset`, the context
+  line no longer reads the route through `void`, and a streamed frame is
+  applied through helpers at module scope. Behavior is unchanged.
 
 ## [0.13.0] - 2026-11-19
 

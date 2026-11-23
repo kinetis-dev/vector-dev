@@ -77,6 +77,62 @@ function newId(): string {
     return crypto.randomUUID()
 }
 
+/** A proposal's card, pending, with the record as the run read it, when it did. */
+function card(frame: ApprovalFrame, reads: RunReads | null): ApprovalCard {
+    const before = frame.resource !== null && frame.recordId !== null ? reads?.records.get(`${frame.resource}#${frame.recordId}`) ?? null : null
+    return { frame, before, state: 'pending', result: null, error: null }
+}
+
+/**
+ * Applies a frame of a tool call (its start, its input as it streams,
+ * its output or its error) to the reply and the run's reads; false when
+ * $frame is none of those, or lacks what it needs.
+ */
+function applyToolFrame(reply: AssistantTurn, frame: DataStreamFrame, reads: RunReads, callId: string | null): boolean {
+    if (frame.type === 'tool-input-start' && typeof frame.toolName === 'string') {
+        reply.tools.push({ id: callId, name: frame.toolName, ok: null })
+        if (callId !== null) reads.calls.set(callId, { tool: frame.toolName, input: '' })
+        return true
+    }
+    if (frame.type === 'tool-input-delta' && callId !== null && typeof frame.inputTextDelta === 'string') {
+        const call = reads.calls.get(callId)
+        if (call) call.input += frame.inputTextDelta
+        return true
+    }
+    if (frame.type === 'tool-output-available' && callId !== null) {
+        settle(reply, callId, true)
+        remember(reads, callId, frame.output)
+        return true
+    }
+    if (frame.type === 'tool-output-error' && callId !== null) {
+        settle(reply, callId, false)
+        return true
+    }
+    return false
+}
+
+/** Whether call $callId of the reply answered ($ok), or was a tool error. */
+function settle(reply: AssistantTurn, callId: string, ok: boolean) {
+    const call = reply.tools.find(tool => tool.id === callId)
+    if (call) call.ok = ok
+}
+
+/** What a `vector_get` of the run read, by `resource#id`, for a later proposal's "before". */
+function remember(reads: RunReads, callId: string, output: unknown) {
+    const call = reads.calls.get(callId)
+    if (call?.tool !== 'vector_get') return
+    let input: { resource?: unknown, id?: unknown }
+    try {
+        input = JSON.parse(call.input) as { resource?: unknown, id?: unknown }
+    } catch {
+        return
+    }
+    const record = recordOfToolOutput(output)
+    if (record !== null && typeof input.resource === 'string' && (typeof input.id === 'string' || typeof input.id === 'number')) {
+        reads.records.set(`${input.resource}#${input.id}`, record)
+    }
+}
+
 /**
  * The assistant's conversation: the browser's own, replayed to POST
  * /vector/ai/assistant on every turn (the user's and the assistant's text
@@ -113,51 +169,19 @@ export function useVectorAssistant() {
                 : { role: turn.role, content: turn.content.trim() === '' ? PROPOSED_ONLY : turn.content })
     }
 
-    function card(frame: ApprovalFrame, reads: RunReads | null): ApprovalCard {
-        const before = frame.resource !== null && frame.recordId !== null ? reads?.records.get(`${frame.resource}#${frame.recordId}`) ?? null : null
-        return { frame, before, state: 'pending', result: null, error: null }
-    }
-
     function apply(reply: AssistantTurn, frame: DataStreamFrame, reads: RunReads) {
         const callId = typeof frame.toolCallId === 'string' ? frame.toolCallId : null
-        if (frame.type === 'text-delta' && typeof frame.delta === 'string') reply.content += frame.delta
-        else if (frame.type === 'tool-input-start' && typeof frame.toolName === 'string') {
-            reply.tools.push({ id: callId, name: frame.toolName, ok: null })
-            if (callId !== null) reads.calls.set(callId, { tool: frame.toolName, input: '' })
-        } else if (frame.type === 'tool-input-delta' && callId !== null && typeof frame.inputTextDelta === 'string') {
-            const call = reads.calls.get(callId)
-            if (call) call.input += frame.inputTextDelta
-        } else if (frame.type === 'tool-output-available' && callId !== null) {
-            settle(reply, callId, true)
-            remember(reads, callId, frame.output)
-        } else if (frame.type === 'tool-output-error' && callId !== null) settle(reply, callId, false)
-        else if (frame.type === 'error') reply.failed = typeof frame.errorText === 'string' ? frame.errorText : t('ai.assistant.failed')
-        else {
-            const approval = approvalFrame(frame)
-            if (approval !== null) reply.approvals.push(card(approval, reads))
-        }
-    }
-
-    /** Whether call $callId of the reply answered ($ok), or was a tool error. */
-    function settle(reply: AssistantTurn, callId: string, ok: boolean) {
-        const call = reply.tools.find(tool => tool.id === callId)
-        if (call) call.ok = ok
-    }
-
-    /** What a `vector_get` of the run read, by `resource#id`, for a later proposal's "before". */
-    function remember(reads: RunReads, callId: string, output: unknown) {
-        const call = reads.calls.get(callId)
-        if (call?.tool !== 'vector_get') return
-        let input: { resource?: unknown, id?: unknown }
-        try {
-            input = JSON.parse(call.input) as { resource?: unknown, id?: unknown }
-        } catch {
+        if (frame.type === 'text-delta' && typeof frame.delta === 'string') {
+            reply.content += frame.delta
             return
         }
-        const record = recordOfToolOutput(output)
-        if (record !== null && typeof input.resource === 'string' && (typeof input.id === 'string' || typeof input.id === 'number')) {
-            reads.records.set(`${input.resource}#${input.id}`, record)
+        if (applyToolFrame(reply, frame, reads, callId)) return
+        if (frame.type === 'error') {
+            reply.failed = typeof frame.errorText === 'string' ? frame.errorText : t('ai.assistant.failed')
+            return
         }
+        const approval = approvalFrame(frame)
+        if (approval !== null) reply.approvals.push(card(approval, reads))
     }
 
     async function run() {

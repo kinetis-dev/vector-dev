@@ -46,27 +46,15 @@ final readonly class InstallCommand
      */
     public function run(CommandArguments $arguments, Config $config, string $root, ?string $stubDirectory = null): int
     {
-        try {
-            $connection = VectorDatabase::validated(
-                $arguments->hasOption('connection')
-                    ? ($arguments->option('connection') ?? throw new \InvalidArgumentException('--connection needs a value: --connection=<name>.'))
-                    : 'default',
-                '--connection',
-            );
-        } catch (\InvalidArgumentException $e) {
-            $this->output->error($e->getMessage());
+        $connection = $this->connection($arguments);
 
+        if ($connection === null) {
             return 2;
         }
 
-        $key = Config::scopedKey('DB_CONNECTION', $connection);
-        $dialect = $config->get($key);
+        $dialect = $this->dialect($config, $connection);
 
-        if (!in_array($dialect, ['mysql', 'pgsql'], true)) {
-            $this->output->error($dialect === null
-                ? "{$key} is not set, so the \"{$connection}\" connection's dialect is unknown. Configure the connection first."
-                : "{$key} is \"{$dialect}\"; kinetis/vector-ai supports mysql and pgsql.");
-
+        if ($dialect === null) {
             return 1;
         }
 
@@ -87,6 +75,59 @@ final readonly class InstallCommand
             return 1;
         }
 
+        $published = $this->publish($stubs, $target, $dialect, $root);
+
+        if ($published === null) {
+            return 1;
+        }
+
+        $this->notes($config, $connection, $published);
+
+        return 0;
+    }
+
+    /** The connection --connection names, `default` without it; null, the refusal written, when it names none or an invalid one. */
+    private function connection(CommandArguments $arguments): ?string
+    {
+        try {
+            return VectorDatabase::validated(
+                $arguments->hasOption('connection')
+                    ? ($arguments->option('connection') ?? throw new \InvalidArgumentException('--connection needs a value: --connection=<name>.'))
+                    : 'default',
+                '--connection',
+            );
+        } catch (\InvalidArgumentException $e) {
+            $this->output->error($e->getMessage());
+
+            return null;
+        }
+    }
+
+    /** The dialect $connection is configured with; null, the refusal written, when it is unset or not one this package ships. */
+    private function dialect(Config $config, string $connection): ?string
+    {
+        $key = Config::scopedKey('DB_CONNECTION', $connection);
+        $dialect = $config->get($key);
+
+        if (!in_array($dialect, ['mysql', 'pgsql'], true)) {
+            $this->output->error($dialect === null
+                ? "{$key} is not set, so the \"{$connection}\" connection's dialect is unknown. Configure the connection first."
+                : "{$key} is \"{$dialect}\"; kinetis/vector-ai supports mysql and pgsql.");
+
+            return null;
+        }
+
+        return $dialect;
+    }
+
+    /**
+     * Writes each stub not yet in $target, saying so; how many it wrote,
+     * or null, the refusal written, when one could not be.
+     *
+     * @param list<string> $stubs
+     */
+    private function publish(array $stubs, string $target, string $dialect, string $root): ?int
+    {
         $published = 0;
 
         foreach ($stubs as $stub) {
@@ -101,13 +142,19 @@ final readonly class InstallCommand
             if ($contents === false || file_put_contents($file, $contents) === false) {
                 $this->output->error("Could not write {$file}.");
 
-                return 1;
+                return null;
             }
 
             $this->output->line('Published ' . substr($file, strlen($root) + 1));
             $published++;
         }
 
+        return $published;
+    }
+
+    /** What to do next, and where Vector's own tables are when they are on another connection. */
+    private function notes(Config $config, string $connection, int $published): void
+    {
         $option = $connection === 'default' ? '' : " --connection={$connection}";
         $this->output->line($published === 0
             ? "Nothing to publish: every kinetis/vector-ai migration is already present for the \"{$connection}\" connection."
@@ -118,7 +165,5 @@ final readonly class InstallCommand
         if (($vector === '' ? 'default' : $vector) !== $connection) {
             $this->output->line("Note: Vector's own tables are on the \"" . ($vector === '' ? 'default' : $vector) . "\" connection (VECTOR_DB_CONNECTION); kinetis/vector-ai's tables belong beside them.");
         }
-
-        return 0;
     }
 }

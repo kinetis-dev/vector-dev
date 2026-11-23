@@ -331,15 +331,7 @@ final readonly class ModelBoundary
         $others = 0;
 
         foreach ($decoded['errors'] as $violation) {
-            $path = is_array($violation) && is_array($violation['path'] ?? null) ? array_values($violation['path']) : [];
-
-            // a field the tool's `values` named: ['values', 'stock'] from the MCP dispatcher, ['stock'] from Vector
-            if (($path[0] ?? null) === 'values' && count($path) > 1) {
-                array_shift($path);
-            }
-
-            $field = $path[0] ?? null;
-            $code = is_array($violation) && is_string($violation['code'] ?? null) && preg_match('/^[A-Za-z0-9_.-]{1,64}$/', $violation['code']) === 1 ? $violation['code'] : 'invalid';
+            [$field, $code] = self::violationField($violation);
 
             if (is_string($field) && $visible !== null && $this->sends($visible, $field)) {
                 $fields[] = ['field' => $field, 'code' => $code];
@@ -349,6 +341,27 @@ final readonly class ModelBoundary
         }
 
         return ['error' => self::INVALID, 'fields' => $fields] + ($others > 0 ? ['otherFields' => $others] : []);
+    }
+
+    /**
+     * The field one violation of a validation refusal names (the first
+     * segment of its path, after `values`) and its code, `invalid` when it
+     * has none a model may be told.
+     *
+     * @return array{mixed, string}
+     */
+    private static function violationField(mixed $violation): array
+    {
+        $path = is_array($violation) && is_array($violation['path'] ?? null) ? array_values($violation['path']) : [];
+
+        // a field the tool's `values` named: ['values', 'stock'] from the MCP dispatcher, ['stock'] from Vector
+        if (($path[0] ?? null) === 'values' && count($path) > 1) {
+            array_shift($path);
+        }
+
+        $code = is_array($violation) && is_string($violation['code'] ?? null) && preg_match('/^[A-Za-z0-9_.-]{1,64}$/', $violation['code']) === 1 ? $violation['code'] : 'invalid';
+
+        return [$path[0] ?? null, $code];
     }
 
     /**
@@ -609,7 +622,8 @@ final readonly class ModelBoundary
 
         $described['fields'] = $fields;
         $described['titleField'] = $sends($described['titleField'] ?? null) ? $described['titleField'] : null;
-        $described['search'] = $searches ? array_values(array_filter(is_array($described['search'] ?? null) ? $described['search'] : [], $sends)) : [];
+        $search = is_array($described['search'] ?? null) ? $described['search'] : [];
+        $described['search'] = $searches ? array_values(array_filter($search, $sends)) : [];
         // the order GovernedTool gives a query that names none
         $described['defaultSort'] = $this->defaultSort($visible);
         unset($described['actions']);
@@ -636,24 +650,10 @@ final readonly class ModelBoundary
         foreach (is_array($result['groups'] ?? null) ? $result['groups'] : [] as $group) {
             $key = is_array($group) && is_array($group['key'] ?? null) ? $group['key'] : [];
             $metrics = is_array($group) && is_array($group['metrics'] ?? null) ? $group['metrics'] : [];
-            $sent = [];
+            $sent = $this->groupKey($visible, $fields, $key);
 
-            foreach ($key as $name => $value) {
-                $name = (string) $name;
-
-                if (!$this->sends($visible, $name)) {
-                    return self::refusal();
-                }
-
-                $sent[$name] = ($fields[$name]['type'] ?? null) === 'belongsTo' && is_array($value) ? $this->value($fields[$name], $value) : $value;
-            }
-
-            foreach (array_keys($metrics) as $metric) {
-                $field = preg_match('/^(?:sum|avg|min|max)_(.+)$/D', (string) $metric, $m) === 1 ? $m[1] : null;
-
-                if ((string) $metric !== 'count' && ($field === null || !$this->sends($visible, $field))) {
-                    return self::refusal();
-                }
+            if ($sent === null || !$this->sendsMetrics($visible, $metrics)) {
+                return self::refusal();
             }
 
             $groups[] = ['key' => $sent, 'metrics' => $metrics];
@@ -662,6 +662,51 @@ final readonly class ModelBoundary
         $result['groups'] = $groups;
 
         return $this->truncated(array_intersect_key($result, array_flip(['groups', 'groupCount', 'truncated', 'timezone', 'money'])));
+    }
+
+    /**
+     * An aggregate group's key as a model may be sent it, each belongsTo
+     * value through reference(); null when it names a field sends()
+     * refuses.
+     *
+     * @param array<array-key, array<string, mixed>> $fields $visible's compiled fields
+     * @param array<array-key, mixed> $key
+     * @return array<string, mixed>|null
+     */
+    private function groupKey(ResourceDescriptor $visible, array $fields, array $key): ?array
+    {
+        $sent = [];
+
+        foreach ($key as $name => $value) {
+            $name = (string) $name;
+
+            if (!$this->sends($visible, $name)) {
+                return null;
+            }
+
+            $sent[$name] = ($fields[$name]['type'] ?? null) === 'belongsTo' && is_array($value) ? $this->value($fields[$name], $value) : $value;
+        }
+
+        return $sent;
+    }
+
+    /**
+     * Whether every metric of an aggregate group may be sent: `count`, or
+     * one whose field sends() lets through.
+     *
+     * @param array<array-key, mixed> $metrics
+     */
+    private function sendsMetrics(ResourceDescriptor $visible, array $metrics): bool
+    {
+        foreach (array_keys($metrics) as $metric) {
+            $field = preg_match('/^(?:sum|avg|min|max)_(.+)$/D', (string) $metric, $m) === 1 ? $m[1] : null;
+
+            if ((string) $metric !== 'count' && ($field === null || !$this->sends($visible, $field))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -697,39 +742,71 @@ final readonly class ModelBoundary
         }
 
         if (($data['type'] ?? null) === VectorWidget::TABLE) {
-            $withheld = [];
+            $data = $this->table($data, $linked);
 
-            foreach (is_array($data['rows'] ?? null) ? $data['rows'] : [] as $i => $row) {
-                if (!is_array($row)) {
-                    continue;
-                }
-
-                $slug = self::linkedSlug($row['_link'] ?? null);
-
-                if ($slug !== null && !$this->linkedSendable($slug)) {
-                    return self::refusal();
-                }
-
-                $slug ??= $linked;
-
-                foreach (array_keys($row) as $key) {
-                    if ($slug !== null && $this->withheld($slug, (string) $key)) {
-                        unset($data['rows'][$i][$key]);
-                        $withheld[(string) $key] = true;
-                    }
-                }
-            }
-
-            if (is_array($data['columns'] ?? null)) {
-                $data['columns'] = array_values(array_filter($data['columns'], fn (mixed $column): bool => !is_array($column)
-                    || !is_string($column['key'] ?? null)
-                    || (!isset($withheld[$column['key']]) && ($linked === null || !$this->withheld($linked, $column['key'])))));
+            if ($data === null) {
+                return self::refusal();
             }
         }
 
         $result['data'] = $data;
 
         return $this->truncated($result);
+    }
+
+    /**
+     * A table widget's data without the row keys, and their columns, that
+     * withheld() keeps back of the resource each row's link (or the
+     * table's, $linked) leads to; null when a row's own link leads to a
+     * resource that may not be sent.
+     *
+     * @param array<array-key, mixed> $data
+     * @return array<array-key, mixed>|null
+     */
+    private function table(array $data, ?string $linked): ?array
+    {
+        $withheld = [];
+
+        foreach (is_array($data['rows'] ?? null) ? $data['rows'] : [] as $i => $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $slug = self::linkedSlug($row['_link'] ?? null);
+
+            if ($slug !== null && !$this->linkedSendable($slug)) {
+                return null;
+            }
+
+            foreach ($this->withheldKeys($row, $slug ?? $linked) as $key) {
+                unset($data['rows'][$i][$key]);
+                $withheld[(string) $key] = true;
+            }
+        }
+
+        if (is_array($data['columns'] ?? null)) {
+            $data['columns'] = array_values(array_filter($data['columns'], fn (mixed $column): bool => !is_array($column)
+                || !is_string($column['key'] ?? null)
+                || (!isset($withheld[$column['key']]) && ($linked === null || !$this->withheld($linked, $column['key'])))));
+        }
+
+        return $data;
+    }
+
+    /**
+     * The keys of a table row that withheld() keeps back of the resource
+     * $slug, in the row's order; none without a resource.
+     *
+     * @param array<array-key, mixed> $row
+     * @return list<array-key>
+     */
+    private function withheldKeys(array $row, ?string $slug): array
+    {
+        if ($slug === null) {
+            return [];
+        }
+
+        return array_values(array_filter(array_keys($row), fn (int|string $key): bool => $this->withheld($slug, (string) $key)));
     }
 
     /** The slug a widget's link (`/r/{slug}…`) leads to, or null when it leads to no resource. */

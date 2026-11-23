@@ -109,60 +109,17 @@ final readonly class WritingController
      */
     private function input(ServerRequestInterface $request): array
     {
-        $raw = (string) $request->getBody();
-
-        if (strlen($raw) > self::MAX_BODY) {
-            throw new AiRequestException('The request body is larger than ' . self::MAX_BODY . ' bytes.', 413);
-        }
-
-        try {
-            $body = json_decode($raw, true, 8, JSON_THROW_ON_ERROR);
-        } catch (\JsonException) {
-            throw ValidationException::fromViolations([new Violation([], 'invalid_json', 'The request body is not valid JSON.')]);
-        }
-
-        if (!is_array($body) || array_is_list($body)) {
-            throw ValidationException::fromViolations([new Violation([], 'invalid_json', 'The request body must be a JSON object.')]);
-        }
-
-        $violations = [];
+        $body = self::body($request);
         $operation = is_string($body['operation'] ?? null) ? WritingOperation::tryFrom($body['operation']) : null;
-
-        if ($operation === null) {
-            $violations[] = new Violation(['operation'], 'invalid', 'must be one of ' . implode(', ', array_column(WritingOperation::cases(), 'value')) . '.');
-        }
-
         $text = $body['text'] ?? null;
-
-        if (!is_string($text) || trim($text) === '') {
-            $violations[] = new Violation(['text'], 'required', 'is required.');
-        } elseif (mb_strlen($text) > WritingAssistant::MAX_TEXT) {
-            $violations[] = new Violation(['text'], 'too_long', 'must be at most ' . WritingAssistant::MAX_TEXT . ' characters.');
-        }
-
         $format = $body['format'] ?? 'plain';
-
-        if ($format !== 'plain' && $format !== 'markdown') {
-            $violations[] = new Violation(['format'], 'invalid', 'must be plain or markdown.');
-        }
-
         $targetLocale = $body['targetLocale'] ?? null;
-
-        if ($operation === WritingOperation::Translate && (!is_string($targetLocale) || !WritingOperation::isLocale($targetLocale))) {
-            $violations[] = new Violation(['targetLocale'], 'required', 'is required for translate: a language tag such as de or pt-BR.');
-        }
-
         $instructions = $body['instructions'] ?? null;
-
-        if ($instructions !== null && (!is_string($instructions) || mb_strlen($instructions) > WritingAssistant::MAX_INSTRUCTIONS)) {
-            $violations[] = new Violation(['instructions'], 'too_long', 'must be text of at most ' . WritingAssistant::MAX_INSTRUCTIONS . ' characters.');
-        }
-
         $recordId = $body['recordId'] ?? null;
-
-        if ($recordId !== null && (!is_string($recordId) && !is_int($recordId) || (string) $recordId === '' || mb_strlen((string) $recordId) > 64 || preg_match('/[\x00-\x1F\x7F]/', (string) $recordId) === 1)) {
-            $violations[] = new Violation(['recordId'], 'invalid', 'must be a record id of at most 64 characters.');
-        }
+        $violations = [
+            ...self::textViolations($operation, $text, $format),
+            ...self::optionViolations($operation, $targetLocale, $instructions, $recordId),
+        ];
 
         if ($violations !== []) {
             throw ValidationException::fromViolations($violations);
@@ -181,5 +138,84 @@ final readonly class WritingController
             'instructions' => $instructions,
             'recordId' => $recordId === null ? null : (string) $recordId,
         ];
+    }
+
+    /**
+     * The body as a JSON object: a 413 when it is too large, one violation
+     * without a path when it is not JSON or not an object.
+     *
+     * @return array<string, mixed>
+     */
+    private static function body(ServerRequestInterface $request): array
+    {
+        $raw = (string) $request->getBody();
+
+        if (strlen($raw) > self::MAX_BODY) {
+            throw new AiRequestException('The request body is larger than ' . self::MAX_BODY . ' bytes.', 413);
+        }
+
+        try {
+            $body = json_decode($raw, true, 8, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            throw ValidationException::fromViolations([new Violation([], 'invalid_json', 'The request body is not valid JSON.')]);
+        }
+
+        if (!is_array($body) || array_is_list($body)) {
+            throw ValidationException::fromViolations([new Violation([], 'invalid_json', 'The request body must be a JSON object.')]);
+        }
+
+        /** @var array<string, mixed> $body */
+        return $body;
+    }
+
+    /**
+     * The violations of the operation, the text and its format, in that order.
+     *
+     * @return list<Violation>
+     */
+    private static function textViolations(?WritingOperation $operation, mixed $text, mixed $format): array
+    {
+        $violations = [];
+
+        if ($operation === null) {
+            $violations[] = new Violation(['operation'], 'invalid', 'must be one of ' . implode(', ', array_column(WritingOperation::cases(), 'value')) . '.');
+        }
+
+        if (!is_string($text) || trim($text) === '') {
+            $violations[] = new Violation(['text'], 'required', 'is required.');
+        } elseif (mb_strlen($text) > WritingAssistant::MAX_TEXT) {
+            $violations[] = new Violation(['text'], 'too_long', 'must be at most ' . WritingAssistant::MAX_TEXT . ' characters.');
+        }
+
+        if ($format !== 'plain' && $format !== 'markdown') {
+            $violations[] = new Violation(['format'], 'invalid', 'must be plain or markdown.');
+        }
+
+        return $violations;
+    }
+
+    /**
+     * The violations of the target language, the instructions and the
+     * record id, in that order.
+     *
+     * @return list<Violation>
+     */
+    private static function optionViolations(?WritingOperation $operation, mixed $targetLocale, mixed $instructions, mixed $recordId): array
+    {
+        $violations = [];
+
+        if ($operation === WritingOperation::Translate && (!is_string($targetLocale) || !WritingOperation::isLocale($targetLocale))) {
+            $violations[] = new Violation(['targetLocale'], 'required', 'is required for translate: a language tag such as de or pt-BR.');
+        }
+
+        if ($instructions !== null && (!is_string($instructions) || mb_strlen($instructions) > WritingAssistant::MAX_INSTRUCTIONS)) {
+            $violations[] = new Violation(['instructions'], 'too_long', 'must be text of at most ' . WritingAssistant::MAX_INSTRUCTIONS . ' characters.');
+        }
+
+        if ($recordId !== null && (!is_string($recordId) && !is_int($recordId) || (string) $recordId === '' || mb_strlen((string) $recordId) > 64 || preg_match('/[\x00-\x1F\x7F]/', (string) $recordId) === 1)) {
+            $violations[] = new Violation(['recordId'], 'invalid', 'must be a record id of at most 64 characters.');
+        }
+
+        return $violations;
     }
 }
