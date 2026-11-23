@@ -56,18 +56,6 @@ names each tool that answered, with a count for a repeated one (*Read
 with vector_query ×3*); a tool error (a guessed field, a page out of
 range) gets none.
 
-### Inline reasoning
-
-Amazon Nova and Claude 3 write reasoning into the text between
-`<thinking>` and `</thinking>`; DeepSeek R1, Qwen3 and QwQ between
-`<think>` and `</think>`. Every provider is wrapped in kinetis/neuron's
-`InlineReasoningProvider`, which takes these blocks out of every answer
-(the assistant's, a filter's and writing help's), even when the tags
-arrive split across chunks. A block still open at the end runs to the
-end, the blank lines a leading block leaves are dropped, and any other
-`<` (`a < b`, `<b>`) is text. Reasoning is never shown, sent back or
-replayed to the model, but counts toward the usage estimate.
-
 ### Tools and limits
 
 The model has six read tools, called in process ({doc}`mcp`):
