@@ -103,6 +103,33 @@ final readonly class AssistantController
      */
     private function input(ServerRequestInterface $request): array
     {
+        $body = self::body($request);
+        $violations = [];
+        $conversationId = $body['conversationId'] ?? null;
+
+        if (!is_string($conversationId) || preg_match('/^[A-Za-z0-9_-]{1,' . self::MAX_CONVERSATION_ID . '}$/', $conversationId) !== 1) {
+            $violations[] = new Violation(['conversationId'], 'invalid', 'must be 1 to ' . self::MAX_CONVERSATION_ID . ' letters, digits, "-" or "_".');
+        }
+
+        $conversation = self::conversation($body['messages'] ?? null, $violations);
+        $page = self::page($body['context'] ?? null, $violations);
+
+        if ($violations !== []) {
+            throw ValidationException::fromViolations($violations);
+        }
+
+        /** @var string $conversationId */
+        return [$conversationId, $conversation, $page];
+    }
+
+    /**
+     * The body as a JSON object: one violation without a path when it is
+     * too large, not JSON or not an object.
+     *
+     * @return array<string, mixed>
+     */
+    private static function body(ServerRequestInterface $request): array
+    {
         $raw = (string) $request->getBody();
 
         if (strlen($raw) > self::MAX_BODY) {
@@ -119,46 +146,91 @@ final readonly class AssistantController
             throw ValidationException::fromViolations([new Violation([], 'invalid_json', 'The request body must be a JSON object.')]);
         }
 
-        $violations = [];
-        $conversationId = $body['conversationId'] ?? null;
+        /** @var array<string, mixed> $body */
+        return $body;
+    }
 
-        if (!is_string($conversationId) || preg_match('/^[A-Za-z0-9_-]{1,' . self::MAX_CONVERSATION_ID . '}$/', $conversationId) !== 1) {
-            $violations[] = new Violation(['conversationId'], 'invalid', 'must be 1 to ' . self::MAX_CONVERSATION_ID . ' letters, digits, "-" or "_".');
+    /**
+     * The messages, each checked, every violation added to $violations;
+     * the ending is judged only when there is no other violation so far.
+     *
+     * @param list<Violation> $violations
+     * @return list<array{role: 'user'|'assistant', content: string}|array{role: 'approval', id: string}>
+     */
+    private static function conversation(mixed $messages, array &$violations): array
+    {
+        if (!is_array($messages) || !array_is_list($messages) || $messages === [] || count($messages) > self::MAX_MESSAGES) {
+            $violations[] = new Violation(['messages'], 'invalid', 'must be a list of 1 to ' . self::MAX_MESSAGES . ' messages.');
+
+            return [];
         }
 
         $conversation = [];
-        $messages = $body['messages'] ?? null;
 
-        if (!is_array($messages) || !array_is_list($messages) || $messages === [] || count($messages) > self::MAX_MESSAGES) {
-            $violations[] = new Violation(['messages'], 'invalid', 'must be a list of 1 to ' . self::MAX_MESSAGES . ' messages.');
-        } else {
-            foreach ($messages as $i => $message) {
-                $role = is_array($message) ? ($message['role'] ?? null) : null;
-                $content = is_array($message) ? ($message['content'] ?? null) : null;
+        foreach ($messages as $i => $message) {
+            $turn = self::message($i, $message, $violations);
 
-                if ($role === 'approval') {
-                    $id = $message['id'] ?? null;
-
-                    if (!is_string($id) || ApprovalId::parse($id) === null) {
-                        $violations[] = new Violation(['messages', $i, 'id'], 'invalid', 'must be an approval id, "apr_" and 26 letters or digits.');
-                    } else {
-                        $conversation[] = ['role' => 'approval', 'id' => $id];
-                    }
-                } elseif ($role !== 'user' && $role !== 'assistant') {
-                    $violations[] = new Violation(['messages', $i, 'role'], 'invalid', 'must be "user", "assistant" or "approval".');
-                } elseif (!is_string($content) || trim($content) === '' || mb_strlen($content) > self::MAX_MESSAGE) {
-                    $violations[] = new Violation(['messages', $i, 'content'], 'invalid', 'must be text of 1 to ' . self::MAX_MESSAGE . ' characters.');
-                } else {
-                    $conversation[] = ['role' => $role, 'content' => $content];
-                }
-            }
-
-            if ($violations === [] && !in_array($conversation[count($conversation) - 1]['role'] ?? null, ['user', 'approval'], true)) {
-                $violations[] = new Violation(['messages'], 'invalid', 'must end with the user\'s message or a decided approval.');
+            if ($turn !== null) {
+                $conversation[] = $turn;
             }
         }
 
-        $context = is_array($body['context'] ?? null) ? $body['context'] : [];
+        if ($violations === [] && !in_array($conversation[count($conversation) - 1]['role'] ?? null, ['user', 'approval'], true)) {
+            $violations[] = new Violation(['messages'], 'invalid', 'must end with the user\'s message or a decided approval.');
+        }
+
+        return $conversation;
+    }
+
+    /**
+     * Message $i of the conversation, or null with its violation added
+     * to $violations.
+     *
+     * @param list<Violation> $violations
+     * @return array{role: 'user'|'assistant', content: string}|array{role: 'approval', id: string}|null
+     */
+    private static function message(int $i, mixed $message, array &$violations): ?array
+    {
+        $role = is_array($message) ? ($message['role'] ?? null) : null;
+        $content = is_array($message) ? ($message['content'] ?? null) : null;
+
+        if ($role === 'approval') {
+            $id = $message['id'] ?? null;
+
+            if (!is_string($id) || ApprovalId::parse($id) === null) {
+                $violations[] = new Violation(['messages', $i, 'id'], 'invalid', 'must be an approval id, "apr_" and 26 letters or digits.');
+
+                return null;
+            }
+
+            return ['role' => 'approval', 'id' => $id];
+        }
+
+        if ($role !== 'user' && $role !== 'assistant') {
+            $violations[] = new Violation(['messages', $i, 'role'], 'invalid', 'must be "user", "assistant" or "approval".');
+
+            return null;
+        }
+
+        if (!is_string($content) || trim($content) === '' || mb_strlen($content) > self::MAX_MESSAGE) {
+            $violations[] = new Violation(['messages', $i, 'content'], 'invalid', 'must be text of 1 to ' . self::MAX_MESSAGE . ' characters.');
+
+            return null;
+        }
+
+        return ['role' => $role, 'content' => $content];
+    }
+
+    /**
+     * The page context, each member checked, every violation added to
+     * $violations; a context that is not an object is none.
+     *
+     * @param list<Violation> $violations
+     * @return array{path: ?string, resource: ?string, recordId: ?string}
+     */
+    private static function page(mixed $context, array &$violations): array
+    {
+        $context = is_array($context) ? $context : [];
         $page = [];
 
         foreach (['path' => 200, 'resource' => 64, 'recordId' => 64] as $key => $max) {
@@ -172,11 +244,6 @@ final readonly class AssistantController
             $page[$key] = $value === null || $value === '' ? null : (string) $value;
         }
 
-        if ($violations !== []) {
-            throw ValidationException::fromViolations($violations);
-        }
-
-        /** @var string $conversationId */
-        return [$conversationId, $conversation, $page];
+        return $page;
     }
 }
