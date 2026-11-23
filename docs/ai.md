@@ -957,32 +957,28 @@ admin offers only what the endpoints would serve:
 | `excludedFields` | For each other resource they may list, the fields they see that the boundary keeps back: opted out, outside the allow-list, or a password, file or image field. The admin offers no writing help on them. A resource with none is absent. |
 | `noWriting` | In the same shape, the `string`, `text`, `markdown` and `richtext` fields they see that writing help is not offered on (`WritingGuard::offers()`): a unique string, a field with `ai.writing` false, or one kept back. The admin shows no writing menu there. |
 
-The three lists are empty while no feature is offered. The endpoints
-refuse those fields whatever the admin shows. The key is absent when
-`kinetis/vector-ai` is not installed; a shell contributor publishes it
-({ref}`shell-contributors`).
+The three lists are empty while no feature is offered, and the endpoints
+refuse those fields whatever the admin shows. A shell contributor
+publishes the key ({ref}`shell-contributors`), so it is absent without
+`kinetis/vector-ai`.
 
-A feature is `true` when a provider is configured and a provider, model
-and key resolve for it, its switch is on, the access policy lets this
-user use it, and their daily budget has tokens left. `assistantWrites`
-also needs the assistant's switch on and the policy to let them use the
-assistant. That is the same check each feature's endpoint makes, in one
-place (`Auth\AiAvailability`).
-
-The check runs on every `GET /vector/schema`, a `304` included, since
-the ETag covers it. It therefore reads whether a key resolves from the
-configuration, the settings and the stored key's record, without
-building a provider or opening a key. As a result, a stored key altered
-in the database still shows the feature, and its endpoint answers `403`
-*… is not configured*.
+A feature is `true` when a provider, model and key resolve for it, its
+switch is on, the access policy lets this user use it, and their daily
+budget has tokens left; `assistantWrites` also needs the assistant's
+switch and policy. Each endpoint makes the same check
+(`Auth\AiAvailability`). It runs on every `GET /vector/schema`, a `304`
+included, since the ETag covers it, so it reads only the configuration,
+the settings and the stored key's record, without building a provider
+or opening a key. A stored key altered in the database therefore still
+shows the feature, and its endpoint answers `403` *… is not configured*.
 
 (ai-usage)=
 ## Usage and failures
 
-Every call is recorded in `vector_ai_usage`: the actor and the
-impersonator, the feature, the provider and model, the tokens in and
-out, the duration, the tool calls and the outcome. A call that failed
-has the outcome `failed:<category>` ({ref}`ai-failures`).
+Every call is a row of `vector_ai_usage`: the actor and impersonator,
+the feature, the provider and model, the tokens in and out, the
+duration, the tool calls and the outcome, `failed:<category>` for a
+failed call ({ref}`ai-failures`).
 
 | Calls | Feature |
 |---|---|
@@ -991,40 +987,34 @@ has the outcome `failed:<category>` ({ref}`ai-failures`).
 | Each approval: no tokens, and the outcome `approval:executed` or `approval:failed` | `assistant-writes` |
 | Each writing help call, and each call of a bulk run | `writing` |
 
-The daily budget is summed from it per actor since midnight UTC. Once
-it is spent, the feature endpoints answer `429`, with `Retry-After`
-counting the seconds to midnight UTC, and a bulk run stops sending
-records ({ref}`ai-bulk`). A budget of 0 turns AI off: the endpoints
-answer `403`.
-
-The numbers are each call's own, never a counter kept in the worker:
-the tokens its answer reported or, for an assistant call that ended
-without them, an estimate.
+The daily budget is summed per actor since midnight UTC. Once spent, the
+feature endpoints answer `429` with `Retry-After` counting the seconds
+to midnight UTC, and a bulk run stops sending records; a budget of 0
+turns AI off (`403`). The numbers are each call's own, never a worker's
+counter: the tokens its answer reported or, for an assistant call that
+ended without them, an estimate.
 
 (ai-limits)=
 ### Limits and timeouts
 
-Each provider call is bounded three ways: one deadline,
-`VECTOR_AI_TIMEOUT`, over the send, the first byte and the last, a
-stream's included; the byte ceiling `VECTOR_AI_MAX_RESPONSE_BYTES`; and
-at most `VECTOR_AI_MAX_OUTPUT_TOKENS` tokens of answer.
-
-A plain-language filter is asked for while someone waits on a list, so
-its call gets 30 seconds, or `VECTOR_AI_TIMEOUT` when that is shorter. A
-Bedrock call keeps its signing client's bound. No filter call is
-retried.
+Every provider call has one deadline, `VECTOR_AI_TIMEOUT`, over the
+send, the first byte and the last, a stream's included; the byte ceiling
+`VECTOR_AI_MAX_RESPONSE_BYTES`; and at most
+`VECTOR_AI_MAX_OUTPUT_TOKENS` tokens of answer. A plain-language filter,
+asked for while someone waits, gets 30 seconds, or `VECTOR_AI_TIMEOUT`
+when shorter, and is not retried. A Bedrock call keeps its signing
+client's bound.
 
 ### Assistant call billing
 
-The charge depends on whether the provider produced output, not on
-whether an HTTP status is known. A provider reports most of a call's
-tokens at the end of its stream. A stopped or failed stream never
-reaches that end, so such a call is estimated: one token for every 4
-bytes of the instructions, the conversation as sent, each call's newest
-message and the text streamed back. The tool definitions are sent too,
-but not counted. Each side is the larger of what was reported and what
-was estimated, never their sum, and an estimated outcome ends in
-`:estimated`. Each call is one row.
+A provider reports most of a call's tokens at the end of its stream, so
+a stopped or failed stream is estimated: one token per 4 bytes of the
+instructions, the conversation as sent, each call's newest message and
+the text streamed back (the tool definitions are sent but not counted).
+The charge depends on whether the provider produced output, not on an
+HTTP status. Each side is the larger of reported and estimated, never
+their sum; an estimated outcome ends in `:estimated`; each call is one
+row.
 
 | The call ended with | Input | Output | Outcome |
 | --- | --- | --- | --- |
@@ -1035,54 +1025,43 @@ was estimated, never their sum, and an estimated outcome ends in
 | a failure with nothing streamed (no connection, an HTTP or Bedrock refusal, a timeout before the first byte) | 0 | 0 | `failed:<category>` |
 | still in flight when the run was abandoned | as the two rows above, by whether anything streamed | | |
 
-A failure that produced nothing costs nothing, however often it is
-retried: the budget is an abuse limit, not a bill.
+A failure that produced nothing costs nothing, however often retried:
+the budget is an abuse limit, not a bill.
 
 (ai-departures)=
 ### Browser departures
 
-When the browser leaves, the assistant's provider stream is stopped at
-the next event it reads. `StoppableHttpClient` does this by asking the
-request's `Kinetis\Runtime\ClientConnectionInterface`. Under
-FrankenPHP's worker mode, the run then ends with the text so far.
-Behind PHP-FPM, nginx closing the connection ends the script at its
-next write. A Bedrock call cannot be stopped this way, and runs to its
-deadline.
+When the browser leaves, `StoppableHttpClient` stops the provider stream
+at the next event it reads, by asking the request's
+`Kinetis\Runtime\ClientConnectionInterface`. Under FrankenPHP's worker
+mode the run ends with the text so far; behind PHP-FPM, nginx closing
+the connection ends the script at its next write, possibly before the
+call is recorded, so those tokens count against no budget (watch the
+provider's own usage report); a Bedrock call cannot be stopped, and runs
+to its deadline.
 
-A stopped call is still charged (above). Behind PHP-FPM, though, the
-script can end before the call is recorded at all. Those tokens count
-against no daily budget, so watch the provider's own usage report when
-that matters.
-
-A run counts as ended by the browser leaving only when the application
-itself stopped it: its stream asked whether to stop, before an event it
-reads, and was told yes; or the assistant saw the connection gone
-between two steps and did not go on. Before the first step no request
-is sent, and nothing is charged. Such a run is logged at info,
-`An assistant run ended after the browser left.`, with the outcome
-`client_gone` and no provider warning.
-
-Anything else is a failure, whether or not the browser is still there:
-a provider's refusal (a Bedrock call is never stopped), a cut stream, a
-tool's exception, a runaway model, a database error. It is logged as
-the run's failure: a warning for a provider's, an error for the run's
-own. Whether the browser is gone decides only whether anything more is
-written to it.
+A run counts as ended by the browser only when the application stopped
+it: its stream asked whether to stop and was told yes, or the assistant
+saw the connection gone between two steps (before the first, nothing is
+sent or charged). It is logged at info, `An assistant run ended after
+the browser left.`, with the outcome `client_gone` and no provider
+warning. Anything else (a
+provider's refusal, a cut stream, a tool's exception, a runaway model, a
+database error) is a failure, logged as a warning for a provider's and
+an error for the run's own, whether or not the browser is still there;
+its absence decides only whether more is written to it.
 
 (ai-failures)=
 ### Provider failures
 
-A failed call is reported by category, with a status from `502` to `504`
-and a message that quotes neither the prompt, the provider's answer nor
-a key. The categories are `timeout`, `too_large`, `refused`,
-`unavailable` and `invalid_request`. It is logged with the category and
-the provider's status only: a provider's error body can quote the
-prompt, and its request carries the key.
+A failed call is reported by category, `timeout`, `too_large`,
+`refused`, `unavailable` or `invalid_request`, with a status from `502`
+to `504` and a message quoting neither the prompt, the answer nor a key.
+It is logged with the category and the provider's status only, since an
+error body can quote the prompt and the request carries the key.
 
 (ai-status)=
 ### Status codes
-
-The feature endpoints answer:
 
 | Status | When |
 |---|---|
@@ -1093,95 +1072,77 @@ The feature endpoints answer:
 | `429` | Today's token budget is spent ({ref}`ai-usage`). The assistant answers it before any frame. |
 | `502` to `504` | The provider failed ({ref}`ai-failures`). The assistant answers these in JSON only: a stream that has begun ends with an error frame ({ref}`ai-assistant-stream`). |
 
-The approval endpoints ({ref}`ai-approval-endpoints`) and the key
-endpoints ({ref}`ai-keys`) answer their own.
+The approval ({ref}`ai-approval-endpoints`) and key ({ref}`ai-keys`)
+endpoints answer their own.
 
 (ai-logging)=
 ### Logging
 
-Nothing a model is sent, nor anything it answers, is logged: never a
-filter's sentence, writing help's text or guidance, a prompt, a
-message, a tool's arguments or answers, the model's output, a
-provider's error body, headers or keys.
+Nothing a model is sent or answers is ever logged: no sentence, text,
+guidance, prompt, message, tool argument or answer, model output,
+provider error body, header or key.
 
-Each assistant run is one log line: the actor and impersonator; the
-provider, model, tokens and duration; the tools called and their count;
-and how the run ended, with the failure's category and status. A failed
-run's line is a **warning** when the provider failed
-({ref}`ai-failures`), and an **error** when the run itself did:
-category `error` for a bug, or `runaway_tools` for a model that kept
-calling past its budget.
-
-In every environment, the line carries the exception's class and the
-file and line it was thrown at, so a bug can be traced. It never
-carries the message, which can quote data. Only under
-`APP_ENV=development` are the message as a plain string
-(`exception_message`) and the exception itself attached.
+Each assistant run is one log line: the actor and impersonator, the
+provider, model, tokens and duration, the tools called and their count,
+and how it ended, with the failure's category and status. A failed run
+is a **warning** when the provider failed, and an **error** when the run
+did: category `error` for a bug, `runaway_tools` for a model calling
+past its budget. The line carries the exception's class, file and line,
+never its message, which can quote data; only under
+`APP_ENV=development` are the message (`exception_message`) and the
+exception attached.
 
 Each approval decision is one log line: the actor, impersonator,
-approval id, tool and outcome. The arguments, the result and an
-exception's message are never logged.
+approval id, tool and outcome, never the arguments, the result or an
+exception's message.
 
 (ai-prune)=
 ## The prune command
 
-Nothing deletes the approvals table's rows on its own. Run this from a
-scheduler, hourly for example:
+Run this from a scheduler, hourly for example:
 
 ```console
 vendor/bin/kinetis vector-ai:approvals:prune            # --days=30
 ```
 
-It:
-
-- marks pending proposals past their expiry `expired`;
-- marks `failed`, with the unknown-outcome error ({ref}`ai-approvals`),
-  every proposal still `executing` ten minutes
-  (`ApprovalStore::EXECUTING_MINUTES`) after it was approved, never
-  running it again;
-- deletes the proposals decided (executed, rejected, expired or failed)
-  more than `--days` days ago;
-- deletes the rewrite rows a bulk run kept, once its job has ended
-  (below).
-
-The demo stack's `scheduler` service runs it every hour, after
-`vector:jobs:reap` ({doc}`demo`). Approvals do not wait for the sweep:
-an expired proposal is refused with `410`, and a stale executing one
-answers `failed`, whether or not the sweep has run.
+It marks pending proposals past their expiry `expired`; marks `failed`,
+with the unknown-outcome error ({ref}`ai-approvals`), every proposal
+still `executing` ten minutes (`ApprovalStore::EXECUTING_MINUTES`) after
+approval, never running it; deletes proposals decided (executed,
+rejected, expired or failed) more than `--days` days ago; and deletes
+the rewrite rows of ended bulk runs (below). The demo's `scheduler`
+service runs it hourly after `vector:jobs:reap` ({doc}`demo`).
+Approvals do not wait for it: an expired proposal is refused with `410`,
+and a stale executing one answers `failed`, either way.
 
 (ai-bulk-retention)=
 ### Bulk rewrite retention
 
-The rows of `vector_ai_rewrites` hold the proposed texts until the run
-has ended. `finish()` builds the CSV and deletes nothing: Vector saves
-the file on the job only after `finish()` returns, so a save that fails
-(a database error, say) loses no proposal.
+`vector_ai_rewrites` keeps a run's texts until it has ended. `finish()`
+builds the CSV and deletes nothing, because Vector saves the file only
+after `finish()` returns, so a failed save loses no proposal. The sweep
+deletes the rows of every job no longer queued or running: done (marked
+in the write that saves the file), failed, or marked failed as stalled
+by `vector:jobs:reap`. A job whose worker died stays `running` until the
+reap marks it, so schedule **`vector:jobs:reap` before
+`vector-ai:approvals:prune`**, or a dead run's rows are never deleted.
 
-The sweep deletes the rows of every ended job, one no longer queued or
-running: done (Vector marks it so in the same write that saves the
-file), failed, or marked failed as stalled by `vector:jobs:reap`. A job
-whose worker died stays `running` until `vector:jobs:reap` marks it,
-and the sweep keeps a running job's rows. So schedule
-**`vector:jobs:reap` before `vector-ai:approvals:prune`**: without the
-reap, a dead run's rows are never deleted.
-
-Until the sweep runs, the texts are kept twice: in these rows and in the
-CSV, which stays on the job row as an export's file does. Vector does
-not re-run a failed job, so its rows let an operator recover the
-proposals by hand until the sweep deletes them.
+Until then the texts are kept twice, in the rows and in the CSV on the
+job row. Vector does not re-run a failed job, so the rows let an
+operator recover its proposals by hand.
 
 ## Safeguards
 
-- **It can only propose.** No code path lets the model, or a request
-  body, run a write except the person's approval, which runs the stored
+- **It can only propose.** Nothing lets the model, or a request body,
+  run a write but the person's approval, which runs the stored
   arguments.
 - **It cannot approve.** The ids are the server's, bound to the person
-  and their impersonator. The endpoints are the admin's own routes,
+  and their impersonator, and the endpoints are the admin's own routes,
   behind its authentication and CSRF protection.
 - **It cannot reach past the person.** Each write runs as them, under
-  every Vector policy, at the time they approve. A record's text telling
-  the model to *delete all orders* can at worst produce a proposal,
-  shown field by field on the card for the person to reject.
+  every Vector policy, when they approve. A record's text telling the
+  model to *delete all orders* can at worst produce a proposal, shown
+  field by field for the person to reject.
 - **It holds no state between requests.** The row is the proposal, the
   stream's agent ends with the request, and an approval is a fresh
   request.
@@ -1190,19 +1151,18 @@ proposals by hand until the sweep deletes them.
 ## Testing
 
 The `fake` provider type replays scripted replies, for a chat, a stream
-or a structured call alike. Configure it in the test's configuration:
+or a structured call alike:
 
 ```ini
 VECTOR_AI_PROVIDERS=fake
 VECTOR_AI_FAKE_TYPE=fake
 ```
 
-Bind the replies on AppScope in a test. Each reply is keyed by the last
-text block of the last user message: for a plain-language filter, the
-admin's sentence, and for its repair turn, that turn's text.
-`ScriptedReplies::of()` takes the message text and keys by its SHA-256.
-Pass it a `ScriptedCalls` to read every request the providers were
-sent, structured schema included:
+Bind the replies on AppScope in a test. Each is keyed by the last text
+block of the last user message (a filter's sentence, or its repair
+turn's text); `ScriptedReplies::of()` keys by its SHA-256. A
+`ScriptedCalls` records every request the providers were sent,
+structured schema included:
 
 ```php
 use Kinetis\VectorAi\Testing\ScriptedCalls;
@@ -1214,10 +1174,9 @@ $app->instance(ScriptedReplies::class, ScriptedReplies::of([
 ], $calls));
 ```
 
-A message can instead start a run that calls tools. Its reply is the
-list of the run's turns, each asking for `toolCalls` or answering with
-`text`; the next turn is taken once the last one's tool results are in.
-The scripted provider streams a text reply too, and keeps every request,
+A reply can instead be a run's turns, each asking for `toolCalls` or
+answering with `text`, taken once the previous turn's tool results are
+in. The scripted provider streams text too, and keeps every request,
 tool results included:
 
 ```php
@@ -1229,10 +1188,9 @@ $app->instance(ScriptedReplies::class, ScriptedReplies::of([
 ], $calls));
 ```
 
-A run that ends in a proposal is scripted the same way, with a write
-tool among its `toolCalls`. The turn that tells the model how the
-person decided ends with the text `Assistant::OUTCOME_PROMPT`, which a
-reply can be keyed by.
+A run ending in a proposal has a write tool among its `toolCalls`. The
+turn telling the model how the person decided ends with
+`Assistant::OUTCOME_PROMPT`, which a reply can be keyed by.
 
 ## See also
 
