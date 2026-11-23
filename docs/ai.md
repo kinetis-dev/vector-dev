@@ -2,13 +2,13 @@
 
 `kinetis/vector-ai` adds AI to the admin:
 
-- **The assistant** answers questions about your data ({ref}`ai-assistant`)
+- **The assistant** answers questions about your data ({doc}`ai/assistant`)
   and, where allowed, proposes changes a person approves
   ({ref}`ai-approvals`).
 - **Plain-language filters** turn a described set of records into a list
-  filter ({ref}`ai-filters`).
+  filter ({doc}`ai/filters`).
 - **Writing help** rewrites, shortens, corrects or translates a text
-  field ({ref}`ai-writing`).
+  field ({doc}`ai/writing-help`).
 - **Bulk rewrite proposals** produce a CSV of rewrites to review and
   import ({ref}`ai-bulk`).
 
