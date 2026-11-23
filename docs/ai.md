@@ -31,12 +31,12 @@ person approves ({ref}`ai-approvals`). Each record it used is named as
 `resource#id`, linked to the record's page.
 
 ```{image} _static/screenshots/ai-assistant-light.png
-:alt: The assistant's drawer beside the Products list: the question “Which products are low on stock?”, the vector_query it read with, and its answer linking products#1
+:alt: The assistant's drawer beside the Products list, answering “Which products are low on stock?” after a vector_query, with a link to products#1
 :class: only-light
 ```
 
 ```{image} _static/screenshots/ai-assistant-dark.png
-:alt: The assistant's drawer beside the Products list: the question “Which products are low on stock?”, the vector_query it read with, and its answer linking products#1
+:alt: The assistant's drawer beside the Products list, answering “Which products are low on stock?” after a vector_query, with a link to products#1
 :class: only-dark
 ```
 
@@ -146,12 +146,12 @@ the model's words, with **Approve** and **Reject**. A field shows its
 old value where a `vector_get` of the same run read the record.
 
 ```{image} _static/screenshots/ai-assistant-proposal-light.png
-:alt: The assistant's drawer beside order ORD-000184 after “Mark order ORD-000184 as shipped.”: the reads it made, its answer, and a pending card proposing the status from paid to shipped, with Reject and Approve
+:alt: The assistant's drawer beside order ORD-000184, with a pending card proposing its status change from paid to shipped, and Reject and Approve
 :class: only-light
 ```
 
 ```{image} _static/screenshots/ai-assistant-proposal-dark.png
-:alt: The assistant's drawer beside order ORD-000184 after “Mark order ORD-000184 as shipped.”: the reads it made, its answer, and a pending card proposing the status from paid to shipped, with Reject and Approve
+:alt: The assistant's drawer beside order ORD-000184, with a pending card proposing its status change from paid to shipped, and Reject and Approve
 :class: only-dark
 ```
 
@@ -216,12 +216,12 @@ the filter keeps; its **Undo** restores the list's filter and search.
 The sentence stays in the field, to refine and send again.
 
 ```{image} _static/screenshots/ai-filters-light.png
-:alt: The Orders list filtered by the sentence “paid orders over 500”: the note below the field explains the filter and offers Undo, and the chips Status is Paid and Total over 500.00 sit above a list of paid orders
+:alt: The Orders list filtered by “paid orders over 500”, with the explaining note and its Undo, and the chips Status is Paid and Total over 500.00
 :class: only-light
 ```
 
 ```{image} _static/screenshots/ai-filters-dark.png
-:alt: The Orders list filtered by the sentence “paid orders over 500”: the note below the field explains the filter and offers Undo, and the chips Status is Paid and Total over 500.00 sit above a list of paid orders
+:alt: The Orders list filtered by “paid orders over 500”, with the explaining note and its Undo, and the chips Status is Paid and Total over 500.00
 :class: only-dark
 ```
 
@@ -254,12 +254,12 @@ drops it. A failure says why there and leaves the text as it was, and an
 answer cut at the field's cap says so ({ref}`ai-writing-request`).
 
 ```{image} _static/screenshots/ai-writing-translate-light.png
-:alt: An order's edit form with writing help's popover under the Notes field: Before, the English delivery note; After, its French translation; with Discard and Replace
+:alt: Writing help's popover under an order's Notes field: the English note before, its French translation after, with Discard and Replace
 :class: only-light
 ```
 
 ```{image} _static/screenshots/ai-writing-translate-dark.png
-:alt: An order's edit form with writing help's popover under the Notes field: Before, the English delivery note; After, its French translation; with Discard and Replace
+:alt: Writing help's popover under an order's Notes field: the English note before, its French translation after, with Discard and Replace
 :class: only-dark
 ```
 
@@ -420,8 +420,8 @@ The package needs `ext-sodium`.
    spent daily budget renews.
 
 4. Schedule `vector-ai:approvals:prune` hourly, after
-   `vector:jobs:reap` ({ref}`ai-prune`). Nothing else deletes stale
-   proposals or a bulk rewrite's rows.
+   `vector:jobs:reap`: nothing else deletes stale proposals or a bulk
+   rewrite's rows ({ref}`ai-prune`).
 
 5. Configure a provider ({ref}`ai-operator`).
 
@@ -431,9 +431,9 @@ feature and sends no AI request.
 (ai-operator)=
 ## Operator configuration
 
-The operator lists the providers the admin may call and configures each
-under its own keys, read once at boot. A value that cannot work stops
-the boot with a message naming its key.
+The operator lists the providers and configures each under its own
+keys, read once at boot. A value that cannot work stops the boot,
+naming its key.
 
 ```ini
 VECTOR_AI_PROVIDERS=openai,bedrock              # names: 1-40 of a-z, 0-9 and -
@@ -481,9 +481,9 @@ administrator decides, under the access policy's `canConfigure()`
 | Setting | Default | |
 |---|---|---|
 | Plain-language filters, Assistant, Writing help | on | each feature's switch |
-| Assistant may propose changes (`assistantWrites`) | off | every change it proposes still waits for a person ({ref}`ai-approvals`) |
-| Provider and model per feature | empty | a provider `VECTOR_AI_PROVIDERS` lists, and a model on its allow-list; empty uses the only provider, and its first allowed model |
-| Daily token budget per user | 200000 | input and output tokens a person may spend a day (UTC); 0 turns AI off |
+| Assistant may propose changes (`assistantWrites`) | off | each proposal waits for a person ({ref}`ai-approvals`) |
+| Provider and model per feature | empty | a provider `VECTOR_AI_PROVIDERS` lists and a model it allows; empty means the only provider and its first model |
+| Daily token budget per user | 200000 | input and output tokens a day (UTC); 0 turns AI off |
 | Tool calls per assistant run (`maxToolCallsPerRun`) | 8 | 1 to 20; a proposal counts as one |
 | Minutes a proposed change waits for approval (`approvalMinutes`) | 15 | 1 to 120 |
 | Record data sent to the model | every field | or only fields marked to send ({ref}`ai-boundary`) |
@@ -515,9 +515,9 @@ environment: an administrator cannot replace or remove it.
 
 ### An administrator enters it in the admin
 
-When the key belongs to whoever runs the admin, the server stores it
-encrypted with `VECTOR_AI_KEY`, a secret kept in the environment, so a
-copy of the database alone reveals no key.
+When the key belongs to whoever runs the admin, it is stored encrypted
+with `VECTOR_AI_KEY`, an environment secret, so a database copy alone
+reveals no key.
 
 1. Generate `VECTOR_AI_KEY` once:
 
@@ -617,10 +617,9 @@ plain-language filter answers `403`, and the admin hides it.
 
 ### The boundary for each tool
 
-The assistant reads record data only through tools, and every tool
-answer passes the boundary (`record()`, `page()`, `toolResult()`)
-before the model sees it. Writing help and bulk rewrites check the field
-before sending it ({ref}`ai-writing-checks`).
+Every tool answer passes the boundary (`record()`, `page()`,
+`toolResult()`) before the model sees it; writing help and bulk rewrites
+check the field before sending it ({ref}`ai-writing-checks`).
 
 **A record** keeps the allowed fields, plus its primary key, which names
 it (`products#12`), its `_trashed` marker, and its `_version`, the
@@ -682,8 +681,7 @@ which lists slugs and labels only.
 (ai-endpoints)=
 ## The endpoints
 
-Each feature's request and checks, and what the model is asked. Status
-codes are in {ref}`ai-status`.
+Status codes are in {ref}`ai-status`.
 
 (ai-filter-request)=
 ### The filter endpoint
@@ -699,8 +697,8 @@ body of at most 16 KiB:
 | Field | Rule |
 |---|---|
 | `text` | Required, at most 500 characters. |
-| `timezone` | The IANA zone the sentence's dates are read in; UTC by default. Anything else, such as an offset (`+02:00`) or an abbreviation (`CET`), is read as UTC too. |
-| `current.filter` | The list's current filter, in the list grammar, as context. It is cut to the fields the model may be told of. |
+| `timezone` | The IANA zone for the sentence's dates; UTC by default, and for anything else, such as an offset (`+02:00`) or an abbreviation (`CET`). |
+| `current.filter` | The list's current filter, as context, cut to the fields the model may be told of. |
 
 The answer is in the list's own grammar:
 
@@ -718,11 +716,10 @@ groups as the filter bar keeps them, `q` the free-text search,
 `explanation` the note's sentence, and `unresolved` each relation lookup
 with several matches, waiting in the note.
 
-The model sees each field the boundary allows, with its name, label,
-type, filter operators, choices, and how a date or money value is
-written, plus today's date in the admin's zone. In one structured call
-it returns conditions (`{field, op, value}`), "any of" groups, `q` and an
-explanation.
+The model sees each allowed field's name, label, type, operators,
+choices and date or money format, and today's date in the admin's zone,
+and returns, in one structured call, conditions (`{field, op, value}`),
+"any of" groups, `q` and an explanation.
 
 **Validation and repair.** The schema names fields and operators, but
 not which operators each field takes, so the list's validator is the
@@ -828,10 +825,10 @@ error, {ref}`ai-approvals`), or `{"status": "rejected", "result": null}`.
 
 | Status | When |
 |---|---|
-| `403` | The assistant or *Assistant may propose changes* is off, or the access policy refuses `Feature::Assistant` or `Feature::AssistantWrites`, now, whatever was allowed when it was proposed. |
-| `404` | No such proposal of this person's, under the same impersonator as now. Another person's, or one proposed before an impersonation began or ended, is as unknown as one that does not exist. |
+| `403` | The assistant or *Assistant may propose changes* is off, or the policy refuses `Feature::Assistant` or `Feature::AssistantWrites`, judged now, not when proposed. |
+| `404` | No such proposal of this person's under the current impersonator; another person's, or one proposed before an impersonation began or ended, counts as unknown. |
 | `409` | It was already decided: `{"error", "status"}`, with the stored `result` when it was `executed` or `failed`. |
-| `410` | It expired before it was decided. A pending row is marked `expired`, also when it expires between the check and the update. |
+| `410` | It expired undecided; a pending row is marked `expired`, even when it expires between the check and the update. |
 
 (ai-writing-request)=
 ### The writing endpoint
@@ -953,9 +950,9 @@ admin offers only what the endpoints would serve:
 | Key | Means |
 |---|---|
 | `filters`, `assistant`, `writing`, `assistantWrites` | The feature is offered to this user (below). |
-| `excluded` | Each resource this user may list that is kept from the model whole. The admin offers no AI on it. |
-| `excludedFields` | For each other resource they may list, the fields they see that the boundary keeps back: opted out, outside the allow-list, or a password, file or image field. The admin offers no writing help on them. A resource with none is absent. |
-| `noWriting` | In the same shape, the `string`, `text`, `markdown` and `richtext` fields they see that writing help is not offered on (`WritingGuard::offers()`): a unique string, a field with `ai.writing` false, or one kept back. The admin shows no writing menu there. |
+| `excluded` | Resources this user may list that are kept from the model whole; no AI is offered on them. |
+| `excludedFields` | Per other listable resource, the visible fields the boundary keeps back (opted out, outside the allow-list, or a password, file or image field); no writing help is offered on them. A resource with none is absent. |
+| `noWriting` | In the same shape, the visible `string`, `text`, `markdown` and `richtext` fields without writing help (`WritingGuard::offers()`): a unique string, `ai.writing` false, or kept back. |
 
 The three lists are empty while no feature is offered, and the endpoints
 refuse those fields whatever the admin shows. A shell contributor
@@ -963,14 +960,13 @@ publishes the key ({ref}`shell-contributors`), so it is absent without
 `kinetis/vector-ai`.
 
 A feature is `true` when a provider, model and key resolve for it, its
-switch is on, the access policy lets this user use it, and their daily
-budget has tokens left; `assistantWrites` also needs the assistant's
-switch and policy. Each endpoint makes the same check
-(`Auth\AiAvailability`). It runs on every `GET /vector/schema`, a `304`
-included, since the ETag covers it, so it reads only the configuration,
-the settings and the stored key's record, without building a provider
-or opening a key. A stored key altered in the database therefore still
-shows the feature, and its endpoint answers `403` *… is not configured*.
+switch is on, the policy allows this user, and their budget has tokens
+left; `assistantWrites` also needs the assistant's switch and policy.
+Every endpoint makes the same check (`Auth\AiAvailability`). It runs on
+every `GET /vector/schema`, a `304` included (the ETag covers it), so it
+reads only the configuration, the settings and the stored key's record,
+opening no key: a key altered in the database still shows the feature,
+and its endpoint answers `403` *… is not configured*.
 
 (ai-usage)=
 ## Usage and failures
@@ -1007,14 +1003,13 @@ client's bound.
 
 ### Assistant call billing
 
-A provider reports most of a call's tokens at the end of its stream, so
-a stopped or failed stream is estimated: one token per 4 bytes of the
-instructions, the conversation as sent, each call's newest message and
-the text streamed back (the tool definitions are sent but not counted).
 The charge depends on whether the provider produced output, not on an
-HTTP status. Each side is the larger of reported and estimated, never
-their sum; an estimated outcome ends in `:estimated`; each call is one
-row.
+HTTP status. Providers report most tokens at the end of a stream, so a
+stopped or failed one is estimated: a token per 4 bytes of the
+instructions, the conversation as sent, each call's newest message and
+the streamed text (tool definitions are sent but not counted). Each side
+is the larger of reported and estimated, never their sum, and an
+estimated outcome ends in `:estimated`. Each call is one row.
 
 | The call ended with | Input | Output | Outcome |
 | --- | --- | --- | --- |
@@ -1065,12 +1060,12 @@ error body can quote the prompt and the request carries the key.
 
 | Status | When |
 |---|---|
-| `403` | The feature is off or unconfigured, the daily budget is 0, or the access policy's `canUse()` refuses. A filter also when the user may not list the resource, or it is kept from the model; writing help also for a field its checks refuse ({ref}`ai-writing-checks`). |
-| `404` | No such resource (a filter, writing help). Writing help also for a field the user does not see, or a record they cannot read. |
+| `403` | The feature is off or unconfigured, the daily budget is 0, or `canUse()` refuses; for a filter, also a resource the user may not list or that is kept from the model; for writing help, a field its checks refuse ({ref}`ai-writing-checks`). |
+| `404` | No such resource; for writing help, also a field the user does not see or a record they cannot read. |
 | `413` | Writing help: a body over 256 KiB. |
-| `422` | The assistant and writing help: the body breaks a rule, named. A filter: the answer is still invalid after one repair (a lookup on a relation whose records the user may not list counts as invalid), a lookup matches nothing, or an ambiguous lookup sits inside an "any of" group. |
+| `422` | The body breaks a named rule; for a filter, the answer is invalid after one repair (a lookup on a relation the user may not list counts), a lookup matches nothing, or an ambiguous lookup is inside an "any of" group. |
 | `429` | Today's token budget is spent ({ref}`ai-usage`). The assistant answers it before any frame. |
-| `502` to `504` | The provider failed ({ref}`ai-failures`). The assistant answers these in JSON only: a stream that has begun ends with an error frame ({ref}`ai-assistant-stream`). |
+| `502` to `504` | The provider failed ({ref}`ai-failures`); a begun assistant stream ends with an error frame instead ({ref}`ai-assistant-stream`). |
 
 The approval ({ref}`ai-approval-endpoints`) and key ({ref}`ai-keys`)
 endpoints answer their own.
@@ -1111,9 +1106,9 @@ still `executing` ten minutes (`ApprovalStore::EXECUTING_MINUTES`) after
 approval, never running it; deletes proposals decided (executed,
 rejected, expired or failed) more than `--days` days ago; and deletes
 the rewrite rows of ended bulk runs (below). The demo's `scheduler`
-service runs it hourly after `vector:jobs:reap` ({doc}`demo`).
-Approvals do not wait for it: an expired proposal is refused with `410`,
-and a stale executing one answers `failed`, either way.
+service runs it hourly after `vector:jobs:reap` ({doc}`demo`). The
+approval endpoints apply expiry and the stale-executing rule themselves,
+whether or not it has run.
 
 (ai-bulk-retention)=
 ### Bulk rewrite retention
@@ -1133,16 +1128,14 @@ operator recover its proposals by hand.
 
 ## Safeguards
 
-- **It can only propose.** Nothing lets the model, or a request body,
-  run a write but the person's approval, which runs the stored
-  arguments.
+- **It can only propose.** Only the person's approval runs a write, and
+  it runs the stored arguments.
 - **It cannot approve.** The ids are the server's, bound to the person
-  and their impersonator, and the endpoints are the admin's own routes,
-  behind its authentication and CSRF protection.
+  and their impersonator, behind the admin's authentication and CSRF
+  protection.
 - **It cannot reach past the person.** Each write runs as them, under
-  every Vector policy, when they approve. A record's text telling the
-  model to *delete all orders* can at worst produce a proposal, shown
-  field by field for the person to reject.
+  every Vector policy: a record's text telling the model to *delete all
+  orders* can at worst produce a proposal for them to reject.
 - **It holds no state between requests.** The row is the proposal, the
   stream's agent ends with the request, and an approval is a fresh
   request.
