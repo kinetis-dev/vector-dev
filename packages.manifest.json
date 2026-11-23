@@ -6,7 +6,7 @@
             "includes": [
                 "packages/vector-ui"
             ],
-            "version": "0.17.0"
+            "version": "0.17.1"
         },
         "vector-ui": {
             "name": "@kinetis/vector-ui",
@@ -16,7 +16,7 @@
         "vector-ai": {
             "name": "kinetis/vector-ai",
             "path": "packages/vector-ai",
-            "version": "0.2.1"
+            "version": "0.2.2"
         }
     }
 }
