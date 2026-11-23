@@ -14,9 +14,7 @@
 
 It is a companion Composer package, `kinetis/vector-ai`, whose UI is
 part of `@kinetis/vector-ui` and turns itself on when the API publishes
-`capabilities.ai`. It is built on
-[`kinetis/neuron`](https://kinetis.dev/docs/neuron.html), so a provider
-call suspends the calling Fiber instead of blocking the worker.
+`capabilities.ai`.
 
 ## Setup and reference
 
