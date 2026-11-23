@@ -42,7 +42,7 @@ proposed: *Approve* writes it as you (History shows the update *via
 assistant*) and the assistant acknowledges your decision; *Reject*
 (try *Set the stock of products#9 to 7.*) changes nothing. The
 `scheduler` service sweeps stale proposals every hour
-(`vector-ai:approvals:prune`, {doc}`ai`).
+(`vector-ai:approvals:prune`, {doc}`ai/operations`).
 
 And writing help: edit an order, type *Please make sure to call the
 customer before the delivery, because the customer has asked us to call
@@ -59,11 +59,11 @@ without notes are left out and counted. Nothing changes until you import
 that CSV on the Orders list in *Update existing records* mode keyed by
 ID; then History shows each change as your own update. With the demo's
 scripted provider every proposal reads *No reply is scripted for this
-message.*; with a real provider it is the corrected text ({doc}`ai`).
+message.*; with a real provider it is the corrected text ({doc}`ai/writing-help`).
 
 Any other question or text gets *No reply is scripted for this
 message.*; with a real provider configured instead
-(VECTOR_AI_PROVIDERS, {doc}`ai`) the assistant answers what is asked,
+(VECTOR_AI_PROVIDERS, {doc}`ai/setup`) the assistant answers what is asked,
 and writing help works on any text, but not on an identifier such as a
 product's SKU, a unique string, which it leaves alone.
 

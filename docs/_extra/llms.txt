@@ -52,7 +52,14 @@ from first install to the reference.
 ## Integrations
 
 - [MCP tools](https://kinetis.dev/vector/docs/mcp.html): The admin's services as Model Context Protocol tools for AI agents.
-- [AI](https://kinetis.dev/vector/docs/ai.html): kinetis/vector-ai: installing, the VECTOR_AI_* configuration, the AI settings, sealed provider keys, access, data governance with meta('ai.send'), plain-language filters, the assistant (POST /vector/ai/assistant, its governed tools, streaming and JSON fallback) and the changes it proposes for approval (POST /vector/ai/approvals/{id}/approve and /reject, vector-ai:approvals:prune), writing help, usage, and the AI UI @kinetis/vector-ui shows when the API publishes capabilities.ai.
+- [AI](https://kinetis.dev/vector/docs/ai.html): kinetis/vector-ai, AI for the admin: what it adds and the pages below. Its UI is part of @kinetis/vector-ui and shows when the API publishes capabilities.ai.
+- [The assistant](https://kinetis.dev/vector/docs/ai/assistant.html): The in-admin assistant, its governed tools and limits, and the changes it proposes for a person to approve.
+- [Plain-language filters](https://kinetis.dev/vector/docs/ai/filters.html): Describing the records a list should show, turned into the list's own filter.
+- [Writing help](https://kinetis.dev/vector/docs/ai/writing-help.html): Rewriting, shortening, correcting or translating a text field, and bulk rewrite proposals as a CSV to import.
+- [Setup](https://kinetis.dev/vector/docs/ai/setup.html): Installing kinetis/vector-ai, the VECTOR_AI_* configuration, the AI settings and sealed provider keys.
+- [Data and access](https://kinetis.dev/vector/docs/ai/data-and-access.html): The access policy, and data governance with meta('ai.send'): what each tool may send a model.
+- [The endpoints](https://kinetis.dev/vector/docs/ai/endpoints.html): POST /vector/ai/filters, /assistant (streaming and JSON fallback), /approvals/{id}/approve and /reject, and /writing, bulk rewrite runs, and capabilities.ai in the schema.
+- [Operations](https://kinetis.dev/vector/docs/ai/operations.html): Usage and the daily budget, limits, billing, failures, status codes and logging, vector-ai:approvals:prune, safeguards and testing.
 - [Testing your admin](https://kinetis.dev/vector/docs/testing.html): Driving the REST API from the application's own test suite.
 
 ## Reference

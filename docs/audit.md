@@ -24,7 +24,7 @@ Action runs are also logged, once per run, in `vector_action_events`.
 
 A write that came through another channel than the admin's own hand
 carries its **origin**: the AI assistant's approved proposals are
-recorded with `origin` `assistant` ({doc}`ai`), and History shows them
+recorded with `origin` `assistant` ({doc}`ai/assistant`), and History shows them
 *via assistant*. Code that writes on another channel's behalf registers
 `new ActorContext($user, $impersonatorId, origin: 'my-channel')` (a
 lowercase token of at most 40 characters) on the request scope before
