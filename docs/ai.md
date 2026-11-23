@@ -18,13 +18,8 @@ part of `@kinetis/vector-ui` and turns itself on when the API publishes
 [`kinetis/neuron`](https://kinetis.dev/docs/neuron.html), so a provider
 call suspends the calling Fiber instead of blocking the worker.
 
-## Pages
+## Setup and reference
 
-- {doc}`ai/assistant`: the drawer, its tools and limits, and the changes
-  it proposes for a person to approve.
-- {doc}`ai/filters`: describing the records a list should show.
-- {doc}`ai/writing-help`: help in a text field, and bulk rewrite
-  proposals as a CSV to import.
 - {doc}`ai/setup`: installation, the providers, the AI settings and
   provider keys.
 - {doc}`ai/data-and-access`: who may use each feature, and what any
