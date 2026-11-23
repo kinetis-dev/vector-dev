@@ -318,7 +318,7 @@ abstract class ProposeRewrites extends VectorAction
         $out = fopen('php://memory', 'r+');
 
         if ($out === false) {
-            throw new \RuntimeException('Could not open a memory stream.');
+            throw new CsvStreamException('Could not open a memory stream.');
         }
 
         fwrite($out, "\xEF\xBB\xBF");

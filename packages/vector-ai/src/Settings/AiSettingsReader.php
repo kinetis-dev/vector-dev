@@ -39,7 +39,11 @@ final class AiSettingsReader
     {
         $value = $this->values()[$name] ?? null;
 
-        return is_int($value) ? $value : (is_numeric($value) ? (int) $value : $default);
+        if (is_int($value)) {
+            return $value;
+        }
+
+        return is_numeric($value) ? (int) $value : $default;
     }
 
     public function string(string $name): string

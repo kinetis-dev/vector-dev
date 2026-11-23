@@ -607,7 +607,8 @@ final readonly class Assistant
 
         $resource = $approval->resource();
         $sendable = $resource !== null && $this->boundary->sendable($resource) !== null;
-        $target = $sendable ? ' to ' . $resource . ($approval->recordId() === null ? '' : '#' . $approval->recordId()) : '';
+        $record = $approval->recordId() === null ? '' : '#' . $approval->recordId();
+        $target = $sendable ? ' to ' . $resource . $record : '';
         $status = match ($approval->status) {
             ApprovalStatus::Pending => 'pending: the admin has not decided yet',
             ApprovalStatus::Executing => 'approved, and being executed',

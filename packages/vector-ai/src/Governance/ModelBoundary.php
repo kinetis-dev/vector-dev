@@ -609,7 +609,8 @@ final readonly class ModelBoundary
 
         $described['fields'] = $fields;
         $described['titleField'] = $sends($described['titleField'] ?? null) ? $described['titleField'] : null;
-        $described['search'] = $searches ? array_values(array_filter(is_array($described['search'] ?? null) ? $described['search'] : [], $sends)) : [];
+        $search = is_array($described['search'] ?? null) ? $described['search'] : [];
+        $described['search'] = $searches ? array_values(array_filter($search, $sends)) : [];
         // the order GovernedTool gives a query that names none
         $described['defaultSort'] = $this->defaultSort($visible);
         unset($described['actions']);

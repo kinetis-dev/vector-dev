@@ -72,7 +72,8 @@ final class InstallCommandTest extends TestCase
         self::assertSame(self::files(self::MIGRATIONS, '.php'), self::listing("{$this->root}/{$directory}"));
 
         foreach (self::MIGRATIONS as $migration) {
-            self::assertFileEquals(self::stubs() . "/{$migration}.{$dialect}.stub", "{$this->root}/{$directory}/{$migration}.php");
+            $publishedFile = "{$this->root}/{$directory}/{$migration}.php";
+            self::assertFileEquals(self::stubs() . "/{$migration}.{$dialect}.stub", $publishedFile);
         }
 
         // a second run writes nothing, and says so
