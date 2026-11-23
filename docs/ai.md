@@ -209,14 +209,11 @@ refused as stale.
 
 An admin types the records they want (*orders over $500 from last week
 that haven't shipped*) into the field with a sparkle icon beside a
-list's search. The list filters at once.
-
-- The answer goes through the ordinary list request, which validates it
-  again. It shows as the filter bar's own chips, to edit like any
-  filter.
-- A note below the field says in one sentence what the filter keeps. Its
-  **Undo** puts the list's filter and search back as they were.
-- The sentence stays in the field, to refine and send again.
+list's search, and the list filters at once. The answer goes through the
+ordinary list request, which validates it again, and shows as the
+filter bar's own chips. A note below the field says in one sentence what
+the filter keeps; its **Undo** restores the list's filter and search.
+The sentence stays in the field, to refine and send again.
 
 ```{image} _static/screenshots/ai-filters-light.png
 :alt: The Orders list filtered by the sentence “paid orders over 500”: the note below the field explains the filter and offers Undo, and the chips Status is Paid and Total over 500.00 sit above a list of paid orders
@@ -228,40 +225,33 @@ list's search. The list filters at once.
 :class: only-dark
 ```
 
-A relation the sentence names in words is looked up like the filter
-bar's choice list, under the user's scope: one match becomes its id,
-and several wait in the note for the admin to pick a candidate. A
-resource kept from the model whole offers no filter ({ref}`ai-boundary`).
-The request and how a wrong answer is repaired are in
-{ref}`ai-filter-request`.
+A relation named in words is looked up like the filter bar's choice
+list, under the user's scope: one match becomes its id, and several wait
+in the note for the admin to pick one. A resource kept from the model
+offers no filter ({ref}`ai-boundary`). The request and its repair turn
+are in {ref}`ai-filter-request`.
 
 (ai-writing)=
 ## Writing help
 
-Writing help rewrites, shortens, corrects or translates a field's text.
-The answer lands in the input. The person reviews it and saves the form
-through Vector's ordinary write path, as their own edit. The server
-never writes it, and the record's history shows the person's update like
-any other.
+Writing help rewrites, shortens, corrects or translates a field's text
+into the input. The person reviews it and saves the form as their own
+edit; the server never writes it.
 
 ### The writing menu
 
-On a text input, an icon at the field's end opens the *Writing help*
-menu: the right in a left-to-right language, and the left in a
-right-to-left one. It is offered on a `string` or `text` field on a
-resource's create page or on a record's edit page, and nowhere else:
-not a list's bulk edit, an action's dialog or a settings form.
-Rich-text and Markdown editors have the same menu in their toolbar.
+The *Writing help* menu opens from an icon at the end of a `string` or
+`text` input (the right in a left-to-right language, the left in a
+right-to-left one) on a create or edit page only, not in a list's bulk
+edit, an action's dialog or a settings form. Rich-text and Markdown
+editors have it in their toolbar. It offers **Rewrite**, **Shorten**,
+**Fix grammar** and **Translate to…** (any language the UI ships, and
+any other the descriptor lets the user choose).
 
-The menu offers **Rewrite**, **Shorten**, **Fix grammar** and
-**Translate to…** (any language the UI ships, and any other the
-descriptor lets the user choose).
-
-The answer opens in a popover under the field, beside the text it was
-asked about, as *Before* and *After*. **Replace** puts it in the input;
-**Discard** drops it, and so do Escape and a click outside the popover.
-A failure says why in the same popover and leaves the text as it was.
-An answer cut at the field's cap says so ({ref}`ai-writing-request`).
+The answer opens in a popover under the field as *Before* and *After*.
+**Replace** puts it in the input; **Discard**, Escape or a click outside
+drops it. A failure says why there and leaves the text as it was, and an
+answer cut at the field's cap says so ({ref}`ai-writing-request`).
 
 ```{image} _static/screenshots/ai-writing-translate-light.png
 :alt: An order's edit form with writing help's popover under the Notes field: Before, the English delivery note; After, its French translation; with Discard and Replace
@@ -273,26 +263,21 @@ An answer cut at the field's cap says so ({ref}`ai-writing-request`).
 :class: only-dark
 ```
 
-In an editor, the menu acts on the selection or, while nothing is
-selected, on the whole document. It is disabled only while the editor
-holds no text.
-
-- The text sent is the selection's plain text in a rich-text field, and
-  its Markdown source in a Markdown field.
-- Replace puts the answer in place of the selection, or of the whole
-  document, as text (a paragraph per line; Markdown read by the
-  editor's own reader), so the document keeps to the field's schema.
-- A whole document whose text changed in any way since it was sent
-  (shorter, longer or retyped) is left as it is, and the admin says so.
-- A Markdown answer is shown only through the admin's own Markdown
-  sanitizer.
+In an editor, the menu acts on the selection, or on the whole document
+while nothing is selected, and is disabled only while the editor is
+empty. It sends a rich-text selection's plain text, or a Markdown
+field's source. Replace inserts the answer as text (a paragraph per
+line; Markdown through the editor's own reader), so the document keeps
+to its schema. A whole document whose text changed in any way since it
+was sent is left as it is, and the admin says so. A Markdown answer is
+shown only through the admin's own Markdown sanitizer.
 
 ### Eligible fields
 
 Writing help works on `string`, `text`, `markdown` and `richtext`
-fields, except a `string` field marked `->unique()`: that is an
-identifier (a SKU, a code), not prose. A field's `ai.writing` meta
-overrides that either way:
+fields, except a `string` field marked `->unique()`, which is an
+identifier (a SKU, a code). A field's `ai.writing` meta overrides that
+either way:
 
 ```php
 Text::make('sku')->unique(),                              // no writing help
@@ -300,31 +285,27 @@ Text::make('code')->unique()->meta('ai.writing', true),   // writing help after 
 Textarea::make('internalRef')->meta('ai.writing', false), // none, though it is text
 ```
 
-`ai.writing` never widens the types. It is independent of `ai.send`
-({ref}`ai-boundary`): a field with writing help off is still sent to the
-model and read by the assistant, and one turned on is still kept back
-when `ai.send` keeps it. Vector itself never reads the key
+`ai.writing` never widens the types, and is independent of `ai.send`
+({ref}`ai-boundary`): it neither keeps a field from the model nor sends
+one `ai.send` keeps back. Vector never reads the key
 (`Writing\WritingGuard::META_KEY`); `WritingGuard::helps()` decides it.
 
 (ai-bulk)=
 ## Bulk rewrite proposals
 
-Bulk rewrites run writing help on one field across many records, without
-AI writing anything. `Kinetis\VectorAi\Actions\ProposeRewrites` is a
-queued action ({doc}`actions`, {doc}`jobs`). It sends each selected
-record's text to the model, each in **its own single-shot call** so no
-record's text can steer another's rewrite, and leaves its job **one CSV
-of proposals**.
-
-Nothing changes until the admin reviews the CSV and imports it in
-**update** mode, keyed by the record's ID. Each change is then an
-ordinary import row of theirs: validated, authorized by the `update`
+`Kinetis\VectorAi\Actions\ProposeRewrites` is a queued action
+({doc}`actions`, {doc}`jobs`) that runs writing help on one field across
+the selected records, **one single-shot call per record** so no record
+can steer another's rewrite, and leaves its job **one CSV of
+proposals**. Nothing changes until the admin imports that CSV in
+**update** mode, keyed by the record's ID: each change is then an
+ordinary import row of theirs, validated, authorized by the `update`
 policy, hooked and audited as their own update, with no `origin`.
 
 ### Resource setup
 
-Nothing registers the action. A resource opts in by listing a subclass,
-which names the field and the operation, in its `actions()`:
+Nothing registers the action. A resource lists a subclass naming the
+field and the operation in its `actions()`:
 
 ```php
 use Kinetis\VectorAi\Actions\ProposeRewrites;
@@ -343,76 +324,60 @@ public function actions(): array
 }
 ```
 
-- The operations are writing help's: `Rewrite`, `Shorten`, `Grammar` and
-  `Translate`. `Translate` needs `targetLocale()` (`de`, `pt-BR`).
-- Override `instructions()` for guidance on style, at most 300
-  characters. It is sent in each record's user turn, never in the system
-  prompt.
-- The action runs in chunks of `chunkSize()` (100), and is offered on
-  the list, not on a record's page.
+- The operations are `Rewrite`, `Shorten`, `Grammar` and `Translate`,
+  which needs `targetLocale()` (`de`, `pt-BR`).
+- `instructions()` adds guidance on style, at most 300 characters, in
+  each record's user turn, never the system prompt.
+- It runs in chunks of `chunkSize()` (100), offered on the list, not on
+  a record's page.
 
-Prefer bulk proposals on `string`, `text` and `markdown` fields. A
-`richtext` field's stored value (HTML, or the editor's JSON document) is
-sent as it is, as plain text, and a rich-text value the model has
-reshaped can fail the import's validation.
-
-The run is held to writing help's rules, as the admin who started it,
-and stops sending records once the day's token budget is spent or the
-proposals fill the job's file. What it checks and counts is in
-{ref}`ai-bulk-run`.
+Prefer `string`, `text` and `markdown` fields: a `richtext` value (HTML,
+or the editor's JSON document) is sent as plain text, and a reshaped one
+can fail the import's validation. The run is held to writing help's
+rules and stops at the day's token budget or a full job file
+({ref}`ai-bulk-run`).
 
 (ai-bulk-csv)=
 ### The CSV
 
-Each run leaves one CSV, on its job, named
-`<resource>-<field>-proposals-<job>.csv`. The **Jobs** page offers it
-for download once the job is done (`GET /vector/jobs/{id}/download`).
-Its header is the record's ID field and the field (`id,notes`, say),
-with one row per proposal:
+The **Jobs** page offers the CSV for download once the job is done
+(`GET /vector/jobs/{id}/download`), named
+`<resource>-<field>-proposals-<job>.csv`. Its header is the ID field and
+the field (`id,notes`, say), with one row per proposal:
 
 ```text
 id,notes
 12,"Leave the parcel with the neighbour at no. 12, if nobody is home."
 ```
 
-It is written with the delimiter, quoting and escape character Vector's
-importer reads (UTF-8 with a byte-order mark, CRLF line ends), so a
-value with commas, quotes, line breaks or a backslash inside it comes
-back exactly. A value that **ends** in a backslash cannot: the importer
-reads its closing quote as escaped and runs on into the next rows. Such
-a proposal (or record ID) is **left out** of the CSV and counted as
-skipped in the job's message. Rewrite that record by hand.
+It is written as Vector's importer reads it (UTF-8 with a byte-order
+mark, CRLF line ends), so commas, quotes, line breaks and backslashes
+inside a value come back exactly. A value that **ends** in a backslash
+cannot (the importer reads its closing quote as escaped), so such a
+proposal or record ID is **left out** and counted as skipped: rewrite
+that record by hand.
 
-A job file holds at most 12 MiB ({doc}`limits`), and the CSV is never
-larger:
-
-1. The run stops calling the model once its proposals' rows, counted as
-   the CSV writes them (every quote doubled), reach 8 MiB
-   (`ProposeRewrites::FILE_LIMIT`).
-2. The CSV is then built row by row, in the order the proposals were
-   made, stopping before the row that would pass 12 MiB.
-
-A proposal that did not fit is left out of the file and counted in the
-job's message ("the proposals filled the job's file"). Its row stays in
-`vector_ai_rewrites` until the sweep ({ref}`ai-bulk-retention`). Either
-way, the calls the run made are not lost to a file too large to save.
-Run the records not sent, or not in the file, as another selection.
+A job file holds at most 12 MiB ({doc}`limits`). The run stops calling
+the model once its rows, counted as the CSV writes them (every quote
+doubled), reach 8 MiB (`ProposeRewrites::FILE_LIMIT`), and the CSV is
+built in proposal order, stopping before the row that would pass
+12 MiB. A proposal that did not fit is counted in the job's message
+("the proposals filled the job's file") and kept in `vector_ai_rewrites`
+until the sweep ({ref}`ai-bulk-retention`); run the records not sent,
+or not in the file, as another selection.
 
 The job's message counts the proposals; the records left out, and why;
-the failed calls, by category, and the empty answers; the answers cut
-at the cap; and the records not sent, by why (`budget`, `file_full`,
+the failed calls, by category, and the empty answers; the answers cut at
+the cap; and the records not sent, by why (`budget`, `file_full`,
 `unavailable`).
 
 ### Review and import
 
-1. Review the file: delete the rows you do not want, and edit any you
-   do.
-2. Import it on the same resource ({doc}`jobs`): **Update existing
-   records**, keyed by `id`, with both columns mapped. The suggested
-   mapping does it.
-
-A row whose record is gone, or that the policy refuses, lands in the
-failed-rows file, as with any import.
+Delete the rows you do not want, edit any you do, and import the file
+on the same resource ({doc}`jobs`): **Update existing records**, keyed
+by `id`, with both columns mapped, as the suggested mapping does. A row
+whose record is gone, or that the policy refuses, lands in the
+failed-rows file.
 
 ```{warning}
 **Spreadsheet formulas.** A spreadsheet may evaluate a cell of this CSV
