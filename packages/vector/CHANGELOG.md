@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.16.1] - 2026-11-23
+## [0.17.0] - 2026-11-23
 
 ### Added
 
@@ -69,7 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scope of their own (`RunActionJob`, through `JobContext::inFreshScope()`),
   the resource read anew as the admin sees it: a request-scoped cache
   filled during one chunk is no longer what the next one sees.
-- `vector:install-ui` installs `@kinetis/vector-ui` 0.13.1 by default,
+- `vector:install-ui` installs `@kinetis/vector-ui` 0.14.0 by default,
   the release that clears SonarQube findings in the assistant's drawer.
 
 ### Fixed

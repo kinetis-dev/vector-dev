@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.1] - 2026-11-23
+## [0.2.0] - 2026-11-23
 
 ### Added
 
@@ -238,6 +238,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Requires `kinetis/vector` ^0.17, whose `vector_aggregate` MCP tool the
+  assistant reads with.
 - Requires `kinetis/framework` ^1.30.0, whose console answers `--help` and
   `-h` on every command with its usage and description without running
   it, and `kinetis/neuron` ^1.3.3. The
