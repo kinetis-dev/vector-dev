@@ -52,7 +52,7 @@ from first install to the reference.
 ## Integrations
 
 - [MCP tools](https://kinetis.dev/vector/docs/mcp.html): The admin's services as Model Context Protocol tools for AI agents.
-- [AI](https://kinetis.dev/vector/docs/ai.html): kinetis/vector-ai, AI for the admin on kinetis/neuron: what it adds and the pages below. Its UI is part of @kinetis/vector-ui and shows when the API publishes capabilities.ai.
+- [AI](https://kinetis.dev/vector/docs/ai.html): kinetis/vector-ai, AI for the admin: what it adds and the pages below. Its UI is part of @kinetis/vector-ui and shows when the API publishes capabilities.ai.
 - [The assistant](https://kinetis.dev/vector/docs/ai/assistant.html): The in-admin assistant, its governed tools and limits, and the changes it proposes for a person to approve.
 - [Plain-language filters](https://kinetis.dev/vector/docs/ai/filters.html): Describing the records a list should show, turned into the list's own filter.
 - [Writing help](https://kinetis.dev/vector/docs/ai/writing-help.html): Rewriting, shortening, correcting or translating a text field, and bulk rewrite proposals as a CSV to import.
