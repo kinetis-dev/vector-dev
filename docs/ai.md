@@ -404,27 +404,24 @@ The package needs `ext-sodium`.
    vendor/bin/kinetis migrate
    ```
 
-   `vector-ai:install` publishes four migrations: `vector_ai_credentials`,
-   `vector_ai_usage`, `vector_ai_approvals` and `vector_ai_rewrites`.
-   Like `vector:install`, it writes them to `migrations/`, or to
-   `migrations/<name>/` with `--connection=<name>`. Put them on the
-   connection Vector's own tables use (`VECTOR_DB_CONNECTION`); the
-   command says so when they differ.
+   `vector-ai:install` publishes four migrations, `vector_ai_credentials`,
+   `vector_ai_usage`, `vector_ai_approvals` and `vector_ai_rewrites`, to
+   `migrations/`, or to `migrations/<name>/` with `--connection=<name>`,
+   like `vector:install`. Put them on Vector's own connection
+   (`VECTOR_DB_CONNECTION`); the command warns when they differ.
 
-2. Restart the workers. The AI features ship in `@kinetis/vector-ui`
-   itself, in both modes ({doc}`deployment`). A hosted admin gets them
-   from the bundle `vector:install-ui` installs, so run that command
-   after upgrading `kinetis/vector`. The admin shows them once the API
-   publishes `capabilities.ai`.
+2. Restart the workers. The AI UI ships in `@kinetis/vector-ui` in both
+   modes ({doc}`deployment`); a hosted admin gets it from the bundle
+   `vector:install-ui` installs, so rerun that after upgrading
+   `kinetis/vector`. It shows once the API publishes `capabilities.ai`.
 
 3. Standalone only: add `Retry-After` to your `CorsMiddleware`'s
-   `exposedHeaders`. The admin is on another origin, and a browser hides
-   any header CORS does not expose. Without it, the admin can say that
-   today's budget is spent, but not when it renews.
+   `exposedHeaders`, or the admin, on another origin, cannot say when a
+   spent daily budget renews.
 
 4. Schedule `vector-ai:approvals:prune` hourly, after
-   `vector:jobs:reap`. Nothing else deletes stale proposals or the rows
-   a bulk rewrite kept ({ref}`ai-prune`).
+   `vector:jobs:reap` ({ref}`ai-prune`). Nothing else deletes stale
+   proposals or a bulk rewrite's rows.
 
 5. Configure a provider ({ref}`ai-operator`).
 
@@ -435,8 +432,8 @@ feature and sends no AI request.
 ## Operator configuration
 
 The operator lists the providers the admin may call and configures each
-under its own keys. Everything is read once, at boot. A value that
-cannot work stops the boot with a message naming its key.
+under its own keys, read once at boot. A value that cannot work stops
+the boot with a message naming its key.
 
 ```ini
 VECTOR_AI_PROVIDERS=openai,bedrock              # names: 1-40 of a-z, 0-9 and -
@@ -451,7 +448,7 @@ VECTOR_AI_MAX_RESPONSE_BYTES=4194304
 VECTOR_AI_MAX_OUTPUT_TOKENS=2048
 ```
 
-`<NAME>` is the provider's name in upper case, with a dash written as an
+`<NAME>` is the provider's name in upper case, with a dash as an
 underscore: `local-llm`'s type is `VECTOR_AI_LOCAL_LLM_TYPE`. The keys
 are scoped like a named connection's (`Config::scopedKey()`).
 
@@ -464,21 +461,22 @@ are scoped like a named connection's (`Config::scopedKey()`).
 | `bedrock` | Amazon Bedrock in `REGION`, signed with the default AWS credential chain | none |
 | `fake` | nothing: replays scripted replies, for tests and demos ({ref}`ai-testing`) | none |
 
-The boot stops on an unknown type, or a listed provider without one; a
-`BASE_URL` that is not `https://` where `http://` is not allowed, or
-one with credentials in it; a key for a type that takes none; a Bedrock
-provider without a region; and a malformed `VECTOR_AI_KEY`.
+The boot stops on an unknown or missing type; a `BASE_URL` that is not
+`https://` where `http://` is not allowed, or that holds credentials; a
+key for a type that takes none; a Bedrock provider without a region; and
+a malformed `VECTOR_AI_KEY`.
 
-Each worker builds one HTTP client per provider origin and one signing
-client per Bedrock region. An HTTP client is pinned to its base URL and
-bounded by `VECTOR_AI_TIMEOUT` and `VECTOR_AI_MAX_RESPONSE_BYTES`.
-Parallel tool calls are never turned on: they would fork the worker.
+Each worker builds one HTTP client per provider origin, pinned to its
+base URL and bounded by `VECTOR_AI_TIMEOUT` and
+`VECTOR_AI_MAX_RESPONSE_BYTES`, and one signing client per Bedrock
+region. Parallel tool calls are never turned on: they would fork the
+worker.
 
 ## The AI settings
 
 The **AI assistant** group on the Settings page holds what an
-administrator decides. Who may change it is the access policy's
-`canConfigure()` ({ref}`ai-access`).
+administrator decides, under the access policy's `canConfigure()`
+({ref}`ai-access`).
 
 | Setting | Default | |
 |---|---|---|
@@ -490,23 +488,21 @@ administrator decides. Who may change it is the access policy's
 | Minutes a proposed change waits for approval (`approvalMinutes`) | 15 | 1 to 120 |
 | Record data sent to the model | every field | or only fields marked to send ({ref}`ai-boundary`) |
 
-Saving refuses a provider that is not configured, and a model off its
-provider's allow-list. API keys are not settings: settings are stored
-in plain text and served to the Settings page. Keys have their own
-store ({ref}`ai-keys`).
+Saving refuses an unconfigured provider, and a model off its provider's
+allow-list. API keys are not settings, which are stored in plain text
+and served to the page; they have their own store ({ref}`ai-keys`).
 
 (ai-keys)=
 ## Provider keys
 
 An `openai` or `anthropic` provider needs an API key, and an
-`openai-like` provider may take one. `bedrock`, `ollama` and `fake`
-providers take no key, and nothing in this section applies to them.
-A provider gets its key in one of two ways. Choose one per provider.
+`openai-like` provider may take one; `bedrock`, `ollama` and `fake`
+take none. Each provider gets its key one of two ways.
 
 ### The operator sets it in the environment
 
-Use this when whoever deploys the server holds the key. Put the key
-beside the provider's other settings:
+When whoever deploys the server holds the key, put it beside the
+provider's other settings:
 
 ```ini
 VECTOR_AI_PROVIDERS=openai
@@ -514,20 +510,16 @@ VECTOR_AI_OPENAI_TYPE=openai
 VECTOR_AI_OPENAI_KEY=sk-...
 ```
 
-It is read at boot, like the rest of the operator configuration, and
-nothing else is needed. The key status reports it as managed by the
-environment, and an administrator cannot replace or remove it from the
-admin.
+It is read at boot, and its status reports it as managed by the
+environment: an administrator cannot replace or remove it.
 
 ### An administrator enters it in the admin
 
-Use this when the key belongs to whoever runs the admin, and should not
-sit in the server's environment. The server never stores an entered key
-in plain text. It encrypts the key with `VECTOR_AI_KEY`, a secret kept
-in the environment, outside the database, so a copy of the database
-alone does not reveal any key.
+When the key belongs to whoever runs the admin, the server stores it
+encrypted with `VECTOR_AI_KEY`, a secret kept in the environment, so a
+copy of the database alone reveals no key.
 
-1. When installing, generate `VECTOR_AI_KEY` once:
+1. Generate `VECTOR_AI_KEY` once:
 
    ```console
    php -r 'echo "base64:", base64_encode(random_bytes(32)), PHP_EOL;'
@@ -543,39 +535,33 @@ alone does not reveal any key.
 
 3. Restart the application.
 
-4. An administrator enters the provider's key on the Settings page, in
-   the AI group.
+4. An administrator enters the key in the Settings page's AI group.
 
-Without `VECTOR_AI_KEY`, saving a key fails: the endpoint answers `403`,
-"Set VECTOR_AI_KEY to store provider keys".
-
-Keep `VECTOR_AI_KEY` with your other secrets, and do not change it. A key
-stored under one `VECTOR_AI_KEY` does not open under another: after a
-change, every stored key is reported as *sealed with another key;
-re-enter it*, and an administrator has to enter each one again. With
-`VECTOR_AI_KEY` removed, stored keys are reported as present but
-unusable until it is set back.
+Without `VECTOR_AI_KEY`, saving a key answers `403`, "Set VECTOR_AI_KEY
+to store provider keys". Keep `VECTOR_AI_KEY` with your other secrets
+and never change it: a key stored under one does not open under another,
+so after a change every stored key is reported as *sealed with another
+key; re-enter it*. With `VECTOR_AI_KEY` removed, stored keys are
+reported as present but unusable until it is set back.
 
 ### How a stored key is kept
 
 - It is sealed with libsodium (AEAD XChaCha20-Poly1305), with a fresh
-  random nonce for every write and the provider's name as additional
-  data. A sealed key copied into another provider's row does not open
-  there.
-- It is stored in `vector_ai_credentials` and never shown again: no
-  endpoint, page, error or log line returns it.
+  random nonce per write and the provider's name as additional data, so
+  it does not open in another provider's row.
+- It is stored in `vector_ai_credentials` and never shown again, by any
+  endpoint, page, error or log line.
 - Each row records the id of the key that sealed it (the first 8 hex
-  characters of its SHA-256), which is how a key sealed under another
+  characters of its SHA-256), so a key sealed under another
   `VECTOR_AI_KEY` is recognized rather than misread.
-- Storing and removing a key are recorded in the audit trail
-  ({doc}`audit`): resource `vector-ai:credentials`, the provider's name,
-  the event `set` or `delete`, and the actor (and impersonator). The
-  key itself is never recorded.
+- Storing and removing one are audited ({doc}`audit`) as resource
+  `vector-ai:credentials`, the provider's name, the event `set` or
+  `delete`, and the actor (and impersonator), never the key.
 
 ### The key endpoints
 
-The Settings page manages stored keys through these routes, which all
-ask the access policy's `canConfigure()`:
+These routes, all behind the access policy's `canConfigure()`, manage
+stored keys:
 
 | Route | Does |
 |---|---|
@@ -583,12 +569,12 @@ ask the access policy's `canConfigure()`:
 | `PUT /vector/ai/credentials/{provider}` | Seals and stores `{"key": "..."}`. `403` without `VECTOR_AI_KEY`, `404` for an unknown provider, `409` for one the environment manages or that takes no key. |
 | `DELETE /vector/ai/credentials/{provider}` | Removes the stored key. |
 
-Each provider in the list carries `set`; `managedBy` (`environment`,
-`admin`, or `null` for a type that takes no key); `storable`; for a
-stored key, `updatedAt` and `updatedBy`; and for a stored key that
-cannot be used, `problem`. Beside it, `sealedWithAnotherKey` is `true`
-when another `VECTOR_AI_KEY` sealed the key, and absent when the server
-has no `VECTOR_AI_KEY` to open it (`storable` is then `false`).
+Each status carries `set`, `managedBy` (`environment`, `admin`, or
+`null` for a type that takes no key), `storable`, for a stored key
+`updatedAt` and `updatedBy`, and for an unusable one `problem`. Beside
+it, `sealedWithAnotherKey` is `true` when another `VECTOR_AI_KEY` sealed
+the key, and absent when the server has no `VECTOR_AI_KEY` (`storable`
+is then `false`).
 
 (ai-access)=
 ## The access policy
