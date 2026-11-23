@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-23
+
+### Changed
+
+- Requires `kinetis/neuron` ^1.3.4 and `neuron-core/neuron-ai` ^4.1.28.
+
 ## [0.2.0] - 2026-11-23
 
 ### Added
