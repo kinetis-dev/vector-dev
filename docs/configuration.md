@@ -25,7 +25,7 @@ default.
 
 With `kinetis/vector-ai` installed, the `VECTOR_AI_*` keys configure its
 providers, the key that seals administrators' provider keys
-(`VECTOR_AI_KEY`) and the limits of every AI call; see {doc}`ai`.
+(`VECTOR_AI_KEY`) and the limits of every AI call; see {doc}`ai/setup`.
 
 ## UI settings
 
