@@ -813,7 +813,6 @@
                     "inverse": "category",
                     "owned": false
                 },
-                "repeater": null,
                 "nullable": false,
                 "operators": []
             }
@@ -3062,7 +3061,6 @@
                     "inverse": "customer",
                     "owned": false
                 },
-                "repeater": null,
                 "nullable": false,
                 "operators": []
             }
@@ -3862,6 +3860,12 @@
                 "nullable": false,
                 "hasDefault": false,
                 "type": "int"
+            },
+            "position": {
+                "kind": "column",
+                "nullable": false,
+                "hasDefault": true,
+                "type": "int"
             }
         },
         "timestamps": {
@@ -4335,7 +4339,7 @@
             },
             {
                 "name": "lines",
-                "type": "hasMany",
+                "type": "repeater",
                 "label": "Lines",
                 "sortable": false,
                 "searchable": false,
@@ -4361,6 +4365,20 @@
                     "required": [],
                     "disabled": []
                 },
+                "repeater": {
+                    "fields": [
+                        "product",
+                        "quantity",
+                        "unitPriceCents"
+                    ],
+                    "mode": "relationship",
+                    "min": 1,
+                    "max": 50,
+                    "sortable": true,
+                    "orderBy": "position",
+                    "orderColumn": "position"
+                },
+                "nullable": false,
                 "relation": {
                     "kind": "hasMany",
                     "resource": "order-lines",
@@ -4369,18 +4387,9 @@
                     "targetKey": "id",
                     "foreignKey": "order_id",
                     "inverse": "order",
-                    "owned": true
+                    "owned": true,
+                    "property": "lines"
                 },
-                "repeater": {
-                    "fields": [
-                        "product",
-                        "quantity",
-                        "unitPriceCents"
-                    ],
-                    "min": 1,
-                    "max": 50
-                },
-                "nullable": false,
                 "operators": []
             },
             {
@@ -5280,6 +5289,138 @@
                 "operators": []
             },
             {
+                "name": "specs",
+                "type": "repeater",
+                "label": "Specifications",
+                "sortable": false,
+                "searchable": false,
+                "filterable": false,
+                "readonly": false,
+                "inline": false,
+                "unique": false,
+                "help": null,
+                "component": null,
+                "views": [
+                    "show",
+                    "create",
+                    "update"
+                ],
+                "rules": [],
+                "props": [],
+                "summary": null,
+                "default": null,
+                "hasDefault": false,
+                "conditions": {
+                    "visible": [],
+                    "required": [],
+                    "disabled": []
+                },
+                "repeater": {
+                    "mode": "json",
+                    "fields": [
+                        "label",
+                        "value"
+                    ],
+                    "min": 0,
+                    "max": 20,
+                    "sortable": true,
+                    "orderBy": null,
+                    "rowFields": [
+                        {
+                            "name": "label",
+                            "type": "string",
+                            "label": "Label",
+                            "sortable": false,
+                            "searchable": false,
+                            "filterable": false,
+                            "readonly": false,
+                            "inline": false,
+                            "unique": false,
+                            "help": null,
+                            "component": null,
+                            "views": [
+                                "index",
+                                "show",
+                                "create",
+                                "update"
+                            ],
+                            "rules": [
+                                {
+                                    "constraint": "Kinetis\\Validation\\Constraints\\NotBlank",
+                                    "args": []
+                                },
+                                {
+                                    "constraint": "Kinetis\\Validation\\Constraints\\MaxLength",
+                                    "args": [
+                                        60
+                                    ]
+                                }
+                            ],
+                            "props": [],
+                            "summary": null,
+                            "default": null,
+                            "hasDefault": false,
+                            "conditions": {
+                                "visible": [],
+                                "required": [],
+                                "disabled": []
+                            },
+                            "nullable": false,
+                            "valueType": "string",
+                            "operators": []
+                        },
+                        {
+                            "name": "value",
+                            "type": "string",
+                            "label": "Value",
+                            "sortable": false,
+                            "searchable": false,
+                            "filterable": false,
+                            "readonly": false,
+                            "inline": false,
+                            "unique": false,
+                            "help": null,
+                            "component": null,
+                            "views": [
+                                "index",
+                                "show",
+                                "create",
+                                "update"
+                            ],
+                            "rules": [
+                                {
+                                    "constraint": "Kinetis\\Validation\\Constraints\\NotBlank",
+                                    "args": []
+                                },
+                                {
+                                    "constraint": "Kinetis\\Validation\\Constraints\\MaxLength",
+                                    "args": [
+                                        200
+                                    ]
+                                }
+                            ],
+                            "props": [],
+                            "summary": null,
+                            "default": null,
+                            "hasDefault": false,
+                            "conditions": {
+                                "visible": [],
+                                "required": [],
+                                "disabled": []
+                            },
+                            "nullable": false,
+                            "valueType": "string",
+                            "operators": []
+                        }
+                    ]
+                },
+                "column": "specs",
+                "nullable": true,
+                "valueType": "json",
+                "enum": null,
+                "operators": []
+            },
+            {
                 "name": "imageKey",
                 "type": "image",
                 "label": "Image",
@@ -5418,6 +5559,55 @@
                 "column": "channels",
                 "nullable": true,
                 "valueType": "json",
+                "operators": [
+                    "any",
+                    "all",
+                    "null",
+                    "nnull"
+                ]
+            },
+            {
+                "name": "keywords",
+                "type": "tag",
+                "label": "Keywords",
+                "sortable": false,
+                "searchable": false,
+                "filterable": true,
+                "readonly": false,
+                "inline": false,
+                "unique": false,
+                "help": null,
+                "component": null,
+                "views": [
+                    "show",
+                    "create",
+                    "update"
+                ],
+                "rules": [],
+                "props": [],
+                "summary": null,
+                "default": null,
+                "hasDefault": false,
+                "conditions": {
+                    "visible": [],
+                    "required": [],
+                    "disabled": []
+                },
+                "tags": {
+                    "suggestions": [
+                        "eco",
+                        "bestseller",
+                        "gift",
+                        "bundle",
+                        "clearance"
+                    ],
+                    "maxLength": 50,
+                    "maxTags": 20
+                },
+                "column": "keywords",
+                "nullable": true,
+                "valueType": "json",
+                "enum": null,
                 "operators": [
                     "any",
                     "all",
@@ -5719,6 +5909,17 @@
                                     "collapsible": false,
                                     "collapsed": false,
                                     "columns": null,
+                                    "span": "full",
+                                    "name": "specs",
+                                    "children": null
+                                },
+                                {
+                                    "kind": "field",
+                                    "label": null,
+                                    "description": null,
+                                    "collapsible": false,
+                                    "collapsed": false,
+                                    "columns": null,
                                     "span": null,
                                     "name": "imageKey",
                                     "children": null
@@ -5755,6 +5956,17 @@
                                     "columns": null,
                                     "span": null,
                                     "name": "channels",
+                                    "children": null
+                                },
+                                {
+                                    "kind": "field",
+                                    "label": null,
+                                    "description": null,
+                                    "collapsible": false,
+                                    "collapsed": false,
+                                    "columns": null,
+                                    "span": null,
+                                    "name": "keywords",
                                     "children": null
                                 },
                                 {
@@ -5968,6 +6180,17 @@
                                     "collapsible": false,
                                     "collapsed": false,
                                     "columns": null,
+                                    "span": "full",
+                                    "name": "specs",
+                                    "children": null
+                                },
+                                {
+                                    "kind": "field",
+                                    "label": null,
+                                    "description": null,
+                                    "collapsible": false,
+                                    "collapsed": false,
+                                    "columns": null,
                                     "span": null,
                                     "name": "imageKey",
                                     "children": null
@@ -6004,6 +6227,17 @@
                                     "columns": null,
                                     "span": null,
                                     "name": "channels",
+                                    "children": null
+                                },
+                                {
+                                    "kind": "field",
+                                    "label": null,
+                                    "description": null,
+                                    "collapsible": false,
+                                    "collapsed": false,
+                                    "columns": null,
+                                    "span": null,
+                                    "name": "keywords",
                                     "children": null
                                 },
                                 {
@@ -6070,8 +6304,10 @@
             "isFeatured": "is_featured",
             "description": "description",
             "attributes": "attributes",
+            "specs": "specs",
             "imageKey": "image_key",
             "channels": "channels",
+            "keywords": "keywords",
             "releasedAt": "released_at",
             "createdAt": "created_at",
             "updatedAt": "updated_at"
@@ -6143,9 +6379,11 @@
                 "isFeatured",
                 "description",
                 "attributes",
+                "specs",
                 "imageKey",
                 "tags",
                 "channels",
+                "keywords",
                 "releasedAt",
                 "createdAt",
                 "updatedAt"
@@ -6227,6 +6465,18 @@
                 "type": "json"
             },
             "channels": {
+                "kind": "column",
+                "nullable": true,
+                "hasDefault": true,
+                "type": "json"
+            },
+            "specs": {
+                "kind": "column",
+                "nullable": true,
+                "hasDefault": true,
+                "type": "json"
+            },
+            "keywords": {
                 "kind": "column",
                 "nullable": true,
                 "hasDefault": true,
@@ -8207,7 +8457,6 @@
                     "inverse": "team",
                     "owned": false
                 },
-                "repeater": null,
                 "nullable": false,
                 "operators": []
             }
@@ -9670,6 +9919,55 @@
                 ]
             },
             {
+                "name": "keywords",
+                "type": "tag",
+                "label": "Keywords",
+                "sortable": false,
+                "searchable": false,
+                "filterable": true,
+                "readonly": false,
+                "inline": false,
+                "unique": false,
+                "help": null,
+                "component": null,
+                "views": [
+                    "show",
+                    "create",
+                    "update"
+                ],
+                "rules": [],
+                "props": [],
+                "summary": null,
+                "default": null,
+                "hasDefault": false,
+                "conditions": {
+                    "visible": [],
+                    "required": [],
+                    "disabled": []
+                },
+                "tags": {
+                    "suggestions": [
+                        "login",
+                        "billing",
+                        "crash",
+                        "slow",
+                        "refund"
+                    ],
+                    "maxLength": 50,
+                    "maxTags": 20
+                },
+                "column": "keywords",
+                "nullable": true,
+                "valueType": "json",
+                "enum": null,
+                "operators": [
+                    "any",
+                    "all",
+                    "null",
+                    "nnull"
+                ]
+            },
+            {
                 "name": "customerEmail",
                 "type": "email",
                 "label": "Customer",
@@ -9934,7 +10232,6 @@
                     "inverse": "ticket",
                     "owned": true
                 },
-                "repeater": null,
                 "nullable": false,
                 "operators": []
             },
@@ -11184,6 +11481,17 @@
                                     "collapsible": false,
                                     "collapsed": false,
                                     "columns": null,
+                                    "span": null,
+                                    "name": "keywords",
+                                    "children": null
+                                },
+                                {
+                                    "kind": "field",
+                                    "label": null,
+                                    "description": null,
+                                    "collapsible": false,
+                                    "collapsed": false,
+                                    "columns": null,
                                     "span": "full",
                                     "name": "body",
                                     "children": null
@@ -11513,6 +11821,17 @@
                                     "collapsible": false,
                                     "collapsed": false,
                                     "columns": null,
+                                    "span": null,
+                                    "name": "keywords",
+                                    "children": null
+                                },
+                                {
+                                    "kind": "field",
+                                    "label": null,
+                                    "description": null,
+                                    "collapsible": false,
+                                    "collapsed": false,
+                                    "columns": null,
                                     "span": "full",
                                     "name": "body",
                                     "children": null
@@ -11770,6 +12089,7 @@
             "channel": "channel",
             "platforms": "platforms",
             "flags": "flags",
+            "keywords": "keywords",
             "customerEmail": "customer_email",
             "customerRef": "customer_ref",
             "team": "team_id",
@@ -11854,6 +12174,7 @@
                 "channel",
                 "platforms",
                 "flags",
+                "keywords",
                 "customerEmail",
                 "customerRef",
                 "team",
@@ -11953,6 +12274,12 @@
                 "type": "json"
             },
             "flags": {
+                "kind": "column",
+                "nullable": true,
+                "hasDefault": true,
+                "type": "json"
+            },
+            "keywords": {
                 "kind": "column",
                 "nullable": true,
                 "hasDefault": true,

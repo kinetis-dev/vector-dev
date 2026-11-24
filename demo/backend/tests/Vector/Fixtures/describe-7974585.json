@@ -1188,12 +1188,29 @@
             {
                 "name": "lines",
                 "label": "Lines",
-                "type": "hasMany",
+                "type": "repeater",
+                "format": "a list of 1 to 50 rows, each an object of the fields in `rows` plus the `id` of an existing row to keep; a row with an id updates that row, one without creates it, and a row left out is deleted, all saved with the record; the list order is the rows' order",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": false,
                 "relation": {
                     "kind": "hasMany",
                     "resource": "order-lines"
                 },
-                "writable": []
+                "rows": [
+                    {
+                        "name": "product"
+                    },
+                    {
+                        "name": "quantity"
+                    },
+                    {
+                        "name": "unitPriceCents"
+                    }
+                ]
             },
             {
                 "name": "createdAt",
@@ -1552,6 +1569,39 @@
                 "nullable": true
             },
             {
+                "name": "specs",
+                "label": "Specifications",
+                "type": "repeater",
+                "valueType": "json",
+                "format": "a list of 0 to 20 rows, each an object of the fields in `rows` and no others; stored in the order sent",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "rows": [
+                    {
+                        "name": "label",
+                        "type": "string",
+                        "required": true,
+                        "rules": [
+                            "NotBlank",
+                            "MaxLength(60)"
+                        ]
+                    },
+                    {
+                        "name": "value",
+                        "type": "string",
+                        "required": true,
+                        "rules": [
+                            "NotBlank",
+                            "MaxLength(200)"
+                        ]
+                    }
+                ]
+            },
+            {
                 "name": "imageKey",
                 "label": "Image",
                 "type": "image",
@@ -1618,6 +1668,26 @@
                         "label": "Wholesale"
                     }
                 ]
+            },
+            {
+                "name": "keywords",
+                "label": "Keywords",
+                "type": "tag",
+                "valueType": "json",
+                "format": "a list of free-text tags, at most 20 of at most 50 characters each; stored trimmed, without empty ones, each at most once ignoring case (the first spelling kept), in the order sent",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "filter": [
+                    "any",
+                    "all",
+                    "null",
+                    "nnull"
+                ],
+                "filterHelp": "any (a bare value): holds at least one of the comma-separated tags; all: holds every one of them; tags match exactly as stored"
             },
             {
                 "name": "releasedAt",
@@ -2527,6 +2597,26 @@
                         "label": "Legal hold"
                     }
                 ]
+            },
+            {
+                "name": "keywords",
+                "label": "Keywords",
+                "type": "tag",
+                "valueType": "json",
+                "format": "a list of free-text tags, at most 20 of at most 50 characters each; stored trimmed, without empty ones, each at most once ignoring case (the first spelling kept), in the order sent",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "filter": [
+                    "any",
+                    "all",
+                    "null",
+                    "nnull"
+                ],
+                "filterHelp": "any (a bare value): holds at least one of the comma-separated tags; all: holds every one of them; tags match exactly as stored"
             },
             {
                 "name": "customerEmail",

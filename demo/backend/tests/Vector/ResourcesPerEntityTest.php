@@ -113,9 +113,10 @@ final class ResourcesPerEntityTest extends TestCase
      * `ai.send` metadata (docs/ai.md), orders their bulk AI rewrite
      * action (TidyOrderNotes) and their number's `unique()` (the
      * orders_number_unique key), enum fields have become select fields
-     * (products' status a badge), JSON fields JSON columns, and products
-     * and tickets a multiple select each; the fixture holds them with
-     * those declarations.
+     * (products' status a badge), JSON fields JSON columns, products
+     * and tickets a multiple select each, orders' lines a relationship
+     * repeater, products a JSON repeater and tags, and tickets tags; the
+     * fixture holds them with those declarations.
      */
     public function testEveryExistingDescriptorIsUnchanged(): void
     {
