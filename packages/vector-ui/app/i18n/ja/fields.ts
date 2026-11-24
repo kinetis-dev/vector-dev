@@ -77,4 +77,16 @@ export default {
         invalidFormat: '形式が正しくありません',
         notAllowed: '許可されていない値です',
     },
+    rows: {
+        add: '行を追加',
+        remove: '行 {n} を削除',
+        row: '行 {n}',
+        drag: '行 {n} を移動: ドラッグするか矢印キーを使用',
+        moved: '行 {from} を位置 {to} に移動しました',
+        none: '行がありません',
+    },
+    tags: {
+        hint: 'タグを入力して Enter を押してください',
+        tooMany: 'タグは最大 {max} 個まで',
+    },
 }

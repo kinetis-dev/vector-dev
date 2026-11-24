@@ -2,6 +2,7 @@
 import type { SubmitEventPromise } from 'vuetify'
 import type { VectorField, VectorFieldState, VectorLayoutNode, VectorRecord, VectorResource } from '#vector/app/types/vector'
 import { type Violation, violationsOf } from '#vector/app/utils/internal/violations'
+import { childRepeater } from '#vector/app/utils/internal/repeater'
 
 // A create or edit form generated from the descriptor: one input per
 // editable field, client rules mirroring the server's, and the server's
@@ -52,7 +53,7 @@ const clone = (value: unknown) => value === undefined ? undefined : JSON.parse(J
  * (a stored key belongs to its record). Collections load below.
  */
 const copies = (field: VectorField) => props.operation === 'create' && props.copyOf !== undefined
-    && field.unique !== true && !['file', 'image', 'manyToMany', 'hasMany'].includes(field.type)
+    && field.unique !== true && !['file', 'image', 'manyToMany'].includes(field.type) && !childRepeater(field)
 
 /** What a field starts with when nothing gives it a value: on create its declared default, else its type's empty one. */
 function initialValue(field: VectorField): unknown {
@@ -72,8 +73,8 @@ function start() {
             value = (current as { id: unknown }).id
         }
 
-        if (field.type === 'manyToMany' || field.type === 'hasMany') {
-            value = [] // the ids, or a repeater's rows, load from their endpoint below
+        if (field.type === 'manyToMany' || childRepeater(field)) {
+            value = [] // the ids, or a relationship repeater's rows, load from their endpoint below
         }
 
         values[field.name] = value
@@ -84,7 +85,7 @@ start()
 
 function defaultFor(field: VectorField): unknown {
     if (field.type === 'boolean') return false
-    if (field.type === 'manyToMany' || field.type === 'hasMany') return []
+    if (['manyToMany', 'repeater', 'tag'].includes(field.type)) return []
     return null
 }
 
@@ -105,8 +106,8 @@ if (loadFrom) {
         })
     }
 
-    // A repeater's rows: each child as a row of the fields it writes, its relations as ids.
-    for (const field of fields.value.filter(f => f.repeater)) {
+    // A relationship repeater's rows: each child as a row of the fields it writes, its relations as ids.
+    for (const field of fields.value.filter(childRepeater)) {
         client.rows(loadFrom.id, field.name).catch((error) => {
             unloaded.add(field.name)
             formError.value = vectorErrorMessage(error)
@@ -142,7 +143,7 @@ async function allRelatedIds(id: string | number, field: VectorField): Promise<u
     }
 }
 
-const wide = (field: VectorField) => ['markdown', 'richtext', 'text', 'json', 'keyValue'].includes(field.type) || !!field.repeater
+const wide = (field: VectorField) => ['markdown', 'richtext', 'text', 'json', 'keyValue', 'repeater'].includes(field.type)
 
 /** Fields the browser's own rules refused on the last submit, by the input id each carries. */
 const clientErrors = ref<string[]>([])
@@ -247,8 +248,8 @@ function showFailure(error: unknown) {
 
 /** One violation under the field it names, or above the form when it names none the form holds. */
 function showViolation(violation: Violation) {
-    // a repeater row's own violation stays with its row: `lines.2.quantity`
-    const repeated = violation.path.length >= 3 && fields.value.some(f => f.name === violation.path[0] && f.repeater)
+    // a repeater row's own violation stays with its row: `lines.2.quantity`, or `specs.2` for the row itself
+    const repeated = violation.path.length >= 2 && fields.value.some(f => f.name === violation.path[0] && f.type === 'repeater')
     const key = repeated ? violation.path.slice(0, 3).join('.') : String(violation.path[0] ?? '')
 
     if (key && (key in values || repeated)) {
@@ -352,7 +353,7 @@ const hiddenErrors = computed(() => Object.entries(serverErrors)
                             :error-messages="serverErrors[name] ?? []"
                             :record="inputRecord"
                             :resource="resource.slug"
-                            v-bind="fieldsByName.get(name)!.repeater ? { serverErrors } : {}"
+                            v-bind="fieldsByName.get(name)!.type === 'repeater' ? { serverErrors } : {}"
                             @update:model-value="clearServerError(name)"
                         />
                         <VxInputAddons

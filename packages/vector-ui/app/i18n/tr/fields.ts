@@ -77,4 +77,16 @@ export default {
         invalidFormat: 'Geçersiz biçim',
         notAllowed: 'İzin verilen bir değer değil',
     },
+    rows: {
+        add: 'Satır ekle',
+        remove: '{n}. satırı kaldır',
+        row: '{n}. satır',
+        drag: '{n}. satırı taşı: sürükleyin ya da ok tuşlarını kullanın',
+        moved: '{from}. satır {to}. sıraya taşındı',
+        none: 'Satır yok',
+    },
+    tags: {
+        hint: 'Bir etiket yazıp Enter tuşuna basın',
+        tooMany: 'En fazla {max} etiket',
+    },
 }

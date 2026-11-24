@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { childRepeater } from '#vector/app/utils/internal/repeater'
 import type { VectorImportMode, VectorImportPreview, VectorResource } from '#vector/app/types/vector'
 
 // CSV import in two steps: upload for a preview and a suggested
@@ -38,7 +39,7 @@ const modeViews: Record<VectorImportMode, string[]> = { create: ['create'], upda
 // what the mode writes; an update also maps the column it matches rows by
 const fields = computed(() => {
     const views = modeViews[mode.value]
-    const writable = props.resource.fields.filter(f => !f.readonly && f.views.some(v => views.includes(v)) && !['id', 'hasOne', 'hasMany', 'computed'].includes(f.type))
+    const writable = props.resource.fields.filter(f => !f.readonly && f.views.some(v => views.includes(v)) && !['id', 'hasOne', 'hasMany', 'computed'].includes(f.type) && !childRepeater(f))
     const keys = mode.value === 'create' ? [] : keyFields.value.filter(f => !writable.includes(f))
 
     return [...keys, ...writable].map(f => ({ title: f.label, value: f.name }))

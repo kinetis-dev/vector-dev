@@ -8,6 +8,31 @@ export type VectorFieldType =
     | 'select' | 'country' | 'booleanGroup' | 'date' | 'datetime' | 'email' | 'url' | 'password' | 'slug'
     | 'color' | 'json' | 'keyValue' | 'currency' | 'file' | 'image'
     | 'belongsTo' | 'hasOne' | 'hasMany' | 'manyToMany' | 'computed' | 'richtext'
+    | 'repeater' | 'tag'
+
+/**
+ * A repeater's rows. `json`: a JSON list of objects of `rowFields`.
+ * `relationship`: child records of `relation.resource`, `fields` naming
+ * the child fields a row writes. `sortable`: rows reorder by dragging
+ * (always for `json`; for `relationship` when `orderBy` names the child
+ * property that takes each row's index).
+ */
+export interface VectorRepeater {
+    mode: 'json' | 'relationship'
+    fields: string[]
+    min: number
+    max: number
+    sortable: boolean
+    orderBy: string | null
+    rowFields?: VectorField[]
+}
+
+/** A tag field's suggestions (any other text is a tag too) and limits. */
+export interface VectorTags {
+    suggestions: string[]
+    maxLength: number
+    maxTags: number
+}
 
 /** A rich-text feature: a node or mark type the field's schema allows (or one a runtime extension added). */
 export type VectorRichTextFeature = 'bold' | 'italic' | 'underline' | 'strike' | 'code' | 'heading' | 'list' | 'blockquote' | 'codeBlock' | 'horizontalRule' | 'link' | 'table' | 'image' | 'mention' | (string & {})
@@ -51,7 +76,7 @@ export interface VectorRelation {
     dependsOn?: { field: string, on: string, label: string } | null
 }
 
-/** `any` and `all` filter a multiple select's list by a comma-separated list of option values. */
+/** `any` and `all` filter a list (a multiple select's options, tags) by a comma-separated list of values. */
 export type VectorOperator = 'eq' | 'ne' | 'lt' | 'lte' | 'gt' | 'gte' | 'in' | 'nin' | 'like' | 'nlike' | 'between' | 'any' | 'all' | 'null' | 'nnull'
 
 /**
@@ -74,8 +99,10 @@ export interface VectorField {
     inline?: boolean
     /** Unique among the resource's records: a duplicate starts without it; an import may match by it. */
     unique?: boolean
-    /** hasMany: the owned rows edited inside the parent's form */
-    repeater?: { fields: string[], min: number, max: number } | null
+    /** A repeater: the rows edited inside the record's form. */
+    repeater?: VectorRepeater | null
+    /** A tag field: free-text strings shown as chips. */
+    tags?: VectorTags
     help: string | null
     component: string | null
     views: VectorView[]

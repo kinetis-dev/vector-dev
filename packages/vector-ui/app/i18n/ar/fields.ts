@@ -77,4 +77,16 @@ export default {
         invalidFormat: 'تنسيق غير صالح',
         notAllowed: 'قيمة غير مسموح بها',
     },
+    rows: {
+        add: 'إضافة صف',
+        remove: 'إزالة الصف {n}',
+        row: 'الصف {n}',
+        drag: 'نقل الصف {n}: اسحبه أو استخدم مفاتيح الأسهم',
+        moved: 'نُقل الصف {from} إلى الموضع {to}',
+        none: 'لا توجد صفوف',
+    },
+    tags: {
+        hint: 'اكتب وسمًا واضغط Enter',
+        tooMany: '{max} وسمًا كحد أقصى',
+    },
 }

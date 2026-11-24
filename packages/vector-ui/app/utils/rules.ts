@@ -13,7 +13,7 @@ const empty = (value: unknown) => value === null || value === undefined || value
  */
 export function rulesFor(field: VectorField, operation: 'create' | 'update', state?: VectorFieldState): Rule[] {
     const rules: Rule[] = []
-    const requiredHere = (operation === 'create' && field.nullable === false && !['manyToMany', 'hasMany', 'hasOne', 'boolean'].includes(field.type)) || state?.required === true
+    const requiredHere = (operation === 'create' && field.nullable === false && !['manyToMany', 'hasMany', 'hasOne', 'boolean', 'repeater', 'tag'].includes(field.type)) || state?.required === true
 
     if (requiredHere) {
         rules.push(value => !empty(value) || vt('common.required'))

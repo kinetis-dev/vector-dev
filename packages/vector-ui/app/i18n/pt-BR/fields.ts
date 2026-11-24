@@ -77,4 +77,16 @@ export default {
         invalidFormat: 'Formato inválido',
         notAllowed: 'Valor não permitido',
     },
+    rows: {
+        add: 'Adicionar linha',
+        remove: 'Remover a linha {n}',
+        row: 'Linha {n}',
+        drag: 'Mover a linha {n}: arraste-a ou use as teclas de seta',
+        moved: 'Linha {from} movida para a posição {to}',
+        none: 'Nenhuma linha',
+    },
+    tags: {
+        hint: 'Digite uma tag e pressione Enter',
+        tooMany: 'No máximo {max} tags',
+    },
 }

@@ -77,4 +77,16 @@ export default {
         invalidFormat: 'Nieprawidłowy format',
         notAllowed: 'Niedozwolona wartość',
     },
+    rows: {
+        add: 'Dodaj wiersz',
+        remove: 'Usuń wiersz {n}',
+        row: 'Wiersz {n}',
+        drag: 'Przenieś wiersz {n}: przeciągnij go lub użyj klawiszy strzałek',
+        moved: 'Wiersz {from} przeniesiono na pozycję {to}',
+        none: 'Brak wierszy',
+    },
+    tags: {
+        hint: 'Wpisz tag i naciśnij Enter',
+        tooMany: 'Najwyżej {max} tagów',
+    },
 }

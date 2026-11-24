@@ -62,7 +62,7 @@ watch(field, (f) => {
 })
 
 const needsValue = computed(() => operator.value !== null && !['null', 'nnull'].includes(operator.value))
-// a list of values: in/nin of a column, any/all of a multiple select's options
+// a list of values: in/nin of a column, any/all of a multiple select's options or of tags
 const list = computed(() => ['in', 'nin', 'any', 'all'].includes(operator.value ?? ''))
 
 /** What a choice input shows as picked: the comma-separated `value` as the options' own values, a list for a list operator. */
@@ -224,6 +224,7 @@ const anything = computed(() => active.value.length > 0 || groups.value.length >
                 <template v-if="field && needsValue">
                     <v-autocomplete v-if="CHOICE_TYPES.has(field.type) && field.autocomplete" :model-value="picked" :label="t('list.filter.value')" :items="choicesOf(field)" item-title="label" item-value="value" density="compact" hide-details class="mb-3" :multiple="list" @update:model-value="(v: unknown) => value = Array.isArray(v) ? v.join(',') : String(v ?? '')" />
                     <v-select v-else-if="CHOICE_TYPES.has(field.type)" :model-value="picked" :label="t('list.filter.value')" :items="choicesOf(field)" item-title="label" item-value="value" density="compact" hide-details class="mb-3" :multiple="list" @update:model-value="(v: unknown) => value = Array.isArray(v) ? v.join(',') : String(v ?? '')" />
+                    <v-combobox v-else-if="field.type === 'tag'" :label="t('list.filter.value')" :items="field.tags?.suggestions ?? []" :hint="t('fields.tags.hint')" :delimiters="[',']" density="compact" class="mb-3" multiple chips closable-chips hide-no-data persistent-hint @update:model-value="(v: unknown) => value = Array.isArray(v) ? v.map(x => String(x).trim()).filter(x => x !== '').join(',') : String(v ?? '')" />
                     <v-select v-else-if="field.type === 'boolean'" v-model="value" :label="t('list.filter.value')" :items="[{ title: t('common.yes'), value: 'true' }, { title: t('common.no'), value: 'false' }]" density="compact" hide-details class="mb-3" />
                     <v-autocomplete v-else-if="field.type === 'belongsTo'" v-model:search="relationSearch" :label="t('list.filter.value')" :items="relationOptions" item-title="label" item-value="id" density="compact" hide-details class="mb-3" :multiple="list" no-filter @update:model-value="(v: unknown) => value = Array.isArray(v) ? v.join(',') : String(v ?? '')" />
                     <template v-else>

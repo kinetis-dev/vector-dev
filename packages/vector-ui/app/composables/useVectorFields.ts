@@ -38,6 +38,8 @@ const cells: Record<string, Component> = {
     hasOne: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Relation.vue')),
     hasMany: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Count.vue')),
     manyToMany: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Count.vue')),
+    repeater: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Repeater.vue')),
+    tag: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Tag.vue')),
 }
 
 /** The cell type a computed field is shown as: what it is computed as, text as a string. */
