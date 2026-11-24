@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Vx/Cell/BooleanGroup.vue` and `Vx/Input/BooleanGroup.vue` for
+  kinetis/vector's flag group: the labels of the flags that are on as
+  chips, and one group of checkboxes whose value is every option key to
+  true or false.
+- `Vx/Cell/Country.vue` and `Vx/Input/Country.vue`: the Select ones with
+  each code named in the UI's language from `utils/countries`, through
+  `useVectorCountryNames()`, falling back to the server's English name.
+  The filter bar and the command palette name countries the same way,
+  and the filter bar offers a flag group's keys and searches a
+  searchable field's choices.
 - `Vx/Cell/Select.vue` and `Vx/Input/Select.vue` for kinetis/vector's
   `select` field: a multiple select edits as chips and shows its labels,
   a searchable one (`autocomplete`) is a `v-autocomplete`, and a badge
@@ -22,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `VectorFieldType` adds `booleanGroup` and `country`; `VectorField`
+  publishes a flag group's `storage` and `flagsSortable`.
 - **Breaking:** the `enum` field type is `select` (`VectorFieldType`,
   the field and input registries, `VectorComputedAs`), and
   `VectorEnumOption` is `VectorSelectOption`. A select without `badge`

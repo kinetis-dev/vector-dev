@@ -24,6 +24,8 @@ second column.
 | `Boolean` | `boolean` | True or false. |
 | `Date`, `DateTime` | `date`, `datetime` | A calendar day, `YYYY-MM-DD` on the wire with no time or zone; or an instant, ISO 8601 on the wire in UTC. See {doc}`databases` for `DATE` columns. |
 | `Select` | `select` | A choice among fixed options, one value or several with `multiple()`; see [Select](#select). |
+| `BooleanGroup` | `booleanGroup` | Named on/off options shown as one cell and edited as one group of checkboxes, in a bool column each or in one JSON column; see [BooleanGroup](#booleangroup). |
+| `Country` | `country` | An ISO 3166-1 alpha-2 country code, or several: a select over every assigned code; see [Country](#country). |
 | `KeyValue` | `keyValue` | A JSON object of text values in a JSON column (an `array` or `?array` property), edited as key/value rows; `columns('Attribute', 'Value')`, `maxEntries(n)` (50 by default). On the wire it is an object; a stored number or boolean reads back as text, and an empty object stores `null` where the column allows it. Keys are trimmed and at most 100 characters. A JSON column may reorder the keys. It cannot be sorted, filtered, searched or summarized, and is imported as JSON text. |
 | `File`, `Image` | `file`, `image` | An uploaded file's storage key; see {doc}`files`. |
 | `Computed` | `computed` | A read-only value a method of the resource computes from the record; see below. |
@@ -86,6 +88,7 @@ A filterable field offers the operators its value admits:
 | Date, datetime | `eq ne lt lte gt gte between` (a day against a timestamp spans the day) |
 | Select, currency, belongs-to | `eq ne in nin` |
 | Multiple select | `any all` (a bare value is `any`) |
+| Flag group | `any all` over option keys (a bare value is `any`); in columns mode each flag also takes `eq` as `group.key` |
 
 A nullable column adds `null` and `nnull`. Collections are never
 filterable. The list grammar and "any of" groups are on {doc}`rest-api`.
@@ -170,6 +173,105 @@ over the column can.
 
 A CSV import reads a multiple select's cell as the JSON list an export
 writes (`["web","retail"]`) or as values separated by `|`.
+
+## BooleanGroup
+
+A flag group holds several named on/off options as one value: a list
+shows the labels of the ones that are on, a form a group of checkboxes.
+
+```php
+BooleanGroup::make('contact', 'Contact by')
+    ->options(['newsletter' => 'Newsletter', 'acceptsSms' => 'Text message', 'acceptsPost' => 'Post'])
+    ->sortable()->filterable(),                                     // columns mode: three bool properties
+
+BooleanGroup::make('flags')
+    ->options(['vip' => 'VIP customer', 'legalHold' => 'Legal hold'])
+    ->json()->filterable(),                                         // JSON mode: one array property
+```
+
+On the wire the value is an object of every option key to `true` or
+`false`: `{"newsletter": true, "acceptsSms": false, "acceptsPost": true}`.
+A key a write leaves out is `false`, so a write sets every flag. An
+option key is a name of letters, digits and underscores.
+
+### Storage
+
+| Mode | Property | Column |
+|---|---|---|
+| Columns (the default) | one non-null `bool` property per option key; the field's own name is no property | a boolean column each (`TINYINT(1)` on MySQL, `BOOLEAN` on PostgreSQL) |
+| JSON (`json()`) | the field's own `array` or `?array` property | `JSON` on MySQL and MariaDB, `jsonb` on PostgreSQL, holding the object |
+
+The build refuses a mismatch and converts nothing: an option key that is
+not a non-null bool property in columns mode, a group named after a
+property in columns mode, a flag that is also declared as a field of its
+own (the group writes it), JSON mode on a property that is not an array,
+a group without options, and a `default()` that is not an object of
+some of its keys to booleans. A columns-mode group also counts as
+writing its flags' properties when the build checks that a record can be
+created. Bit masks are not supported.
+
+### Strict keys
+
+A write naming a key that is no option is refused with `invalid_choice`
+on that key (`contact/acceptsFax`), and a value that is not a boolean
+with `type_mismatch`. In JSON mode a stored key missing from the object
+reads as `false`, and a stored key that is no option throws
+`Kinetis\Vector\Exception\StoredValueException` on read. **Removing an
+option therefore needs a data migration first**: remove the key from the
+stored objects (or drop its column in columns mode), then remove it from
+the field.
+
+### Filters and sorting
+
+Both modes filter the group with `any` (at least one of the listed keys
+is on, the default) and `all` (every one of them is on):
+
+```
+GET /vector/r/customer-profiles?filter[contact][any]=acceptsSms,acceptsPost
+GET /vector/r/tickets?filter[flags][all]=vip,legalHold
+GET /vector/r/tickets?filter[flags]=vip                       # a bare value is "any"
+```
+
+A nullable JSON column adds `null` and `nnull`. In JSON mode each key
+travels inside a bound `{"key": true}` object matched by containment
+(`JSON_CONTAINS` on MySQL and MariaDB, `@>` on PostgreSQL), and only
+keys the field declares are accepted.
+
+In columns mode each flag is also a boolean of its own, named
+`group.key`: it filters with `eq` when the group is `filterable()` and
+sorts when the group is `sortable()`. The group itself is not sortable.
+
+```
+GET /vector/r/customer-profiles?filter[contact.acceptsSms]=true
+GET /vector/r/customer-profiles?filter[contact.newsletter][eq]=false&sort=-contact.acceptsPost
+```
+
+A JSON-mode group is never sortable; the build refuses `sortable()` on
+it. No flag group is grouped, summarized, searched or edited inline, and
+a form condition cannot test one. A CSV import reads the group's cell as
+the JSON object an export writes.
+
+## Country
+
+`Country` is a select preset over the assigned ISO 3166-1 alpha-2 codes,
+searchable by default:
+
+```php
+Country::make('country')->filterable(),                             // one code, a string property
+Country::make('countries', 'Countries served')->multiple(),         // several, an array property
+Country::make('market')->only(['NL', 'DE', 'AT']),                  // just these codes, in this order
+```
+
+It is a `Select` in every other respect: the same storage rules (a
+string property for one code, an `array` or `?array` property for
+several), `badge()`, the same filters (`eq ne in nin`, or `any all` for
+a multiple one) and the same strictness. Codes are upper case: `de`,
+`DEU` and `Germany` are refused with `invalid_choice`. `only()` narrows
+the list, and the build refuses a code that is not assigned. The server
+names each code in English (in `vector_describe`, OpenAPI and exports);
+the admin shows the name in the UI's language, for each shipped locale,
+from data generated with `scripts/generate-countries.mjs`. The codes
+and names live in `Kinetis\Vector\Support\Countries`.
 
 ## JSON columns
 

@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Fields\BooleanGroup`: named on/off options as one value, an object
+  of every option key to a bool (a key a write leaves out is false),
+  shown as one cell and edited as one group of checkboxes. In columns
+  mode (the default) each key is a non-null bool property with a column
+  of its own, and each flag also filters (`filter[group.key]=true`) and
+  sorts (`sort=group.key`). With `json()` the group maps one `array`
+  property, a `JSON` or `jsonb` column holding the object, and is not
+  sortable. Both filter with `any` and `all` of a list of keys being on,
+  a bare value being `any`. The build refuses storage that does not
+  match the mode. A key that is no option is `invalid_choice` under that
+  key on write and, in JSON mode, throws `StoredValueException` on read:
+  removing an option needs a data migration first.
+- `Fields\Country`: a `Select` over the assigned ISO 3166-1 alpha-2
+  codes of `Support\Countries`, searchable by default, one code in a
+  string property or several with `multiple()` in an `array` property,
+  with the select's filters and strictness. `only()` narrows the codes;
+  the build refuses one that is not assigned. The server names codes in
+  English; OpenAPI describes the enum of codes.
+- `Database\JsonFilter::keysTrue()`: the SQL of a JSON object whose
+  keys hold true, any or all of them, each key inside a bound
+  `{"key": true}` object matched by containment (`JSON_CONTAINS` on
+  MySQL and MariaDB, `@>` on PostgreSQL).
 - `Fields\Select`: a choice among fixed options, from an array
   (`value => label`), a closure called once when the resource compiles,
   or a backed enum (`of()`, or `options(Status::class)`), with
@@ -37,6 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `Select` is no longer `final`, so `Country` can extend it; its API is
+  unchanged.
 - Requires `kinetis/orm` ^1.14.0 and `kinetis/query-builder` ^1.8.6.
 - **Breaking:** `Json` and `KeyValue` map JSON columns: an `array` or
   `?array` property instead of JSON text in a `?string` one, and the
