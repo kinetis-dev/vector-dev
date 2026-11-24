@@ -127,7 +127,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Repeater::make('lines')->relationship('lines', LineResource::class)->fields(['product', 'quantity'])->min(1)->max(50)`,
   and add `->orderBy('position')` over an int child property to let the
   rows be dragged into order. The request body and the rows endpoint
-  are unchanged.
+  are unchanged. A `hasMany` field no longer publishes `repeater`.
 
 ## [0.17.1] - 2026-11-23
 
