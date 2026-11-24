@@ -6,7 +6,7 @@ discovered anywhere under your application namespace.
 
 ```php
 use Kinetis\Vector\Attributes\Resource;
-use Kinetis\Vector\Fields\{BelongsTo, Boolean, Enum, Id, ManyToMany, Money, Number, Text};
+use Kinetis\Vector\Fields\{BelongsTo, Boolean, Id, ManyToMany, Money, Number, Select, Text};
 use Kinetis\Vector\VectorResource;
 
 #[Resource(entity: Product::class, group: 'Catalog', icon: 'mdi-package-variant', title: 'name')]
@@ -18,7 +18,8 @@ final class ProductResource extends VectorResource
             Id::make(),
             Text::make('sku', 'SKU')->required()->max(40)->sortable()->searchable()->filterable(),
             Text::make('name')->required()->max(200)->sortable()->searchable()->filterable(),
-            Enum::make('status')->of(ProductStatus::class)->sortable()->filterable(),
+            Select::make('status')->of(ProductStatus::class)->badge(['active' => 'success'])->sortable()->filterable(),
+            Select::make('channels')->options(['web' => 'Web shop', 'retail' => 'Retail'])->multiple()->filterable(),
             BelongsTo::to('category', CategoryResource::class)->sortable()->filterable(),
             Money::make('priceCents', 'Price')->currencyField('currency')->summarize('avg'),
             Number::make('stock')->sortable()->filterable()->summarize('sum'),
@@ -148,8 +149,8 @@ create and delete in its policy instead.
 
 An empty resource derives every field from the entity's mapping: a
 string column becomes a searchable `Text`, a backed enum a filterable
-`Enum`, a `#[BelongsTo]` a relation when its target has a resource, and
-so on. Declaring `fields()` replaces derivation entirely. See
+`Select`, an `array` property (a JSON column) a `Json`, a `#[BelongsTo]`
+a relation when its target has a resource, and so on. Declaring `fields()` replaces derivation entirely. See
 {doc}`fields`.
 
 ## Definition methods

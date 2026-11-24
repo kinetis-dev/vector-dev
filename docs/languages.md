@@ -4,7 +4,7 @@ Each user sees the admin in their own language. Vector's UI ships in
 English and sixteen more: German, French, Dutch, Italian, Spanish,
 Portuguese (Portugal and Brazil), Polish, Turkish, Russian, Ukrainian,
 Hebrew, Arabic, Korean, Japanese and Simplified Chinese. Your
-application's labels (resources, fields, enum options, actions,
+application's labels (resources, fields, select options, actions,
 widgets, dashboards, settings) are translated with it.
 
 ```{note}

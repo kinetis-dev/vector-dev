@@ -7,9 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Fields\Select`: a choice among fixed options, from an array
+  (`value => label`), a closure called once when the resource compiles,
+  or a backed enum (`of()`, or `options(Status::class)`), with
+  `labels()` and `colors()`. The descriptor type is `select`.
+- `Select::multiple()`: several options in an `array` or `?array`
+  property (a `JSON` column on MySQL and MariaDB, `jsonb` on
+  PostgreSQL), stored deduplicated in the order the options are
+  declared. The descriptor publishes `multiple`, OpenAPI an array of the
+  option values with `uniqueItems`, and `vector_describe` `multiple`, a
+  `format` and its filters.
+- `Select::searchable()` gives the input a search box over the options
+  (`autocomplete` in the descriptor); `Select::badge([value => colour])`
+  shows the values as coloured chips in lists and on the record
+  (`badge`).
+- The `any` and `all` filter operators of a multiple select: holding at
+  least one, or every one, of a comma-separated list of option values;
+  a bare `filter[field]=value` is `any`. They work inside `or` and
+  `and` groups, on MySQL, MariaDB and PostgreSQL.
+- `Database\JsonFilter`, the SQL of a filter on a JSON column per
+  dialect, every value bound: one `JSON_CONTAINS` per value (`any`) or
+  of the whole list (`all`) on MySQL and MariaDB; `?|` over a text
+  array (`??|` to the query builder) and `@>` on PostgreSQL. The dialect
+  comes from `Database\Connections`, per connection.
+- `Exception\StoredValueException`, thrown when a stored select value
+  is not one of its options, or a JSON column holds no valid document.
+
 ### Changed
 
 - Requires `kinetis/orm` ^1.14.0 and `kinetis/query-builder` ^1.8.6.
+- **Breaking:** `Json` and `KeyValue` map JSON columns: an `array` or
+  `?array` property instead of JSON text in a `?string` one, and the
+  build refuses any other property. `Json` reads as the stored document
+  (an object or an array) instead of its text and writes a JSON object
+  or array; a string is refused. `KeyValue` writes the object itself.
+  To migrate, change the property to `?array` (and any code that set it
+  to JSON text to set the array), and the column to `JSON` on MySQL and
+  MariaDB or `jsonb` on PostgreSQL (`ALTER TABLE t ALTER COLUMN c TYPE
+  jsonb USING c::jsonb`). A client that sent JSON text to a `Json` field
+  sends the document.
+- **Breaking:** select values are strict. A body value outside the
+  options is `invalid_choice` (on its index for a multiple select), and
+  a JSON body must send an option's own type (`2`, not `"2"`, for an int
+  option). A stored value outside the options throws
+  `StoredValueException` on read: before removing an option, migrate the
+  rows that still hold it.
+- **Breaking:** `Computed::as('enum')` is `as('select')`.
+- An `array` property derives a `Json` field.
+- A form condition's `null` and `nnull` treat an empty list as empty.
+
+### Removed
+
+- **Breaking:** `Fields\Enum` and the `enum` descriptor type. Replace
+  `Enum::make('status')->of(Status::class)` with
+  `Select::make('status')->of(Status::class)`; `labels()` and `colors()`
+  carry over, and a derived enum property becomes a `Select`. A client
+  reading the descriptor matches `select` instead of `enum`. A select's
+  `searchable()` no longer makes the list's search match its column.
 
 ## [0.17.1] - 2026-11-23
 

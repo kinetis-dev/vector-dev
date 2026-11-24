@@ -33,8 +33,9 @@ final class AdjustStock extends VectorAction
 ```
 
 `fields()` become the action's dialog, validated like a form, with
-conditions and defaults; an action's fields are scalar, enum and
-belongs-to fields. `canRun()` decides whether the action is offered
+conditions and defaults; an action's fields are scalar, select and
+belongs-to fields. A multiple select hands the action a list of option
+values, never enum cases. `canRun()` decides whether the action is offered
 (`$record` is `null`) and whether it may run on a given record. The
 action's URL segment is `name()`: by default the class name without
 `Action`, in kebab-case (`PublishAction` is `publish`). The constructor

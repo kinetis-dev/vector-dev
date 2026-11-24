@@ -182,7 +182,7 @@ or not the columns name it.
 |---|---|
 | `page`, `perPage` | The page; `perPage` is bounded by the resource. |
 | `sort=-createdAt,name` | Sortable fields; `-` for descending. |
-| `filter[field][op]=value` | Filterable fields, with the operators they publish. `filter[field]=value` is `eq`; `in`, `nin` and `between` take `a,b`. |
+| `filter[field][op]=value` | Filterable fields, with the operators they publish. `filter[field]=value` is `eq` (`any` for a multiple select); `in`, `nin`, `between`, `any` and `all` take `a,b`. |
 | `filter[or][i]…`, `filter[and][i]…` | Alternatives and combined groups, four deep, 50 conditions at most. |
 | `filter[trashed]=only\|with` | The trash, on a soft-deleting resource. |
 | `q` | Search over the searchable fields: contains the term, a searchable relation's title contains it, or full-text fields hold its words; see {doc}`resources`. |

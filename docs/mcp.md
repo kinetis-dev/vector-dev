@@ -82,7 +82,7 @@ resource's list or record view shows it, the rule a list applies to the
 columns it may serialize: a form-only field is refused, and so is a money
 metric whose currency field no view shows. It must also map to a column
 of a type the use takes. A computed, rich-text,
-key-value or collection field is refused, as it is for a sort or a
+key-value, JSON, multiple select or collection field is refused, as it is for a sort or a
 summary, and so is a bucket on a field that is no date, or a date
 without one. Each refusal is a tool error naming what to change.
 

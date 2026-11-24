@@ -33,7 +33,7 @@ which renders the descriptor and contains no application knowledge.
 
 ```php
 use Kinetis\Vector\Attributes\Resource;
-use Kinetis\Vector\Fields\{BelongsTo, Enum, Id, Money, Text};
+use Kinetis\Vector\Fields\{BelongsTo, Id, Money, Select, Text};
 use Kinetis\Vector\VectorResource;
 
 #[Resource(entity: Product::class, group: 'Catalog', icon: 'mdi-package-variant', title: 'name')]
@@ -44,7 +44,7 @@ final class ProductResource extends VectorResource
         return [
             Id::make(),
             Text::make('name')->required()->max(200)->sortable()->searchable()->filterable(),
-            Enum::make('status')->of(ProductStatus::class)->filterable(),
+            Select::make('status')->of(ProductStatus::class)->filterable(),
             BelongsTo::to('category', CategoryResource::class)->sortable()->filterable(),
             Money::make('priceCents', 'Price')->currencyField('currency')->summarize('avg'),
         ];

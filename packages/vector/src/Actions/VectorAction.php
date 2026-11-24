@@ -40,7 +40,7 @@ abstract class VectorAction
 
     /**
      * The inputs the action asks for in its dialog, compiled like a
-     * resource's fields: scalar, enum and belongsTo fields only.
+     * resource's fields: scalar, select and belongsTo fields only.
      *
      * @return list<Field>
      */

@@ -142,8 +142,8 @@ record is authorized, validated and hooked as a `PATCH` would be, and
 checked against the `_version` it was listed at: one stale record
 answers `409` for the whole changeset. A violation's path is
 `changes/{index}/{field}`. Only simple fields editable on update
-qualify: text, email, url, slug, color, number, money, boolean, enum,
-currency, date, datetime and belongs-to. Anything else fails the
+qualify: text, email, url, slug, color, number, money, boolean, single
+select, currency, date, datetime and belongs-to. Anything else fails the
 build.
 
 ## Optimistic locking

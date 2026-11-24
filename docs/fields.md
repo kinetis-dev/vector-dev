@@ -14,16 +14,17 @@ second column.
 |---|---|---|
 | `Id` | `id` | The identifier. Read-only, sortable, never on a form. |
 | `Text`, `Email`, `Url`, `Password`, `Slug`, `Color` | `string`, `email`, `url`, `password`, `slug`, `color` | String columns; `searchable()` allowed. `Slug::from('name')` derives a slug. `Email` must be an address and `Url` an absolute http(s) URL (the admin shows it as a link), unless the field declares an e-mail, URL or pattern rule of its own. `Password`: see [Passwords](#passwords). |
-| `Textarea`, `Json` | `text`, `json` | Long text, edited in wide inputs. A JSON value is a string column. |
+| `Textarea` | `text` | Long text, edited in a wide input. |
+| `Json` | `json` | A JSON object or array in a JSON column (an `array` or `?array` property); see [JSON columns](#json-columns). Edited as JSON text; on the wire it is the document itself. Never sorted, filtered, searched or summarized. |
 | `RichText` | `richtext` | Formatted content (headings, lists, links, tables, images) stored as a structured document; see below. |
 | `Markdown` | `markdown` | Markdown text for technical content, edited visually or as source; `toolbar([...])`. |
 | `Number` | `number` | Numbers; `decimals(n)`, `step()`. |
 | `Money` | `money` | An amount in the currency's minor units (cents, whole yen); see [Money and currencies](#money-and-currencies). |
-| `Currency` | `currency` | An ISO 4217 code in a string column, chosen from a searchable list that names each code in the UI's language (`EUR · Euro`). The list holds every code, or `allowed(['EUR', 'USD'])`. Codes are stored upper-case, anything else is refused, and it filters like an enum. It starts from `default('EUR')`, else `VECTOR_CURRENCY`. |
+| `Currency` | `currency` | An ISO 4217 code in a string column, chosen from a searchable list that names each code in the UI's language (`EUR · Euro`). The list holds every code, or `allowed(['EUR', 'USD'])`. Codes are stored upper-case, anything else is refused, and it filters like a single select. It starts from `default('EUR')`, else `VECTOR_CURRENCY`. |
 | `Boolean` | `boolean` | True or false. |
 | `Date`, `DateTime` | `date`, `datetime` | A calendar day, `YYYY-MM-DD` on the wire with no time or zone; or an instant, ISO 8601 on the wire in UTC. See {doc}`databases` for `DATE` columns. |
-| `Enum` | `enum` | A backed enum: `of(Status::class)`, `labels()`, `colors()`; its options are published in the descriptor. |
-| `KeyValue` | `keyValue` | A JSON object of text values in a string column, edited as key/value rows; `columns('Attribute', 'Value')`, `maxEntries(n)` (50 by default). On the wire it is an object; a stored number or boolean reads back as text, and an empty object stores `null` where the column allows it. Keys are trimmed and at most 100 characters. A JSON column may reorder the keys. It cannot be sorted, filtered, searched or summarized, and is imported as JSON text. |
+| `Select` | `select` | A choice among fixed options, one value or several with `multiple()`; see [Select](#select). |
+| `KeyValue` | `keyValue` | A JSON object of text values in a JSON column (an `array` or `?array` property), edited as key/value rows; `columns('Attribute', 'Value')`, `maxEntries(n)` (50 by default). On the wire it is an object; a stored number or boolean reads back as text, and an empty object stores `null` where the column allows it. Keys are trimmed and at most 100 characters. A JSON column may reorder the keys. It cannot be sorted, filtered, searched or summarized, and is imported as JSON text. |
 | `File`, `Image` | `file`, `image` | An uploaded file's storage key; see {doc}`files`. |
 | `Computed` | `computed` | A read-only value a method of the resource computes from the record; see below. |
 | `BelongsTo`, `HasOne`, `HasMany`, `ManyToMany` | `belongsTo`, `hasOne`, `hasMany`, `manyToMany` | Relations to another resource, made with `::to('name', TargetResource::class)`. `titleField()` overrides the target's title; `BelongsTo::dependsOn()` and `HasMany::repeater()` are on {doc}`forms`. |
@@ -83,10 +84,107 @@ A filterable field offers the operators its value admits:
 | Number, money, id | `eq ne lt lte gt gte between in nin` |
 | Boolean | `eq` |
 | Date, datetime | `eq ne lt lte gt gte between` (a day against a timestamp spans the day) |
-| Enum, belongs-to | `eq ne in nin` |
+| Select, currency, belongs-to | `eq ne in nin` |
+| Multiple select | `any all` (a bare value is `any`) |
 
 A nullable column adds `null` and `nnull`. Collections are never
 filterable. The list grammar and "any of" groups are on {doc}`rest-api`.
+
+## Select
+
+A select stores one of a fixed set of options, or several:
+
+```php
+Select::make('status')->of(OrderStatus::class),                    // a backed enum's cases
+Select::make('size')->options(['s' => 'Small', 'm' => 'Medium']),  // value => label
+Select::make('region')->options(fn () => Regions::all()),          // run once, when the resource compiles
+Select::make('channels')->options(['web' => 'Web', 'retail' => 'Retail'])->multiple()->filterable(),
+```
+
+- **Options** come from an array of `value => label`, a closure
+  returning one (called when the resource compiles, never per request),
+  or a backed enum, labelled from its case names. `labels([...])`
+  renames options and `colors([...])` gives each a colour. A select on a
+  backed enum property with no options of its own offers the enum's
+  cases; derivation makes one for every enum property.
+- **`searchable()`** gives the input a search box over the options, for
+  a long list. Unlike other fields, it does not make the list's search
+  match the column.
+- **`badge([value => colour])`** shows the values as coloured chips in
+  lists and on the record. Without it, a value shows as its label, as a
+  chip when its option has a colour.
+- **`multiple()`** holds several options. They are stored as a JSON list
+  of option values, without duplicates, in the order the options are
+  declared, whatever order the input sent them in.
+
+### Storage
+
+The property must match the mode; the build refuses a mismatch and
+converts nothing.
+
+| Mode | Property | Column |
+|---|---|---|
+| Single | `string`, `int`, or a backed enum | `VARCHAR`, an integer, or the enum's backing type |
+| Multiple | `array` or `?array` | `JSON` on MySQL and MariaDB, `jsonb` on PostgreSQL |
+
+A single select on a string property stores every option value as text
+(`404 => 'Not found'` is `"404"`); on an int property every option value
+must be an integer; on an enum property every option must be one of its
+cases, and the entity receives the case. A multiple select stores the
+option values as declared (an int-backed enum's as numbers). An empty
+list is `null` where the property allows it.
+
+A multiple select is never sortable, grouped, summarized or edited in a
+list cell; the build refuses each. Its `default()` is a list of option
+values.
+
+### Strict options
+
+A value outside the options is refused on write: `invalid_choice` on the
+field, and for a multiple select on the offending value's index
+(`channels/1`). A JSON body must send an option's own type: `2`, not
+`"2"`, for an int option. A stored value outside the options throws
+`Kinetis\Vector\Exception\StoredValueException` on read rather than
+vanishing from the record. **Removing an option therefore needs a data
+migration first**: rewrite or clear the rows that still hold it, then
+remove it from the field.
+
+### Filters
+
+A single select filters with `eq ne in nin`, like any value. A multiple
+select filters with `any` (holding at least one of the listed options,
+the default) and `all` (holding every one of them), over a
+comma-separated list of option values:
+
+```
+GET /vector/r/products?filter[channels][any]=web,retail
+GET /vector/r/products?filter[channels][all]=web,retail
+GET /vector/r/products?filter[channels]=web        # a bare value is "any"
+```
+
+A nullable one adds `null` and `nnull`. The SQL is written per dialect
+with every value bound: `JSON_CONTAINS` on MySQL and MariaDB, `?|` and
+`@>` on PostgreSQL's `jsonb`. An index can help on PostgreSQL
+(`CREATE INDEX ... USING GIN (channels)`); on MySQL a multi-valued index
+over the column can.
+
+A CSV import reads a multiple select's cell as the JSON list an export
+writes (`["web","retail"]`) or as values separated by `|`.
+
+## JSON columns
+
+`Json` and `KeyValue` live in JSON columns: an `array` or `?array`
+property, which the ORM decodes to arrays (a JSON object becomes an
+associative array, a JSON array a list). Declare the column `JSON` on
+MySQL and MariaDB and `jsonb` on PostgreSQL. The build refuses either
+field on any other property.
+
+- `Json` reads as the stored document, an object staying an object even
+  when empty, and writes a JSON object or array; a bare string, number
+  or boolean is refused. A CSV cell is the document's JSON text.
+- `KeyValue` reads and writes an object of text values, as before.
+
+Neither is sorted, filtered, searched, summarized or grouped.
 
 ## Rich text
 
@@ -200,7 +298,7 @@ public function lineTotal(array $line): ?int
 
 - `as()`: how it is shown: `text`, `number` (`decimals()`), `money`
   (`currency()` or `currencyField()`), `boolean`, `date`, `datetime`,
-  or `enum` with `options()`. The value is typed by it and exported like
+  or `select` with `options()`. The value is typed by it and exported like
   any field.
 - `from()`: the fields the method reads: every list and record that
   shows the computed value carries them too, whatever the `columns`
@@ -213,7 +311,7 @@ public function lineTotal(array $line): ?int
 A computed field is read-only, and never sorted, filtered, searched,
 summarized, written or imported. The build refuses one that asks for
 any of those, one without a method, one whose method is not a public
-instance method, an enum without options, and a source that is not a
+instance method, a select without options, and a source that is not a
 field holding a value. If a user may not see a field it reads
 (`viewField()`), they do not see the computed field either, so a
 derived value never shows what the user may not see. The descriptor

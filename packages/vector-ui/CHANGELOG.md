@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Vx/Cell/Select.vue` and `Vx/Input/Select.vue` for kinetis/vector's
+  `select` field: a multiple select edits as chips and shows its labels,
+  a searchable one (`autocomplete`) is a `v-autocomplete`, and a badge
+  (`badge`) or an option with a colour shows as coloured chips.
+- `Vx/Input/Json.vue`: a JSON field's document edited as text, sent as
+  the document when it is a valid JSON object or array and flagged
+  (`fields.json.invalid`) otherwise.
+- The filter bar offers a multiple select's `any` and `all` operators
+  (`list.filter.operators.any`, `list.filter.operators.all`) with a
+  choice of its options. The new strings are in every shipped locale.
+
+### Changed
+
+- **Breaking:** the `enum` field type is `select` (`VectorFieldType`,
+  the field and input registries, `VectorComputedAs`), and
+  `VectorEnumOption` is `VectorSelectOption`. A select without `badge`
+  and without colours shows its label as text rather than a chip. An
+  app override registered under `enum` in `app.config.vector.fields` or
+  `inputs` registers under `select`.
+- **Breaking:** a `json` field's value is the document (an object or an
+  array), not JSON text: `Vx/Cell/Json.vue` prints it, and the input is
+  `Vx/Input/Json.vue` instead of `Vx/Input/Textarea.vue`.
+- `VectorField` publishes `multiple`, `autocomplete` and `badge`, a
+  `json` value type, and the `any` and `all` operators.
+
+### Removed
+
+- **Breaking:** `Vx/Cell/Enum.vue` and `Vx/Input/Enum.vue`; use the
+  Select components.
+
 ## [0.14.0] - 2026-11-23
 
 ### Added
