@@ -14,7 +14,17 @@ export function useVectorCountryNames(): Ref<Record<string, string>> {
     const names = ref<Record<string, string>>(loaded.get(locale.value) ?? {})
 
     watch(locale, async (code) => {
-        const found = loaded.get(code) ?? await loadCountryNames(code)
+        let found = loaded.get(code)
+        if (found === undefined) {
+            // A chunk that fails to load leaves the names as they are (the
+            // server's English labels until a load succeeds), and the next
+            // change of language tries again.
+            try {
+                found = await loadCountryNames(code)
+            } catch {
+                return
+            }
+        }
         loaded.set(code, found)
         if (locale.value === code) names.value = found
     }, { immediate: true })
