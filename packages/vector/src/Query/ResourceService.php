@@ -1313,7 +1313,10 @@ final readonly class ResourceService
      * The rows a relationship-mode repeater edits: every child of one
      * record, as the child resource shows a record, in the order its
      * orderBy() property holds (oldest first without one, and among equal
-     * positions), up to the repeater's maximum.
+     * positions). Every one of them, even past the repeater's max(): the
+     * save writes the list it gets back and deletes a child it leaves out,
+     * so a form holding fewer than are stored would delete the rest; with
+     * all of them, max() refuses that save instead.
      *
      * @return list<array<string, mixed>>
      */
@@ -1338,9 +1341,7 @@ final readonly class ResourceService
             $query->orderBy($repeater['orderColumn'], 'ASC');
         }
 
-        $keys = array_column($query->orderBy($child->primaryKeyColumn(), 'ASC')
-            ->limit($repeater['max'])
-            ->get(), $child->primaryKeyColumn());
+        $keys = array_column($query->orderBy($child->primaryKeyColumn(), 'ASC')->get(), $child->primaryKeyColumn());
         $records = $this->records($child, array_map(strval(...), $keys));
 
         return array_values(array_filter(array_map(static fn (mixed $key): ?array => $records[(string) $key] ?? null, $keys)));

@@ -190,6 +190,19 @@ final class RepeaterTest extends VectorTestCase
                 ->assertValidationError('lines', 0, 'id');
             $this->client->patch("/vector/r/orders/{$id}", body: ['lines' => [['product' => $p1, 'quantity' => 1, 'unitPriceCents' => 1, 'order' => $id]]], headers: $this->realAdminHeaders())
                 ->assertValidationError('lines', 0, 'order');
+
+            // another order's line is no row of this one: refused, and neither order changes
+            $other = $orders->create($this->order([['product' => $p1, 'quantity' => 4, 'unitPriceCents' => 100]]))->assertCreated()->id();
+
+            try {
+                $theirs = $this->rows($other)[0]['id'];
+                $this->client->patch("/vector/r/orders/{$id}", body: ['lines' => [['id' => $theirs, 'product' => $p1, 'quantity' => 9, 'unitPriceCents' => 100]]], headers: $this->realAdminHeaders())
+                    ->assertValidationError('lines', 0, 'id');
+                self::assertSame([[$line, 1]], array_map(static fn (array $row): array => [$row['id'], $row['quantity']], $this->rows($id)), 'this order keeps its own line');
+                self::assertSame([[$theirs, 4]], array_map(static fn (array $row): array => [$row['id'], $row['quantity']], $this->rows($other)), 'the other order keeps its line, unchanged');
+            } finally {
+                $orders->batch('delete', [$other])->assertOk();
+            }
             $orders->update($id, ['lines' => []])->assertInvalid('lines', 'count_out_of_range');
             $orders->update($id, ['lines' => 'x'])->assertInvalid('lines', 'type_mismatch');
             $orders->update($id, ['lines' => array_fill(0, 51, ['product' => $p1, 'quantity' => 1, 'unitPriceCents' => 1])])->assertInvalid('lines', 'count_out_of_range');
@@ -197,6 +210,36 @@ final class RepeaterTest extends VectorTestCase
 
             // a repeater is written with its record, never in bulk
             $orders->batch('update', [$id], fields: ['lines' => []])->assertInvalid('lines');
+        } finally {
+            $orders->batch('delete', [$id])->assertOk();
+        }
+    }
+
+    /**
+     * A parent holding more children than max() (stored before the limit,
+     * or written around Vector) loads every one into the form, and a save
+     * of that list is refused rather than deleting the ones past max().
+     */
+    public function testChildrenPastMaxAreLoadedAndNeverDeleted(): void
+    {
+        $orders = $this->vector($this->realAdminHeaders())->resource('orders');
+        [$p1] = $this->productIds(1);
+        $id = $orders->create($this->order(array_fill(0, 50, ['product' => $p1, 'quantity' => 1, 'unitPriceCents' => 1])))->assertCreated()->id();
+
+        try {
+            foreach ([50, 51] as $position) {
+                $this->shop()->table('order_lines')->insert(['order_id' => $id, 'product_id' => $p1, 'quantity' => 2, 'unit_price_cents' => 1, 'position' => $position]);
+            }
+
+            $rows = $this->rows($id);
+            self::assertCount(52, $rows, 'the form gets every child, not the first max() of them');
+
+            $orders->update($id, ['lines' => array_map(static fn (array $row): array => ['id' => $row['id'], 'product' => $p1, 'quantity' => $row['quantity'], 'unitPriceCents' => 1], $rows)])
+                ->assertInvalid('lines', 'count_out_of_range');
+            self::assertSame(52, $this->shop()->table('order_lines')->where('order_id', '=', $id)->count(), 'no child was deleted');
+
+            $orders->update($id, ['notes' => 'Past max'])->assertOk();
+            self::assertSame(52, $this->shop()->table('order_lines')->where('order_id', '=', $id)->count(), 'an update leaving the rows alone keeps them');
         } finally {
             $orders->batch('delete', [$id])->assertOk();
         }
