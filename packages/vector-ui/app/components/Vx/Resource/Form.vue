@@ -56,6 +56,8 @@ const copies = (field: VectorField) => props.operation === 'create' && props.cop
 
 /** What a field starts with when nothing gives it a value: on create its declared default, else its type's empty one. */
 function initialValue(field: VectorField): unknown {
+    // a flag group starts with every flag, off unless its default turns it on
+    if (field.type === 'booleanGroup') return flagsStart(field, props.operation === 'create')
     return props.operation === 'create' && field.hasDefault ? JSON.parse(JSON.stringify(field.default ?? null)) : defaultFor(field)
 }
 

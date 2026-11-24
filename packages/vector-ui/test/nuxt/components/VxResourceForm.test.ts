@@ -352,6 +352,30 @@ describe('VxResourceForm: flag groups and countries', () => {
         expect(create.requests[0]!.body).toEqual({ city: 'Berlin', country: 'DE', contact: { newsletter: false, acceptsSms: true } })
     })
 
+    it('creates a record with no box ticked, every flag sent as false', async () => {
+        const create = mock('/vector/r/customer-profiles', { status: 201, body: { data: { id: 4 }, permissions: {} } }, 'POST')
+        const form = await mountForm({ resource: profiles, operation: 'create' })
+
+        await input(form, 'City').find('input').setValue('Oslo')
+        await submit(form)
+
+        await vi.waitFor(() => expect(create.requests).toHaveLength(1))
+        expect(create.requests[0]!.body).toEqual({ city: 'Oslo', country: 'DE', contact: { newsletter: false, acceptsSms: false } })
+    })
+
+    it('starts a flag group from its default, every other flag off', async () => {
+        const create = mock('/vector/r/customer-profiles', { status: 201, body: { data: { id: 5 }, permissions: {} } }, 'POST')
+        const withDefault = resource({ ...profiles, fields: profiles.fields.map(f => f.name === 'contact' ? { ...f, hasDefault: true, default: { acceptsSms: true } } : f) })
+        const form = await mountForm({ resource: withDefault, operation: 'create' })
+
+        expect(form.find('[data-flag-group="contact"]').findAll('input[type="checkbox"]').map(c => (c.element as HTMLInputElement).checked)).toEqual([false, true])
+        await input(form, 'City').find('input').setValue('Oslo')
+        await submit(form)
+
+        await vi.waitFor(() => expect(create.requests).toHaveLength(1))
+        expect(create.requests[0]!.body).toMatchObject({ contact: { newsletter: false, acceptsSms: true } })
+    })
+
     it('names the chosen country in the UI\'s language', async () => {
         const locale = useNuxtApp().$vectorI18n.global.locale
         locale.value = 'fr'

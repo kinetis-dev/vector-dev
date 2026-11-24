@@ -12,7 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Vx/Cell/BooleanGroup.vue` and `Vx/Input/BooleanGroup.vue` for
   kinetis/vector's flag group: the labels of the flags that are on as
   chips, and one group of checkboxes whose value is every option key to
-  true or false.
+  true or false. A new record's group starts with every flag off, or
+  as its default turns them on, so a form with no box ticked still
+  sends the group; a nullable JSON-mode group without a default starts
+  as null.
 - `Vx/Cell/Country.vue` and `Vx/Input/Country.vue`: the Select ones with
   each code named in the UI's language from `utils/countries`, through
   `useVectorCountryNames()`, falling back to the server's English name.

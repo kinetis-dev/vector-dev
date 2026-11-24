@@ -13,6 +13,20 @@ describe('initialValue', () => {
         expect(initialValue(field({ name: 'tags', type: 'manyToMany' }))).toEqual([])
         expect(initialValue(field({ name: 'name' }))).toBeNull()
     })
+
+    it('is every flag of a flag group, off unless its default turns it on', () => {
+        const options = [{ value: 'email', label: 'Email', color: null }, { value: 'sms', label: 'SMS', color: null }]
+
+        expect(initialValue(field({ name: 'notify', type: 'booleanGroup', nullable: false, options }))).toEqual({ email: false, sms: false })
+        expect(initialValue(field({ name: 'notify', type: 'booleanGroup', nullable: false, options, hasDefault: true, default: { sms: true, gone: true } }))).toEqual({ email: false, sms: true })
+        expect(initialValue(field({ name: 'notify', type: 'booleanGroup', nullable: true, options, hasDefault: true, default: { email: true } }))).toEqual({ email: true, sms: false })
+    })
+
+    it('is null for a nullable flag group without a default', () => {
+        const options = [{ value: 'email', label: 'Email', color: null }]
+
+        expect(initialValue(field({ name: 'notify', type: 'booleanGroup', nullable: true, options }))).toBeNull()
+    })
 })
 
 describe('applyViolations', () => {

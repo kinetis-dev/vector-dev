@@ -3,10 +3,33 @@ import { violationsOf } from '#vector/app/utils/internal/violations'
 
 /** The value a fresh input holds: the field's default, or the type's empty value. */
 export function initialValue(field: VectorField): unknown {
+    if (field.type === 'booleanGroup') return flagsStart(field, true)
     if (field.hasDefault) return field.default
     if (field.type === 'boolean') return false
     if (field.type === 'manyToMany') return []
     return null
+}
+
+/**
+ * What a flag group starts with: every option key false, with the keys a
+ * declared default names over them ($withDefault), so a form with no box
+ * ticked still sends every flag. A nullable group (one JSON column that
+ * may hold null) without a default starts empty instead, as null.
+ */
+export function flagsStart(field: VectorField, withDefault: boolean): Record<string, boolean> | null {
+    const declared = withDefault && field.hasDefault ? field.default : undefined
+
+    if ((declared === undefined || declared === null) && field.nullable === true) return null
+
+    const flags: Record<string, boolean> = Object.fromEntries((field.options ?? []).map(option => [String(option.value), false]))
+
+    if (declared !== null && typeof declared === 'object' && !Array.isArray(declared)) {
+        for (const [key, on] of Object.entries(declared)) {
+            if (key in flags) flags[key] = on === true
+        }
+    }
+
+    return flags
 }
 
 /**
