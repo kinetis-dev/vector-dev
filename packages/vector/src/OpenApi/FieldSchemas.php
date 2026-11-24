@@ -36,6 +36,7 @@ final class FieldSchemas
             'hasOne' => self::nullable(self::related($field), true),
             'hasMany', 'manyToMany' => ['type' => 'object', 'properties' => ['count' => ['type' => 'integer', 'minimum' => 0]], 'required' => ['count']],
             'keyValue' => self::nullable(['type' => 'object', 'additionalProperties' => ['type' => 'string']], true),
+            'json' => self::nullable(self::document(), $nullable),
             'computed' => self::nullable(self::computed($field), true),
             // the editor's document, or the stored HTML where the field keeps HTML; a write always sends the document
             'richtext' => self::nullable(['type' => 'string', 'contentMediaType' => ($field['richtext']['storesHtml'] ?? false) === true ? 'text/html' : 'application/json'], $nullable),
@@ -72,6 +73,7 @@ final class FieldSchemas
             'belongsTo' => self::key($field),
             'manyToMany' => ['type' => 'array', 'items' => self::key($field)],
             'keyValue' => ['type' => 'object', 'additionalProperties' => ['type' => 'string']],
+            'json' => self::document(),
             'password' => ['type' => 'string', 'writeOnly' => true],
             default => self::scalar($field),
         };
@@ -91,6 +93,8 @@ final class FieldSchemas
     {
         return match ($operator) {
             'in', 'nin', 'between' => ['type' => 'string', 'description' => 'Comma-separated values.'],
+            'any' => ['type' => 'string', 'description' => 'Comma-separated option values; matches a record holding at least one of them.'] + self::optionPattern($field),
+            'all' => ['type' => 'string', 'description' => 'Comma-separated option values; matches a record holding every one of them.'] + self::optionPattern($field),
             'null', 'nnull' => ['type' => 'string', 'description' => 'Any value; the operator alone decides.'],
             'like', 'nlike' => ['type' => 'string'],
             default => match ($field['type']) {
@@ -109,7 +113,12 @@ final class FieldSchemas
      */
     private static function scalar(array $field): array
     {
-        if (in_array($field['type'], ['enum', 'currency'], true) && is_array($field['options'] ?? null)) {
+        if ($field['type'] === 'select' && ($field['multiple'] ?? false) === true) {
+            // a list of option values, each at most once
+            return ['type' => 'array', 'items' => ['enum' => array_column($field['options'], 'value')], 'uniqueItems' => true];
+        }
+
+        if (in_array($field['type'], ['select', 'currency'], true) && is_array($field['options'] ?? null)) {
             return ['enum' => array_column($field['options'], 'value')];
         }
 
@@ -129,6 +138,29 @@ final class FieldSchemas
                 default => ['type' => 'string'],
             },
         };
+    }
+
+    /**
+     * A JSON column's document: an object or an array.
+     *
+     * @return array<string, mixed>
+     */
+    private static function document(): array
+    {
+        return ['type' => ['object', 'array']];
+    }
+
+    /**
+     * The option values a list filter names, as an example of the list.
+     *
+     * @param array<string, mixed> $field
+     * @return array<string, mixed>
+     */
+    private static function optionPattern(array $field): array
+    {
+        $values = array_map(strval(...), array_column($field['options'] ?? [], 'value'));
+
+        return $values === [] ? [] : ['examples' => [implode(',', array_slice($values, 0, 2))]];
     }
 
     /**

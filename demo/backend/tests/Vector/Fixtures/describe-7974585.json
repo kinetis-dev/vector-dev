@@ -109,7 +109,7 @@
             {
                 "name": "role",
                 "label": "Role",
-                "type": "enum",
+                "type": "select",
                 "valueType": "string",
                 "writable": [
                     "create",
@@ -969,7 +969,7 @@
             {
                 "name": "status",
                 "label": "Status",
-                "type": "enum",
+                "type": "select",
                 "valueType": "string",
                 "writable": [
                     "create",
@@ -1273,7 +1273,7 @@
             {
                 "name": "status",
                 "label": "Status",
-                "type": "enum",
+                "type": "select",
                 "valueType": "string",
                 "writable": [
                     "create",
@@ -1482,7 +1482,7 @@
                 "name": "attributes",
                 "label": "Attributes",
                 "type": "keyValue",
-                "valueType": "string",
+                "valueType": "json",
                 "format": "an object of string values",
                 "writable": [
                     "create",
@@ -1519,6 +1519,45 @@
                     "kind": "manyToMany",
                     "resource": "tags"
                 }
+            },
+            {
+                "name": "channels",
+                "label": "Sales channels",
+                "type": "select",
+                "valueType": "json",
+                "format": "a list of option values, each at most once; stored in the order the options are listed",
+                "multiple": true,
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "filter": [
+                    "any",
+                    "all",
+                    "null",
+                    "nnull"
+                ],
+                "filterHelp": "any: holds at least one of the comma-separated option values; all: holds every one of them",
+                "options": [
+                    {
+                        "value": "web",
+                        "label": "Web shop"
+                    },
+                    {
+                        "value": "retail",
+                        "label": "Retail stores"
+                    },
+                    {
+                        "value": "marketplace",
+                        "label": "Marketplaces"
+                    },
+                    {
+                        "value": "wholesale",
+                        "label": "Wholesale"
+                    }
+                ]
             },
             {
                 "name": "releasedAt",
@@ -1587,6 +1626,7 @@
                         "name": "releasedAt",
                         "label": "Release date",
                         "type": "datetime",
+                        "format": "ISO 8601 in UTC, such as 2026-09-27T14:30:00.000Z",
                         "help": "Empty publishes now.",
                         "required": false
                     },
@@ -2211,7 +2251,7 @@
             {
                 "name": "status",
                 "label": "Status",
-                "type": "enum",
+                "type": "select",
                 "valueType": "string",
                 "writable": [
                     "create",
@@ -2248,7 +2288,7 @@
             {
                 "name": "priority",
                 "label": "Priority",
-                "type": "enum",
+                "type": "select",
                 "valueType": "string",
                 "writable": [
                     "create",
@@ -2285,7 +2325,7 @@
             {
                 "name": "channel",
                 "label": "Channel",
-                "type": "enum",
+                "type": "select",
                 "valueType": "string",
                 "writable": [
                     "create",
@@ -2315,6 +2355,49 @@
                     {
                         "value": "web",
                         "label": "Web"
+                    }
+                ]
+            },
+            {
+                "name": "platforms",
+                "label": "Platforms",
+                "type": "select",
+                "valueType": "json",
+                "format": "a list of option values, each at most once; stored in the order the options are listed",
+                "multiple": true,
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "filter": [
+                    "any",
+                    "all",
+                    "null",
+                    "nnull"
+                ],
+                "filterHelp": "any: holds at least one of the comma-separated option values; all: holds every one of them",
+                "options": [
+                    {
+                        "value": "web",
+                        "label": "Web"
+                    },
+                    {
+                        "value": "ios",
+                        "label": "iOS"
+                    },
+                    {
+                        "value": "android",
+                        "label": "Android"
+                    },
+                    {
+                        "value": "desktop",
+                        "label": "Desktop app"
+                    },
+                    {
+                        "value": "api",
+                        "label": "API"
                     }
                 ]
             },
@@ -2526,8 +2609,8 @@
                 "name": "metadata",
                 "label": "Metadata",
                 "type": "json",
-                "valueType": "string",
-                "format": "any JSON value",
+                "valueType": "json",
+                "format": "a JSON object or array",
                 "writable": [
                     "create",
                     "update"

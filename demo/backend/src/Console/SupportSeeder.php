@@ -11,6 +11,7 @@ use App\Domain\Support\Label;
 use App\Domain\Support\Team;
 use App\Domain\Support\Ticket;
 use App\Domain\Support\TicketPriority;
+use App\Vector\Support\TicketResource;
 use DateTimeImmutable;
 use Kinetis\Orm\Date;
 use DateTimeZone;
@@ -126,7 +127,9 @@ final readonly class SupportSeeder
             }
 
             $ticket->label(array_values($chosen));
-            $ticket->annotate(json_encode(['browser' => ['Chrome', 'Firefox', 'Safari'][mt_rand(0, 2)], 'orderRef' => sprintf('ORD-%06d', mt_rand(1, 400))], JSON_THROW_ON_ERROR));
+            $ticket->annotate(['browser' => ['Chrome', 'Firefox', 'Safari'][mt_rand(0, 2)], 'orderRef' => sprintf('ORD-%06d', mt_rand(1, 400))]);
+            // a multiple select: some of the platforms, in the order the resource lists them
+            $ticket->affects(DemoSeedCommand::someOf(TicketResource::PLATFORMS, $i * 7));
 
             for ($r = mt_rand(0, 3); $r > 0; $r--) {
                 $ticket->reply(mt_rand(0, 1) === 0 ? 'Customer' : self::AGENTS[array_rand(self::AGENTS)], 'Thanks, we are looking into it.', mt_rand(0, 4) === 0, $createdAt->modify("+{$r} hours"));

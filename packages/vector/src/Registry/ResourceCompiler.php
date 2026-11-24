@@ -16,14 +16,15 @@ use Kinetis\Vector\Fields\Computed;
 use Kinetis\Vector\Fields\Currency;
 use Kinetis\Vector\Fields\Date;
 use Kinetis\Vector\Fields\DateTime;
-use Kinetis\Vector\Fields\Enum;
 use Kinetis\Vector\Fields\Field;
 use Kinetis\Vector\Fields\HasMany;
 use Kinetis\Vector\Fields\HasOne;
 use Kinetis\Vector\Fields\Id;
+use Kinetis\Vector\Fields\Json;
 use Kinetis\Vector\Fields\ManyToMany;
 use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\Fields\RelationField;
+use Kinetis\Vector\Fields\Select;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\VectorResource;
 use Kinetis\Vector\Write\RecordInput;
@@ -61,6 +62,8 @@ final class ResourceCompiler
         'boolean' => ['eq'],
         'datetime' => ['eq', 'ne', 'lt', 'lte', 'gt', 'gte', 'between'],
         'enum' => ['eq', 'ne', 'in', 'nin'],
+        // a multiple select's JSON list: holding any, or all, of the given option values
+        'list' => ['any', 'all'],
         'belongsTo' => ['eq', 'ne', 'in', 'nin'],
         'id' => ['eq', 'ne', 'lt', 'lte', 'gt', 'gte', 'between', 'in', 'nin'],
         // a rich-text document is filtered by presence only (null/nnull on a nullable column)
@@ -68,10 +71,10 @@ final class ResourceCompiler
     ];
 
     /** The field types a list cell may edit in place. */
-    private const array INLINE_TYPES = ['string', 'email', 'url', 'slug', 'color', 'number', 'money', 'boolean', 'enum', 'currency', 'date', 'datetime', 'belongsTo'];
+    private const array INLINE_TYPES = ['string', 'email', 'url', 'slug', 'color', 'number', 'money', 'boolean', 'select', 'currency', 'date', 'datetime', 'belongsTo'];
 
     /** The field types a list may group by: a bounded set of values or a sortable scalar. */
-    private const array GROUPABLE = ['enum', 'currency', 'belongsTo', 'boolean', 'string', 'date', 'slug', 'email'];
+    private const array GROUPABLE = ['select', 'currency', 'belongsTo', 'boolean', 'string', 'date', 'slug', 'email'];
 
     /**
      * Which OPERATORS row a field type uses, or null for a field that
@@ -84,7 +87,7 @@ final class ResourceCompiler
             'number', 'money' => 'number',
             'boolean' => 'boolean',
             'date', 'datetime' => 'datetime',
-            'enum', 'currency' => 'enum',
+            'select', 'currency' => 'enum',
             'belongsTo' => 'belongsTo',
             'richtext' => 'presence',
             'hasOne', 'hasMany', 'manyToMany' => null,
@@ -98,7 +101,7 @@ final class ResourceCompiler
      */
     public static function operatorsFor(array $field): array
     {
-        $shape = self::operatorShape($field['type']);
+        $shape = self::isMultiple($field) ? 'list' : self::operatorShape($field['type']);
 
         if ($shape === null || $field['filterable'] !== true) {
             return [];
@@ -111,6 +114,16 @@ final class ResourceCompiler
         }
 
         return $operators;
+    }
+
+    /**
+     * Whether a compiled field holds a list of option values: a multiple select.
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function isMultiple(array $field): bool
+    {
+        return $field['type'] === 'select' && ($field['multiple'] ?? false) === true;
     }
 
     /**
@@ -136,7 +149,7 @@ final class ResourceCompiler
                 throw ResourceCompileException::field($owner, $name, "depends on {$depends['field']}, which is not another field of the form");
             }
 
-            if (in_array($other['type'], ['hasOne', 'hasMany', 'manyToMany', 'json', 'keyValue', 'file', 'image', 'password'], true)) {
+            if (in_array($other['type'], ['hasOne', 'hasMany', 'manyToMany', 'json', 'keyValue', 'file', 'image', 'password'], true) || self::isMultiple($other)) {
                 throw ResourceCompileException::field($owner, $name, "depends on {$depends['field']}, a {$other['type']} field, which holds no single value to match");
             }
 
@@ -180,7 +193,7 @@ final class ResourceCompiler
             throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on itself");
         }
 
-        if (in_array($target['type'], ['hasOne', 'hasMany', 'manyToMany'], true) && !in_array($condition['op'], ['null', 'nnull'], true)) {
+        if ((in_array($target['type'], ['hasOne', 'hasMany', 'manyToMany'], true) || self::isMultiple($target)) && !in_array($condition['op'], ['null', 'nnull'], true)) {
             throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on the collection \"{$condition['field']}\"; only null and nnull apply");
         }
     }
@@ -212,8 +225,12 @@ final class ResourceCompiler
             default => 'string',
         };
 
-        if ($type === 'enum') {
-            $array['enum'] ?? throw ResourceCompileException::field($owner, $field->name(), 'is an enum field naming no backed enum; call of()');
+        if ($type === 'select') {
+            $array = self::compileLooseSelect($owner, $array);
+        }
+
+        if ($type === 'json' || $type === 'keyValue') {
+            $array['valueType'] = 'json';
         }
 
         if ($field instanceof RelationField) {
@@ -224,6 +241,84 @@ final class ResourceCompiler
         }
 
         $array['operators'] = [];
+
+        return $array;
+    }
+
+    /**
+     * A select with no entity property: its value type follows its
+     * options (the enum's backing type, int when every value is an int,
+     * otherwise string), and a multiple one holds a list.
+     *
+     * @param array<string, mixed> $array
+     * @return array<string, mixed>
+     */
+    private static function compileLooseSelect(string $owner, array $array): array
+    {
+        $values = array_column($array['options'], 'value');
+
+        if ($values === []) {
+            throw ResourceCompileException::field($owner, $array['name'], 'is a select with no options; call options()');
+        }
+
+        if (self::isMultiple($array)) {
+            // a list of backing values: the ORM stores no enum case in JSON
+            $array['enum'] = null;
+            $array['valueType'] = 'json';
+
+            return self::checkSelectDefault($owner, $array);
+        }
+
+        $array['valueType'] = array_all($values, static fn (mixed $v): bool => is_int($v)) ? 'int' : 'string';
+
+        return self::checkSelectDefault($owner, self::typedOptions($array));
+    }
+
+    /**
+     * A single select's option values typed as its property stores them:
+     * text for a string property, so a declared `404 => 'Not found'`
+     * reads and writes as "404".
+     *
+     * @param array<string, mixed> $array
+     * @return array<string, mixed>
+     */
+    private static function typedOptions(array $array): array
+    {
+        if ($array['valueType'] === 'string') {
+            foreach ($array['options'] as $i => $option) {
+                $array['options'][$i]['value'] = (string) $option['value'];
+            }
+        }
+
+        return $array;
+    }
+
+    /**
+     * A select's default must be one of its options (a list of them for a
+     * multiple one), compared by text.
+     *
+     * @param array<string, mixed> $array
+     * @return array<string, mixed>
+     */
+    private static function checkSelectDefault(string $owner, array $array): array
+    {
+        if (($array['hasDefault'] ?? false) !== true || $array['default'] === null) {
+            return $array;
+        }
+
+        $known = array_map(strval(...), array_column($array['options'], 'value'));
+        $default = $array['default'] instanceof \BackedEnum ? $array['default']->value : $array['default'];
+        $values = self::isMultiple($array) ? $default : [$default];
+
+        if (!is_array($values) || !array_is_list($values)) {
+            throw ResourceCompileException::field($owner, $array['name'], 'is a multiple select, whose default is a list of option values');
+        }
+
+        foreach ($values as $value) {
+            if (!is_scalar($value) || !in_array((string) $value, $known, true)) {
+                throw ResourceCompileException::field($owner, $array['name'], 'defaults to "' . (is_scalar($value) ? (string) $value : get_debug_type($value)) . '", which is not one of its options');
+            }
+        }
 
         return $array;
     }
@@ -666,10 +761,20 @@ final class ResourceCompiler
             throw ResourceCompileException::field($class, $name, 'is a #[BelongsTo] property; declare it with BelongsTo::to()');
         }
 
+        // a select on an enum property with no options of its own offers the enum's cases
+        if ($field instanceof Select && !$field->hasOptions() && $property['enum'] !== null) {
+            $array = [...$array, 'options' => (clone $field)->of($property['enum'])->toArray()['options']];
+        }
+
+        $declaredEnum = $array['enum'] ?? null;
         $array['column'] = $property['column'];
         $array['nullable'] = $property['nullable'];
         $array['valueType'] = $property['type'];
         $array['enum'] = $property['enum'];
+
+        if ($field instanceof Select && $property['enum'] !== null && $declaredEnum !== null && $declaredEnum !== $property['enum']) {
+            throw ResourceCompileException::field($class, $name, "takes its options from {$declaredEnum}, but the property holds {$property['enum']}");
+        }
 
         if ($field->type() === 'datetime' && $property['type'] === 'date') {
             throw ResourceCompileException::field($class, $name, 'maps a date-only Kinetis\\Orm\\Date property; declare it with Date::make()');
@@ -691,7 +796,8 @@ final class ResourceCompiler
         }
 
         // a searchable belongsTo matches the related record's title (linkSearchRelations)
-        if ($array['searchable'] === true && $array['type'] !== 'belongsTo' && ($array['valueType'] ?? null) !== 'string') {
+        // a JSON column's own check (checkJsonColumn) names what it refuses
+        if ($array['searchable'] === true && !in_array($array['type'], ['belongsTo', 'json', 'keyValue'], true) && ($array['valueType'] ?? null) !== 'string') {
             throw ResourceCompileException::field($class, $name, 'is not a string column and cannot be searchable');
         }
 
@@ -883,8 +989,12 @@ final class ResourceCompiler
                 $compiledFields[$name] = self::compileRichText($class, $field, $compiledFields, $properties);
             }
 
-            if ($field['type'] === 'keyValue') {
-                self::checkKeyValue($class, $name, $field);
+            if ($field['type'] === 'keyValue' || $field['type'] === 'json') {
+                self::checkJsonColumn($class, $name, $field);
+            }
+
+            if ($field['type'] === 'select') {
+                $compiledFields[$name] = self::compileSelect($class, $field);
             }
 
             self::checkInline($class, $name, $field);
@@ -925,16 +1035,82 @@ final class ResourceCompiler
         }
     }
 
-    /** @param array<string, mixed> $field */
-    private static function checkKeyValue(string $class, string $name, array $field): void
+    /**
+     * A key-value or JSON field lives in a JSON column: an `array` or
+     * `?array` property, which the database neither sorts, filters,
+     * searches nor sums for Vector.
+     *
+     * @param array<string, mixed> $field
+     */
+    private static function checkJsonColumn(string $class, string $name, array $field): void
     {
-        if (($field['valueType'] ?? null) !== 'string') {
-            throw ResourceCompileException::field($class, $name, 'is a key-value field, which stores its JSON in a string property');
+        $kind = $field['type'] === 'json' ? 'a JSON' : 'a key-value';
+
+        if (($field['valueType'] ?? null) !== 'json') {
+            throw ResourceCompileException::field($class, $name, "is {$kind} field, which stores its value in a JSON column: declare the property array or ?array");
         }
 
         if ($field['sortable'] || $field['filterable'] || $field['searchable'] || ($field['summary'] ?? null) !== null) {
-            throw ResourceCompileException::field($class, $name, 'is a key-value field, which cannot be sorted, filtered, searched or summarized');
+            throw ResourceCompileException::field($class, $name, "is {$kind} field, which cannot be sorted, filtered, searched or summarized");
         }
+    }
+
+    /**
+     * A select's storage must match its mode: one value in a string, int
+     * or backed enum property; several in an `array` property (a JSON
+     * column). Nothing is coerced either way. A multiple select is never
+     * sorted, grouped, summarized or edited in a list cell.
+     *
+     * @param array<string, mixed> $field
+     * @return array<string, mixed>
+     */
+    private static function compileSelect(string $class, array $field): array
+    {
+        $name = $field['name'];
+        $valueType = $field['valueType'] ?? null;
+        $values = array_column($field['options'], 'value');
+
+        if ($values === []) {
+            throw ResourceCompileException::field($class, $name, 'is a select with no options; call options(), or map it to a backed enum property');
+        }
+
+        if (self::isMultiple($field)) {
+            if ($valueType !== 'json') {
+                throw ResourceCompileException::field($class, $name, "is a multiple select, which stores a JSON list: declare the property array or ?array, not {$valueType}");
+            }
+
+            if ($field['sortable'] || ($field['summary'] ?? null) !== null || ($field['inline'] ?? false) === true) {
+                throw ResourceCompileException::field($class, $name, 'is a multiple select, which cannot be sorted, grouped, summarized or edited inline');
+            }
+
+            $field['enum'] = null;
+
+            return self::checkSelectDefault($class, $field);
+        }
+
+        if ($valueType === 'json') {
+            throw ResourceCompileException::field($class, $name, 'is a single select on an array property; call multiple() to store a list, or declare a string, int or backed enum property');
+        }
+
+        if (!in_array($valueType, ['string', 'int'], true)) {
+            throw ResourceCompileException::field($class, $name, "is a select, which stores its value in a string, int or backed enum property, not {$valueType}");
+        }
+
+        if ($field['enum'] === null && $valueType === 'int' && !array_all($values, static fn (mixed $v): bool => is_int($v))) {
+            throw ResourceCompileException::field($class, $name, 'stores an int, but not every option value is an integer');
+        }
+
+        if ($field['enum'] !== null) {
+            $cases = array_map(static fn (\BackedEnum $case): string => (string) $case->value, $field['enum']::cases());
+
+            foreach ($values as $value) {
+                if (!in_array((string) $value, $cases, true)) {
+                    throw ResourceCompileException::field($class, $name, "offers \"{$value}\", which is not a case of {$field['enum']}");
+                }
+            }
+        }
+
+        return self::checkSelectDefault($class, self::typedOptions($field));
     }
 
     /** @param array<string, mixed> $field */
@@ -1169,7 +1345,7 @@ final class ResourceCompiler
     }
 
     /** How a computed value is typed on the wire, by what it is shown as. */
-    private const array COMPUTED_VALUE_TYPES = ['text' => 'string', 'number' => 'float', 'money' => 'int', 'boolean' => 'bool', 'date' => 'string', 'datetime' => 'string', 'enum' => 'string'];
+    private const array COMPUTED_VALUE_TYPES = ['text' => 'string', 'number' => 'float', 'money' => 'int', 'boolean' => 'bool', 'date' => 'string', 'datetime' => 'string', 'select' => 'string'];
 
     /**
      * A computed field: a public instance method of the resource, shown
@@ -1203,8 +1379,8 @@ final class ResourceCompiler
             throw ResourceCompileException::field($class, $name, 'is computed per record in PHP; a summary needs a column the database can aggregate');
         }
 
-        if ($array['computed']['as'] === 'enum' && ($array['options'] ?? []) === []) {
-            throw ResourceCompileException::field($class, $name, 'is computed as an enum but lists no options; call options()');
+        if ($array['computed']['as'] === 'select' && ($array['options'] ?? []) === []) {
+            throw ResourceCompileException::field($class, $name, 'is computed as a select but lists no options; call options()');
         }
 
         $array['readonly'] = true;
@@ -1306,7 +1482,7 @@ final class ResourceCompiler
     }
 
     /** The types a search subtitle shows as they are stored. */
-    private const array SUBTITLE_TYPES = ['string', 'email', 'url', 'slug', 'text', 'number', 'enum'];
+    private const array SUBTITLE_TYPES = ['string', 'email', 'url', 'slug', 'text', 'number', 'select'];
 
     /**
      * What a global search result shows besides its title: a subtitle
@@ -1320,8 +1496,8 @@ final class ResourceCompiler
         $subtitle = $instance->searchSubtitle();
         $image = $instance->searchImage();
 
-        if ($subtitle !== null && !in_array($fields[$subtitle]['type'] ?? null, self::SUBTITLE_TYPES, true)) {
-            throw new ResourceCompileException("{$class}::searchSubtitle() names \"{$subtitle}\", which is not a text, number or enum field of the resource.");
+        if ($subtitle !== null && (!in_array($fields[$subtitle]['type'] ?? null, self::SUBTITLE_TYPES, true) || self::isMultiple($fields[$subtitle]))) {
+            throw new ResourceCompileException("{$class}::searchSubtitle() names \"{$subtitle}\", which is not a text, number or single select field of the resource.");
         }
 
         if ($image !== null && ($fields[$image]['type'] ?? null) !== 'image') {
@@ -1535,7 +1711,8 @@ final class ResourceCompiler
     private static function deriveColumn(string $name, array $property): Field
     {
         $field = match (true) {
-            $property['enum'] !== null => Enum::make($name)->of($property['enum'])->filterable(),
+            $property['enum'] !== null => Select::make($name)->of($property['enum'])->filterable(),
+            $property['type'] === 'json' => Json::make($name)->hideFromIndex(),
             $property['type'] === 'string' => Text::make($name)->searchable(),
             $property['type'] === 'int' => Number::make($name),
             $property['type'] === 'float' => Number::make($name)->decimals(2),
@@ -1544,7 +1721,9 @@ final class ResourceCompiler
             default => DateTime::make($name)->filterable(),
         };
 
-        $field->sortable();
+        if ($property['type'] !== 'json') {
+            $field->sortable();
+        }
 
         if (in_array($property['column'], ['created_at', 'updated_at', 'deleted_at'], true)) {
             $field->readonly()->hideFromForms();
@@ -1581,7 +1760,7 @@ final class ResourceCompiler
     private function firstStringField(array $fields): ?string
     {
         foreach ($fields as $name => $field) {
-            if (($field['valueType'] ?? null) === 'string' && ($field['enum'] ?? null) === null && !in_array($field['type'], ['password', 'json', 'keyValue', 'file', 'image', 'color', 'richtext', 'markdown', 'text'], true)) {
+            if (($field['valueType'] ?? null) === 'string' && ($field['enum'] ?? null) === null && !in_array($field['type'], ['password', 'json', 'keyValue', 'select', 'file', 'image', 'color', 'richtext', 'markdown', 'text'], true)) {
                 return $name;
             }
         }

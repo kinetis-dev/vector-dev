@@ -31,7 +31,6 @@ use Kinetis\Vector\Fields\Currency;
 use Kinetis\Vector\Fields\Date;
 use Kinetis\Vector\Fields\DateTime;
 use Kinetis\Vector\Fields\Email;
-use Kinetis\Vector\Fields\Enum;
 use Kinetis\Vector\Fields\HasMany;
 use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Image;
@@ -41,6 +40,7 @@ use Kinetis\Vector\Fields\Money;
 use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\Fields\Password;
 use Kinetis\Vector\Fields\RichText;
+use Kinetis\Vector\Fields\Select;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\Fields\Textarea;
 use Kinetis\Vector\FullText;
@@ -65,7 +65,7 @@ final class ResourceCompilerTest extends TestCase
     {
         $shapes = [];
 
-        foreach (['id', 'number', 'money', 'boolean', 'date', 'datetime', 'enum', 'currency', 'belongsTo', 'richtext', 'hasOne', 'hasMany', 'manyToMany', 'string', 'email'] as $type) {
+        foreach (['id', 'number', 'money', 'boolean', 'date', 'datetime', 'select', 'currency', 'belongsTo', 'richtext', 'hasOne', 'hasMany', 'manyToMany', 'string', 'email'] as $type) {
             $shapes[$type] = ResourceCompiler::operatorShape($type);
         }
 
@@ -76,7 +76,7 @@ final class ResourceCompilerTest extends TestCase
             'boolean' => 'boolean',
             'date' => 'datetime',
             'datetime' => 'datetime',
-            'enum' => 'enum',
+            'select' => 'enum',
             'currency' => 'enum',
             'belongsTo' => 'belongsTo',
             'richtext' => 'presence',
@@ -129,8 +129,8 @@ final class ResourceCompilerTest extends TestCase
         self::assertFalse(ResourceCompiler::compileLoose(Text::make('note')->required(), [], 'Owner')['nullable']);
 
         $this->expectException(ResourceCompileException::class);
-        $this->expectExceptionMessage('Resource Owner, field "kind": is an enum field naming no backed enum; call of()');
-        ResourceCompiler::compileLoose(Enum::make('kind'), [], 'Owner');
+        $this->expectExceptionMessage('Resource Owner, field "kind": is a select with no options; call options()');
+        ResourceCompiler::compileLoose(Select::make('kind'), [], 'Owner');
     }
 
     public function testALooseRelationLinksToARegisteredResource(): void
@@ -292,12 +292,12 @@ final class ResourceCompilerTest extends TestCase
         self::assertSame('sku', $compiled['titleField']);
     }
 
-    public function testTheTitleSkipsEnumAndLongTextFields(): void
+    public function testTheTitleSkipsSelectAndLongTextFields(): void
     {
         $orders = new #[Resource(Order::class, slug: 'titled-orders')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), Enum::make('status')->of(OrderStatus::class), Textarea::make('notes'), Text::make('number')];
+                return [Id::make(), Select::make('status')->of(OrderStatus::class), Textarea::make('notes'), Text::make('number')];
             }
         };
 
@@ -420,7 +420,7 @@ final class ResourceCompilerTest extends TestCase
         $valid = new #[Resource(Category::class, slug: 'categories')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), Text::make('name'), Computed::make('tier')->as('enum')->options(['top' => 'Top'])->from(['name'])->method('tier'), Computed::make('trashed')->method('tier')];
+                return [Id::make(), Text::make('name'), Computed::make('tier')->as('select')->options(['top' => 'Top'])->from(['name'])->method('tier'), Computed::make('trashed')->method('tier')];
             }
 
             /** @param array<string, mixed> $category */
@@ -482,13 +482,13 @@ final class ResourceCompilerTest extends TestCase
         };
         $this->assertRefused(self::fieldRefusal($searchable, 'tier', 'is computed per record in PHP, so it cannot be searchable'), $searchable);
 
-        $enum = new #[Resource(Category::class, slug: 'categories')] class extends VectorResource {
+        $select = new #[Resource(Category::class, slug: 'categories')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), Text::make('name'), Computed::make('tier')->as('enum')->method('fields')];
+                return [Id::make(), Text::make('name'), Computed::make('tier')->as('select')->method('fields')];
             }
         };
-        $this->assertRefused(self::fieldRefusal($enum, 'tier', 'is computed as an enum but lists no options; call options()'), $enum);
+        $this->assertRefused(self::fieldRefusal($select, 'tier', 'is computed as a select but lists no options; call options()'), $select);
 
         $collection = new #[Resource(Category::class, slug: 'categories')] class extends VectorResource {
             public function fields(): array
@@ -574,7 +574,7 @@ final class ResourceCompilerTest extends TestCase
                 return 'id';
             }
         };
-        $this->assertRefused($subtitle::class . '::searchSubtitle() names "id", which is not a text, number or enum field of the resource.', $subtitle);
+        $this->assertRefused($subtitle::class . '::searchSubtitle() names "id", which is not a text, number or single select field of the resource.', $subtitle);
 
         $image = new #[Resource(Tag::class, slug: 'tags')] class extends VectorResource {
             public function searchImage(): string
@@ -1063,7 +1063,7 @@ final class CompilerOrders extends VectorResource
             Id::make(),
             Text::make('number')->sortable()->searchable(),
             BelongsTo::to('customer', CompilerCustomers::class)->sortable(),
-            Enum::make('status')->of(OrderStatus::class)->filterable(),
+            Select::make('status')->of(OrderStatus::class)->filterable(),
             Text::make('currency')->hideFromIndex(),
             Money::make('totalCents')->currencyField('currency')->readonly(),
             DateTime::make('placedAt')->sortable(),

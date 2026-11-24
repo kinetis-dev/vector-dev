@@ -199,7 +199,7 @@
             },
             {
                 "name": "role",
-                "type": "enum",
+                "type": "select",
                 "label": "Role",
                 "sortable": true,
                 "searchable": false,
@@ -243,6 +243,9 @@
                     }
                 ],
                 "enum": "App\\Domain\\Support\\AgentRole",
+                "multiple": false,
+                "autocomplete": false,
+                "badge": false,
                 "column": "role",
                 "nullable": false,
                 "valueType": "string",
@@ -2712,7 +2715,7 @@
             },
             {
                 "name": "status",
-                "type": "enum",
+                "type": "select",
                 "label": "Status",
                 "sortable": true,
                 "searchable": false,
@@ -2761,6 +2764,9 @@
                     }
                 ],
                 "enum": "App\\Domain\\OrderStatus",
+                "multiple": false,
+                "autocomplete": false,
+                "badge": false,
                 "column": "status",
                 "nullable": false,
                 "valueType": "string",
@@ -3521,7 +3527,7 @@
             },
             {
                 "name": "status",
-                "type": "enum",
+                "type": "select",
                 "label": "Status",
                 "sortable": true,
                 "searchable": false,
@@ -3568,6 +3574,9 @@
                     }
                 ],
                 "enum": "App\\Domain\\ProductStatus",
+                "multiple": false,
+                "autocomplete": false,
+                "badge": true,
                 "column": "status",
                 "nullable": false,
                 "valueType": "string",
@@ -3939,7 +3948,7 @@
                 },
                 "column": "attributes",
                 "nullable": true,
-                "valueType": "string",
+                "valueType": "json",
                 "enum": null,
                 "operators": []
             },
@@ -4024,6 +4033,70 @@
                 },
                 "nullable": false,
                 "operators": []
+            },
+            {
+                "name": "channels",
+                "type": "select",
+                "label": "Sales channels",
+                "sortable": false,
+                "searchable": false,
+                "filterable": true,
+                "readonly": false,
+                "inline": false,
+                "unique": false,
+                "help": null,
+                "component": null,
+                "views": [
+                    "index",
+                    "show",
+                    "create",
+                    "update"
+                ],
+                "rules": [],
+                "props": [],
+                "summary": null,
+                "default": null,
+                "hasDefault": false,
+                "conditions": {
+                    "visible": [],
+                    "required": [],
+                    "disabled": []
+                },
+                "options": [
+                    {
+                        "value": "web",
+                        "label": "Web shop",
+                        "color": "primary"
+                    },
+                    {
+                        "value": "retail",
+                        "label": "Retail stores",
+                        "color": "success"
+                    },
+                    {
+                        "value": "marketplace",
+                        "label": "Marketplaces",
+                        "color": "info"
+                    },
+                    {
+                        "value": "wholesale",
+                        "label": "Wholesale",
+                        "color": "grey"
+                    }
+                ],
+                "enum": null,
+                "multiple": true,
+                "autocomplete": false,
+                "badge": true,
+                "column": "channels",
+                "nullable": true,
+                "valueType": "json",
+                "operators": [
+                    "any",
+                    "all",
+                    "null",
+                    "nnull"
+                ]
             },
             {
                 "name": "releasedAt",
@@ -4354,6 +4427,17 @@
                                     "collapsed": false,
                                     "columns": null,
                                     "span": null,
+                                    "name": "channels",
+                                    "children": null
+                                },
+                                {
+                                    "kind": "field",
+                                    "label": null,
+                                    "description": null,
+                                    "collapsible": false,
+                                    "collapsed": false,
+                                    "columns": null,
+                                    "span": null,
                                     "name": "releasedAt",
                                     "children": null
                                 },
@@ -4592,6 +4676,17 @@
                                     "collapsed": false,
                                     "columns": null,
                                     "span": null,
+                                    "name": "channels",
+                                    "children": null
+                                },
+                                {
+                                    "kind": "field",
+                                    "label": null,
+                                    "description": null,
+                                    "collapsible": false,
+                                    "collapsed": false,
+                                    "columns": null,
+                                    "span": null,
                                     "name": "releasedAt",
                                     "children": null
                                 },
@@ -4649,6 +4744,7 @@
             "description": "description",
             "attributes": "attributes",
             "imageKey": "image_key",
+            "channels": "channels",
             "releasedAt": "released_at",
             "createdAt": "created_at",
             "updatedAt": "updated_at"
@@ -4664,6 +4760,7 @@
                 "stock",
                 "isFeatured",
                 "tags",
+                "channels",
                 "releasedAt",
                 "createdAt"
             ],
@@ -4721,6 +4818,7 @@
                 "attributes",
                 "imageKey",
                 "tags",
+                "channels",
                 "releasedAt",
                 "createdAt",
                 "updatedAt"
@@ -4799,7 +4897,13 @@
                 "kind": "column",
                 "nullable": true,
                 "hasDefault": true,
-                "type": "string"
+                "type": "json"
+            },
+            "channels": {
+                "kind": "column",
+                "nullable": true,
+                "hasDefault": true,
+                "type": "json"
             },
             "imageKey": {
                 "kind": "column",
@@ -6597,7 +6701,7 @@
             },
             {
                 "name": "status",
-                "type": "enum",
+                "type": "select",
                 "label": "Status",
                 "sortable": true,
                 "searchable": false,
@@ -6646,6 +6750,9 @@
                     }
                 ],
                 "enum": "App\\Domain\\Support\\TicketStatus",
+                "multiple": false,
+                "autocomplete": false,
+                "badge": false,
                 "column": "status",
                 "nullable": false,
                 "valueType": "string",
@@ -6658,7 +6765,7 @@
             },
             {
                 "name": "priority",
-                "type": "enum",
+                "type": "select",
                 "label": "Priority",
                 "sortable": true,
                 "searchable": false,
@@ -6707,6 +6814,9 @@
                     }
                 ],
                 "enum": "App\\Domain\\Support\\TicketPriority",
+                "multiple": false,
+                "autocomplete": false,
+                "badge": false,
                 "column": "priority",
                 "nullable": false,
                 "valueType": "string",
@@ -6719,7 +6829,7 @@
             },
             {
                 "name": "channel",
-                "type": "enum",
+                "type": "select",
                 "label": "Channel",
                 "sortable": false,
                 "searchable": false,
@@ -6767,6 +6877,9 @@
                     }
                 ],
                 "enum": "App\\Domain\\Support\\Channel",
+                "multiple": false,
+                "autocomplete": false,
+                "badge": false,
                 "column": "channel",
                 "nullable": false,
                 "valueType": "string",
@@ -6775,6 +6888,74 @@
                     "ne",
                     "in",
                     "nin"
+                ]
+            },
+            {
+                "name": "platforms",
+                "type": "select",
+                "label": "Platforms",
+                "sortable": false,
+                "searchable": false,
+                "filterable": true,
+                "readonly": false,
+                "inline": false,
+                "unique": false,
+                "help": null,
+                "component": null,
+                "views": [
+                    "show",
+                    "create",
+                    "update"
+                ],
+                "rules": [],
+                "props": [],
+                "summary": null,
+                "default": null,
+                "hasDefault": false,
+                "conditions": {
+                    "visible": [],
+                    "required": [],
+                    "disabled": []
+                },
+                "options": [
+                    {
+                        "value": "web",
+                        "label": "Web",
+                        "color": null
+                    },
+                    {
+                        "value": "ios",
+                        "label": "iOS",
+                        "color": null
+                    },
+                    {
+                        "value": "android",
+                        "label": "Android",
+                        "color": null
+                    },
+                    {
+                        "value": "desktop",
+                        "label": "Desktop app",
+                        "color": null
+                    },
+                    {
+                        "value": "api",
+                        "label": "API",
+                        "color": null
+                    }
+                ],
+                "enum": null,
+                "multiple": true,
+                "autocomplete": true,
+                "badge": false,
+                "column": "platforms",
+                "nullable": true,
+                "valueType": "json",
+                "operators": [
+                    "any",
+                    "all",
+                    "null",
+                    "nnull"
                 ]
             },
             {
@@ -8031,7 +8212,7 @@
                 },
                 "column": "metadata",
                 "nullable": true,
-                "valueType": "string",
+                "valueType": "json",
                 "enum": null,
                 "operators": []
             },
@@ -8261,6 +8442,17 @@
                                     "columns": null,
                                     "span": null,
                                     "name": "channel",
+                                    "children": null
+                                },
+                                {
+                                    "kind": "field",
+                                    "label": null,
+                                    "description": null,
+                                    "collapsible": false,
+                                    "collapsed": false,
+                                    "columns": null,
+                                    "span": null,
+                                    "name": "platforms",
                                     "children": null
                                 },
                                 {
@@ -8577,6 +8769,17 @@
                                     "collapsible": false,
                                     "collapsed": false,
                                     "columns": null,
+                                    "span": null,
+                                    "name": "platforms",
+                                    "children": null
+                                },
+                                {
+                                    "kind": "field",
+                                    "label": null,
+                                    "description": null,
+                                    "collapsible": false,
+                                    "collapsed": false,
+                                    "columns": null,
                                     "span": "full",
                                     "name": "body",
                                     "children": null
@@ -8832,6 +9035,7 @@
             "status": "status",
             "priority": "priority",
             "channel": "channel",
+            "platforms": "platforms",
             "customerEmail": "customer_email",
             "customerRef": "customer_ref",
             "team": "team_id",
@@ -8913,6 +9117,7 @@
                 "status",
                 "priority",
                 "channel",
+                "platforms",
                 "customerEmail",
                 "customerRef",
                 "team",
@@ -9003,7 +9208,13 @@
                 "kind": "column",
                 "nullable": true,
                 "hasDefault": true,
-                "type": "string"
+                "type": "json"
+            },
+            "platforms": {
+                "kind": "column",
+                "nullable": true,
+                "hasDefault": true,
+                "type": "json"
             },
             "compensationCents": {
                 "kind": "column",

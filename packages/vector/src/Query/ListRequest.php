@@ -370,7 +370,8 @@ final readonly class ListRequest
             throw new InvalidListRequestException("\"{$name}\" is not a filterable field of {$resource->slug()}.");
         }
 
-        $operators = is_array($spec) ? $spec : ['eq' => $spec];
+        // a bare value is equality, or "any" for a multiple select's list
+        $operators = is_array($spec) ? $spec : [in_array('eq', $field['operators'], true) ? 'eq' : $field['operators'][0] => $spec];
         $filters = [];
 
         foreach ($operators as $op => $value) {
@@ -408,7 +409,8 @@ final readonly class ListRequest
         $column = $field['column'];
         $convert = static function (string $raw) use ($field, $converter, $name): mixed {
             try {
-                return $converter->fromQuery($field, trim($raw));
+                // a multiple select is filtered by its options one at a time
+                return ($field['multiple'] ?? false) === true ? ValueConverter::option($field, trim($raw)) : $converter->fromQuery($field, trim($raw));
             } catch (InputViolation $e) {
                 throw new InvalidListRequestException("filter[{$name}]: {$e->violation->message}");
             }
@@ -433,6 +435,10 @@ final readonly class ListRequest
             case 'in':
             case 'nin':
                 return [['column' => $column, 'op' => $op, 'value' => $list($value)]];
+            case 'any':
+            case 'all':
+                // the JSON list holds any, or all, of these option values; duplicates add nothing
+                return [['column' => $column, 'op' => $op, 'value' => array_values(array_unique($list($value), SORT_REGULAR))]];
             case 'between':
                 return [['column' => $column, 'op' => 'between', 'value' => self::between($list($value), $value, $timestamp, $name)]];
             case 'like':

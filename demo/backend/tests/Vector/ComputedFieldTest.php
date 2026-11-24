@@ -192,10 +192,10 @@ final class ComputedFieldTest extends VectorTestCase
 
     public function testAnEnumNeedsOptions(): void
     {
-        $this->expectCompileError('is computed as an enum but lists no options', new #[Resource(OrderLine::class, slug: 'computed-lines')] class extends VectorResource {
+        $this->expectCompileError('is computed as a select but lists no options', new #[Resource(OrderLine::class, slug: 'computed-lines')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), Computed::make('size')->as('enum')->method('size')];
+                return [Id::make(), Computed::make('size')->as('select')->method('size')];
             }
 
             /** @param array<string, mixed> $row */

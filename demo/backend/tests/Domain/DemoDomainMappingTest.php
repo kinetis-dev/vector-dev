@@ -51,6 +51,7 @@ final class DemoDomainMappingTest extends TestCase
         self::assertSame('int', $types['priceCents']);
         self::assertSame('float', $types['weightKg']);
         self::assertSame('bool', $types['isFeatured']);
+        self::assertSame(['json', 'json'], [$types['attributes'], $types['channels']], 'an array property is a JSON column');
         self::assertSame('timestamp', $types['releasedAt']);
         self::assertSame('int', $types['category'], 'a #[BelongsTo] maps its target identifier type');
 

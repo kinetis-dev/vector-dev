@@ -13,14 +13,15 @@ use Kinetis\QueryBuilder\Query;
 use Kinetis\Vector\Attributes\Resource;
 use Kinetis\Vector\Exception\ResourceCompileException;
 use Kinetis\Vector\Fields\Id;
+use Kinetis\Vector\Fields\Json;
 use Kinetis\Vector\Fields\KeyValue;
 use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Testing\InteractsWithVector;
 use Kinetis\Vector\VectorResource;
 
 /**
- * A key-value field: a JSON object of text values in a string column,
- * an object on the wire in both directions.
+ * A key-value field: a JSON object of text values in a JSON column (an
+ * `array` property), an object on the wire in both directions.
  */
 final class KeyValueFieldTest extends VectorTestCase
 {
@@ -43,6 +44,7 @@ final class KeyValueFieldTest extends VectorTestCase
             $products->update($id, ['attributes' => ['size' => 'M', ' finish ' => 'matte', '0' => 'zero']])->assertOk();
             // a JSON column orders keys its own way; the entries are what count
             self::assertEquals(['size' => 'M', 'finish' => 'matte', '0' => 'zero'], json_decode((string) $this->stored($id), true), 'keys trimmed');
+            self::assertIsArray(json_decode((string) $this->stored($id), true), 'a JSON object, not JSON text inside a string');
             $raw = $this->client->get("/vector/r/products/{$id}", headers: $this->realAdminHeaders())->assertOk()->body();
             self::assertMatchesRegularExpression('/"attributes":\{[^}]*"0":"zero"/', $raw, 'a digit key is still an object key');
 
@@ -71,7 +73,7 @@ final class KeyValueFieldTest extends VectorTestCase
         }
     }
 
-    public function testItIsAStringColumnThatIsNeitherSortedNorFiltered(): void
+    public function testItIsAJsonColumnThatIsNeitherSortedNorFiltered(): void
     {
         $metadata = MetadataRegistry::fromArray(new DiscoveryContext(dirname(__DIR__, 2))->compiled(OrmMetadata::class));
         $sorted = new #[Resource(Product::class, slug: 'kv-sorted')] class extends VectorResource {
@@ -86,8 +88,25 @@ final class KeyValueFieldTest extends VectorTestCase
                 return [Id::make(), KeyValue::make('stock')];
             }
         };
+        $text = new #[Resource(Product::class, slug: 'kv-text')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), KeyValue::make('description')];
+            }
+        };
+        $json = new #[Resource(Product::class, slug: 'json-text')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Json::make('sku')];
+            }
+        };
 
-        foreach ([[$sorted, 'cannot be sorted'], [$number, 'stores its JSON in a string property']] as [$resource, $message]) {
+        foreach ([
+            [$sorted, 'cannot be sorted'],
+            [$number, 'stores its value in a JSON column: declare the property array or ?array'],
+            [$text, 'is a key-value field, which stores its value in a JSON column'],
+            [$json, 'is a JSON field, which stores its value in a JSON column'],
+        ] as [$resource, $message]) {
             try {
                 (new ResourceCompiler($metadata, [$resource::class]))->compile();
                 self::fail("compiled: {$message}");

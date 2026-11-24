@@ -12,8 +12,8 @@ use Kinetis\Vector\Fields\Boolean;
 use Kinetis\Vector\Fields\Date;
 use Kinetis\Vector\Fields\DateTime;
 use Kinetis\Vector\Fields\Email;
-use Kinetis\Vector\Fields\Enum;
 use Kinetis\Vector\Fields\Id;
+use Kinetis\Vector\Fields\Select;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\VectorResource;
 
@@ -28,7 +28,7 @@ final class AgentResource extends VectorResource
             Text::make('name')->required()->max(120)->sortable()->searchable()->filterable(),
             Email::make('email')->required()->max(255)->sortable()->searchable(),
             BelongsTo::to('team', TeamResource::class)->sortable()->filterable(),
-            Enum::make('role')->of(AgentRole::class)->colors(['manager' => 'primary', 'lead' => 'info', 'agent' => 'grey'])->sortable()->filterable(),
+            Select::make('role')->of(AgentRole::class)->colors(['manager' => 'primary', 'lead' => 'info', 'agent' => 'grey'])->sortable()->filterable(),
             Boolean::make('isActive', 'Active')->sortable()->filterable(),
             Date::make('joinedOn', 'Joined')->sortable()->filterable(),
             DateTime::make('createdAt')->readonly()->hideFromForms()->hideFromIndex(),

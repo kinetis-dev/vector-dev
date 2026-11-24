@@ -11,6 +11,7 @@ use App\Domain\Order;
 use App\Domain\Product;
 use App\Domain\Tag;
 use App\Domain\User;
+use App\Vector\ProductResource;
 use DateTimeImmutable;
 use DateTimeZone;
 use Kinetis\Console\Attributes\Command;
@@ -170,10 +171,12 @@ final readonly class DemoSeedCommand
             $product->describe(
                 self::descriptionDocument($name, $category->name()),
                 // a key-value field: text values
-                json_encode(['color' => ['black', 'silver', 'white'][mt_rand(0, 2)], 'warrantyMonths' => ['12', '24', '36'][mt_rand(0, 2)]], JSON_THROW_ON_ERROR),
+                ['color' => ['black', 'silver', 'white'][mt_rand(0, 2)], 'warrantyMonths' => ['12', '24', '36'][mt_rand(0, 2)]],
                 mt_rand(0, 3) === 0 ? null : $this->image($i, $colourOf[$category->name()] ?? [96, 96, 96]),
             );
 
+            // a multiple select: some of the channels, in the order the resource lists them
+            $product->sellOn(self::someOf(ProductResource::CHANNELS, $i));
             $roll = mt_rand(1, 10);
 
             if ($roll <= 7) {
@@ -343,6 +346,27 @@ final readonly class DemoSeedCommand
     }
 
     /** A product description as the admin's rich-text editor stores it: its JSON document. */
+    /**
+     * Some of the options' values (none, at times) in the order they are
+     * declared: the bits of $n pick them, so the seeded random sequence
+     * every other value is drawn from stays as it was.
+     *
+     * @param array<string, string> $options value => label
+     * @return list<string>|null
+     */
+    public static function someOf(array $options, int $n): ?array
+    {
+        $some = [];
+
+        foreach (array_keys($options) as $bit => $value) {
+            if (($n >> $bit & 1) === 1) {
+                $some[] = $value;
+            }
+        }
+
+        return $some === [] ? null : $some;
+    }
+
     private static function descriptionDocument(string $name, string $category): string
     {
         $text = static fn (string $text, array $marks = []): array => ['type' => 'text', 'text' => $text, ...($marks === [] ? [] : ['marks' => $marks])];

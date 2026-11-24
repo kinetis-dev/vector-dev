@@ -262,7 +262,7 @@
                         "number",
                         "money",
                         "boolean",
-                        "enum",
+                        "select",
                         "date",
                         "datetime",
                         "email",
@@ -392,6 +392,8 @@
                             "like",
                             "nlike",
                             "between",
+                            "any",
+                            "all",
                             "null",
                             "nnull"
                         ]
@@ -407,8 +409,21 @@
                         "float",
                         "bool",
                         "timestamp",
-                        "date"
+                        "date",
+                        "json"
                     ]
+                },
+                "multiple": {
+                    "description": "A select holding several options, a JSON list in the order the options are declared, filtered by `any` or `all` of a list.",
+                    "type": "boolean"
+                },
+                "autocomplete": {
+                    "description": "A select whose input searches its options (searchable()), for a long list.",
+                    "type": "boolean"
+                },
+                "badge": {
+                    "description": "A select shown as coloured chips in lists and on the record, coloured by each option's `color`.",
+                    "type": "boolean"
                 },
                 "options": {
                     "type": "array",
@@ -538,7 +553,7 @@
                                 "boolean",
                                 "date",
                                 "datetime",
-                                "enum"
+                                "select"
                             ]
                         },
                         "from": {

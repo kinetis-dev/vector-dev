@@ -18,7 +18,6 @@ use Kinetis\Vector\Fields\Boolean;
 use Kinetis\Vector\Fields\Currency;
 use Kinetis\Vector\Fields\DateTime;
 use Kinetis\Vector\Fields\Email;
-use Kinetis\Vector\Fields\Enum;
 use Kinetis\Vector\Fields\HasMany;
 use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Json;
@@ -29,25 +28,29 @@ use Kinetis\Vector\Fields\Money;
 use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\Fields\RichText;
+use Kinetis\Vector\Fields\Select;
 use Kinetis\Vector\FullText;
 use Kinetis\Vector\VectorResource;
 
 /**
  * The support desk's main resource, on PostgreSQL: every field shape the
- * MySQL products exercise (enums, a belongsTo, a nullable belongsTo, a
+ * MySQL products exercise (selects, a multiple one in jsonb, a belongsTo, a nullable belongsTo, a
  * manyToMany, an owned hasMany, money, JSON, booleans, instants, soft
  * deletion, a version) so both dialects are covered by one feature set.
  */
 #[Resource(entity: Ticket::class, group: 'Support', icon: 'mdi-lifebuoy', title: 'subject')]
 final class TicketResource extends VectorResource
 {
+    /** Where an issue shows: the options of a multiple select stored in a jsonb column. */
+    public const array PLATFORMS = ['web' => 'Web', 'ios' => 'iOS', 'android' => 'Android', 'desktop' => 'Desktop app', 'api' => 'API'];
+
     #[\Override]
     public function fields(): array
     {
         return [
             Id::make(),
             Tabs::make()
-                ->tab('Ticket', ['number', 'subject', 'status', 'priority', 'channel', 'body'])
+                ->tab('Ticket', ['number', 'subject', 'status', 'priority', 'channel', 'platforms', 'body'])
                 ->tab('Customer', ['customerEmail', 'customerRef', 'satisfaction'])
                 ->tab('Handling', [
                     Section::make('Assignment')->fields(['team', 'assignee', 'labels']),
@@ -59,13 +62,14 @@ final class TicketResource extends VectorResource
             Text::make('subject')->required()->max(200)->sortable()->searchable()->filterable(),
             // an existing HTML column: edited as rich text, stored as HTML rendered through the schema
             RichText::make('body')->storesHtml()->features(['bold', 'italic', 'list', 'link', 'blockquote'])->required()->hideFromIndex()->columnSpan('full'),
-            Enum::make('status')->of(TicketStatus::class)
+            Select::make('status')->of(TicketStatus::class)
                 ->colors(['open' => 'info', 'pending' => 'warning', 'resolved' => 'success', 'closed' => 'grey'])
                 ->sortable()->filterable(),
-            Enum::make('priority')->of(TicketPriority::class)
+            Select::make('priority')->of(TicketPriority::class)
                 ->colors(['low' => 'grey', 'normal' => 'primary', 'high' => 'warning', 'urgent' => 'error'])
                 ->sortable()->filterable(),
-            Enum::make('channel')->of(\App\Domain\Support\Channel::class)->filterable()->hideFromIndex(),
+            Select::make('channel')->of(\App\Domain\Support\Channel::class)->filterable()->hideFromIndex(),
+            Select::make('platforms')->options(self::PLATFORMS)->multiple()->searchable()->filterable()->hideFromIndex(),
             Email::make('customerEmail', 'Customer')->required()->max(255)->searchable()->filterable(),
             Number::make('customerRef', 'Customer id (shop)')->hideFromIndex()->help('The shop customer on the MySQL connection, by id: a relationship never spans two databases.'),
             BelongsTo::to('team', TeamResource::class)->sortable()->filterable()->searchable(),

@@ -6,6 +6,7 @@ namespace Kinetis\Vector\Query;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Kinetis\Vector\Exception\StoredValueException;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\VectorResource;
 
@@ -45,7 +46,9 @@ final readonly class RowSerializer
                 'belongsTo' => $this->belongsTo($field, $row, $relations[$name] ?? []),
                 'hasOne' => $relations[$name][$this->key($row, $resource)] ?? null,
                 'hasMany', 'manyToMany' => ['count' => (int) ($relations[$name][$this->key($row, $resource)] ?? 0)],
-                'keyValue' => self::keyValue($row[$field['column']] ?? null),
+                'keyValue' => self::keyValue($name, $row[$field['column']] ?? null),
+                'json' => self::json($name, $row[$field['column']] ?? null),
+                'select' => self::select($name, $field, $row[$field['column']] ?? null),
                 default => $this->scalar($field, $row[$field['column']] ?? null),
             };
         }
@@ -101,12 +104,16 @@ final readonly class RowSerializer
      * The stored JSON as an object of text values; an object even when
      * empty or keyed by digits; a nested value reads as its JSON text.
      */
-    private static function keyValue(mixed $stored): ?\stdClass
+    private static function keyValue(string $name, mixed $stored): ?\stdClass
     {
-        $decoded = is_string($stored) ? json_decode($stored, true) : null;
+        $decoded = self::decode($name, $stored, true);
+
+        if ($decoded === null) {
+            return null;
+        }
 
         if (!is_array($decoded)) {
-            return null;
+            throw StoredValueException::invalidJson($name);
         }
 
         $map = new \stdClass();
@@ -121,6 +128,72 @@ final readonly class RowSerializer
         }
 
         return $map;
+    }
+
+    /**
+     * A JSON column's document as it is stored: an object stays an
+     * object, even an empty one, and a list stays a list.
+     */
+    private static function json(string $name, mixed $stored): mixed
+    {
+        return self::decode($name, $stored, false);
+    }
+
+    /**
+     * A select's stored value, checked against its options: one value, or
+     * the JSON list a multiple one holds. A value that is no option throws
+     * rather than vanishing from the record.
+     *
+     * @param array<string, mixed> $field
+     * @return int|string|list<int|string>|null
+     */
+    private static function select(string $name, array $field, mixed $stored): int|string|array|null
+    {
+        if ($stored === null) {
+            return null;
+        }
+
+        $known = [];
+
+        foreach ($field['options'] as $option) {
+            $known[(string) $option['value']] = $option['value'];
+        }
+
+        $find = static function (mixed $value) use ($known, $name): int|string {
+            $text = is_scalar($value) ? (string) $value : json_encode($value, JSON_THROW_ON_ERROR);
+
+            return array_key_exists($text, $known) && is_scalar($value) ? $known[$text] : throw StoredValueException::unknownOption($name, $text);
+        };
+
+        if (($field['multiple'] ?? false) !== true) {
+            return $find($stored);
+        }
+
+        $list = self::decode($name, $stored, true);
+
+        if (!is_array($list) || !array_is_list($list)) {
+            throw StoredValueException::invalidJson($name);
+        }
+
+        return array_map($find, $list);
+    }
+
+    /** A JSON column as the driver returns it: text to decode, or a value it already decoded. */
+    private static function decode(string $name, mixed $stored, bool $associative): mixed
+    {
+        if ($stored === null) {
+            return null;
+        }
+
+        if (!is_string($stored)) {
+            return $associative || !is_array($stored) ? $stored : json_decode(json_encode($stored, JSON_THROW_ON_ERROR), false);
+        }
+
+        try {
+            return json_decode($stored, $associative, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            throw StoredValueException::invalidJson($name);
+        }
     }
 
     /**

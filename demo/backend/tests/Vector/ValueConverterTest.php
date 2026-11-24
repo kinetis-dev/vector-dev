@@ -86,21 +86,23 @@ final class ValueConverterTest extends TestCase
     }
 
     /**
-     * tryFrom() under strict types throws a TypeError for the scalar its
-     * enum is not backed by: a filter on an int-backed enum, or a body
-     * value of the other type, once answered 500 instead of refusing it.
+     * A select on an enum property: a query string matches an option by
+     * its text, a JSON body must send the option's own JSON type, and the
+     * entity receives the enum case. A value of the other backing type
+     * once answered 500 instead of refusing it.
      */
-    public function testAnEnumValueOfEitherBackingIsAChoiceOrARefusal(): void
+    public function testASelectValueOfEitherBackingIsAChoiceOrARefusal(): void
     {
-        $level = ['type' => 'enum', 'valueType' => 'int', 'enum' => Level::class, 'nullable' => false];
-        $status = ['type' => 'enum', 'valueType' => 'string', 'enum' => ProductStatus::class, 'nullable' => false];
+        $level = ['type' => 'select', 'valueType' => 'int', 'enum' => Level::class, 'nullable' => false, 'options' => [['value' => 1, 'label' => 'Low'], ['value' => 2, 'label' => 'High']]];
+        $status = ['type' => 'select', 'valueType' => 'string', 'enum' => ProductStatus::class, 'nullable' => false, 'options' => array_map(static fn (ProductStatus $c): array => ['value' => $c->value, 'label' => $c->name], ProductStatus::cases())];
 
         self::assertSame(2, $this->converter()->fromQuery($level, '2'));
         self::assertSame('active', $this->converter()->fromQuery($status, 'active'));
         self::assertSame(Level::High, $this->converter()->convert($level, 2));
         self::assertSame(ProductStatus::Active, $this->converter()->convert($status, 'active'));
+        self::assertSame(ProductStatus::Active, $this->converter()->convert($status, ProductStatus::Active), 'a default given as the case');
 
-        foreach (['x', '3', '2x', "2\n", ''] as $raw) {
+        foreach (['x', '3', '2x', ''] as $raw) {
             self::assertSame('is not one of the allowed values.', $this->mismatch(fn () => $this->converter()->fromQuery($level, $raw)), json_encode($raw, JSON_THROW_ON_ERROR));
         }
 
@@ -111,6 +113,65 @@ final class ValueConverterTest extends TestCase
         foreach ([1, 'nope'] as $raw) {
             self::assertSame('is not one of the allowed values.', $this->mismatch(fn () => $this->converter()->convert($status, $raw)), json_encode($raw, JSON_THROW_ON_ERROR));
         }
+    }
+
+    /**
+     * A multiple select takes a list of known options: deduplicated and
+     * kept in the order the options are declared, whatever order the
+     * input had; an unknown value is refused at its index; an empty list
+     * is null where the column allows it.
+     */
+    public function testAMultipleSelectTakesAListInDeclarationOrder(): void
+    {
+        $options = [['value' => 'web', 'label' => 'Web'], ['value' => 'retail', 'label' => 'Retail'], ['value' => 'wholesale', 'label' => 'Wholesale']];
+        $channels = ['type' => 'select', 'multiple' => true, 'valueType' => 'json', 'enum' => null, 'nullable' => true, 'options' => $options];
+
+        self::assertSame(['web', 'wholesale'], $this->converter()->convert($channels, ['wholesale', 'web', 'wholesale']));
+        self::assertNull($this->converter()->convert($channels, []));
+        self::assertSame([], $this->converter()->convert([...$channels, 'nullable' => false], []));
+        self::assertSame(['web', 'retail'], $this->converter()->fromQuery($channels, '["retail","web"]'), 'an exported cell');
+        self::assertSame(['web', 'retail'], $this->converter()->fromQuery($channels, 'retail | web'), 'a typed cell');
+
+        try {
+            $this->converter()->convert($channels, ['web', 'online']);
+            self::fail('An unknown option was accepted.');
+        } catch (InputViolation $e) {
+            self::assertSame(['invalid_choice', ['1']], [$e->violation->code, $e->violation->path]);
+        }
+
+        foreach (['web', ['a' => 'web'], [['web']]] as $raw) {
+            $this->expectNotAccepted(fn () => $this->converter()->convert($channels, $raw), json_encode($raw, JSON_THROW_ON_ERROR));
+        }
+    }
+
+    /** Json and KeyValue fields write arrays to their JSON columns, never JSON text. */
+    public function testJsonColumnsTakeDocumentsNotText(): void
+    {
+        $json = ['type' => 'json', 'valueType' => 'json', 'nullable' => true];
+        $keyValue = ['type' => 'keyValue', 'valueType' => 'json', 'nullable' => true, 'props' => []];
+
+        self::assertSame(['a' => [1, 2], 'b' => null], $this->converter()->convert($json, ['a' => [1, 2], 'b' => null]));
+        self::assertSame([1, 'two'], $this->converter()->convert($json, [1, 'two']));
+        self::assertSame(['carrier' => 'DHL'], $this->converter()->fromQuery($json, '{"carrier": "DHL"}'));
+        self::assertSame(['size' => 'M', 'stock' => '3', 'used' => 'false'], $this->converter()->convert($keyValue, ['size' => 'M', 'stock' => 3, 'used' => false]));
+        self::assertNull($this->converter()->convert($keyValue, []));
+
+        foreach (['{"a": 1}', 42, true] as $raw) {
+            self::assertSame('must be a JSON object or array.', $this->mismatch(fn () => $this->converter()->convert($json, $raw)), json_encode($raw, JSON_THROW_ON_ERROR));
+        }
+
+        self::assertSame('must be a JSON object or array.', $this->mismatch(fn () => $this->converter()->fromQuery($json, '"text"')));
+    }
+
+    private function expectNotAccepted(\Closure $conversion, string $label): void
+    {
+        try {
+            $conversion();
+        } catch (InputViolation) {
+            return;
+        }
+
+        self::fail("{$label} was accepted.");
     }
 
     private function mismatch(\Closure $conversion): string

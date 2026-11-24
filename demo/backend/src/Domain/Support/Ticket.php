@@ -54,7 +54,11 @@ final class Ticket
     #[HasMany(target: TicketReply::class, mappedBy: 'ticket', owned: true)]
     private array $replies;
 
-    private ?string $metadata = null;
+    /** @var array<string, mixed>|null */
+    private ?array $metadata = null;
+
+    /** @var list<string>|null the platforms the issue shows on, a multiple select's jsonb list */
+    private ?array $platforms = null;
 
     private int $compensationCents;
 
@@ -144,9 +148,16 @@ final class Ticket
         $this->status = TicketStatus::Closed;
     }
 
-    public function annotate(?string $metadataJson): void
+    /** @param array<string, mixed>|null $metadata */
+    public function annotate(?array $metadata): void
     {
-        $this->metadata = $metadataJson;
+        $this->metadata = $metadata;
+    }
+
+    /** @param list<string>|null $platforms */
+    public function affects(?array $platforms): void
+    {
+        $this->platforms = $platforms;
     }
 
     public function escalate(): void

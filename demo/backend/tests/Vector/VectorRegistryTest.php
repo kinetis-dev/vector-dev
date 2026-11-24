@@ -46,7 +46,7 @@ final class VectorRegistryTest extends TestCase
         self::assertSame('products', $products->table());
         self::assertSame('name', $products->titleColumn());
         self::assertSame('price_cents', $products->columns()['priceCents']);
-        self::assertSame(['id', 'sku', 'name', 'status', 'category', 'priceCents', 'stock', 'isFeatured', 'tags', 'releasedAt', 'createdAt', 'currency'], $products->indexFields(), 'the currency a money column needs is serialized without being displayed');
+        self::assertSame(['id', 'sku', 'name', 'status', 'category', 'priceCents', 'stock', 'isFeatured', 'tags', 'channels', 'releasedAt', 'createdAt', 'currency'], $products->indexFields(), 'the currency a money column needs is serialized without being displayed');
         self::assertSame(['field' => 'deletedAt', 'column' => 'deleted_at'], $products->softDelete());
         self::assertSame(['priceCents' => ['function' => 'avg', 'column' => 'price_cents'], 'stock' => ['function' => 'sum', 'column' => 'stock']], $products->summaryPlan());
         self::assertSame(['eq', 'ne', 'in', 'nin'], $this->field($products, 'status')['operators']);
@@ -135,7 +135,7 @@ final class VectorRegistryTest extends TestCase
             'id' => 'id',
             'number' => 'string',
             'customer' => 'belongsTo',
-            'status' => 'enum',
+            'status' => 'select',
             'totalCents' => 'number',
             'currency' => 'string',
             'placedAt' => 'datetime',

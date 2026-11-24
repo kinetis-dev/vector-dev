@@ -14,6 +14,7 @@ use Kinetis\QueryBuilder\Query;
 use Kinetis\Vector\Actions\VectorAction;
 use Kinetis\Vector\Auth\AllowAllPolicy;
 use Kinetis\Vector\Database\Connections;
+use Kinetis\Vector\Database\JsonFilter;
 use Kinetis\Vector\Database\Sql;
 use Kinetis\Vector\Auth\ResourcePolicyInterface;
 use Kinetis\Vector\Exception\ForbiddenOperationException;
@@ -586,8 +587,26 @@ final readonly class ResourceService
             'nbetween' => $query->whereGroup(static fn (Conditions $c) => $c->whereNotBetween($column, $bind($value[0]), $bind($value[1]))->orWhere($column, '=', null)),
             'null' => $query->where($column, '=', null),
             'nnull' => $query->where($column, '!=', null),
+            'any', 'all' => self::whereJsonList($query, $dialect, $column, $filter['op'], $value),
             default => throw new InvalidListRequestException("Unknown operator {$filter['op']}."),
         };
+    }
+
+    /**
+     * A multiple select's JSON list holding any, or all, of the option
+     * values ListRequest checked.
+     *
+     * @param 'mysql'|'pgsql' $dialect
+     */
+    private static function whereJsonList(Query|Conditions $query, string $dialect, string $column, string $op, mixed $values): Query|Conditions
+    {
+        if (!is_array($values) || $values === [] || !array_is_list($values)) {
+            throw new InvalidListRequestException("filter: \"{$op}\" takes a list of option values.");
+        }
+
+        /** @var list<int|string> $values */
+        $filter = JsonFilter::listContains($dialect, $column, $op, $values);
+        return $query->whereRaw($filter['sql'], $filter['params']);
     }
 
     /**

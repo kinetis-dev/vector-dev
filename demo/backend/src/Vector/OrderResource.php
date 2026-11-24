@@ -11,10 +11,10 @@ use Kinetis\Vector\Attributes\Resource;
 use Kinetis\Vector\Fields\BelongsTo;
 use Kinetis\Vector\Fields\Currency;
 use Kinetis\Vector\Fields\DateTime;
-use Kinetis\Vector\Fields\Enum;
 use Kinetis\Vector\Fields\HasMany;
 use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Money;
+use Kinetis\Vector\Fields\Select;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\Fields\Textarea;
 use Kinetis\Vector\VectorResource;
@@ -34,7 +34,7 @@ final class OrderResource extends VectorResource
             Id::make(),
             Text::make('number')->required()->max(30)->unique()->sortable()->searchable()->filterable(), // orders.number is VARCHAR(30), UNIQUE (orders_number_unique)
             BelongsTo::to('customer', CustomerResource::class)->sortable()->filterable(),
-            Enum::make('status')->of(OrderStatus::class)
+            Select::make('status')->of(OrderStatus::class)
                 ->colors(['pending' => 'warning', 'paid' => 'info', 'shipped' => 'success', 'cancelled' => 'grey'])
                 ->sortable()->filterable(),
             Money::make('totalCents', 'Total')->currencyField('currency')->readonly()->sortable()->filterable()->summarize('sum'),

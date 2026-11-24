@@ -30,7 +30,7 @@ final class ResourceDescription
         'belongsTo' => 'the related record\'s id',
         'manyToMany' => 'a list of the related records\' ids; the list replaces the current one',
         'keyValue' => 'an object of string values',
-        'json' => 'any JSON value',
+        'json' => 'a JSON object or array',
         'markdown' => 'Markdown text',
         'richtext' => 'a rich-text document: ProseMirror/Tiptap JSON, sent as a string',
         'file' => 'a storage key from an upload; files cannot be uploaded through these tools',
@@ -86,7 +86,8 @@ final class ResourceDescription
             'label' => $field['label'],
             'type' => $field['type'],
             'valueType' => $field['valueType'] ?? null,
-            'format' => self::FORMATS[$field['type']] ?? null,
+            'format' => self::format($field),
+            'multiple' => ($field['multiple'] ?? false) === true ? true : null,
             'help' => $field['help'] ?? null,
             'writable' => $writable,
             // what the writer itself demands of a create; only a field a call writes has any of these
@@ -100,12 +101,29 @@ final class ResourceDescription
             'relation' => isset($field['relation']) ? ['kind' => $field['relation']['kind'], 'resource' => $field['relation']['resource']] : null,
             'money' => $field['type'] === 'money' ? self::money($field) : null,
             'filter' => ($field['filterable'] ?? false) === true && ($field['operators'] ?? []) !== [] ? $field['operators'] : null,
+            'filterHelp' => ($field['multiple'] ?? false) === true && ($field['filterable'] ?? false) === true
+                ? 'any: holds at least one of the comma-separated option values; all: holds every one of them'
+                : null,
             'sortable' => ($field['sortable'] ?? false) === true ? true : null,
             'searchable' => ($field['searchable'] ?? false) === true ? true : null,
         ];
 
         // `writable` stays when empty: an absent key would leave a read-only field ambiguous
         return [...self::compact($description), 'writable' => $writable, ...self::options($field), ...self::conditions($field)];
+    }
+
+    /**
+     * What a value looks like on the wire, where the type alone does not say.
+     *
+     * @param array<string, mixed> $field
+     */
+    private static function format(array $field): ?string
+    {
+        if ($field['type'] === 'select' && ($field['multiple'] ?? false) === true) {
+            return 'a list of option values, each at most once; stored in the order the options are listed';
+        }
+
+        return self::FORMATS[$field['type']] ?? null;
     }
 
     /**
@@ -149,6 +167,7 @@ final class ResourceDescription
                 'name' => $field['name'],
                 'label' => $field['label'],
                 'type' => $field['type'],
+                'format' => self::format($field),
                 'help' => $field['help'] ?? null,
                 // a dialog's field is required unless it may be empty or has a default
                 'required' => ($field['nullable'] ?? true) !== true && ($field['hasDefault'] ?? false) !== true,

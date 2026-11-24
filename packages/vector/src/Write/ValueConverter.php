@@ -57,6 +57,8 @@ final readonly class ValueConverter
             'belongsTo' => $this->related($field, $raw),
             'manyToMany' => $this->relatedList($field, $raw),
             'keyValue' => $this->keyValue($field, $raw),
+            'json' => self::json($raw),
+            'select' => self::select($field, $raw),
             'currency' => self::currency($field, $raw),
             'password' => $this->password($field, $raw),
             default => $this->scalar($field, $raw),
@@ -97,20 +99,17 @@ final readonly class ValueConverter
 
     /**
      * A query-string value: text, parsed by the field's value type. A
-     * belongsTo or enum resolves to the key or case value, not an entity.
+     * belongsTo or select resolves to the key or option value, not an
+     * entity or an enum case. A multiple select's cell is its list, as
+     * JSON (`["a","b"]`, what an export writes) or separated by `|`.
      *
      * @param array<string, mixed> $field
      * @throws InputViolation
      */
     public function fromQuery(array $field, string $raw): mixed
     {
-        $enum = $field['enum'] ?? null;
-
-        if ($enum !== null) {
-            /** @var class-string<BackedEnum> $enum */
-            $case = self::enumCase($enum, self::intBacked($enum) && preg_match('/^-?\d{1,18}$/D', $raw) === 1 ? (int) $raw : $raw);
-
-            return $case === null ? throw new InputViolation(new Violation([], 'invalid_choice', 'is not one of the allowed values.')) : $case->value;
+        if ($field['type'] === 'select') {
+            return ($field['multiple'] ?? false) === true ? self::optionList($field, self::cellList($raw)) : self::option($field, $raw);
         }
 
         if ($field['type'] === 'currency') {
@@ -122,6 +121,16 @@ final readonly class ValueConverter
             $decoded = json_decode($raw, true);
 
             return is_array($decoded) ? $decoded : throw self::mismatch('a JSON object of text values');
+        }
+
+        if ($field['type'] === 'json') {
+            try {
+                $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+            } catch (\JsonException) {
+                throw self::mismatch('a JSON object or array');
+            }
+
+            return is_array($decoded) ? $decoded : throw self::mismatch('a JSON object or array');
         }
 
         if ($field['type'] === 'belongsTo') {
@@ -207,14 +216,141 @@ final readonly class ValueConverter
     }
 
     /**
-     * An object of text values, stored as JSON text: keys trimmed and
-     * non-empty, a number or boolean kept as its text, nothing nested.
-     * An empty object is null where the column allows it.
+     * One option of a select, as the value it is stored as: the option's
+     * own value (a string or an int). A JSON body's value must have the
+     * option's JSON type ($strict); a query string or a CSV cell is text,
+     * matched by its text.
      *
      * @param array<string, mixed> $field
      * @throws InputViolation
      */
-    private function keyValue(array $field, mixed $raw): ?string
+    public static function option(array $field, mixed $raw, bool $strict = false): int|string
+    {
+        if (is_int($raw) || is_string($raw)) {
+            $text = $strict ? $raw : trim((string) $raw);
+
+            foreach ($field['options'] ?? [] as $option) {
+                if ($strict ? $option['value'] === $text : (string) $option['value'] === $text) {
+                    return $option['value'];
+                }
+            }
+        }
+
+        $values = array_column($field['options'] ?? [], 'value');
+
+        throw new InputViolation(new Violation([], 'invalid_choice', 'is not one of the allowed values.', ['choices' => count($values) <= 50 ? $values : []]));
+    }
+
+    /**
+     * Options of a multiple select: each known, deduplicated, and kept in
+     * the order the options are declared, whatever order they came in.
+     *
+     * @param array<string, mixed> $field
+     * @param list<mixed> $raw
+     * @return list<int|string>
+     * @throws InputViolation
+     */
+    public static function optionList(array $field, array $raw, bool $strict = false): array
+    {
+        $chosen = [];
+
+        foreach ($raw as $index => $value) {
+            try {
+                $chosen[(string) self::option($field, $value, $strict)] = true;
+            } catch (InputViolation $e) {
+                throw new InputViolation($e->violation->under((string) $index));
+            }
+        }
+
+        $list = [];
+
+        foreach ($field['options'] as $option) {
+            if (isset($chosen[(string) $option['value']])) {
+                $list[] = $option['value'];
+            }
+        }
+
+        return $list;
+    }
+
+    /**
+     * A select's value: one option, typed as its property stores it (an
+     * enum case for an enum property), or a list of them for a multiple
+     * one. An empty list is null where the column allows it.
+     *
+     * @param array<string, mixed> $field
+     * @throws InputViolation
+     */
+    private static function select(array $field, mixed $raw): mixed
+    {
+        if (($field['multiple'] ?? false) === true) {
+            if (!is_array($raw) || !array_is_list($raw)) {
+                throw self::mismatch('a list of option values');
+            }
+
+            $list = self::optionList($field, $raw, true);
+
+            return $list === [] && ($field['nullable'] ?? false) === true ? null : $list;
+        }
+
+        $value = self::option($field, $raw instanceof BackedEnum ? $raw->value : $raw, true);
+        $enum = $field['enum'] ?? null;
+
+        if ($enum !== null) {
+            /** @var class-string<BackedEnum> $enum */
+            return $enum::from($value);
+        }
+
+        return $value;
+    }
+
+    /**
+     * A cell holding a list: JSON (`["a","b"]`) or text separated by `|`.
+     *
+     * @return list<string|int>
+     */
+    private static function cellList(string $raw): array
+    {
+        $raw = trim($raw);
+
+        if (str_starts_with($raw, '[')) {
+            $decoded = json_decode($raw, true);
+
+            if (is_array($decoded) && array_is_list($decoded)) {
+                return array_values(array_filter($decoded, static fn (mixed $v): bool => is_string($v) || is_int($v)));
+            }
+        }
+
+        return array_values(array_filter(array_map('trim', explode('|', $raw)), static fn (string $v): bool => $v !== ''));
+    }
+
+    /**
+     * Any JSON object or array, for an `array` property; an object
+     * arrives as an associative array. A bare scalar is refused: the
+     * column holds a document.
+     *
+     * @return array<array-key, mixed>
+     * @throws InputViolation
+     */
+    private static function json(mixed $raw): array
+    {
+        if (!is_array($raw)) {
+            throw self::mismatch('a JSON object or array');
+        }
+
+        return $raw;
+    }
+
+    /**
+     * An object of text values for a JSON column: keys trimmed and
+     * non-empty, a number or boolean kept as its text, nothing nested.
+     * An empty object is null where the column allows it.
+     *
+     * @param array<string, mixed> $field
+     * @return array<string, string>|null
+     * @throws InputViolation
+     */
+    private function keyValue(array $field, mixed $raw): ?array
     {
         if (!is_array($raw) || ($raw !== [] && array_is_list($raw))) {
             throw self::mismatch('an object of text values');
@@ -250,7 +386,7 @@ final readonly class ValueConverter
             return null;
         }
 
-        return json_encode((object) $map, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        return $map;
     }
 
     /**
@@ -259,20 +395,6 @@ final readonly class ValueConverter
      */
     private function scalar(array $field, mixed $raw): mixed
     {
-        $enum = $field['enum'] ?? null;
-
-        if ($enum !== null) {
-            /** @var class-string<BackedEnum> $enum */
-            $case = is_int($raw) || is_string($raw) ? self::enumCase($enum, $raw) : null;
-
-            return $case ?? throw new InputViolation(new Violation(
-                [],
-                'invalid_choice',
-                'is not one of the allowed values.',
-                ['choices' => array_map(static fn (BackedEnum $c): int|string => $c->value, $enum::cases())],
-            ));
-        }
-
         return match ($field['valueType']) {
             'int' => is_int($raw) ? $raw : throw self::mismatch('an integer'),
             'float' => is_int($raw) || is_float($raw) ? (float) $raw : throw self::mismatch('a number'),
@@ -281,24 +403,6 @@ final readonly class ValueConverter
             'date' => $this->day($raw),
             default => is_string($raw) ? $raw : throw self::mismatch('a string'),
         };
-    }
-
-    /**
-     * The case whose value is $raw, or null. Under strict types tryFrom()
-     * throws a TypeError for the other scalar (a string for an int-backed
-     * enum, an int for a string-backed one) so that is no case either.
-     *
-     * @param class-string<BackedEnum> $enum
-     */
-    private static function enumCase(string $enum, int|string $raw): ?BackedEnum
-    {
-        return is_int($raw) === self::intBacked($enum) ? $enum::tryFrom($raw) : null;
-    }
-
-    /** @param class-string<BackedEnum> $enum */
-    private static function intBacked(string $enum): bool
-    {
-        return (string) (new \ReflectionEnum($enum))->getBackingType() === 'int';
     }
 
     /**

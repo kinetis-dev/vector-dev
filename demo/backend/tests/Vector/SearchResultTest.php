@@ -69,7 +69,7 @@ final class SearchResultTest extends VectorTestCase
             }
         };
 
-        foreach ([[$subtitle, 'is not a text, number or enum field'], [$image, 'is not an image field']] as [$resource, $message]) {
+        foreach ([[$subtitle, 'is not a text, number or single select field'], [$image, 'is not an image field']] as [$resource, $message]) {
             try {
                 (new ResourceCompiler($metadata, [$resource::class]))->compile();
                 self::fail("compiled: {$message}");
