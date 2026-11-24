@@ -26,6 +26,11 @@ const TS_DIR = path.join(root, 'packages/vector-ui/app/utils/countries')
 
 export const LOCALES = ['ar', 'de', 'en', 'es', 'fr', 'he', 'it', 'ja', 'ko', 'nl', 'pl', 'pt', 'pt-BR', 'ru', 'tr', 'uk', 'zh-Hans']
 
+// The ICU locale a file's names come from, when it is not the file's own tag.
+// ICU reads a bare "pt" as Brazilian Portuguese, but the UI labels "pt" as
+// Portugal, so its names come from European Portuguese.
+const SOURCE_LOCALES = { pt: 'pt-PT' }
+
 const CODES_TEXT = `
 AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ
 BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ
@@ -146,7 +151,7 @@ validateCodes(CODES)
 
 const outputs = new Map()
 for (const locale of LOCALES) {
-    const names = namesFor(locale, CODES)
+    const names = namesFor(SOURCE_LOCALES[locale] ?? locale, CODES)
     outputs.set(path.join(TS_DIR, `${locale}.ts`), tsSource(names))
     if (locale === 'en') {
         outputs.set(PHP_FILE, phpSource(names))

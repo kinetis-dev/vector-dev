@@ -29,6 +29,11 @@ describe('country names', () => {
         expect(await loadCountryNames('pt-BR')).toBe((await COUNTRY_LOCALES['pt-BR']!()).default)
     })
 
+    it('names pt in European Portuguese and pt-BR in Brazilian Portuguese', async () => {
+        expect((await loadCountryNames('pt')).IR).toBe('Irão')
+        expect((await loadCountryNames('pt-BR')).IR).toBe('Irã')
+    })
+
     it('falls back from a region tag to its base language', async () => {
         expect(await loadCountryNames('pt-PT')).toBe((await COUNTRY_LOCALES.pt!()).default)
         expect(await loadCountryNames('fr_CA')).toBe((await COUNTRY_LOCALES.fr!()).default)
