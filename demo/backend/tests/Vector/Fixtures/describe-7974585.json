@@ -346,8 +346,7 @@
         "search": [
             "addressLine",
             "city",
-            "postalCode",
-            "country"
+            "postalCode"
         ],
         "defaultSort": [
             {
@@ -393,6 +392,10 @@
                 ],
                 "required": true,
                 "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(200)"
+                ],
                 "sortable": true,
                 "searchable": true
             },
@@ -407,6 +410,10 @@
                 ],
                 "required": true,
                 "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(120)"
+                ],
                 "sortable": true,
                 "searchable": true
             },
@@ -421,28 +428,43 @@
                 ],
                 "required": true,
                 "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(20)"
+                ],
                 "sortable": true,
                 "searchable": true
             },
             {
                 "name": "country",
                 "label": "Country",
-                "type": "string",
+                "type": "country",
                 "valueType": "string",
+                "format": "an ISO 3166-1 alpha-2 country code in upper case",
                 "writable": [
                     "create",
                     "update"
                 ],
                 "required": true,
                 "nullable": false,
+                "rules": [
+                    "NotBlank"
+                ],
+                "filter": [
+                    "eq",
+                    "ne",
+                    "in",
+                    "nin"
+                ],
                 "sortable": true,
-                "searchable": true
+                "choices": "249 values, such as AD, AE, AF, AG, AI"
             },
             {
-                "name": "newsletter",
-                "label": "Newsletter",
-                "type": "boolean",
-                "valueType": "bool",
+                "name": "contact",
+                "label": "Contact by",
+                "type": "booleanGroup",
+                "valueType": "json",
+                "format": "an object of option key to true or false, every key present when read; a key a write leaves out is false",
                 "writable": [
                     "create",
                     "update"
@@ -450,9 +472,47 @@
                 "required": true,
                 "nullable": false,
                 "filter": [
-                    "eq"
+                    "any",
+                    "all"
                 ],
-                "sortable": true
+                "filterHelp": "any: at least one of the comma-separated option keys is on; all: every one of them is on; each flag also filters on its own as filter[contact.<key>]=true or false",
+                "flags": [
+                    {
+                        "name": "contact.newsletter",
+                        "filter": [
+                            "eq"
+                        ],
+                        "sortable": true
+                    },
+                    {
+                        "name": "contact.acceptsSms",
+                        "filter": [
+                            "eq"
+                        ],
+                        "sortable": true
+                    },
+                    {
+                        "name": "contact.acceptsPost",
+                        "filter": [
+                            "eq"
+                        ],
+                        "sortable": true
+                    }
+                ],
+                "options": [
+                    {
+                        "value": "newsletter",
+                        "label": "Newsletter"
+                    },
+                    {
+                        "value": "acceptsSms",
+                        "label": "Text message"
+                    },
+                    {
+                        "value": "acceptsPost",
+                        "label": "Post"
+                    }
+                ]
             }
         ],
         "actions": []
@@ -1823,6 +1883,10 @@
                 ],
                 "required": true,
                 "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(120)"
+                ],
                 "sortable": true,
                 "searchable": true
             },
@@ -1837,6 +1901,10 @@
                 ],
                 "required": true,
                 "nullable": false,
+                "rules": [
+                    "NotBlank",
+                    "MaxLength(120)"
+                ],
                 "sortable": true,
                 "searchable": true
             },
@@ -1851,8 +1919,33 @@
                 ],
                 "required": false,
                 "nullable": true,
+                "rules": [
+                    "MaxLength(255)"
+                ],
                 "sortable": true,
                 "searchable": true
+            },
+            {
+                "name": "countries",
+                "label": "Countries served",
+                "type": "country",
+                "valueType": "json",
+                "format": "a list of ISO 3166-1 alpha-2 country codes in upper case, each at most once; stored in the order the options are listed",
+                "multiple": true,
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "filter": [
+                    "any",
+                    "all",
+                    "null",
+                    "nnull"
+                ],
+                "filterHelp": "any: holds at least one of the comma-separated option values; all: holds every one of them",
+                "choices": "249 values, such as AD, AE, AF, AG, AI"
             },
             {
                 "name": "createdAt",
@@ -2398,6 +2491,40 @@
                     {
                         "value": "api",
                         "label": "API"
+                    }
+                ]
+            },
+            {
+                "name": "flags",
+                "label": "Flags",
+                "type": "booleanGroup",
+                "valueType": "json",
+                "format": "an object of option key to true or false, every key present when read; a key a write leaves out is false",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "filter": [
+                    "any",
+                    "all",
+                    "null",
+                    "nnull"
+                ],
+                "filterHelp": "any: at least one of the comma-separated option keys is on; all: every one of them is on",
+                "options": [
+                    {
+                        "value": "vip",
+                        "label": "VIP customer"
+                    },
+                    {
+                        "value": "refundRequested",
+                        "label": "Refund requested"
+                    },
+                    {
+                        "value": "legalHold",
+                        "label": "Legal hold"
                     }
                 ]
             },
