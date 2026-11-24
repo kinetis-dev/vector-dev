@@ -324,6 +324,47 @@ describe('VxResourceForm: selects and JSON documents', () => {
     })
 })
 
+describe('VxResourceForm: flag groups and countries', () => {
+    const profiles = resource({
+        slug: 'customer-profiles',
+        label: 'Customer profiles',
+        labelSingular: 'Customer profile',
+        fields: [
+            field({ name: 'city', nullable: false }),
+            field({ name: 'country', type: 'country', nullable: false, hasDefault: true, default: 'DE', options: [{ value: 'DE', label: 'Germany', color: null }, { value: 'NL', label: 'Netherlands', color: null }] }),
+            field({ name: 'contact', type: 'booleanGroup', storage: 'columns', nullable: false, options: [{ value: 'newsletter', label: 'Newsletter', color: null }, { value: 'acceptsSms', label: 'Text message', color: null }] }),
+        ],
+    })
+
+    it('edits a flag group as checkboxes and sends every flag', async () => {
+        const create = mock('/vector/r/customer-profiles', { status: 201, body: { data: { id: 3 }, permissions: {} } }, 'POST')
+        const form = await mountForm({ resource: profiles, operation: 'create' })
+        const group = form.find('[data-flag-group="contact"]')
+
+        expect(group.find('legend').text()).toBe('Contact')
+        expect(group.findAll('.v-checkbox label').map(l => l.text())).toEqual(['Newsletter', 'Text message'])
+        await input(form, 'City').find('input').setValue('Berlin')
+        await group.findAll('input[type="checkbox"]')[1]!.setValue(true)
+
+        await submit(form)
+
+        await vi.waitFor(() => expect(create.requests).toHaveLength(1))
+        expect(create.requests[0]!.body).toEqual({ city: 'Berlin', country: 'DE', contact: { newsletter: false, acceptsSms: true } })
+    })
+
+    it('names the chosen country in the UI\'s language', async () => {
+        const locale = useNuxtApp().$vectorI18n.global.locale
+        locale.value = 'fr'
+
+        try {
+            const form = await mountForm({ resource: profiles, operation: 'create' })
+            await vi.waitFor(() => expect(input(form, 'Country').text()).toContain('Allemagne'))
+        } finally {
+            locale.value = 'en'
+        }
+    })
+})
+
 describe('VxResourceForm: a copy of a record', () => {
     const products = resource({
         slug: 'products',

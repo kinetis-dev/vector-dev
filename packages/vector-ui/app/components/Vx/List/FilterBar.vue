@@ -24,6 +24,16 @@ function openAdd(where: Target, event: Event) {
 }
 
 const { t, locale } = useVectorT()
+const countryNames = useVectorCountryNames()
+
+/** The values a choice field offers, each named as the UI shows it: a currency by its name, a country in the UI's language, a flag by its label. */
+function choicesOf(f: VectorField): { value: string | number, label: string }[] {
+    if (f.type === 'currency') return (f.options ?? []).map(o => ({ value: o.value, label: currencyLabel(String(o.value), locale.value) }))
+    if (f.type === 'country') return withCountryNames(f, countryNames.value).options ?? []
+    return f.options ?? []
+}
+
+const CHOICE_TYPES = new Set(['select', 'country', 'booleanGroup', 'currency'])
 
 const OPERATORS: readonly VectorOperator[] = ['eq', 'ne', 'lt', 'lte', 'gt', 'gte', 'in', 'nin', 'like', 'nlike', 'between', 'any', 'all', 'null', 'nnull']
 
@@ -158,8 +168,7 @@ function chipText(name: string, op: string, v: string): string {
 
     let shown = v
 
-    if (f.type === 'select') shown = v.split(',').map(x => f.options?.find(o => String(o.value) === x)?.label ?? x).join(', ')
-    if (f.type === 'currency') shown = v.split(',').map(x => currencyLabel(x, locale.value)).join(', ')
+    if (CHOICE_TYPES.has(f.type)) shown = v.split(',').map(x => choicesOf(f).find(o => String(o.value) === x)?.label ?? x).join(', ')
     if (f.type === 'boolean') shown = v === 'true' || v === '1' ? t('list.filter.yes') : t('list.filter.no')
     if (f.type === 'money' && !['in', 'nin', 'between'].includes(op)) shown = (Number(v) / 10 ** moneyDigits(f)).toFixed(moneyDigits(f))
     if (op === 'between') shown = v.replace(',', ` ${t('list.filter.and')} `)
@@ -205,7 +214,8 @@ const anything = computed(() => active.value.length > 0 || groups.value.length >
                 <v-select v-model="fieldName" :label="t('list.field')" :items="filterable" item-title="label" item-value="name" density="compact" hide-details class="mb-3" />
                 <v-select v-if="field" v-model="operator" :label="t('list.filter.condition')" :items="field.operators.map(op => ({ title: operatorLabel(op), value: op }))" density="compact" hide-details class="mb-3" />
                 <template v-if="field && needsValue">
-                    <v-select v-if="field.type === 'select' || field.type === 'currency'" v-model="value" :label="t('list.filter.value')" :items="field.type === 'currency' ? (field.options ?? []).map(o => ({ value: o.value, label: currencyLabel(String(o.value), locale) })) : (field.options ?? [])" item-title="label" item-value="value" density="compact" hide-details class="mb-3" :multiple="list" @update:model-value="(v: unknown) => value = Array.isArray(v) ? v.join(',') : String(v ?? '')" />
+                    <v-autocomplete v-if="CHOICE_TYPES.has(field.type) && field.autocomplete" :label="t('list.filter.value')" :items="choicesOf(field)" item-title="label" item-value="value" density="compact" hide-details class="mb-3" :multiple="list" @update:model-value="(v: unknown) => value = Array.isArray(v) ? v.join(',') : String(v ?? '')" />
+                    <v-select v-else-if="CHOICE_TYPES.has(field.type)" v-model="value" :label="t('list.filter.value')" :items="choicesOf(field)" item-title="label" item-value="value" density="compact" hide-details class="mb-3" :multiple="list" @update:model-value="(v: unknown) => value = Array.isArray(v) ? v.join(',') : String(v ?? '')" />
                     <v-select v-else-if="field.type === 'boolean'" v-model="value" :label="t('list.filter.value')" :items="[{ title: t('common.yes'), value: 'true' }, { title: t('common.no'), value: 'false' }]" density="compact" hide-details class="mb-3" />
                     <v-autocomplete v-else-if="field.type === 'belongsTo'" v-model:search="relationSearch" :label="t('list.filter.value')" :items="relationOptions" item-title="label" item-value="id" density="compact" hide-details class="mb-3" :multiple="list" no-filter @update:model-value="(v: unknown) => value = Array.isArray(v) ? v.join(',') : String(v ?? '')" />
                     <template v-else>

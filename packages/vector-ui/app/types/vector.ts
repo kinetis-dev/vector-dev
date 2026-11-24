@@ -5,7 +5,7 @@
 
 export type VectorFieldType =
     | 'id' | 'string' | 'text' | 'markdown' | 'number' | 'money' | 'boolean'
-    | 'select' | 'date' | 'datetime' | 'email' | 'url' | 'password' | 'slug'
+    | 'select' | 'country' | 'booleanGroup' | 'date' | 'datetime' | 'email' | 'url' | 'password' | 'slug'
     | 'color' | 'json' | 'keyValue' | 'currency' | 'file' | 'image'
     | 'belongsTo' | 'hasOne' | 'hasMany' | 'manyToMany' | 'computed' | 'richtext'
 
@@ -94,6 +94,10 @@ export interface VectorField {
     autocomplete?: boolean
     /** A select shown as coloured chips (badge()). */
     badge?: boolean
+    /** A flag group's storage: a bool column per option (each also filtered and sorted as `group.key`), or one JSON object. */
+    storage?: 'columns' | 'json'
+    /** A columns-mode flag group whose flags sort as `group.key`. */
+    flagsSortable?: boolean
     relation?: VectorRelation
     conditions?: VectorFieldConditions
     /** A computed field: shown as `as`, computed on the server from the `from` fields. */

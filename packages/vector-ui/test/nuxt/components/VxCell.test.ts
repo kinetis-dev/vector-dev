@@ -69,6 +69,30 @@ describe('VxCell', () => {
         expect(chips[0]!.classes()).toContain('text-primary')
     })
 
+    it('renders a country by its name in the UI\'s language', async () => {
+        const country = field({ name: 'country', type: 'country', options: [{ value: 'DE', label: 'Germany', color: null }, { value: 'NL', label: 'Netherlands', color: null }] })
+        await vi.waitFor(async () => expect((await cell(country, 'DE')).text()).toBe('Germany'))
+
+        const locale = useNuxtApp().$vectorI18n.global.locale
+        locale.value = 'de'
+
+        try {
+            await vi.waitFor(async () => expect((await cell(country, 'DE')).text()).toBe('Deutschland'))
+            const several = await cell({ ...country, multiple: true, badge: true }, ['DE', 'NL'])
+            await vi.waitFor(() => expect(several.findAll('.v-chip').map(c => c.text())).toEqual(['Deutschland', 'Niederlande']))
+        } finally {
+            locale.value = 'en'
+        }
+    })
+
+    it('renders a flag group as the labels of the flags that are on', async () => {
+        const contact = field({ name: 'contact', type: 'booleanGroup', options: [{ value: 'newsletter', label: 'Newsletter', color: null }, { value: 'acceptsSms', label: 'Text message', color: null }, { value: 'acceptsPost', label: 'Post', color: null }] })
+
+        expect((await cell(contact, { newsletter: true, acceptsSms: false, acceptsPost: true })).findAll('.v-chip').map(c => c.text())).toEqual(['Newsletter', 'Post'])
+        expect((await cell(contact, { newsletter: false, acceptsSms: false, acceptsPost: false })).text()).toBe('—')
+        expect((await cell(contact, null)).text()).toBe('—')
+    })
+
     it('renders a JSON document on one line in a list', async () => {
         expect((await cell(field({ name: 'metadata', type: 'json' }), { carrier: 'DHL', parcels: [1, 2] })).text()).toBe('{"carrier":"DHL","parcels":[1,2]}')
         expect((await cell(field({ name: 'metadata', type: 'json' }), null)).text()).toBe('—')

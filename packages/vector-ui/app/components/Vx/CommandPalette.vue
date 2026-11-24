@@ -36,12 +36,15 @@ watch(open, (o) => { if (!o) { query.value = ''; results.value = [] } })
 
 const keyOf = (r: VectorSearchResult) => `${r.resource}-${r.id}`
 
-/** The subtitle as its field shows it (a select by its label) then the resource. */
+const countryNames = useVectorCountryNames()
+
+/** The subtitle as its field shows it (a select by its label, a country by its name) then the resource. */
 function subtitleOf(r: VectorSearchResult): string {
     const resource = resourceOf(r.resource)
     const field = resource?.fields.find(f => f.name === resource.searchResult?.subtitle)
     let text = r.subtitle ?? null
-    if (text !== null && field?.type === 'select') text = field.options?.find(o => String(o.value) === text)?.label ?? text
+    if (text !== null && field?.type === 'country') text = countryNames.value[text] ?? field.options?.find(o => String(o.value) === text)?.label ?? text
+    else if (text !== null && field?.type === 'select') text = field.options?.find(o => String(o.value) === text)?.label ?? text
     else if (text !== null && field?.type === 'number' && text !== '' && !Number.isNaN(Number(text))) {
         const decimals = fieldProps(field).decimals
         text = formatNumber(Number(text), typeof decimals === 'number' ? decimals : undefined)
