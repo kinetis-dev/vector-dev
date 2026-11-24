@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-24
+
 ### Changed
 
+- Requires `kinetis/vector` ^0.18.
 - Requires `kinetis/query-builder` ^1.8.6.
 - The AI settings' `dataDefault` is a `Select` field, kinetis/vector
   having retired `Enum`; its options and default are unchanged.

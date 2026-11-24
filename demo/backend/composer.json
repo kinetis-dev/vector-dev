@@ -30,7 +30,7 @@
         "kinetis/queue-sql": "^1.6.13",
         "kinetis/session": "^1.4.1",
         "kinetis/storage": "^1.2.9",
-        "kinetis/vector": "dev-main as 0.17.0",
+        "kinetis/vector": "dev-main as 0.18.0",
         "kinetis/vector-ai": "dev-main",
         "openspout/openspout": "^5.15.3",
         "psr/http-message": "^2.0"

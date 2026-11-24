@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-24
+
 ### Added
 
 - `Vx/Cell/BooleanGroup.vue` and `Vx/Input/BooleanGroup.vue` for
