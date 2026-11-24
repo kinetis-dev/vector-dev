@@ -17,10 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   other way round) made every create leaving the field out fail with
   `invalid_choice`, and threw for an action input hidden by its
   condition. The compiled default is now the matched option's own value.
-- A `Json` document sent as `{}`, or holding one, was stored and read
-  back as `[]`, and an empty `KeyValue` on a column that may not hold
-  `null` stored `[]`. A REST create or update now stores an object sent
-  as an object; a list stays a list.
 - The rows endpoint of a relationship repeater loaded at most `max()`
   children, so saving the form deleted every child past `max()`. It now
   loads all of them, and `max()` refuses that save with a 422.

@@ -26,7 +26,7 @@ second column.
 | `Select` | `select` | A choice among fixed options, one value or several with `multiple()`; see [Select](#select). |
 | `BooleanGroup` | `booleanGroup` | Named on/off options shown as one cell and edited as one group of checkboxes, in a bool column each or in one JSON column; see [BooleanGroup](#booleangroup). |
 | `Country` | `country` | An ISO 3166-1 alpha-2 country code, or several: a select over every assigned code; see [Country](#country). |
-| `KeyValue` | `keyValue` | A JSON object of text values in a JSON column (an `array` or `?array` property), edited as key/value rows; `columns('Attribute', 'Value')`, `maxEntries(n)` (50 by default). On the wire it is an object; a stored number or boolean reads back as text, and an empty object stores `null` where the column allows it. Keys are trimmed and at most 100 characters. A JSON column may reorder the keys. It cannot be sorted, filtered, searched or summarized, and is imported as JSON text. |
+| `KeyValue` | `keyValue` | A JSON object of text values in a JSON column (an `array` or `?array` property), edited as key/value rows; `columns('Attribute', 'Value')`, `maxEntries(n)` (50 by default). On the wire it is an object; a stored number or boolean reads back as text, and an empty object stores `null` where the column allows it, and `[]` where it does not (see [JSON columns](#json-columns)). Keys are trimmed and at most 100 characters. A JSON column may reorder the keys. It cannot be sorted, filtered, searched or summarized, and is imported as JSON text. |
 | `Repeater` | `repeater` | Rows edited inside the form: a JSON list of objects of declared fields, or an owned has-many relation's child records; see [Repeater](#repeater). |
 | `Tag` | `tag` | Free-text tags in a JSON list column, shown as chips, filtered by any or all; see [Tag](#tag). |
 | `File`, `Image` | `file`, `image` | An uploaded file's storage key; see {doc}`files`. |
@@ -287,10 +287,17 @@ associative array, a JSON array a list). Declare the column `JSON` on
 MySQL and MariaDB and `jsonb` on PostgreSQL. The build refuses either
 field on any other property.
 
-- `Json` reads as the stored document, an object staying an object even
-  when empty, and writes a JSON object or array; a bare string, number
-  or boolean is refused. A CSV cell is the document's JSON text.
-- `KeyValue` reads and writes an object of text values, as before.
+- `Json` reads as the stored document and writes a JSON object or
+  array; a bare string, number or boolean is refused. A CSV cell is the
+  document's JSON text.
+- `KeyValue` reads and writes an object of text values.
+
+For now an empty object does not keep its shape: the ORM holds a JSON
+column as a PHP array, where `{}` and `[]` are the same value, so a
+`Json` value sent as `{}`, or holding one (`{"box": {}}`), is stored
+and read back with `[]` in its place. An empty `KeyValue` on a column
+that may not hold `null` is stored as `[]` too, though the API still
+answers it as `{}`. Lists are unaffected.
 
 Neither is sorted, filtered, searched, summarized or grouped.
 
