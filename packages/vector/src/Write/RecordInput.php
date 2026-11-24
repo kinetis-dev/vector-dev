@@ -36,6 +36,10 @@ final readonly class RecordInput
      *
      * @param array<array-key, mixed> $payload the decoded JSON object
      * @param array<string, mixed> $current the stored record, serialized, when updating
+     * A columns-mode flag group is returned under its own name, as the
+     * object of every flag, and under each flag's property name, as that
+     * flag's bool: create() and apply() receive both.
+     *
      * @return array<string, mixed> field name => converted value, for every field the payload named
      * @throws ValidationException
      */

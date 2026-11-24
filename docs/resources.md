@@ -188,7 +188,9 @@ inject anything a controller may:
   user sees everywhere: lists, counts, exports, badges, search.
 - `create()` builds a new entity from the validated values, and
   `apply()` writes them to a loaded one. Returning `null` or `false`
-  leaves it to Vector's default writer.
+  leaves it to Vector's default writer. A columns-mode `BooleanGroup`
+  appears in the values twice: under its own name, as the object of every
+  flag, and under each flag's property name, as that flag's bool.
 - `beforeCreate()`, `beforeUpdate()` and `beforeDelete()` run after
   validation and before the flush; `afterCreate()`, `afterUpdate()` and
   `afterDelete()` run after the flush committed. Each receives the

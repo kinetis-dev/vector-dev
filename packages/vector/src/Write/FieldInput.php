@@ -64,6 +64,7 @@ final readonly class FieldInput
             $values[$name] = match (true) {
                 $default !== null => $this->converter->convert($field, $default),
                 $field['type'] === 'boolean' => false,
+                $field['type'] === 'booleanGroup' => ValueConverter::flags($field, []),
                 default => null,
             };
 
@@ -73,6 +74,13 @@ final readonly class FieldInput
         if ($raw === null || $raw === '') {
             if (($state === null || !$state['required']) && ($field['nullable'] ?? true) === true) {
                 $values[$name] = $field['type'] === 'boolean' ? false : null;
+
+                return [];
+            }
+
+            // a flag group left out is every flag off, unless it is required()
+            if ($field['type'] === 'booleanGroup' && ($state === null || !$state['required']) && !self::isRequired($field)) {
+                $values[$name] = ValueConverter::flags($field, []);
 
                 return [];
             }
@@ -87,6 +95,12 @@ final readonly class FieldInput
         }
 
         return array_map(static fn (Violation $v): Violation => $v->under($name), $this->converter->violationsOfRules($field, $raw));
+    }
+
+    /** @param array<string, mixed> $field */
+    private static function isRequired(array $field): bool
+    {
+        return array_any($field['rules'] ?? [], static fn (array $rule): bool => str_ends_with((string) $rule['constraint'], '\\NotBlank'));
     }
 
     /** @param array<string, mixed> $field */

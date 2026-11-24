@@ -37,6 +37,7 @@ use Kinetis\Vector\VectorResource;
 final class BooleanGroupFieldTest extends VectorTestCase
 {
     use InteractsWithVector;
+    use ValidatesInput;
 
     private const array CONTACT = ['newsletter' => 'Newsletter', 'acceptsSms' => 'Text message', 'acceptsPost' => 'Post'];
 
@@ -125,6 +126,75 @@ final class BooleanGroupFieldTest extends VectorTestCase
         self::assertSame('accepts_sms', $compiled['columns']['contact.acceptsSms'], 'each flag sorts by its own column');
         self::assertTrue($compiled['creation']['possible'], 'the group writes the flags a new profile needs');
         self::assertArrayNotHasKey('contact', $compiled['columns']);
+    }
+
+    /**
+     * A columns-mode group whose every flag property declares a default
+     * defaults to those values, so a create may leave it out; one flag
+     * without a default keeps the group required on create.
+     */
+    public function testAColumnsGroupDefaultsWhenEveryFlagPropertyDoes(): void
+    {
+        $defaulted = $this->compile(new #[Resource(CustomerProfile::class, slug: 'flag-profiles')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), BooleanGroup::make('contact')->options(['acceptsSms' => 'SMS', 'acceptsPost' => 'Post'])];
+            }
+        });
+        $contact = array_column($defaulted['fields'], null, 'name')['contact'];
+
+        self::assertSame([true, ['acceptsSms' => false, 'acceptsPost' => false]], [$contact['hasDefault'], $contact['default']]);
+        self::assertSame(
+            ['contact' => ['acceptsSms' => false, 'acceptsPost' => false], 'acceptsSms' => false, 'acceptsPost' => false],
+            $this->recordInput($defaulted, []),
+            'a create leaving the group out writes each property\'s default',
+        );
+        self::assertSame(['contact' => ['acceptsSms' => true, 'acceptsPost' => false], 'acceptsSms' => true, 'acceptsPost' => false], $this->recordInput($defaulted, ['contact' => ['acceptsSms' => true]]));
+
+        $required = $this->compile(new #[Resource(CustomerProfile::class, slug: 'flag-profiles')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), BooleanGroup::make('contact')->options(['newsletter' => 'Newsletter', 'acceptsSms' => 'SMS'])];
+            }
+        });
+
+        self::assertFalse(array_column($required['fields'], null, 'name')['contact']['hasDefault'], 'newsletter declares no default');
+        self::assertSame([[['contact'], 'required']], $this->recordInput($required, []));
+    }
+
+    public function testTwoColumnsGroupsMayNotNameTheSameFlag(): void
+    {
+        $this->expectException(ResourceCompileException::class);
+        $this->expectExceptionMessage('names the flag "acceptsSms", which the flag group "post" names too; a flag is written by one group alone');
+
+        $this->compile(new #[Resource(CustomerProfile::class, slug: 'flag-profiles')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [
+                    Id::make(),
+                    BooleanGroup::make('contact')->options(['newsletter' => 'Newsletter', 'acceptsSms' => 'SMS']),
+                    BooleanGroup::make('post')->options(['acceptsPost' => 'Post', 'acceptsSms' => 'SMS']),
+                ];
+            }
+        });
+    }
+
+    /**
+     * An action's or a settings group's flags are never null: without
+     * required() they are published non-nullable, and a value left out
+     * is every flag off; required() asks for the object.
+     */
+    public function testALooseGroupIsAlwaysAnObjectOfEveryKey(): void
+    {
+        $optional = ResourceCompiler::compileLoose(BooleanGroup::make('notify')->options(['email' => 'Email', 'sms' => 'SMS']), [], 'an action');
+        $required = ResourceCompiler::compileLoose(BooleanGroup::make('notify')->options(['email' => 'Email', 'sms' => 'SMS'])->required(), [], 'an action');
+
+        self::assertFalse($optional['nullable']);
+        self::assertSame(['notify' => ['email' => false, 'sms' => false]], $this->fieldInput(['notify' => $optional], []));
+        self::assertSame(['notify' => ['email' => false, 'sms' => false]], $this->fieldInput(['notify' => $optional], ['notify' => null]));
+        self::assertSame(['notify' => ['email' => false, 'sms' => true]], $this->fieldInput(['notify' => $optional], ['notify' => ['sms' => true]]));
+        self::assertSame([[['notify'], 'required']], $this->fieldInput(['notify' => $required], []));
+        self::assertSame(['notify' => ['email' => true, 'sms' => false]], $this->fieldInput(['notify' => $required], ['notify' => ['email' => true]]));
     }
 
     public function testAnOptionKeyIsAPlainName(): void

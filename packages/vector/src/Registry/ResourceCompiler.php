@@ -315,7 +315,8 @@ final class ResourceCompiler
         }
 
         $required = array_any($array['rules'], static fn (array $rule): bool => str_ends_with($rule['constraint'], '\\NotBlank'));
-        $array['nullable'] = !$required;
+        // a flag group is always the object of every key, false where none is ticked, never null
+        $array['nullable'] = !$required && $type !== 'booleanGroup';
         $array['valueType'] = match ($type) {
             'number' => isset($array['props']['decimals']) && $array['props']['decimals'] > 0 ? 'float' : 'int',
             'money' => 'int',
@@ -449,6 +450,8 @@ final class ResourceCompiler
 
         $array = self::checkFlagOptions($class, $array);
         $flags = [];
+        $defaults = [];
+        $reflection = new ReflectionClass($entity['class']);
 
         foreach (array_column($array['options'], 'value') as $key) {
             $property = $properties[$key] ?? null;
@@ -458,6 +461,19 @@ final class ResourceCompiler
             }
 
             $flags[$key] = $property['column'];
+            $declared = $reflection->getProperty($key);
+
+            if ($defaults !== null && $declared->hasDefaultValue()) {
+                $defaults[$key] = $declared->getDefaultValue() === true;
+            } else {
+                $defaults = null;
+            }
+        }
+
+        // every flag's property starting with a value: so does the group, and a create may leave it out
+        if (($array['hasDefault'] ?? false) !== true && $defaults !== null) {
+            $array['hasDefault'] = true;
+            $array['default'] = $defaults;
         }
 
         $array['flags'] = $flags;
@@ -486,6 +502,12 @@ final class ResourceCompiler
             foreach (array_keys($field['flags']) as $key) {
                 if (isset($fields[$key])) {
                     throw ResourceCompileException::field($class, $name, "names the flag \"{$key}\", which is also a field of the resource; a flag is written by its group alone");
+                }
+
+                foreach ($fields as $other => $group) {
+                    if ($other !== $name && self::isFlagColumns($group) && isset($group['flags'][$key])) {
+                        throw ResourceCompileException::field($class, $name, "names the flag \"{$key}\", which the flag group \"{$other}\" names too; a flag is written by one group alone");
+                    }
                 }
             }
 

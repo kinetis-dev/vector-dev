@@ -97,3 +97,22 @@ describe('VxActionDialog: a tag field', () => {
         expect((sent.requests[0]!.body as { fields: Record<string, unknown> }).fields).toEqual({ keywords: [] })
     })
 })
+
+describe('VxActionDialog: a flag group', () => {
+    // a loose group is published non-nullable (even without required()): it starts and is sent as every key, off
+    it('sends every flag, off, when no box is ticked', async () => {
+        const options = [{ value: 'email', label: 'Email', color: null }, { value: 'sms', label: 'SMS', color: null }]
+        const flagged: VectorAction = { ...action, name: 'notify', label: 'Notify', fields: [field({ name: 'channels', type: 'booleanGroup', storage: 'json', nullable: false, options })] }
+        const sent = endpoint('/vector/r/tags/actions/notify', { body: { type: 'message', message: 'Done', url: null, affected: 1 } }, 'POST')
+        cleanups.push(sent.unregister)
+        const wrapper = await mountSuspended(VxActionDialog, { props: { resource: resource(), action: flagged, selection: { ids: [1] }, count: 1 } })
+        mounted.push(wrapper)
+        await flushPromises()
+
+        const submit = [...document.querySelectorAll<HTMLButtonElement>('.v-overlay__content button[type="submit"]')].find(b => b.textContent?.trim() === 'Notify')
+        submit!.click()
+        await vi.waitFor(() => expect(sent.requests).toHaveLength(1))
+
+        expect((sent.requests[0]!.body as { fields: Record<string, unknown> }).fields).toEqual({ channels: { email: false, sms: false } })
+    })
+})

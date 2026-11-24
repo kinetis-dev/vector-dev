@@ -207,10 +207,14 @@ The build refuses a mismatch and converts nothing: an option key that is
 not a non-null bool property in columns mode, a group named after a
 property in columns mode, a flag that is also declared as a field of its
 own (the group writes it), JSON mode on a property that is not an array,
-a group without options, and a `default()` that is not an object of
-some of its keys to booleans. A columns-mode group also counts as
-writing its flags' properties when the build checks that a record can be
-created. Bit masks are not supported.
+a group without options, a `default()` that is not an object of
+some of its keys to booleans, and two columns-mode groups naming the same
+flag. A columns-mode group also counts as writing its flags' properties
+when the build checks that a record can be created. When every flag's
+property declares a default (`private bool $acceptsSms = false;`) and the
+group has no `default()` of its own, the group defaults to those values,
+so a create may leave it out and stores them; when one of them declares
+none, a create must send the group. Bit masks are not supported.
 
 ### Strict keys
 
