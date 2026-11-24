@@ -65,6 +65,14 @@ const needsValue = computed(() => operator.value !== null && !['null', 'nnull'].
 // a list of values: in/nin of a column, any/all of a multiple select's options
 const list = computed(() => ['in', 'nin', 'any', 'all'].includes(operator.value ?? ''))
 
+/** What a choice input shows as picked: the comma-separated `value` as the options' own values, a list for a list operator. */
+const picked = computed(() => {
+    const own = new Map(field.value ? choicesOf(field.value).map(o => [String(o.value), o.value] as const) : [])
+    const parts = value.value === '' ? [] : value.value.split(',').map(text => own.get(text) ?? text)
+
+    return list.value ? parts : (parts[0] ?? null)
+})
+
 const searchRelation = useDebounceFn(async (q: string) => {
     if (!field.value) return
     relationOptions.value = (await client.options(field.value.name, q)).data
@@ -214,8 +222,8 @@ const anything = computed(() => active.value.length > 0 || groups.value.length >
                 <v-select v-model="fieldName" :label="t('list.field')" :items="filterable" item-title="label" item-value="name" density="compact" hide-details class="mb-3" />
                 <v-select v-if="field" v-model="operator" :label="t('list.filter.condition')" :items="field.operators.map(op => ({ title: operatorLabel(op), value: op }))" density="compact" hide-details class="mb-3" />
                 <template v-if="field && needsValue">
-                    <v-autocomplete v-if="CHOICE_TYPES.has(field.type) && field.autocomplete" :label="t('list.filter.value')" :items="choicesOf(field)" item-title="label" item-value="value" density="compact" hide-details class="mb-3" :multiple="list" @update:model-value="(v: unknown) => value = Array.isArray(v) ? v.join(',') : String(v ?? '')" />
-                    <v-select v-else-if="CHOICE_TYPES.has(field.type)" v-model="value" :label="t('list.filter.value')" :items="choicesOf(field)" item-title="label" item-value="value" density="compact" hide-details class="mb-3" :multiple="list" @update:model-value="(v: unknown) => value = Array.isArray(v) ? v.join(',') : String(v ?? '')" />
+                    <v-autocomplete v-if="CHOICE_TYPES.has(field.type) && field.autocomplete" :model-value="picked" :label="t('list.filter.value')" :items="choicesOf(field)" item-title="label" item-value="value" density="compact" hide-details class="mb-3" :multiple="list" @update:model-value="(v: unknown) => value = Array.isArray(v) ? v.join(',') : String(v ?? '')" />
+                    <v-select v-else-if="CHOICE_TYPES.has(field.type)" :model-value="picked" :label="t('list.filter.value')" :items="choicesOf(field)" item-title="label" item-value="value" density="compact" hide-details class="mb-3" :multiple="list" @update:model-value="(v: unknown) => value = Array.isArray(v) ? v.join(',') : String(v ?? '')" />
                     <v-select v-else-if="field.type === 'boolean'" v-model="value" :label="t('list.filter.value')" :items="[{ title: t('common.yes'), value: 'true' }, { title: t('common.no'), value: 'false' }]" density="compact" hide-details class="mb-3" />
                     <v-autocomplete v-else-if="field.type === 'belongsTo'" v-model:search="relationSearch" :label="t('list.filter.value')" :items="relationOptions" item-title="label" item-value="id" density="compact" hide-details class="mb-3" :multiple="list" no-filter @update:model-value="(v: unknown) => value = Array.isArray(v) ? v.join(',') : String(v ?? '')" />
                     <template v-else>
