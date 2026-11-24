@@ -483,8 +483,9 @@ Repeater::make('specs', 'Specifications')->fields([
 {"specs": [{"label": "Warranty", "value": "24 months"}, {"label": "Made in", "value": "Portugal"}]}
 ```
 
-A row field is a plain value: text, number, money, boolean, select,
-currency, date, date-time or tags; never a relation, a file, rich text
+A row field is a plain value: text, textarea, markdown, email, URL,
+slug, color, number, money, boolean, select, currency, date, date-time
+or tags; never a relation, a file, rich text
 or another repeater. Each row is converted and checked by its fields'
 own rules, a field the row leaves out takes its default (or is
 `required` when it may not be empty), and a key no field declares is
@@ -572,8 +573,10 @@ A filterable tag field filters by `any` (the default for a bare value,
 JSON list SQL as a multiple select on both dialects, plus `null` and
 `nnull` on a nullable column. A filter compares each tag exactly as it
 is stored, so `eco` does not match a stored `Eco`; send a list as an
-array (`filter[keywords][all][]=...`) when a tag holds a comma. A tag
-field is never sorted, grouped, searched, summarized or edited inline.
+array (`filter[keywords][all][]=...`) when a tag holds a comma. The
+list's filter bar separates the tags it sends by commas, so a tag that
+holds a comma cannot be filtered from the UI; the API's array form
+filters it. A tag field is never sorted, grouped, searched, summarized or edited inline.
 It is exported as JSON and imported from JSON or `|`-separated text.
 
 ## See also
