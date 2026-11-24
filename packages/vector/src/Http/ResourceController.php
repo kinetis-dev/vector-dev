@@ -32,7 +32,6 @@ use Kinetis\Vector\Widgets\WidgetRunner;
 use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Vector\Query\ListRequest;
 use Kinetis\Vector\Query\ResourceService;
-use Kinetis\Vector\Write\JsonShape;
 use Kinetis\Vector\Write\RecordWriter;
 use Kinetis\Vector\Write\ValueConverter;
 use Psr\Http\Message\ResponseInterface;
@@ -389,7 +388,7 @@ final readonly class ResourceController
     public function create(string $resource, ServerRequestInterface $request): ResponseInterface
     {
         $descriptor = $this->service->resource($resource);
-        $record = $this->writer->create($descriptor, $this->body($request), JsonShape::document((string) $request->getBody()));
+        $record = $this->writer->create($descriptor, $this->body($request));
 
         return JsonResponse::create(['data' => $record, 'permissions' => $this->service->recordPermissions($descriptor, $record)], 201);
     }
@@ -400,7 +399,7 @@ final readonly class ResourceController
     {
         $descriptor = $this->service->resource($resource);
         $ifMatch = trim($request->getHeaderLine('If-Match'), " \t\"");
-        $record = $this->writer->update($descriptor, $id, $this->body($request), $ifMatch === '' ? null : $ifMatch, JsonShape::document((string) $request->getBody()));
+        $record = $this->writer->update($descriptor, $id, $this->body($request), $ifMatch === '' ? null : $ifMatch);
 
         return ['data' => $record, 'permissions' => $this->service->recordPermissions($descriptor, $record)];
     }

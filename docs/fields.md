@@ -289,12 +289,8 @@ field on any other property.
 
 - `Json` reads as the stored document, an object staying an object even
   when empty, and writes a JSON object or array; a bare string, number
-  or boolean is refused. A document a REST create or update sends is
-  stored with its shape: an object as an object, an empty one (`{}`,
-  `{"box": {}}`) included, and a list as a list, unless a hook changed
-  the value. A CSV cell is the document's JSON text.
-- `KeyValue` reads and writes an object of text values, and stores an
-  object, `{}` when it is empty on a column that may not hold `null`.
+  or boolean is refused. A CSV cell is the document's JSON text.
+- `KeyValue` reads and writes an object of text values, as before.
 
 Neither is sorted, filtered, searched, summarized or grouped.
 

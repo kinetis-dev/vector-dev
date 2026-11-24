@@ -51,10 +51,9 @@ final readonly class RecordWriter
 
     /**
      * @param array<array-key, mixed> $payload
-     * @param \stdClass|null $document the request body with its objects kept as objects, for a JSON field's shape
      * @return array<string, mixed> the created record
      */
-    public function create(ResourceDescriptor $resource, array $payload, ?\stdClass $document = null): array
+    public function create(ResourceDescriptor $resource, array $payload): array
     {
         $this->gate->authorize($this->user, $this->policy($resource)->create(...));
         $creation = $resource->creation();
@@ -91,7 +90,6 @@ final readonly class RecordWriter
         $instance->beforeCreate($entity, $context);
         $this->manager($resource)->persist($entity);
         $this->flushWithRows($resource, $plans);
-        $this->keepJsonShape($resource, $entity, $values, $document, null);
         $instance->afterCreate($entity, $context);
         $this->finishRepeaters($plans);
 
@@ -105,12 +103,11 @@ final readonly class RecordWriter
 
     /**
      * @param array<array-key, mixed> $payload
-     * @param \stdClass|null $document the request body with its objects kept as objects, for a JSON field's shape
      * @return array<string, mixed> the updated record
      */
-    public function update(ResourceDescriptor $resource, string $id, array $payload, ?string $expectedVersion, ?\stdClass $document = null): array
+    public function update(ResourceDescriptor $resource, string $id, array $payload, ?string $expectedVersion): array
     {
-        return $this->write($resource, $id, $payload, $expectedVersion, 'update', $document);
+        return $this->write($resource, $id, $payload, $expectedVersion, 'update');
     }
 
     /**
@@ -169,7 +166,7 @@ final readonly class RecordWriter
      * @param array<array-key, mixed> $payload
      * @return array<string, mixed> the updated record
      */
-    private function write(ResourceDescriptor $resource, string $id, array $payload, ?string $expectedVersion, string $event, ?\stdClass $document = null): array
+    private function write(ResourceDescriptor $resource, string $id, array $payload, ?string $expectedVersion, string $event): array
     {
         $current = $this->reader->show($resource, $id);
         $policy = $this->policy($resource);
@@ -213,7 +210,6 @@ final readonly class RecordWriter
 
         $instance->beforeUpdate($entity, $context);
         $this->flushWithRows($resource, $plans);
-        $this->keepJsonShape($resource, $entity, $values, $document, $current);
         $instance->afterUpdate($entity, $context);
         $this->finishRepeaters($plans);
         $this->log($resource, 'update', [$id]);
@@ -225,78 +221,6 @@ final readonly class RecordWriter
         }
 
         return $record;
-    }
-
-    /**
-     * After the flush: each Json or KeyValue column the write set holds
-     * the document with its shape, an object as an object even when it is
-     * empty (`{}`, `{"a": {}}`), where the text the ORM wrote for the
-     * entity's array lost it. A KeyValue value is always an object; a Json
-     * value takes its shape from the request body, and only while the
-     * entity still holds that same document, so a hook's own change is
-     * never written over. One statement per such column, and only when the
-     * column's text would otherwise differ.
-     *
-     * @param array<string, mixed> $values the validated values
-     * @param array<string, mixed>|null $current the record before an update, serialized; null on create
-     */
-    private function keepJsonShape(ResourceDescriptor $resource, object $entity, array $values, ?\stdClass $document, ?array $current): void
-    {
-        $columns = [];
-
-        foreach (array_keys($values) as $name) {
-            $field = $resource->field($name);
-
-            if ($field === null || !in_array($field['type'], ['json', 'keyValue'], true) || !is_string($field['column'] ?? null)) {
-                continue;
-            }
-
-            $value = $this->writer->read($entity, $name);
-            $shaped = match (true) {
-                !is_array($value) => null,
-                $field['type'] === 'keyValue' => (object) $value,
-                $document !== null && property_exists($document, $name) => $document->{$name},
-                default => null,
-            };
-
-            if (!is_array($value) || $shaped === null || !JsonShape::holds($shaped, $value)) {
-                continue;
-            }
-
-            $text = JsonShape::text($shaped);
-
-            $before = $current === null ? null : (array_key_exists($name, $current) ? $current[$name] : false);
-
-            if ($text !== self::storedText($value, $before)) {
-                $columns[$field['column']] = $text;
-            }
-        }
-
-        if ($columns !== []) {
-            $this->manager($resource)->builder()->table($resource->table())
-                ->where($resource->primaryKeyColumn(), '=', $this->writer->read($entity, $resource->primaryKeyField()))
-                ->update($columns);
-        }
-    }
-
-    /**
-     * The text a JSON column holds after the flush: what the ORM writes
-     * for $value when it wrote it (on create, or when the value changed
-     * from the one it loaded), and otherwise what was stored before.
-     *
-     * @param array<array-key, mixed> $value
-     * @param mixed $before the stored document, as read (null on create); false when it was not read
-     */
-    private static function storedText(array $value, mixed $before): ?string
-    {
-        if ($before === false) {
-            return null; // unknown: the shape is written
-        }
-
-        $held = $before === null ? null : JsonShape::text($before);
-        $loaded = $held === null ? null : json_decode($held, true, 512, JSON_THROW_ON_ERROR);
-
-        return $loaded === $value ? $held : JsonShape::text($value);
     }
 
     /**
