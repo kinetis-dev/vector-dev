@@ -80,15 +80,18 @@ export function fieldState(field: VectorField, values: Record<string, unknown>):
 
 function holds(conditions: VectorCondition[], values: Record<string, unknown>): boolean {
     return conditions.every((condition) => {
-        const actual = normalize(values[condition.field])
+        const raw = values[condition.field]
+        const actual = normalize(raw)
         const list = Array.isArray(condition.value) ? condition.value.map(normalize) : [normalize(condition.value)]
+        // a list (a multiple select's values, a relation's ids) is empty when it holds nothing, as the server decides
+        const empty = Array.isArray(raw) ? raw.length === 0 : actual === null
         switch (condition.op) {
             case 'eq': return actual === normalize(condition.value)
             case 'ne': return actual !== normalize(condition.value)
             case 'in': return list.includes(actual)
             case 'nin': return !list.includes(actual)
-            case 'null': return actual === null
-            case 'nnull': return actual !== null
+            case 'null': return empty
+            case 'nnull': return !empty
             default: return false
         }
     })

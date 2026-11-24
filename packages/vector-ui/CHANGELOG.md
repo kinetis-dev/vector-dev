@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Vx/Input/Json.vue` instead of `Vx/Input/Textarea.vue`.
 - `VectorField` publishes `multiple`, `autocomplete` and `badge`, a
   `json` value type, and the `any` and `all` operators.
+- A form condition's `null` and `nnull` treat an empty list as empty and
+  a list holding a value as not, as the server does.
 
 ### Removed
 
