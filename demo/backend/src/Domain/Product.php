@@ -14,9 +14,10 @@ use Kinetis\Orm\Attributes\Version;
 
 /**
  * The widest entity of the demo domain: every scalar field type Vector
- * administers, a money value in minor units, two JSON columns (an object
- * of text values and a list of sales channels),
- * a stored-file key, soft deletion, timestamps and optimistic locking.
+ * administers, a money value in minor units, four JSON columns (an object
+ * of text values, a list of sales channels, a list of spec rows and a
+ * list of free-text keywords), a stored-file key, soft deletion,
+ * timestamps and optimistic locking.
  */
 #[Entity(table: 'products')]
 final class Product
@@ -49,6 +50,12 @@ final class Product
 
     /** @var list<string>|null the sales channels, a multiple select's JSON list */
     private ?array $channels = null;
+
+    /** @var list<array{label: string, value: string}>|null the specification rows, a JSON repeater's list */
+    private ?array $specs = null;
+
+    /** @var list<string>|null free-text keywords, a tag field's JSON list */
+    private ?array $keywords = null;
 
     private ?string $imageKey = null;
 
@@ -118,6 +125,16 @@ final class Product
     public function sellOn(?array $channels): void
     {
         $this->channels = $channels;
+    }
+
+    /**
+     * @param list<array{label: string, value: string}>|null $specs
+     * @param list<string>|null $keywords
+     */
+    public function specify(?array $specs, ?array $keywords): void
+    {
+        $this->specs = $specs;
+        $this->keywords = $keywords;
     }
 
     public function activate(DateTimeImmutable $releasedAt, bool $featured): void

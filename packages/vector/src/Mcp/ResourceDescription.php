@@ -103,6 +103,7 @@ final class ResourceDescription
             'filter' => ($field['filterable'] ?? false) === true && ($field['operators'] ?? []) !== [] ? $field['operators'] : null,
             'filterHelp' => ($field['filterable'] ?? false) === true ? self::filterHelp($field, $compiled) : null,
             'flags' => self::flags($field, $compiled),
+            'rows' => self::rows($field),
             'sortable' => ($field['sortable'] ?? false) === true ? true : null,
             'searchable' => ($field['searchable'] ?? false) === true ? true : null,
         ];
@@ -119,6 +120,26 @@ final class ResourceDescription
     private static function format(array $field): ?string
     {
         $multiple = ($field['multiple'] ?? false) === true;
+
+        if ($field['type'] === 'tag') {
+            $tags = $field['tags'] ?? [];
+
+            return sprintf(
+                'a list of free-text tags, at most %d of at most %d characters each; stored trimmed, without empty ones, each at most once ignoring case (the first spelling kept), in the order sent',
+                (int) ($tags['maxTags'] ?? 20),
+                (int) ($tags['maxLength'] ?? 50),
+            );
+        }
+
+        if ($field['type'] === 'repeater') {
+            $repeater = $field['repeater'];
+            $count = "{$repeater['min']} to {$repeater['max']} rows";
+
+            return ($repeater['mode'] ?? 'json') === 'relationship'
+                ? "a list of {$count}, each an object of the fields in `rows` plus the `id` of an existing row to keep; a row with an id updates that row, one without creates it, and a row left out is deleted, all saved with the record"
+                    . (($repeater['sortable'] ?? false) === true ? '; the list order is the rows\' order' : '')
+                : "a list of {$count}, each an object of the fields in `rows` and no others; stored in the order sent";
+        }
 
         return match (true) {
             $field['type'] === 'country' && $multiple => 'a list of ISO 3166-1 alpha-2 country codes in upper case, each at most once; stored in the order the options are listed',
@@ -142,7 +163,11 @@ final class ResourceDescription
                 . (isset($compiled['flags']) ? '; each flag also filters on its own as filter[' . $field['name'] . '.<key>]=true or false' : '');
         }
 
-        return ($field['multiple'] ?? false) === true ? 'any: holds at least one of the comma-separated option values; all: holds every one of them' : null;
+        return match (true) {
+            ($field['multiple'] ?? false) === true => 'any: holds at least one of the comma-separated option values; all: holds every one of them',
+            $field['type'] === 'tag' => 'any (a bare value): holds at least one of the comma-separated tags; all: holds every one of them; tags match exactly as stored',
+            default => null,
+        };
     }
 
     /**
@@ -170,6 +195,32 @@ final class ResourceDescription
         }
 
         return $flags;
+    }
+
+    /**
+     * The fields one row of a repeater holds: its own in JSON mode, the
+     * child resource's it names in relationship mode.
+     *
+     * @param array<string, mixed> $field
+     * @return list<array<string, mixed>>|null
+     */
+    private static function rows(array $field): ?array
+    {
+        if ($field['type'] !== 'repeater') {
+            return null;
+        }
+
+        if (isset($field['repeater']['rowFields'])) {
+            return array_values(array_map(static fn (array $row): array => [...self::compact([
+                'name' => $row['name'],
+                'type' => $row['type'],
+                'format' => self::format($row),
+                'required' => ($row['nullable'] ?? true) !== true,
+                'rules' => self::rules($row['rules'] ?? []),
+            ]), ...self::options($row)], $field['repeater']['rowFields']));
+        }
+
+        return array_values(array_map(static fn (string $name): array => ['name' => $name], $field['repeater']['fields'] ?? []));
     }
 
     /**

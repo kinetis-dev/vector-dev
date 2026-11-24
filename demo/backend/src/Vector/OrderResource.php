@@ -11,9 +11,9 @@ use Kinetis\Vector\Attributes\Resource;
 use Kinetis\Vector\Fields\BelongsTo;
 use Kinetis\Vector\Fields\Currency;
 use Kinetis\Vector\Fields\DateTime;
-use Kinetis\Vector\Fields\HasMany;
 use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Money;
+use Kinetis\Vector\Fields\Repeater;
 use Kinetis\Vector\Fields\Select;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\Fields\Textarea;
@@ -22,7 +22,8 @@ use Kinetis\Vector\Write\WriteContext;
 
 /**
  * An order is written with its lines: the lines repeater sends the whole
- * list with the order, and the total is what the lines add up to.
+ * list with the order, in the order the lines were dragged into, and the
+ * total is what the lines add up to.
  */
 #[Resource(entity: Order::class, group: 'Sales', icon: 'mdi-cart-outline', title: 'number')]
 final class OrderResource extends VectorResource
@@ -42,7 +43,7 @@ final class OrderResource extends VectorResource
             DateTime::make('placedAt')->required()->sortable()->filterable(),
             DateTime::make('shippedAt')->sortable()->filterable()->hideFromIndex(),
             Textarea::make('notes')->hideFromIndex(),
-            HasMany::to('lines', OrderLineResource::class)->repeater(['product', 'quantity', 'unitPriceCents'], min: 1, max: 50),
+            Repeater::make('lines')->relationship('lines')->fields(['product', 'quantity', 'unitPriceCents'])->min(1)->max(50)->orderBy('position'),
             DateTime::make('createdAt')->readonly()->hideFromForms()->hideFromIndex(),
             DateTime::make('updatedAt')->readonly()->hideFromForms()->hideFromIndex(),
         ];

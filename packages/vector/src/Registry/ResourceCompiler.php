@@ -25,7 +25,9 @@ use Kinetis\Vector\Fields\Json;
 use Kinetis\Vector\Fields\ManyToMany;
 use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\Fields\RelationField;
+use Kinetis\Vector\Fields\Repeater;
 use Kinetis\Vector\Fields\Select;
+use Kinetis\Vector\Fields\Tag;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\Support\Countries;
 use Kinetis\Vector\VectorResource;
@@ -64,7 +66,7 @@ final class ResourceCompiler
         'boolean' => ['eq'],
         'datetime' => ['eq', 'ne', 'lt', 'lte', 'gt', 'gte', 'between'],
         'enum' => ['eq', 'ne', 'in', 'nin'],
-        // a multiple select's JSON list holding any, or all, of the given option values;
+        // a JSON list of values (a multiple select's options, tags): holding any, or all, of the given ones;
         // a flag group's flags among the given keys any, or all, of which are on
         'list' => ['any', 'all'],
         'belongsTo' => ['eq', 'ne', 'in', 'nin'],
@@ -94,7 +96,8 @@ final class ResourceCompiler
             'booleanGroup' => 'list',
             'belongsTo' => 'belongsTo',
             'richtext' => 'presence',
-            'hasOne', 'hasMany', 'manyToMany' => null,
+            'tag' => 'list',
+            'hasOne', 'hasMany', 'manyToMany', 'repeater' => null,
             default => 'string',
         };
     }
@@ -105,7 +108,7 @@ final class ResourceCompiler
      */
     public static function operatorsFor(array $field): array
     {
-        $shape = self::isMultiple($field) ? 'list' : self::operatorShape($field['type']);
+        $shape = self::isList($field) ? 'list' : self::operatorShape($field['type']);
 
         if ($shape === null || $field['filterable'] !== true) {
             return [];
@@ -185,6 +188,39 @@ final class ResourceCompiler
     }
 
     /**
+     * Whether a compiled field holds a JSON list of plain values, filtered
+     * by `any` (a bare value) or `all` of them: a multiple select, or tags.
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function isList(array $field): bool
+    {
+        return self::isMultiple($field) || $field['type'] === 'tag';
+    }
+
+    /**
+     * Whether a compiled field is a relationship-mode repeater: rows that
+     * are child records, written with the parent rather than as a value.
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function isChildRepeater(array $field): bool
+    {
+        return $field['type'] === 'repeater' && ($field['repeater']['mode'] ?? null) === 'relationship';
+    }
+
+    /**
+     * Whether a compiled field holds a collection rather than one value
+     * of its own: an inverse or join relation, or a repeater's rows.
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function isCollection(array $field): bool
+    {
+        return in_array($field['type'], ['hasOne', 'hasMany', 'manyToMany', 'repeater'], true);
+    }
+
+    /**
      * Every dependent choice list names another field of the same form
      * holding a single value; the published relation carries that
      * field's label, for the input's hint.
@@ -207,7 +243,7 @@ final class ResourceCompiler
                 throw ResourceCompileException::field($owner, $name, "depends on {$depends['field']}, which is not another field of the form");
             }
 
-            if (in_array($other['type'], ['hasOne', 'hasMany', 'manyToMany', 'json', 'keyValue', 'booleanGroup', 'file', 'image', 'password'], true) || self::isMultiple($other)) {
+            if (self::isCollection($other) || in_array($other['type'], ['json', 'keyValue', 'booleanGroup', 'file', 'image', 'password'], true) || self::isList($other)) {
                 throw ResourceCompileException::field($owner, $name, "depends on {$depends['field']}, a {$other['type']} field, which holds no single value to match");
             }
 
@@ -219,8 +255,9 @@ final class ResourceCompiler
 
     /**
      * Every condition of every field names another field of the same
-     * form. A collection (hasOne, hasMany, manyToMany) can only be
-     * tested for being empty or not.
+     * form. A collection (hasOne, hasMany, manyToMany, a repeater's rows)
+     * or a list (a multiple select, tags) can only be tested for being
+     * empty or not.
      *
      * @param array<string, array<string, mixed>> $fields field name => compiled field
      */
@@ -255,7 +292,7 @@ final class ResourceCompiler
             throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on the flag group \"{$condition['field']}\", which holds several values a condition cannot compare");
         }
 
-        if ((in_array($target['type'], ['hasOne', 'hasMany', 'manyToMany'], true) || self::isMultiple($target)) && !in_array($condition['op'], ['null', 'nnull'], true)) {
+        if ((self::isCollection($target) || self::isList($target)) && !in_array($condition['op'], ['null', 'nnull'], true)) {
             throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on the collection \"{$condition['field']}\"; only null and nnull apply");
         }
     }
@@ -273,7 +310,7 @@ final class ResourceCompiler
         $array = $field->toArray();
         $type = $field->type();
 
-        if (in_array($type, ['hasOne', 'hasMany', 'manyToMany', 'id'], true)) {
+        if (in_array($type, ['hasOne', 'hasMany', 'manyToMany', 'id', 'repeater'], true)) {
             throw ResourceCompileException::field($owner, $field->name(), "is a {$type} field, which an action or settings group cannot ask for");
         }
 
@@ -297,7 +334,7 @@ final class ResourceCompiler
             $array['storage'] = 'json';
         }
 
-        if ($type === 'json' || $type === 'keyValue' || $type === 'booleanGroup') {
+        if ($type === 'json' || $type === 'keyValue' || $type === 'booleanGroup' || $type === 'tag') {
             $array['valueType'] = 'json';
         }
 
@@ -674,11 +711,12 @@ final class ResourceCompiler
     }
 
     /**
-     * A repeater's rows are its child resource's fields, known only once
-     * every resource is compiled: the ones a row may write (or those the
-     * repeater names) never the field pointing back at the parent. A
-     * child field required to create a row must be among them, and a
-     * soft-deleting child cannot be one, since leaving a row out deletes it.
+     * A relationship-mode repeater's rows are its child resource's
+     * fields, known only once every resource is compiled: the ones a row
+     * may write (or those the repeater names) never the field pointing
+     * back at the parent nor the one orderBy() fills. A child field
+     * required to create a row must be among them, and a soft-deleting
+     * child cannot be one, since leaving a row out deletes it.
      *
      * @param array<string, array<string, mixed>> $compiled
      * @return array<string, array<string, mixed>>
@@ -687,11 +725,11 @@ final class ResourceCompiler
     {
         foreach ($compiled as $slug => $resource) {
             foreach ($resource['fields'] as $index => $field) {
-                $repeater = $field['repeater'] ?? null;
-
-                if ($repeater === null) {
+                if (!self::isChildRepeater($field)) {
                     continue;
                 }
+
+                $repeater = $field['repeater'];
 
                 $compiled[$slug]['fields'][$index]['repeater'] = self::linkRepeater($resource['class'], $field, $repeater, $compiled[$field['relation']['resource']]);
             }
@@ -704,14 +742,25 @@ final class ResourceCompiler
      * @param array<string, mixed> $field the repeater field
      * @param array<string, mixed> $repeater its declaration
      * @param array<string, mixed> $child the compiled child resource
-     * @return array{fields: list<string>, min: mixed, max: mixed}
+     * @return array<string, mixed>
      */
     private static function linkRepeater(string $owner, array $field, array $repeater, array $child): array
     {
         $inverse = $field['relation']['inverse'];
-        $writable = self::repeaterWritable($child, $inverse);
+        $order = $repeater['orderBy'];
+        $writable = self::repeaterWritable($child, $inverse, $order);
 
         foreach ($repeater['fields'] ?? [] as $name) {
+            $candidate = array_column($child['fields'], null, 'name')[$name] ?? null;
+
+            if ($candidate !== null && $candidate['type'] === 'repeater') {
+                throw ResourceCompileException::field($owner, $field['name'], "names \"{$name}\", a repeater of {$child['labelSingular']}; rows never hold another repeater");
+            }
+
+            if ($name === $order) {
+                throw ResourceCompileException::field($owner, $field['name'], "names \"{$name}\", the property orderBy() fills with each row's position");
+            }
+
             if (!in_array($name, $writable, true)) {
                 throw ResourceCompileException::field($owner, $field['name'], "names \"{$name}\", which is not a writable field of {$child['labelSingular']}");
             }
@@ -720,7 +769,7 @@ final class ResourceCompiler
         $fields = $repeater['fields'] ?? $writable;
 
         foreach ($child['fields'] as $candidate) {
-            if ($candidate['name'] !== $inverse && !in_array($candidate['name'], $fields, true) && RecordInput::requiredOnCreate($candidate)) {
+            if ($candidate['name'] !== $inverse && $candidate['name'] !== $order && !in_array($candidate['name'], $fields, true) && RecordInput::requiredOnCreate($candidate)) {
                 throw ResourceCompileException::field($owner, $field['name'], "leaves out \"{$candidate['name']}\", which a new {$child['labelSingular']} row requires");
             }
         }
@@ -733,24 +782,25 @@ final class ResourceCompiler
             throw ResourceCompileException::field($owner, $field['name'], 'is a repeater, which takes no visibleWhen, requiredWhen or disabledWhen');
         }
 
-        return ['fields' => $fields, 'min' => $repeater['min'], 'max' => $repeater['max']];
+        return ['fields' => $fields] + $repeater;
     }
 
     /**
      * The child fields a repeater row may write: never the field pointing
-     * back at the parent, an identifier or a collection.
+     * back at the parent, the position orderBy() fills, an identifier or
+     * a collection.
      *
      * @param array<string, mixed> $child the compiled child resource
      * @return list<string>
      */
-    private static function repeaterWritable(array $child, string $inverse): array
+    private static function repeaterWritable(array $child, string $inverse, ?string $order): array
     {
         $writable = [];
 
         foreach ($child['fields'] as $candidate) {
-            if ($candidate['name'] !== $inverse && $candidate['readonly'] !== true
+            if ($candidate['name'] !== $inverse && $candidate['name'] !== $order && $candidate['readonly'] !== true
                 && array_intersect(['create', 'update'], $candidate['views']) !== []
-                && !in_array($candidate['type'], ['id', 'hasOne', 'hasMany', 'manyToMany'], true)) {
+                && !in_array($candidate['type'], ['id', 'hasOne', 'hasMany', 'manyToMany', 'repeater'], true)) {
                 $writable[] = $candidate['name'];
             }
         }
@@ -958,6 +1008,10 @@ final class ResourceCompiler
             return self::compileFlagColumns($class, $entity, $array, $properties);
         }
 
+        if ($field instanceof Repeater && $field->relationName() !== null) {
+            return $this->compileChildRepeater($class, $entity, $field, $array, $inverses);
+        }
+
         $property = $properties[$name] ?? throw ResourceCompileException::field($class, $name, "is not a mapped property of {$entity['class']}");
 
         if ($property['target'] !== null) {
@@ -982,6 +1036,159 @@ final class ResourceCompiler
         if ($field->type() === 'datetime' && $property['type'] === 'date') {
             throw ResourceCompileException::field($class, $name, 'maps a date-only Kinetis\\Orm\\Date property; declare it with Date::make()');
         }
+
+        if ($field instanceof Repeater) {
+            return $this->compileRowFields($class, $field, $array);
+        }
+
+        return $array;
+    }
+
+    /**
+     * A relationship-mode repeater: an owned #[HasMany] of the entity,
+     * whose child resource lives on the same connection, since its rows
+     * are saved with the parent in one transaction. orderBy() names an
+     * int property of the child.
+     *
+     * @param class-string<VectorResource> $class
+     * @param EntityMapping $entity
+     * @param array<string, mixed> $array
+     * @param array<string, array<string, mixed>> $inverses
+     * @return array<string, mixed>
+     */
+    private function compileChildRepeater(string $class, array $entity, Repeater $field, array $array, array $inverses): array
+    {
+        $name = $field->name();
+        $relation = (string) $field->relationName();
+        $inverse = $inverses[$relation] ?? throw ResourceCompileException::field($class, $name, "names the relation \"{$relation}\", which is not a #[HasMany] property of {$entity['class']}");
+
+        if ($inverse['kind'] !== 'hasMany') {
+            throw ResourceCompileException::field($class, $name, "names the relation \"{$relation}\", a #[HasOne]; a repeater edits a #[HasMany]");
+        }
+
+        if (!$inverse['owned']) {
+            throw ResourceCompileException::field($class, $name, 'is a repeater, which needs an owned #[HasMany]: the parent writes and deletes its rows');
+        }
+
+        $slug = $this->childSlug($class, $name, $field->childResource(), $inverse['target']);
+        $target = $this->entities[$inverse['target']];
+
+        if ($target['connection'] !== $entity['connection']) {
+            throw ResourceCompileException::field($class, $name, "edits {$inverse['target']} on the \"{$target['connection']}\" connection, but {$entity['class']} lives on \"{$entity['connection']}\"; a repeater saves its rows with the parent in one transaction, so both must share a connection");
+        }
+
+        foreach ($field->rowFields() as $row) {
+            if (!is_string($row)) {
+                throw ResourceCompileException::field($class, $name, "declares the row field \"{$row->name()}\"; in relationship mode fields() names fields of the child resource");
+            }
+        }
+
+        $order = $array['repeater']['orderBy'];
+
+        if ($order !== null) {
+            $property = array_values(array_filter($target['properties'], static fn (array $p): bool => $p['name'] === $order))[0] ?? null;
+
+            if ($property === null || $property['target'] !== null || $property['type'] !== 'int') {
+                throw ResourceCompileException::field($class, $name, "orders its rows by \"{$order}\", which is not an int property of {$inverse['target']}");
+            }
+
+            $array['repeater']['orderColumn'] = $property['column'];
+        }
+
+        // no fields() call: every child field a row can write, known once the child is compiled
+        $array['repeater']['fields'] = $field->declaresFields() ? $array['repeater']['fields'] : null;
+        $array['nullable'] = $inverse['nullable'];
+        $array['relation'] = [
+            'kind' => 'hasMany',
+            'resource' => $slug,
+            'titleField' => null,
+            'targetTable' => $target['table'],
+            'targetKey' => $this->columnOf($target, $target['id']),
+            'foreignKey' => $this->columnOf($target, $inverse['mappedBy']),
+            'inverse' => $inverse['mappedBy'],
+            'owned' => true,
+            // the entity's property holding the rows, which may differ from the field's name
+            'property' => $relation,
+        ];
+
+        return $array;
+    }
+
+    /**
+     * The child resource a relationship-mode repeater edits: the one it
+     * names, which must administer the child entity, or the one relations
+     * to that entity link to.
+     *
+     * @param class-string<VectorResource> $class
+     * @param class-string<VectorResource>|null $named
+     */
+    private function childSlug(string $class, string $name, ?string $named, string $childEntity): string
+    {
+        if ($named === null) {
+            return $this->slugByEntity[$childEntity] ?? throw ResourceCompileException::field($class, $name, "edits {$childEntity}, which no resource administers");
+        }
+
+        $registered = $this->resources[$named] ?? throw ResourceCompileException::field($class, $name, "{$named} is not a registered resource");
+
+        if ($registered['attribute']->entity !== $childEntity) {
+            throw ResourceCompileException::field($class, $name, "names {$named}, which administers {$registered['attribute']->entity}, not {$childEntity}");
+        }
+
+        return $registered['slug'];
+    }
+
+    /**
+     * A JSON-mode repeater's row fields, compiled as fields of no entity:
+     * plain values only (no relation, file or nested repeater), each named
+     * once, with no conditions. Its list keeps the order it is sent in,
+     * so orderBy() has nothing to name.
+     *
+     * @param class-string<VectorResource> $class
+     * @param array<string, mixed> $array
+     * @return array<string, mixed>
+     */
+    private function compileRowFields(string $class, Repeater $field, array $array): array
+    {
+        $name = $field->name();
+
+        if ($array['repeater']['orderBy'] !== null) {
+            throw ResourceCompileException::field($class, $name, 'is a JSON repeater, whose rows keep the order they are sent in; orderBy() names a child property in relationship mode');
+        }
+
+        if ($field->rowFields() === []) {
+            throw ResourceCompileException::field($class, $name, 'is a repeater with no row fields; call fields(), or relationship() to edit child records');
+        }
+
+        $slugByClass = array_map(static fn (array $r): string => $r['slug'], $this->resources);
+        $compiled = [];
+
+        foreach ($field->rowFields() as $row) {
+            if (is_string($row)) {
+                throw ResourceCompileException::field($class, $name, "names \"{$row}\"; a JSON repeater's fields() takes field definitions, and naming a child resource's fields needs relationship()");
+            }
+
+            if ($row instanceof Repeater) {
+                throw ResourceCompileException::field($class, $name, "holds the repeater \"{$row->name()}\"; rows never hold another repeater");
+            }
+
+            if (!in_array($row->type(), Repeater::ROW_TYPES, true)) {
+                throw ResourceCompileException::field($class, $name, "holds \"{$row->name()}\", a {$row->type()} field, which a JSON row cannot hold");
+            }
+
+            if (isset($compiled[$row->name()])) {
+                throw ResourceCompileException::field($class, $name, "declares the row field \"{$row->name()}\" twice");
+            }
+
+            $sub = self::compileLoose($row, $slugByClass, $class);
+
+            if (array_merge(...array_values($sub['conditions'])) !== []) {
+                throw ResourceCompileException::field($class, $name, "gives the row field \"{$row->name()}\" a condition, which a row field does not take");
+            }
+
+            $compiled[$row->name()] = $sub;
+        }
+
+        $array['repeater']['rowFields'] = array_values($compiled);
 
         return $array;
     }
@@ -1218,6 +1425,14 @@ final class ResourceCompiler
                 $compiledFields[$name] = self::compileBooleanGroup($class, $field, $compiledFields);
             }
 
+            if ($field['type'] === 'tag') {
+                self::checkTag($class, $name, $field);
+            }
+
+            if ($field['type'] === 'repeater') {
+                self::checkRepeater($class, $name, $field);
+            }
+
             self::checkInline($class, $name, $field);
         }
 
@@ -1334,6 +1549,53 @@ final class ResourceCompiler
         }
 
         return self::checkSelectDefault($class, self::typedOptions($field));
+    }
+
+    /**
+     * Tags live in a JSON column: an `array` or `?array` property, never
+     * sorted, grouped, summarized, searched or edited in a list cell.
+     *
+     * @param array<string, mixed> $field
+     */
+    private static function checkTag(string $class, string $name, array $field): void
+    {
+        $valueType = $field['valueType'] ?? null;
+
+        if ($valueType !== 'json') {
+            throw ResourceCompileException::field($class, $name, "is a tag field, which stores a JSON list of strings: declare the property array or ?array, not {$valueType}");
+        }
+
+        if ($field['sortable'] || $field['searchable'] || ($field['summary'] ?? null) !== null || ($field['inline'] ?? false) === true) {
+            throw ResourceCompileException::field($class, $name, 'is a tag field, which cannot be sorted, grouped, searched, summarized or edited inline');
+        }
+
+        $default = ($field['hasDefault'] ?? false) === true ? $field['default'] : null;
+
+        if ($default !== null && (!is_array($default) || !array_is_list($default) || !array_all($default, is_string(...)))) {
+            throw ResourceCompileException::field($class, $name, 'is a tag field, whose default is a list of strings');
+        }
+    }
+
+    /**
+     * A repeater's rows are never sorted, grouped, filtered, searched,
+     * summarized or edited in a list cell; a JSON-mode one lives in an
+     * `array` or `?array` property.
+     *
+     * @param array<string, mixed> $field
+     */
+    private static function checkRepeater(string $class, string $name, array $field): void
+    {
+        if ($field['repeater']['mode'] === 'json' && ($field['valueType'] ?? null) !== 'json') {
+            throw ResourceCompileException::field($class, $name, "is a JSON repeater, which stores its rows in a JSON column: declare the property array or ?array, not {$field['valueType']}");
+        }
+
+        if ($field['sortable'] || $field['filterable'] || $field['searchable'] || ($field['summary'] ?? null) !== null || ($field['inline'] ?? false) === true) {
+            throw ResourceCompileException::field($class, $name, 'is a repeater, which cannot be sorted, grouped, filtered, searched, summarized or edited inline');
+        }
+
+        if ($field['repeater']['min'] > $field['repeater']['max']) {
+            throw ResourceCompileException::field($class, $name, "is a repeater whose min() ({$field['repeater']['min']}) exceeds its max() ({$field['repeater']['max']})");
+        }
     }
 
     /** @param array<string, mixed> $field */
@@ -1633,7 +1895,7 @@ final class ResourceCompiler
             foreach ($field['computed']['from'] ?? [] as $source) {
                 $type = $fields[$source]['type'] ?? null;
 
-                if ($type === null || in_array($type, ['computed', 'hasOne', 'hasMany', 'manyToMany'], true)) {
+                if ($type === null || in_array($type, ['computed', 'hasOne', 'hasMany', 'manyToMany', 'repeater'], true)) {
                     throw ResourceCompileException::field($class, $name, "is computed from \"{$source}\", which is not a field of the resource holding a value of its own");
                 }
             }
@@ -1843,9 +2105,6 @@ final class ResourceCompiler
                 $relation['owned'] = $inverse['owned'];
                 $array['nullable'] = $inverse['nullable'];
 
-                if (($array['repeater'] ?? null) !== null && !$inverse['owned']) {
-                    throw ResourceCompileException::field($class, $name, 'is a repeater, which needs an owned #[HasMany]: the parent writes and deletes its rows');
-                }
                 break;
 
             case 'manyToMany':

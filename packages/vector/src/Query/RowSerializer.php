@@ -46,6 +46,11 @@ final readonly class RowSerializer
                 'belongsTo' => $this->belongsTo($field, $row, $relations[$name] ?? []),
                 'hasOne' => $relations[$name][$this->key($row, $resource)] ?? null,
                 'hasMany', 'manyToMany' => ['count' => (int) ($relations[$name][$this->key($row, $resource)] ?? 0)],
+                // a child repeater's rows are child records, counted; a JSON one's are the column's list
+                'repeater' => isset($field['relation'])
+                    ? ['count' => (int) ($relations[$name][$this->key($row, $resource)] ?? 0)]
+                    : self::list($name, $row[$field['column']] ?? null),
+                'tag' => self::list($name, $row[$field['column']] ?? null),
                 'keyValue' => self::keyValue($name, $row[$field['column']] ?? null),
                 'json' => self::json($name, $row[$field['column']] ?? null),
                 'select', 'country' => self::select($name, $field, $row[$field['column']] ?? null),
@@ -138,6 +143,23 @@ final readonly class RowSerializer
     private static function json(string $name, mixed $stored): mixed
     {
         return self::decode($name, $stored, false);
+    }
+
+    /**
+     * A JSON column holding a list (tags, a JSON repeater's rows), decoded
+     * to arrays; anything but a list is not what the field stored.
+     *
+     * @return list<mixed>|null
+     */
+    private static function list(string $name, mixed $stored): ?array
+    {
+        $decoded = self::decode($name, $stored, true);
+
+        if ($decoded === null) {
+            return null;
+        }
+
+        return is_array($decoded) && array_is_list($decoded) ? $decoded : throw StoredValueException::invalidJson($name);
     }
 
     /**

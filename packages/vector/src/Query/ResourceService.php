@@ -20,6 +20,7 @@ use Kinetis\Vector\Auth\ResourcePolicyInterface;
 use Kinetis\Vector\Exception\ForbiddenOperationException;
 use Kinetis\Vector\Exception\InvalidListRequestException;
 use Kinetis\Vector\Exception\RecordNotFoundException;
+use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Write\InputViolation;
 use Kinetis\Vector\Write\ValueConverter;
@@ -595,8 +596,8 @@ final readonly class ResourceService
     }
 
     /**
-     * A multiple select's JSON list holding any, or all, of the option
-     * values ListRequest checked.
+     * A JSON list (a multiple select's, or tags) holding any, or all, of
+     * the values ListRequest checked.
      *
      * @param 'mysql'|'pgsql' $dialect
      */
@@ -1309,27 +1310,35 @@ final readonly class ResourceService
     }
 
     /**
-     * The rows a repeater edits: every child of one record, as the child
-     * resource shows a record, oldest first, up to the repeater's maximum.
+     * The rows a relationship-mode repeater edits: every child of one
+     * record, as the child resource shows a record, in the order its
+     * orderBy() property holds (oldest first without one, and among equal
+     * positions), up to the repeater's maximum.
      *
      * @return list<array<string, mixed>>
      */
     public function rows(ResourceDescriptor $resource, string $id, string $fieldName): array
     {
         $field = $resource->field($fieldName);
-        $repeater = $field['repeater'] ?? null;
 
-        if ($field === null || $repeater === null) {
-            throw new InvalidListRequestException("\"{$fieldName}\" is not a repeater of {$resource->slug()}.");
+        if ($field === null || !ResourceCompiler::isChildRepeater($field)) {
+            throw new InvalidListRequestException("\"{$fieldName}\" is not a relationship repeater of {$resource->slug()}.");
         }
+
+        $repeater = $field['repeater'];
 
         $this->show($resource, $id); // exists and is viewable
         $child = $this->resource($field['relation']['resource']);
         $this->gate->authorize($this->user, $this->policy($child)->viewAny(...));
-        $keys = array_column($this->baseQuery($child, null)
+        $query = $this->baseQuery($child, null)
             ->select($child->primaryKeyColumn())
-            ->where($field['relation']['foreignKey'], '=', $this->identifier($resource, $id))
-            ->orderBy($child->primaryKeyColumn(), 'ASC')
+            ->where($field['relation']['foreignKey'], '=', $this->identifier($resource, $id));
+
+        if (isset($repeater['orderColumn']) && is_string($repeater['orderColumn'])) {
+            $query->orderBy($repeater['orderColumn'], 'ASC');
+        }
+
+        $keys = array_column($query->orderBy($child->primaryKeyColumn(), 'ASC')
             ->limit($repeater['max'])
             ->get(), $child->primaryKeyColumn());
         $records = $this->records($child, array_map(strval(...), $keys));
@@ -1348,7 +1357,7 @@ final readonly class ResourceService
         $field = $resource->field($fieldName);
         $relation = $field['relation'] ?? null;
 
-        if ($field === null || $relation === null || !in_array($field['type'], ['hasMany', 'manyToMany'], true)) {
+        if ($field === null || $relation === null || !(in_array($field['type'], ['hasMany', 'manyToMany'], true) || ResourceCompiler::isChildRepeater($field))) {
             throw new InvalidListRequestException("\"{$fieldName}\" is not a collection of {$resource->slug()}.");
         }
 
@@ -1357,7 +1366,7 @@ final readonly class ResourceService
         $key = $this->identifier($resource, $id);
 
         return $this->list($target, $request, function (Query $query) use ($resource, $field, $relation, $target, $key): void {
-            if ($field['type'] === 'hasMany') {
+            if ($field['type'] !== 'manyToMany') {
                 $query->where($relation['foreignKey'], '=', $key);
             } else {
                 $query->whereIn($target->primaryKeyColumn(), $this->query($resource)->table($relation['joinTable'])
@@ -1452,7 +1461,7 @@ final readonly class ResourceService
                     static fn (mixed $v): bool => $v !== null,
                 ))), $relation['carry'] ?? []),
                 'hasOne' => $this->hasOne($target, $relation['foreignKey'], $keys),
-                'hasMany' => $this->counts($target, $relation['targetTable'], $relation['foreignKey'], $keys),
+                'hasMany', 'repeater' => $this->counts($target, $relation['targetTable'], $relation['foreignKey'], $keys),
                 'manyToMany' => $this->counts($target, $relation['joinTable'], $relation['joinColumn'], $keys),
                 default => [],
             };

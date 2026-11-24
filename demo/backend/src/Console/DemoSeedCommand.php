@@ -177,6 +177,14 @@ final readonly class DemoSeedCommand
 
             // a multiple select: some of the channels, in the order the resource lists them
             $product->sellOn(self::someOf(ProductResource::CHANNELS, $i));
+            // a JSON repeater's rows and a tag list, from the index alone: the random sequence stays as it was
+            $product->specify(
+                $i % 4 === 0 ? null : [
+                    ['label' => 'Warranty', 'value' => (12 * (1 + $i % 3)) . ' months'],
+                    ['label' => 'Made in', 'value' => ['Portugal', 'Germany', 'Vietnam'][$i % 3]],
+                ],
+                self::someOf(array_combine(ProductResource::KEYWORDS, ProductResource::KEYWORDS), $i * 3),
+            );
             $roll = mt_rand(1, 10);
 
             if ($roll <= 7) {

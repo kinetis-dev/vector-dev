@@ -30,6 +30,7 @@ use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\Fields\RichText;
 use Kinetis\Vector\Fields\Select;
+use Kinetis\Vector\Fields\Tag;
 use Kinetis\Vector\FullText;
 use Kinetis\Vector\VectorResource;
 
@@ -45,13 +46,16 @@ final class TicketResource extends VectorResource
     /** Where an issue shows: the options of a multiple select stored in a jsonb column. */
     public const array PLATFORMS = ['web' => 'Web', 'ios' => 'iOS', 'android' => 'Android', 'desktop' => 'Desktop app', 'api' => 'API'];
 
+    /** Keywords the ticket form suggests; any other text is a keyword too. */
+    public const array KEYWORDS = ['login', 'billing', 'crash', 'slow', 'refund'];
+
     #[\Override]
     public function fields(): array
     {
         return [
             Id::make(),
             Tabs::make()
-                ->tab('Ticket', ['number', 'subject', 'status', 'priority', 'channel', 'platforms', 'flags', 'body'])
+                ->tab('Ticket', ['number', 'subject', 'status', 'priority', 'channel', 'platforms', 'flags', 'keywords', 'body'])
                 ->tab('Customer', ['customerEmail', 'customerRef', 'satisfaction'])
                 ->tab('Handling', [
                     Section::make('Assignment')->fields(['team', 'assignee', 'labels']),
@@ -73,6 +77,8 @@ final class TicketResource extends VectorResource
             Select::make('platforms')->options(self::PLATFORMS)->multiple()->searchable()->filterable()->hideFromIndex(),
             // a flag group in one jsonb object, filtered by "any" or "all" of its keys being on
             BooleanGroup::make('flags')->options(['vip' => 'VIP customer', 'refundRequested' => 'Refund requested', 'legalHold' => 'Legal hold'])->json()->filterable(),
+            // free text in a jsonb list, filtered by "any" or "all" of the keywords
+            Tag::make('keywords')->suggestions(self::KEYWORDS)->filterable()->hideFromIndex(),
             Email::make('customerEmail', 'Customer')->required()->max(255)->searchable()->filterable(),
             Number::make('customerRef', 'Customer id (shop)')->hideFromIndex()->help('The shop customer on the MySQL connection, by id: a relationship never spans two databases.'),
             BelongsTo::to('team', TeamResource::class)->sortable()->filterable()->searchable(),

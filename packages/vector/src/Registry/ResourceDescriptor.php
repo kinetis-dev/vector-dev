@@ -595,6 +595,16 @@ final readonly class ResourceDescriptor
             if (isset($field['relation']['dependsOn'])) {
                 unset($field['relation']['dependsOn']['column']);
             }
+
+            unset($field['relation']['property']);
+        }
+
+        if (isset($field['repeater'])) {
+            unset($field['repeater']['orderColumn']);
+
+            if (isset($field['repeater']['rowFields'])) {
+                $field['repeater']['rowFields'] = array_map(self::publicField(...), $field['repeater']['rowFields']);
+            }
         }
 
         return $field;

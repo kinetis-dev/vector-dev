@@ -327,7 +327,7 @@ final class McpAggregateTest extends VectorTestCase
             'a rich-text field' => [['resource' => 'products', 'groupBy' => [['field' => 'description']], 'metrics' => [['fn' => 'count']]], '"description" is a rich-text field'],
             'a key-value field' => [['resource' => 'products', 'groupBy' => [['field' => 'attributes']], 'metrics' => [['fn' => 'count']]], '"attributes" is a key-value field'],
             'a multiple select' => [['resource' => 'products', 'groupBy' => [['field' => 'channels']], 'metrics' => [['fn' => 'count']]], '"channels" is a multiple select, a list of values'],
-            'a has-many field' => [['resource' => 'orders', 'groupBy' => [['field' => 'lines']], 'metrics' => [['fn' => 'count']]], '"lines" is a hasMany collection'],
+            'a repeater field' => [['resource' => 'orders', 'groupBy' => [['field' => 'lines']], 'metrics' => [['fn' => 'count']]], '"lines" is a repeater, a list of rows, which cannot be grouped or aggregated'],
             'a bucket on a choice' => [['resource' => 'orders', 'groupBy' => [['field' => 'status', 'bucket' => 'month']], 'metrics' => [['fn' => 'count']]], 'bucket applies only to'],
             'a date without a bucket' => [['resource' => 'orders', 'groupBy' => [['field' => 'placedAt']], 'metrics' => [['fn' => 'count']]], 'group it by a bucket'],
             'an unknown bucket' => [['resource' => 'orders', 'groupBy' => [['field' => 'placedAt', 'bucket' => 'hour']], 'metrics' => [['fn' => 'count']]], 'bucket'],

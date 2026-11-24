@@ -63,6 +63,9 @@ final class Ticket
     /** @var array<string, bool>|null a JSON-mode flag group's object of key to bool */
     private ?array $flags = null;
 
+    /** @var list<string>|null free-text keywords, a tag field's jsonb list */
+    private ?array $keywords = null;
+
     private int $compensationCents;
 
     private string $currency;
@@ -155,6 +158,12 @@ final class Ticket
     public function annotate(?array $metadata): void
     {
         $this->metadata = $metadata;
+    }
+
+    /** @param list<string>|null $keywords */
+    public function keyword(?array $keywords): void
+    {
+        $this->keywords = $keywords;
     }
 
     /** @param list<string>|null $platforms */

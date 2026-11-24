@@ -359,10 +359,10 @@ final readonly class ListRequest
 
     /**
      * One field's conditions (`filter[f][op]=v`, or `filter[f]=v`: `eq`,
-     * or `any` for a multiple select or a flag group; any other field
-     * without `eq` refuses a bare value) as predicates, counted against
-     * MAX_CONDITIONS. A flag of a columns-mode flag group is a boolean
-     * field of its own, `filter[group.key]=true`.
+     * or `any` for a list (a multiple select or tags) or a flag group;
+     * any other field without `eq` refuses a bare value) as predicates,
+     * counted against MAX_CONDITIONS. A flag of a columns-mode flag group
+     * is a boolean field of its own, `filter[group.key]=true`.
      *
      * @return list<Predicate>
      */
@@ -374,8 +374,8 @@ final readonly class ListRequest
             throw new InvalidListRequestException("\"{$name}\" is not a filterable field of {$resource->slug()}.");
         }
 
-        // a bare value is equality, or "any" for a multiple select's list or a flag group's keys
-        $operators = is_array($spec) ? $spec : [self::takesKeys($field) ? 'any' : 'eq' => $spec];
+        // a bare value is equality, or "any" for a list (a multiple select's, or tags) or a flag group's keys
+        $operators = is_array($spec) ? $spec : [self::takesKeys($field) || $field['type'] === 'tag' ? 'any' : 'eq' => $spec];
         $filters = [];
 
         foreach ($operators as $op => $value) {
@@ -425,8 +425,12 @@ final readonly class ListRequest
         $column = $field['column'] ?? '';
         $convert = static function (string $raw) use ($field, $converter, $name): mixed {
             try {
-                // a multiple select is filtered by its options one at a time, a flag group by its keys
-                return self::takesKeys($field) ? ValueConverter::option($field, trim($raw)) : $converter->fromQuery($field, trim($raw));
+                // a list is filtered by its values one at a time: a multiple select's options or a flag group's keys, tags as their text
+                return match (true) {
+                    $field['type'] === 'tag' => trim($raw),
+                    self::takesKeys($field) => ValueConverter::option($field, trim($raw)),
+                    default => $converter->fromQuery($field, trim($raw)),
+                };
             } catch (InputViolation $e) {
                 throw new InvalidListRequestException("filter[{$name}]: {$e->violation->message}");
             }
@@ -453,7 +457,7 @@ final readonly class ListRequest
                 return [['column' => $column, 'op' => $op, 'value' => $list($value)]];
             case 'any':
             case 'all':
-                // the JSON list holds any, or all, of these option values; duplicates add nothing
+                // the JSON list holds any, or all, of these values; duplicates add nothing
                 $values = array_values(array_unique($list($value), SORT_REGULAR));
 
                 if ($field['type'] !== 'booleanGroup') {

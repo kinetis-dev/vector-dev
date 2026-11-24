@@ -14,6 +14,7 @@ use Kinetis\Validation\Constraint;
 use Kinetis\Validation\Violation;
 use Kinetis\Vector\Auth\PasswordHasherInterface;
 use Kinetis\Vector\Fields\KeyValue;
+use Kinetis\Vector\Fields\Tag;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Throwable;
@@ -60,6 +61,8 @@ final readonly class ValueConverter
             'json' => self::json($raw),
             'select', 'country' => self::select($field, $raw),
             'booleanGroup' => self::flags($field, $raw),
+            'tag' => self::tags($field, $raw),
+            'repeater' => $this->rows($field, $raw),
             'currency' => self::currency($field, $raw),
             'password' => $this->password($field, $raw),
             default => $this->scalar($field, $raw),
@@ -120,6 +123,18 @@ final readonly class ValueConverter
 
         if ($field['type'] === 'currency') {
             return self::currency($field, $raw);
+        }
+
+        // a cell of tags, as JSON or separated by `|`, as a multiple select's
+        if ($field['type'] === 'tag') {
+            return array_map(strval(...), self::cellList($raw));
+        }
+
+        // a JSON repeater's cell holds its rows as JSON text
+        if ($field['type'] === 'repeater') {
+            $decoded = json_decode($raw, true);
+
+            return is_array($decoded) && array_is_list($decoded) ? $decoded : throw self::mismatch('a JSON list of rows');
         }
 
         // an imported cell holds the object as JSON text
@@ -340,6 +355,155 @@ final readonly class ValueConverter
         }
 
         return $flags;
+    }
+
+    /**
+     * Tags as stored: a list of strings, each trimmed, empty ones dropped,
+     * duplicates dropped ignoring case (the first spelling kept), in their
+     * order. A tag that is not text or is too long is refused at its
+     * index, every one of them; so is a list longer than the field allows.
+     * An empty list is null where the column allows it.
+     *
+     * @param array<string, mixed> $field
+     * @return list<string>|null
+     * @throws InputViolation
+     */
+    private static function tags(array $field, mixed $raw): ?array
+    {
+        if (!is_array($raw) || !array_is_list($raw)) {
+            throw self::mismatch('a list of tags');
+        }
+
+        $maxLength = (int) ($field['tags']['maxLength'] ?? Tag::MAX_LENGTH);
+        $maxTags = (int) ($field['tags']['maxTags'] ?? Tag::MAX_TAGS);
+        $violations = [];
+        $texts = [];
+
+        foreach ($raw as $index => $tag) {
+            if (!is_string($tag)) {
+                $violations[] = new Violation([$index], 'type_mismatch', 'must be text.');
+            } elseif (mb_strlen(trim($tag)) > $maxLength) {
+                $violations[] = new Violation([$index], 'too_long', "may be at most {$maxLength} characters.", ['max' => $maxLength]);
+            } else {
+                $texts[] = $tag;
+            }
+        }
+
+        if ($violations !== []) {
+            throw InputViolation::of($violations);
+        }
+
+        $list = Tag::normalize($texts);
+
+        if (count($list) > $maxTags) {
+            throw new InputViolation(new Violation([], 'too_many_entries', "may hold at most {$maxTags} tags.", ['max' => $maxTags]));
+        }
+
+        return $list === [] && ($field['nullable'] ?? false) === true ? null : $list;
+    }
+
+    /**
+     * A JSON repeater's rows: a list of objects, as many as the field
+     * allows, each holding only the fields the repeater declares. Every
+     * row field is converted and checked by its own rules, and stored as
+     * the plain value a JSON document holds (an option's value, a date's
+     * text). Every problem is reported at its row and field.
+     *
+     * @param array<string, mixed> $field
+     * @return list<array<string, mixed>>
+     * @throws InputViolation
+     */
+    private function rows(array $field, mixed $raw): array
+    {
+        $repeater = $field['repeater'];
+
+        if (!is_array($raw) || !array_is_list($raw)) {
+            throw self::mismatch('a list of rows');
+        }
+
+        if (count($raw) < $repeater['min'] || count($raw) > $repeater['max']) {
+            throw new InputViolation(new Violation([], 'count_out_of_range', "must hold {$repeater['min']} to {$repeater['max']} rows.", ['min' => $repeater['min'], 'max' => $repeater['max']]));
+        }
+
+        $rowFields = array_column($repeater['rowFields'], null, 'name');
+        $rows = [];
+        $violations = [];
+
+        foreach ($raw as $index => $row) {
+            [$rows[], $found] = $this->row($rowFields, $index, $row);
+            array_push($violations, ...$found);
+        }
+
+        if ($violations !== []) {
+            throw InputViolation::of($violations);
+        }
+
+        return $rows;
+    }
+
+    /**
+     * One row of a JSON repeater: its values in the order the fields are
+     * declared, a field it leaves out as null, or what is wrong with it.
+     *
+     * @param array<string, array<string, mixed>> $rowFields
+     * @return array{0: array<string, mixed>, 1: list<Violation>}
+     */
+    private function row(array $rowFields, int $index, mixed $row): array
+    {
+        if (!is_array($row) || ($row !== [] && array_is_list($row))) {
+            return [[], [new Violation([$index], 'type_mismatch', 'must be an object of field values.')]];
+        }
+
+        $violations = [];
+        $values = [];
+
+        foreach (array_keys($row) as $key) {
+            if (!isset($rowFields[(string) $key])) {
+                $violations[] = new Violation([$index, (string) $key], 'unexpected_field', 'is not a field of this row.');
+            }
+        }
+
+        foreach ($rowFields as $name => $sub) {
+            // a field the row leaves out takes its default, as a new record's would
+            $value = array_key_exists($name, $row) ? $row[$name] : (($sub['hasDefault'] ?? false) === true ? $sub['default'] : null);
+
+            if ($value === null && ($sub['nullable'] ?? true) !== true) {
+                $violations[] = new Violation([$index, $name], 'required', 'is required.');
+
+                continue;
+            }
+
+            try {
+                $values[$name] = self::plain($sub, $this->convert($sub, $value));
+            } catch (InputViolation $e) {
+                array_push($violations, ...array_map(static fn (Violation $v): Violation => $v->under($index, $name), $e->all()));
+
+                continue;
+            }
+
+            foreach ($this->violationsOfRules($sub, $value) as $violation) {
+                $violations[] = $violation->under($index, $name);
+            }
+        }
+
+        return [$values, $violations];
+    }
+
+    /**
+     * A converted value as a JSON document holds it: an option's value, an
+     * instant (or a date field's day) as text.
+     *
+     * @param array<string, mixed> $field
+     */
+    private static function plain(array $field, mixed $value): mixed
+    {
+        return match (true) {
+            $value instanceof BackedEnum => $value->value,
+            $value instanceof DateTimeImmutable && $field['type'] === 'date' => $value->format('Y-m-d'),
+            $value instanceof DateTimeImmutable => $value->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.v\Z'),
+            $value instanceof Date => (string) $value,
+            default => $value,
+        };
     }
 
     /**

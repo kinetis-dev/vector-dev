@@ -67,7 +67,7 @@ final class Order
 
     public function add(Product $product, int $quantity): void
     {
-        $this->lines[] = new OrderLine($this, $product, $quantity, $product->priceCents());
+        $this->lines[] = new OrderLine($this, $product, $quantity, $product->priceCents(), count($this->lines));
         $this->totalCents += $quantity * $product->priceCents();
     }
 

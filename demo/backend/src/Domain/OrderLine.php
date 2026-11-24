@@ -24,12 +24,16 @@ final class OrderLine
 
     private int $unitPriceCents;
 
-    public function __construct(Order $order, Product $product, int $quantity, int $unitPriceCents)
+    /** The line's place in its order, which the lines repeater writes when its rows are reordered. */
+    private int $position = 0;
+
+    public function __construct(Order $order, Product $product, int $quantity, int $unitPriceCents, int $position = 0)
     {
         $this->order = $order;
         $this->product = $product;
         $this->quantity = $quantity;
         $this->unitPriceCents = $unitPriceCents;
+        $this->position = $position;
     }
 
     public function subtotalCents(): int

@@ -39,6 +39,7 @@ use Kinetis\Vector\Fields\ManyToMany;
 use Kinetis\Vector\Fields\Money;
 use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\Fields\Password;
+use Kinetis\Vector\Fields\Repeater;
 use Kinetis\Vector\Fields\RichText;
 use Kinetis\Vector\Fields\Select;
 use Kinetis\Vector\Fields\Text;
@@ -172,7 +173,7 @@ final class ResourceCompilerTest extends TestCase
         self::assertSame(['number' => 'number'], $orders['searchColumns']);
         self::assertTrue($orders['globallySearchable']);
         self::assertFalse($compiled['compiler-customers']['globallySearchable'], 'a resource with nothing to search is not globally searchable');
-        self::assertSame(['fields' => ['quantity', 'unitPriceCents'], 'min' => 0, 'max' => 100], self::field($orders, 'lines')['repeater'], 'a row writes every field but the parent, the hidden product and the identifier');
+        self::assertSame(['fields' => ['quantity', 'unitPriceCents'], 'mode' => 'relationship', 'min' => 0, 'max' => 100, 'sortable' => false, 'orderBy' => null], self::field($orders, 'lines')['repeater'], 'a row writes every field but the parent, the hidden product and the identifier');
         self::assertSame(['currency' => 'currency'], self::field($compiled['compiler-order-lines'], 'order')['relation']['carry'], 'a price in the order\'s currency has the order carry it');
         self::assertSame(['readonly' => true, 'nullable' => true, 'valueType' => 'string'], array_intersect_key(self::field($orders, 'reference'), ['readonly' => 0, 'nullable' => 0, 'valueType' => 0]));
     }
@@ -891,15 +892,15 @@ final class ResourceCompilerTest extends TestCase
         $ordered = new #[Resource(Order::class, slug: 'orders')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), HasMany::to('lines', CompilerOrderLines::class)->repeater(['unitPriceCents', 'quantity'], min: 1, max: 5)];
+                return [Id::make(), Repeater::make('lines')->relationship('lines', CompilerOrderLines::class)->fields(['unitPriceCents', 'quantity'])->min(1)->max(5)];
             }
         };
-        self::assertSame(['fields' => ['unitPriceCents', 'quantity'], 'min' => 1, 'max' => 5], self::field($this->compile($ordered)['orders'], 'lines')['repeater']);
+        self::assertSame(['fields' => ['unitPriceCents', 'quantity'], 'mode' => 'relationship', 'min' => 1, 'max' => 5, 'sortable' => false, 'orderBy' => null], self::field($this->compile($ordered)['orders'], 'lines')['repeater']);
 
         $parent = new #[Resource(Order::class, slug: 'orders')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), HasMany::to('lines', CompilerOrderLines::class)->repeater(['order', 'quantity', 'unitPriceCents'])];
+                return [Id::make(), Repeater::make('lines')->relationship('lines', CompilerOrderLines::class)->fields(['order', 'quantity', 'unitPriceCents'])];
             }
         };
         $this->assertRefused(self::fieldRefusal($parent, 'lines', 'names "order", which is not a writable field of Order line'), $parent);
@@ -907,7 +908,7 @@ final class ResourceCompilerTest extends TestCase
         $partial = new #[Resource(Order::class, slug: 'orders')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), HasMany::to('lines', CompilerOrderLines::class)->repeater(['quantity'])];
+                return [Id::make(), Repeater::make('lines')->relationship('lines', CompilerOrderLines::class)->fields(['quantity'])];
             }
         };
         $this->assertRefused(self::fieldRefusal($partial, 'lines', 'leaves out "unitPriceCents", which a new Order line row requires'), $partial);
@@ -1067,7 +1068,7 @@ final class CompilerOrders extends VectorResource
             Text::make('currency')->hideFromIndex(),
             Money::make('totalCents')->currencyField('currency')->readonly(),
             DateTime::make('placedAt')->sortable(),
-            HasMany::to('lines', CompilerOrderLines::class)->repeater(),
+            Repeater::make('lines')->relationship('lines', CompilerOrderLines::class),
             Computed::make('reference')->method('reference'),
         ];
     }

@@ -6,6 +6,7 @@ namespace Kinetis\Vector\Write;
 
 use Kinetis\Validation\Exception\ValidationException;
 use Kinetis\Validation\Violation;
+use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 
 /**
@@ -109,7 +110,8 @@ final readonly class RecordInput
     {
         $field = $resource->field($name);
 
-        if ($field === null || !in_array($view, $field['views'], true) || in_array($field['type'], ['hasOne', 'hasMany'], true)) {
+        // a child repeater's rows are written with the record, by RecordWriter, never as a value
+        if ($field === null || !in_array($view, $field['views'], true) || in_array($field['type'], ['hasOne', 'hasMany'], true) || ResourceCompiler::isChildRepeater($field)) {
             return [new Violation([$name], 'unexpected_field', 'is not a field this resource accepts.')];
         }
 
@@ -138,7 +140,8 @@ final readonly class RecordInput
         try {
             $values[$name] = $this->converter->convert($field, $raw);
         } catch (InputViolation $e) {
-            return [$e->violation->under($name)];
+            // a JSON repeater's rows or a list of tags report each part at its own path
+            return array_map(static fn (Violation $v): Violation => $v->under($name), $e->all());
         }
 
         // a flag group in columns mode writes each flag's own bool property; the group itself is none
@@ -359,8 +362,13 @@ final readonly class RecordInput
             return false;
         }
 
-        if (in_array($field['type'], ['hasOne', 'hasMany', 'manyToMany', 'id'], true)) {
+        if (in_array($field['type'], ['hasOne', 'hasMany', 'manyToMany', 'id'], true) || ResourceCompiler::isChildRepeater($field)) {
             return false;
+        }
+
+        // a JSON repeater that must hold rows needs them sent
+        if ($field['type'] === 'repeater' && $field['repeater']['min'] > 0) {
+            return true;
         }
 
         if ($field['nullable'] ?? true) {

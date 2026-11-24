@@ -34,7 +34,10 @@ final class FieldSchemas
             'id' => self::key($field),
             'belongsTo' => self::nullable(self::related($field), $nullable),
             'hasOne' => self::nullable(self::related($field), true),
-            'hasMany', 'manyToMany' => ['type' => 'object', 'properties' => ['count' => ['type' => 'integer', 'minimum' => 0]], 'required' => ['count']],
+            'hasMany', 'manyToMany' => self::count(),
+            // a child repeater's rows are counted like a hasMany; a JSON one's are the list itself
+            'repeater' => isset($field['relation']) ? self::count() : self::nullable(self::rows($field, 'read'), $nullable),
+            'tag' => self::nullable(self::tags($field), $nullable),
             'keyValue' => self::nullable(['type' => 'object', 'additionalProperties' => ['type' => 'string']], true),
             'json' => self::nullable(self::document(), $nullable),
             'booleanGroup' => self::nullable(self::flags($field, true), $nullable),
@@ -58,19 +61,21 @@ final class FieldSchemas
     /**
      * The value a create or update body sends for the field, with the
      * keywords its rules publish, or null for a type no body writes.
-     * A repeater's rows are described by the caller, which knows the
-     * child resource as this user sees it.
+     * A child repeater's rows are described by the caller, which knows
+     * the child resource as this user sees it.
      *
      * @param array<string, mixed> $field a compiled field
      * @return array<string, mixed>|null
      */
     public static function write(array $field): ?array
     {
-        if (in_array($field['type'], self::NOT_WRITTEN, true) || $field['type'] === 'hasMany') {
+        if (in_array($field['type'], self::NOT_WRITTEN, true) || $field['type'] === 'hasMany' || isset($field['relation']) && $field['type'] === 'repeater') {
             return null;
         }
 
         $schema = match ($field['type']) {
+            'repeater' => self::rows($field, 'write'),
+            'tag' => self::tags($field),
             'belongsTo' => self::key($field),
             'manyToMany' => ['type' => 'array', 'items' => self::key($field)],
             'keyValue' => ['type' => 'object', 'additionalProperties' => ['type' => 'string']],
@@ -97,10 +102,10 @@ final class FieldSchemas
             'in', 'nin', 'between' => ['type' => 'string', 'description' => 'Comma-separated values.'],
             'any' => ['type' => 'string', 'description' => $field['type'] === 'booleanGroup'
                 ? 'Comma-separated option keys; matches a record with at least one of those flags on.'
-                : 'Comma-separated option values; matches a record holding at least one of them.'] + self::optionPattern($field),
+                : 'Comma-separated ' . self::listItems($field) . '; matches a record holding at least one of them.'] + self::optionPattern($field),
             'all' => ['type' => 'string', 'description' => $field['type'] === 'booleanGroup'
                 ? 'Comma-separated option keys; matches a record with every one of those flags on.'
-                : 'Comma-separated option values; matches a record holding every one of them.'] + self::optionPattern($field),
+                : 'Comma-separated ' . self::listItems($field) . '; matches a record holding every one of them.'] + self::optionPattern($field),
             'null', 'nnull' => ['type' => 'string', 'description' => 'Any value; the operator alone decides.'],
             'like', 'nlike' => ['type' => 'string'],
             default => match ($field['type']) {
@@ -148,6 +153,69 @@ final class FieldSchemas
                 default => ['type' => 'string'],
             },
         };
+    }
+
+    /** @return array<string, mixed> */
+    private static function count(): array
+    {
+        return ['type' => 'object', 'properties' => ['count' => ['type' => 'integer', 'minimum' => 0]], 'required' => ['count']];
+    }
+
+    /**
+     * What the values of a list filter are: a multiple select's options, or tags.
+     *
+     * @param array<string, mixed> $field
+     */
+    private static function listItems(array $field): string
+    {
+        return $field['type'] === 'tag' ? 'tags, each matched exactly as stored' : 'option values';
+    }
+
+    /**
+     * Tags: a list of strings, each trimmed and at most once ignoring case.
+     *
+     * @param array<string, mixed> $field
+     * @return array<string, mixed>
+     */
+    private static function tags(array $field): array
+    {
+        $tags = is_array($field['tags'] ?? null) ? $field['tags'] : [];
+
+        return [
+            'type' => 'array',
+            'items' => ['type' => 'string', 'minLength' => 1, 'maxLength' => (int) ($tags['maxLength'] ?? 50)],
+            'maxItems' => (int) ($tags['maxTags'] ?? 20),
+        ];
+    }
+
+    /**
+     * A JSON repeater's rows: objects of its row fields and no others.
+     *
+     * @param array<string, mixed> $field
+     * @param 'read'|'write' $direction
+     * @return array<string, mixed>
+     */
+    private static function rows(array $field, string $direction): array
+    {
+        $properties = [];
+        $required = [];
+
+        foreach ($field['repeater']['rowFields'] ?? [] as $row) {
+            $properties[$row['name']] = $direction === 'read' ? self::read($row) : self::write($row);
+
+            if (($row['nullable'] ?? true) !== true) {
+                $required[] = $row['name'];
+            }
+        }
+
+        $item = ['type' => 'object', 'properties' => $properties === [] ? new \stdClass() : $properties, 'additionalProperties' => false];
+
+        return [
+            'type' => 'array',
+            'items' => $direction === 'read' || $required === [] ? $item : [...$item, 'required' => $required],
+            'minItems' => $field['repeater']['min'],
+            'maxItems' => $field['repeater']['max'],
+        ];
     }
 
     /**

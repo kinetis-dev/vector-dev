@@ -137,6 +137,8 @@ final readonly class SupportSeeder
             $ticket->affects(DemoSeedCommand::someOf(TicketResource::PLATFORMS, $i * 7));
             // a JSON-mode flag group: from the index, a key at times left out (it reads as false)
             $ticket->flag(self::flagsOf($i));
+            // a tag list, from the index alone: the random sequence stays as it was
+            $ticket->keyword(DemoSeedCommand::someOf(array_combine(TicketResource::KEYWORDS, TicketResource::KEYWORDS), $i * 5));
 
             for ($r = mt_rand(0, 3); $r > 0; $r--) {
                 $ticket->reply(mt_rand(0, 1) === 0 ? 'Customer' : self::AGENTS[array_rand(self::AGENTS)], 'Thanks, we are looking into it.', mt_rand(0, 4) === 0, $createdAt->modify("+{$r} hours"));

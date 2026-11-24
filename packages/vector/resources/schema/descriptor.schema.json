@@ -282,7 +282,9 @@
                         "hasMany",
                         "manyToMany",
                         "computed",
-                        "richtext"
+                        "richtext",
+                        "repeater",
+                        "tag"
                     ]
                 },
                 "label": {
@@ -301,17 +303,26 @@
                     "type": "boolean"
                 },
                 "repeater": {
-                    "description": "An owned hasMany edited in the parent's form: the child fields a row writes, and how many rows it holds. Sent as a list of rows; a row with an `id` updates that child, one without creates it, and a child left out is deleted.",
+                    "description": "The rows a repeater edits in the record's form. In `json` mode they are a JSON list of objects in one column, each holding the `rowFields`; in `relationship` mode each row is a record of the child resource the field's `relation` names, `fields` naming the child fields a row writes, sent as a list of rows where a row with an `id` updates that child, one without creates it, and a child left out is deleted. `sortable` says whether rows are reordered by dragging: always in `json` mode, and in `relationship` mode when `orderBy` names the child property that receives each row's index.",
                     "type": [
                         "object",
                         "null"
                     ],
                     "required": [
+                        "mode",
                         "fields",
                         "min",
-                        "max"
+                        "max",
+                        "sortable",
+                        "orderBy"
                     ],
                     "properties": {
+                        "mode": {
+                            "enum": [
+                                "json",
+                                "relationship"
+                            ]
+                        },
                         "fields": {
                             "type": "array",
                             "items": {
@@ -323,6 +334,22 @@
                         },
                         "max": {
                             "type": "integer"
+                        },
+                        "sortable": {
+                            "type": "boolean"
+                        },
+                        "orderBy": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "rowFields": {
+                            "description": "A `json`-mode repeater's row fields, compiled as fields of no entity.",
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/field"
+                            }
                         }
                     },
                     "additionalProperties": false
@@ -437,6 +464,30 @@
                 "badge": {
                     "description": "A select shown as coloured chips in lists and on the record, coloured by each option's `color`.",
                     "type": "boolean"
+                },
+                "tags": {
+                    "description": "A tag field: the values its input suggests (any other text is a tag too), the longest a tag may be, and the most tags a record holds.",
+                    "type": "object",
+                    "required": [
+                        "suggestions",
+                        "maxLength",
+                        "maxTags"
+                    ],
+                    "properties": {
+                        "suggestions": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "maxLength": {
+                            "type": "integer"
+                        },
+                        "maxTags": {
+                            "type": "integer"
+                        }
+                    },
+                    "additionalProperties": false
                 },
                 "options": {
                     "type": "array",

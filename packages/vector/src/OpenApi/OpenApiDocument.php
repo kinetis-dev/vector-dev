@@ -7,6 +7,7 @@ namespace Kinetis\Vector\OpenApi;
 use Kinetis\Vector\Http\VisibleResources;
 use Kinetis\Vector\Jobs\VectorQueue;
 use Kinetis\Vector\Query\ResourceService;
+use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\VectorDefaults;
 use Kinetis\Vector\Write\RecordInput;
@@ -238,7 +239,7 @@ final readonly class OpenApiDocument
                 continue;
             }
 
-            $schema = ($field['repeater'] ?? null) !== null ? $this->repeater($field) : $this->fieldSchema($descriptor, $name, 'write');
+            $schema = ResourceCompiler::isChildRepeater($field) ? $this->repeater($field) : $this->fieldSchema($descriptor, $name, 'write');
 
             if ($schema === null) {
                 continue;
@@ -261,8 +262,8 @@ final readonly class OpenApiDocument
     }
 
     /**
-     * A repeater's rows: each the child's repeated fields as this user
-     * sees the child, and the `id` of a row being kept.
+     * A relationship-mode repeater's rows: each the child's repeated
+     * fields as this user sees the child, and the `id` of a row being kept.
      *
      * @param array<string, mixed> $field
      * @return array<string, mixed>
