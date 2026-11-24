@@ -150,8 +150,11 @@ create and delete in its policy instead.
 An empty resource derives every field from the entity's mapping: a
 string column becomes a searchable `Text`, a backed enum a filterable
 `Select`, an `array` property (a JSON column) a `Json`, a `#[BelongsTo]`
-a relation when its target has a resource, and so on. Declaring `fields()` replaces derivation entirely. See
-{doc}`fields`.
+a relation when its target has a resource, and so on. An owned
+`#[HasMany]` derives a `HasMany` shown as a count and a panel; editing
+its rows inside the parent's form is a `Repeater` in relationship mode,
+declared, and a JSON list of strings a `Tag`. Declaring `fields()`
+replaces derivation entirely. See {doc}`fields`.
 
 ## Definition methods
 
@@ -325,5 +328,5 @@ A resource in no navigation group shows `—` in the Group column.
 ## See also
 
 - {doc}`fields`: the field catalog.
-- {doc}`forms`: conditions, dependent choices and repeaters.
+- {doc}`forms`: conditions, dependent choices and repeaters (both modes on {doc}`fields`).
 - {doc}`authorization`: who may do what.

@@ -27,9 +27,11 @@ second column.
 | `BooleanGroup` | `booleanGroup` | Named on/off options shown as one cell and edited as one group of checkboxes, in a bool column each or in one JSON column; see [BooleanGroup](#booleangroup). |
 | `Country` | `country` | An ISO 3166-1 alpha-2 country code, or several: a select over every assigned code; see [Country](#country). |
 | `KeyValue` | `keyValue` | A JSON object of text values in a JSON column (an `array` or `?array` property), edited as key/value rows; `columns('Attribute', 'Value')`, `maxEntries(n)` (50 by default). On the wire it is an object; a stored number or boolean reads back as text, and an empty object stores `null` where the column allows it. Keys are trimmed and at most 100 characters. A JSON column may reorder the keys. It cannot be sorted, filtered, searched or summarized, and is imported as JSON text. |
+| `Repeater` | `repeater` | Rows edited inside the form: a JSON list of objects of declared fields, or an owned has-many relation's child records; see [Repeater](#repeater). |
+| `Tag` | `tag` | Free-text tags in a JSON list column, shown as chips, filtered by any or all; see [Tag](#tag). |
 | `File`, `Image` | `file`, `image` | An uploaded file's storage key; see {doc}`files`. |
 | `Computed` | `computed` | A read-only value a method of the resource computes from the record; see below. |
-| `BelongsTo`, `HasOne`, `HasMany`, `ManyToMany` | `belongsTo`, `hasOne`, `hasMany`, `manyToMany` | Relations to another resource, made with `::to('name', TargetResource::class)`. `titleField()` overrides the target's title; `BelongsTo::dependsOn()` and `HasMany::repeater()` are on {doc}`forms`. |
+| `BelongsTo`, `HasOne`, `HasMany`, `ManyToMany` | `belongsTo`, `hasOne`, `hasMany`, `manyToMany` | Relations to another resource, made with `::to('name', TargetResource::class)`. `titleField()` overrides the target's title; `BelongsTo::dependsOn()` is on {doc}`forms`. A has-many's rows edited inside the parent's form are a [Repeater](#repeater) in relationship mode. |
 
 ## Common modifiers
 
@@ -70,7 +72,7 @@ the stored hash.
 A record's page offers **Duplicate** when the user may create and the
 resource is `replicable()` (true unless it returns false): a create form
 filled from the record. It copies every value the create form writes (a
-many-to-many's membership, a repeater's rows as new rows) except a
+many-to-many's membership, a relationship repeater's rows as new rows) except a
 field marked `unique()`, which its column's unique index would refuse,
 and file or image keys, since a stored key belongs to its record. The
 copy is saved through the ordinary create. The descriptor publishes
@@ -446,12 +448,125 @@ The currency comes from one of three places:
   with every view that shows the money field;
 - `currencyField('order.currency')`, a field of a related record reached
   through a belongs-to. That relation then carries the value as
-  `{id, label, currency}`, and inside a repeater a row reads the parent
-  being edited.
+  `{id, label, currency}`, and inside a relationship repeater a row
+  reads the parent being edited.
 
 A filter on a money field priced per record reads the typed amount in
 hundredths. `VECTOR_CURRENCY` sets the starting code of a `Currency`
 field that declares no `default()` (and allows the code).
+
+## Repeater
+
+A `Repeater` edits rows inside the record's form, in one of two modes.
+
+### JSON mode
+
+`fields([...])` declares the fields of a row, and the rows are stored as
+a JSON list of objects in one column, an `array` or `?array` property:
+
+```php
+Repeater::make('specs', 'Specifications')->fields([
+    Text::make('label')->required()->max(60),
+    Text::make('value')->required()->max(200),
+])->max(20),
+```
+
+```json
+{"specs": [{"label": "Warranty", "value": "24 months"}, {"label": "Made in", "value": "Portugal"}]}
+```
+
+A row field is a plain value: text, number, money, boolean, select,
+currency, date, date-time or tags; never a relation, a file, rich text
+or another repeater. Each row is converted and checked by its fields'
+own rules, a field the row leaves out takes its default (or is
+`required` when it may not be empty), and a key no field declares is
+refused. A row is stored with its fields in the order they are
+declared; a select keeps its option's value, a date its `YYYY-MM-DD`, a
+date-time its UTC instant as text. The list keeps the order it is sent
+in, so its rows are always reordered by dragging and `orderBy()` is
+refused.
+
+### Relationship mode
+
+`relationship('lines')` names an owned `#[HasMany]` of the entity, and
+each row is one record of the child resource:
+
+```php
+Repeater::make('lines')->relationship('lines')
+    ->fields(['product', 'quantity', 'unitPriceCents'])
+    ->min(1)->max(50)
+    ->orderBy('position'),
+```
+
+`fields()` then names the child fields a row edits (every child field
+it can write by default, never the one pointing back at the parent).
+The child resource is the one administering the child entity, or the
+one marked `relationTarget`; `relationship('lines', OrderLineResource::class)`
+names it. A row with an `id` updates that child, one without creates it
+pointing at the parent, and a child left out is deleted. Each row is
+validated, authorized, hooked and audited as the child's own create,
+update or delete; {doc}`forms` has the details.
+
+### Ordering
+
+`orderBy('position')` names an int property of the child entity: each
+row's index (from 0) is written into it on save, and the rows load
+ordered by it, so the form reorders them by dragging (or with the arrow
+keys on a row's handle). The property is not one of the row's fields;
+the compiler refuses one that is not an int property of the child, and
+naming it in `fields()`. Without `orderBy()` a relationship repeater's
+rows load oldest first and are not dragged.
+
+### Bounds, errors and the transaction
+
+`min()` and `max()` bound the number of rows in both modes (0 and 100
+by default); a list outside them is refused with `count_out_of_range`.
+Errors name their row: `specs.2.label`, `lines.1.quantity`, or the row
+itself (`specs.2`) when it is not an object. In relationship mode, the
+record and every row are flushed in one transaction, so one failing row
+(a database constraint included) writes nothing. A unique key a child
+row collides with is reported at that row, and two rows sending the same
+value for a child field marked `unique()` are refused at the later row
+before anything is written.
+
+The child resource must live on the same connection as the parent:
+the compiler refuses a relationship repeater across connections, since
+its save is one transaction. It also refuses a relation that is not an
+owned has-many, a soft-deleting child, a child field a new row requires
+left out of `fields()`, a row holding another repeater, and conditions
+on the repeater. A repeater is never sorted, grouped, filtered, searched,
+summarized or edited inline. A list shows how many rows a record holds;
+the record page shows them as a table. A JSON repeater is exported and
+imported as JSON text; a relationship repeater is not imported, edited
+in bulk or reverted from the history.
+
+## Tag
+
+A `Tag` field holds free-form strings in a JSON list column, an `array`
+or `?array` property, shown as chips and edited in a chips input:
+
+```php
+Tag::make('keywords')->suggestions(['eco', 'bestseller', 'gift'])->filterable(),
+```
+
+`suggestions()` (a list, or a closure run once when the resource
+compiles) only proposes values; any other text is a valid tag. A
+written list is normalized: each tag trimmed, empty ones dropped,
+duplicates dropped ignoring case with the first spelling kept
+(`["Eco", "eco"]` stores `["Eco"]`), in the order sent. An empty list
+stores `null` where the column allows it. A tag longer than
+`maxLength()` (50 characters by default) or that is not text is refused
+at its index (`keywords.2`), and a list longer than `maxTags()` (20 by
+default) with `too_many_entries`.
+
+A filterable tag field filters by `any` (the default for a bare value,
+`filter[keywords]=eco,gift`) or `all` of a list of tags, through the same
+JSON list SQL as a multiple select on both dialects, plus `null` and
+`nnull` on a nullable column. A filter compares each tag exactly as it
+is stored, so `eco` does not match a stored `Eco`; send a list as an
+array (`filter[keywords][all][]=...`) when a tag holds a comma. A tag
+field is never sorted, grouped, searched, summarized or edited inline.
+It is exported as JSON and imported from JSON or `|`-separated text.
 
 ## See also
 

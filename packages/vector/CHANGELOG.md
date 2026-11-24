@@ -56,6 +56,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   comes from `Database\Connections`, per connection.
 - `Exception\StoredValueException`, thrown when a stored select value
   is not one of its options, or a JSON column holds no valid document.
+- `Fields\Repeater` (descriptor type `repeater`): rows edited inside the
+  record's form. In JSON mode, `fields([...])` declares a row's fields
+  and the rows are a JSON list of objects in an `array` or `?array`
+  property, each row converted and checked by its fields, a key no field
+  declares refused, the list kept in the order it is sent. In
+  relationship mode, `relationship('lines')` names an owned `#[HasMany]`
+  and the rows are child records written with the parent in one
+  transaction (diffed by `id`), `fields(['product', ...])` naming the
+  child fields a row edits. `min()` and `max()` bound the rows;
+  `orderBy('position')` names an int property of the child that takes
+  each row's index on save and orders the rows on load. Errors name
+  their row (`specs.2.label`, `lines.1.quantity`), a unique key a child
+  row collides with included. The descriptor publishes `repeater`
+  (`mode`, `fields`, `min`, `max`, `sortable`, `orderBy`, and a JSON
+  repeater's `rowFields`), OpenAPI the rows' schema, and
+  `vector_describe` a `format` and the row fields.
+- `Fields\Tag` (descriptor type `tag`): free-text strings in a JSON list
+  column, stored trimmed, without empty ones, each at most once ignoring
+  case (the first spelling kept), in their order. `suggestions()` only
+  proposes; `maxLength()` (50) and `maxTags()` (20) bound a tag and the
+  list, a refused tag named by its index. It filters by `any` (a bare
+  value) or `all` of a list of tags, on MySQL, MariaDB and PostgreSQL.
+  The descriptor publishes `tags`, OpenAPI an array of strings, and
+  `vector_describe` a `format` and its filters.
 
 ### Changed
 
@@ -81,6 +105,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** `Computed::as('enum')` is `as('select')`.
 - An `array` property derives a `Json` field.
 - A form condition's `null` and `nnull` treat an empty list as empty.
+- `GET /vector/r/{resource}/{id}/{field}/rows` serves a relationship
+  repeater's rows, in the order its `orderBy()` property holds.
+- The compiler refuses a relationship repeater whose child lives on
+  another connection than its parent, since the save is one
+  transaction.
 
 ### Removed
 
@@ -90,6 +119,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   carry over, and a derived enum property becomes a `Select`. A client
   reading the descriptor matches `select` instead of `enum`. A select's
   `searchable()` no longer makes the list's search match its column.
+- **Breaking:** `HasMany::repeater()`. A has-many edited inside the
+  parent's form is a `Repeater` in relationship mode, whose descriptor
+  type is `repeater` rather than `hasMany`. Replace
+  `HasMany::to('lines', LineResource::class)->repeater(['product', 'quantity'], min: 1, max: 50)`
+  with
+  `Repeater::make('lines')->relationship('lines', LineResource::class)->fields(['product', 'quantity'])->min(1)->max(50)`,
+  and add `->orderBy('position')` over an int child property to let the
+  rows be dragged into order. The request body and the rows endpoint
+  are unchanged.
 
 ## [0.17.1] - 2026-11-23
 

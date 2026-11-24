@@ -32,6 +32,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The filter bar offers a multiple select's `any` and `all` operators
   (`list.filter.operators.any`, `list.filter.operators.all`) with a
   choice of its options. The new strings are in every shipped locale.
+- `Vx/Input/Repeater.vue` edits kinetis/vector's `repeater` field in
+  both modes: a JSON repeater's rows of its own row fields, or a
+  relationship repeater's child rows. Rows are added and removed within
+  `min` and `max`, and a `sortable` repeater's rows move by dragging
+  their handle or with the arrow keys on it. A row's server errors stay
+  on the row. `Vx/Cell/Repeater.vue` counts the rows in a list and
+  shows them as a table on a record.
+- `Vx/Cell/Tag.vue` and `Vx/Input/Tag.vue` for the `tag` field: chips,
+  and a chips input with the field's suggestions that normalizes as the
+  server stores tags. The filter bar takes tags for `any` and `all`.
+  New strings (`fields.rows.*`, `fields.tags.*`) are in every shipped
+  locale.
 
 ### Changed
 
@@ -50,11 +62,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `json` value type, and the `any` and `all` operators.
 - A form condition's `null` and `nnull` treat an empty list as empty and
   a list holding a value as not, as the server does.
+- `VectorField` publishes `repeater` as `VectorRepeater` (`mode`,
+  `sortable`, `orderBy`, `rowFields`) and `tags` as `VectorTags`;
+  `VectorFieldType` adds `repeater` and `tag`.
 
 ### Removed
 
 - **Breaking:** `Vx/Cell/Enum.vue` and `Vx/Input/Enum.vue`; use the
   Select components.
+- **Breaking:** the `hasMany` entry of the input registry. A has-many
+  edited in the form is a `repeater` field; an app override registered
+  under `hasMany` in `app.config.vector.inputs` registers under
+  `repeater`.
 
 ## [0.14.0] - 2026-11-23
 

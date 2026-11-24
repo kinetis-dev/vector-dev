@@ -29,7 +29,7 @@ application).
 | `POST /vector/r/{resource}/changes` | Inline edits: `{"changes": [{"id", "version", "values"}]}`, one transaction; answers the records as written. |
 | `POST /vector/r/{resource}/actions/{action}` | Runs an action on `ids`, `all: {filter, q}`, or nothing (standalone), with `fields`. A queued action answers `202` with a `jobId`. |
 | `GET /vector/r/{resource}/{id}/{relation}` | A page of a collection's records. |
-| `GET /vector/r/{resource}/{id}/{relation}/rows` | A repeater's current rows. |
+| `GET /vector/r/{resource}/{id}/{field}/rows` | A relationship repeater's current rows, in their order. |
 | `POST /vector/r/{resource}/{id}/{relation}/attach`, `…/detach` | `{"ids": [...]}` on a many-to-many. |
 | `GET /vector/r/{resource}/fields/{field}/options?q=` | Choices for a relation input, each `{id, label}` plus the target's `subtitle` and `image` field when it declares them; `ids=` resolves known ones, `depends[field]=` narrows a dependent choice. |
 | `POST /vector/r/{resource}/fields/{field}/upload` | Stores one file (multipart `file`, and `record`, the id of the record being edited); answers `{key, name, size, type}`. Needs create permission, or update permission on `record` ({doc}`files`). |
@@ -72,6 +72,19 @@ application).
   `{update, delete, restore, forceDelete, actions}`.
 - **A write refusal**: the framework's RFC 9457 document with
   `errors[].path/code/message`. Other refusals: `{"error": "..."}`.
+- **A repeater's rows**: a create or update sends the whole list, in
+  its order. A JSON repeater's row is an object of its row fields
+  (`{"specs": [{"label": "Warranty", "value": "24 months"}]}`); a
+  relationship repeater's row is an object of the child fields it
+  writes plus the `id` of a child to keep
+  (`{"lines": [{"id": 7, "quantity": 3}, {"product": 4, "quantity": 1, "unitPriceCents": 1200}]}`),
+  where a child left out is deleted. A record carries a JSON repeater's
+  rows as its value and a relationship repeater as `{count}`. A refusal
+  names the row: `path: ["lines", 1, "quantity"]`, or
+  `["specs", 2]` for a row that is not an object.
+- **Tags**: a list of strings, stored trimmed and each at most once
+  ignoring case; a refused tag is named by its index,
+  `path: ["keywords", 2]`.
 - **An action**: `{type, message, url, affected, jobId}`, where `type`
   is `message`, `redirect`, `url`, `danger` (answered `422`) or `job`
   (answered `202`); a download answers the file itself.
