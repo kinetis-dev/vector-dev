@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "896de75376e4f81dc796d5db4f2215d5",
+    "content-hash": "899053a9ed87dcee6d518c50fa7e4e8b",
     "packages": [
         {
             "name": "amphp/amp",
@@ -2140,27 +2140,27 @@
         },
         {
             "name": "kinetis/orm",
-            "version": "v1.13.4",
+            "version": "v1.14.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/orm.git",
-                "reference": "10f0ffa80fe3e077ae3e4d75012a4783459bbfca"
+                "reference": "54a570b06d373988d10d820be44dc02dcef21052"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/orm/zipball/10f0ffa80fe3e077ae3e4d75012a4783459bbfca",
-                "reference": "10f0ffa80fe3e077ae3e4d75012a4783459bbfca",
+                "url": "https://api.github.com/repos/kinetis-dev/orm/zipball/54a570b06d373988d10d820be44dc02dcef21052",
+                "reference": "54a570b06d373988d10d820be44dc02dcef21052",
                 "shasum": ""
             },
             "require": {
                 "kinetis/persistence": "^1.4.8",
-                "kinetis/query-builder": "^1.8.5",
+                "kinetis/query-builder": "^1.8.6",
                 "php": ">=8.4 <8.6"
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
                 "kinetis/database-bridge": "^1.4.6",
-                "kinetis/framework": "^1.29.1",
+                "kinetis/framework": "^1.31.0",
                 "kinetis/queue": "^1.10.3",
                 "kinetis/queue-sql": "^1.6.13",
                 "phpstan/phpstan": "^2.2.8",
@@ -2188,10 +2188,10 @@
             "description": "A data mapper over kinetis/query-builder: attributed plain PHP entities compiled into portable metadata, typed repositories and entity queries, constructor-free hydration, explicit belongs-to, has-one, has-many and many-to-many relationships loaded eagerly through batched secondary queries, owned relationships that persist, reorder and remove a whole aggregate as one graph, owning join collections that write their join table as part of it, a unit of work with an identity map, snapshot change tracking and a dependency-ordered transactional flush, factory-owned transaction sessions with locking entity reads, and per-entity connection affinity with one factory and one manager per connection. Usable standalone; kinetis/database-bridge wires it into Kinetis.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/orm/issues",
-                "source": "https://github.com/kinetis-dev/orm/tree/v1.13.4"
+                "source": "https://github.com/kinetis-dev/orm/tree/v1.14.0"
             },
-            "time": "2026-11-22T14:06:10+00:00",
-            "published-time": "2026-11-22T14:21:19+00:00"
+            "time": "2026-11-24T09:52:55+00:00",
+            "published-time": "2026-11-24T10:05:50+00:00"
         },
         {
             "name": "kinetis/persistence",
@@ -2251,16 +2251,16 @@
         },
         {
             "name": "kinetis/query-builder",
-            "version": "v1.8.5",
+            "version": "v1.8.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/query-builder.git",
-                "reference": "7682859fead602ed4483007386e406704f434c48"
+                "reference": "94186a0fd537a56e73cc95b61529eeb2774297fc"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/query-builder/zipball/7682859fead602ed4483007386e406704f434c48",
-                "reference": "7682859fead602ed4483007386e406704f434c48",
+                "url": "https://api.github.com/repos/kinetis-dev/query-builder/zipball/94186a0fd537a56e73cc95b61529eeb2774297fc",
+                "reference": "94186a0fd537a56e73cc95b61529eeb2774297fc",
                 "shasum": ""
             },
             "require": {
@@ -2269,7 +2269,7 @@
             },
             "require-dev": {
                 "infection/infection": "^0.35.0",
-                "kinetis/framework": "^1.29.1",
+                "kinetis/framework": "^1.31.0",
                 "phpstan/phpstan": "^2.2.8",
                 "phpunit/phpunit": "^13.3.3",
                 "vimeo/psalm": "^7.0"
@@ -2295,10 +2295,10 @@
             "description": "A thin, parameterized SQL query builder over kinetis/persistence's MySQL and Postgres drivers, with portable row-to-DTO mapping and pagination envelopes. Usable standalone. Not an ORM: no relationships, no migrations, no change-tracking.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/query-builder/issues",
-                "source": "https://github.com/kinetis-dev/query-builder/tree/v1.8.5"
+                "source": "https://github.com/kinetis-dev/query-builder/tree/v1.8.6"
             },
-            "time": "2026-11-22T14:06:10+00:00",
-            "published-time": "2026-11-22T14:20:12+00:00"
+            "time": "2026-11-24T09:52:55+00:00",
+            "published-time": "2026-11-24T10:05:47+00:00"
         },
         {
             "name": "kinetis/queue",
@@ -2765,7 +2765,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector",
-                "reference": "98af1f7b08ecec908750d67d17416a45cb1dc938"
+                "reference": "a511cadef460a0098e4bb99f19e48781334cc0df"
             },
             "require": {
                 "composer-runtime-api": "^2.0",
@@ -2777,9 +2777,9 @@
                 "kinetis/mcp": "^1.9.1",
                 "kinetis/mcp-protocol": "^1.1.3",
                 "kinetis/migrations": "^1.5.1",
-                "kinetis/orm": "^1.13.4",
+                "kinetis/orm": "^1.14.0",
                 "kinetis/persistence": "^1.4.8",
-                "kinetis/query-builder": "^1.8.5",
+                "kinetis/query-builder": "^1.8.6",
                 "kinetis/queue": "^1.10.3",
                 "php": ">=8.4 <8.6",
                 "psr/http-message": "^2.0",
@@ -2839,7 +2839,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector-ai",
-                "reference": "ffca0bb83edf0b9b46faf0bc445f4959ace47d6c"
+                "reference": "eb2cb76cb02e9c281b70c4d6130595a4764301d5"
             },
             "require": {
                 "ext-sodium": "*",
@@ -2847,7 +2847,7 @@
                 "kinetis/framework": "^1.31.0",
                 "kinetis/mcp": "^1.9.1",
                 "kinetis/neuron": "^1.3.4",
-                "kinetis/query-builder": "^1.8.5",
+                "kinetis/query-builder": "^1.8.6",
                 "kinetis/revolt-http-client": "^1.9.2",
                 "kinetis/vector": "^0.17",
                 "neuron-core/neuron-ai": "^4.1.28",

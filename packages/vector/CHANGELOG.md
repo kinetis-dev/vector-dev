@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Requires `kinetis/orm` ^1.14.0 and `kinetis/query-builder` ^1.8.6.
+
 ## [0.17.1] - 2026-11-23
 
 ### Changed
