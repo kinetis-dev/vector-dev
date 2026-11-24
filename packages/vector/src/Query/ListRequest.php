@@ -6,6 +6,7 @@ namespace Kinetis\Vector\Query;
 
 use DateTimeImmutable;
 use Kinetis\Vector\Exception\InvalidListRequestException;
+use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Write\InputViolation;
 use Kinetis\Vector\Write\ValueConverter;
@@ -357,8 +358,10 @@ final readonly class ListRequest
     }
 
     /**
-     * One field's conditions (`filter[f][op]=v`, or `filter[f]=v` for
-     * equality) as predicates, counted against MAX_CONDITIONS.
+     * One field's conditions (`filter[f][op]=v`, or `filter[f]=v`: `eq`,
+     * or `any` for a multiple select; a field without `eq` other than a
+     * multiple select refuses a bare value) as predicates, counted
+     * against MAX_CONDITIONS.
      *
      * @return list<Predicate>
      */
@@ -371,7 +374,7 @@ final readonly class ListRequest
         }
 
         // a bare value is equality, or "any" for a multiple select's list
-        $operators = is_array($spec) ? $spec : [in_array('eq', $field['operators'], true) ? 'eq' : $field['operators'][0] => $spec];
+        $operators = is_array($spec) ? $spec : [ResourceCompiler::isMultiple($field) ? 'any' : 'eq' => $spec];
         $filters = [];
 
         foreach ($operators as $op => $value) {

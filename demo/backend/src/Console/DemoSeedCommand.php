@@ -345,7 +345,6 @@ final readonly class DemoSeedCommand
         return trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($text)), '-');
     }
 
-    /** A product description as the admin's rich-text editor stores it: its JSON document. */
     /**
      * Some of the options' values (none, at times) in the order they are
      * declared: the bits of $n pick them, so the seeded random sequence
@@ -367,6 +366,7 @@ final readonly class DemoSeedCommand
         return $some === [] ? null : $some;
     }
 
+    /** A product description as the admin's rich-text editor stores it: its JSON document. */
     private static function descriptionDocument(string $name, string $category): string
     {
         $text = static fn (string $text, array $marks = []): array => ['type' => 'text', 'text' => $text, ...($marks === [] ? [] : ['marks' => $marks])];

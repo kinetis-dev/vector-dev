@@ -238,6 +238,29 @@ final class ListRequestTest extends TestCase
         self::assertSame('filter[stock][between] takes exactly two values.', $this->refusal(['filter' => ['stock' => ['between' => '1']]]));
     }
 
+    /**
+     * A bare value is `eq`, or `any` for a multiple select. A field that
+     * admits no `eq` and is no multiple select, such as a nullable rich
+     * text filtered by presence only, refuses it rather than reading it
+     * as another operator.
+     */
+    public function testABareValueIsEqualityOrAnyForAMultipleSelectOnly(): void
+    {
+        $data = $this->data();
+        $data['fields'][] = ['name' => 'summary', 'type' => 'richtext', 'valueType' => 'string', 'column' => 'summary', 'sortable' => false, 'operators' => ['null', 'nnull']];
+        $data['fields'][] = ['name' => 'channels', 'type' => 'select', 'multiple' => true, 'valueType' => 'json', 'column' => 'channels', 'sortable' => false, 'operators' => ['any', 'all', 'null', 'nnull'],
+            'options' => [['value' => 'web', 'label' => 'Web', 'color' => null], ['value' => 'retail', 'label' => 'Retail', 'color' => null]]];
+        $data['columns'] += ['summary' => 'summary', 'channels' => 'channels'];
+        $resource = new ResourceDescriptor($data);
+
+        self::assertSame('"summary" does not admit the operator "eq"; it admits null, nnull.', $this->refusal(['filter' => ['summary' => 'x']], $resource));
+        self::assertSame([['column' => 'summary', 'op' => 'null', 'value' => null]], $this->parse(['filter' => ['summary' => ['null' => '1']]], $resource)->filters);
+        self::assertSame([['column' => 'channels', 'op' => 'any', 'value' => ['retail', 'web']]], $this->parse(['filter' => ['channels' => 'retail,web,retail']], $resource)->filters);
+        self::assertSame([['column' => 'channels', 'op' => 'all', 'value' => ['web']]], $this->parse(['filter' => ['channels' => ['all' => 'web']]], $resource)->filters);
+        self::assertSame('"channels" does not admit the operator "eq"; it admits any, all, null, nnull.', $this->refusal(['filter' => ['channels' => ['eq' => 'web']]], $resource));
+        self::assertSame('filter[channels]: is not one of the allowed values.', $this->refusal(['filter' => ['channels' => 'web,phone']], $resource));
+    }
+
     public function testListOperatorsTakeOneToTwoHundredValues(): void
     {
         self::assertSame(range(1, 200), $this->parse(['filter' => ['stock' => ['in' => implode(',', range(1, 200))]]])->filters[0]['value']);
