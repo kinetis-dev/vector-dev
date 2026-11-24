@@ -1164,45 +1164,82 @@ final readonly class RecordWriter
 
     /**
      * A unique violation of a child row, under its repeater and row, or
-     * null when the message names none of the rows' tables.
+     * null when the key the database names is none of the rows' tables'.
+     * Only the key's name is read, never the duplicated value, and a table
+     * matches it as a whole: MySQL's `table.index`, or an index or a
+     * constraint named after its table (`order_lines_sku_key`), the longest
+     * such table winning, so `lines` never claims `order_lines`.
      *
      * @param list<array<string, mixed>> $plans
      */
     private static function rowRefusal(array $plans, string $message): ?ValidationException
     {
-        foreach ($plans as $plan) {
+        $key = preg_match("/.*for key '([^']*)'/s", $message, $m) === 1 || preg_match('/unique constraint "([^"]*)"/', $message, $m) === 1 ? $m[1] : null;
+        $match = null;
+
+        foreach ($key === null ? [] : $plans as $plan) {
             /** @var ResourceDescriptor $child */
             $child = $plan['child'];
+            $table = $child->table();
+            $names = str_contains($key, '.') ? substr($key, 0, (int) strrpos($key, '.')) === $table : ($key === $table || str_starts_with($key, "{$table}_"));
 
-            if (!str_contains($message, $child->table())) {
-                continue;
+            if ($names && ($match === null || strlen($table) > strlen($match['child']->table()))) {
+                $match = $plan;
             }
-
-            $column = self::uniqueField($child, $message);
-
-            if ($column === null) {
-                return ValidationException::fromViolations([new Violation([$plan['field']], 'unique', 'has a row that conflicts with an existing record.')]);
-            }
-
-            $duplicate = preg_match("/Duplicate entry '(.*)' for key/s", $message, $m) === 1 || preg_match('/Key \([^)]*\)=\((.*)\) already exists/s', $message, $m) === 1 ? $m[1] : null;
-            $index = $duplicate === null ? null : self::rowHolding($plan['rows'], $column, $duplicate);
-            $path = $index === null ? [$plan['field'], $column] : [$plan['field'], $index, $column];
-
-            return ValidationException::fromViolations([new Violation($path, 'unique', 'is already taken.')]);
         }
 
-        return null;
+        if ($match === null) {
+            return null;
+        }
+
+        /** @var ResourceDescriptor $child */
+        $child = $match['child'];
+        $column = self::uniqueField($child, $message);
+
+        if ($column === null) {
+            return ValidationException::fromViolations([new Violation([$match['field']], 'unique', 'has a row that conflicts with an existing record.')]);
+        }
+
+        $index = self::rowHolding($match['rows'], $column, self::duplicateValues($message, $child->columns()[$column] ?? $column));
+        $path = $index === null ? [$match['field'], $column] : [$match['field'], $index, $column];
+
+        return ValidationException::fromViolations([new Violation($path, 'unique', 'is already taken.')]);
+    }
+
+    /**
+     * What the duplicated key holds for $column: PostgreSQL lists each
+     * column with its value (`Key (code, order_id)=(5, 12)`), so that
+     * column's own value when the two lists line up; MySQL gives the whole
+     * key's text (`Duplicate entry '5-12'`), its parts joined by `-`.
+     *
+     * @return array{exact: string|null, joined: string|null}
+     */
+    private static function duplicateValues(string $message, string $column): array
+    {
+        if (preg_match('/Key \(([^)]*)\)=\((.*)\) already exists/s', $message, $m) === 1) {
+            $columns = array_map(static fn (string $c): string => trim($c, ' "'), explode(',', $m[1]));
+            $values = count($columns) === 1 ? [$m[2]] : explode(', ', $m[2]);
+            $at = array_search($column, $columns, true);
+
+            return ['exact' => count($values) === count($columns) && is_int($at) ? $values[$at] : null, 'joined' => null];
+        }
+
+        return ['exact' => null, 'joined' => preg_match("/Duplicate entry '(.*)' for key/s", $message, $m) === 1 ? $m[1] : null];
     }
 
     /**
      * The last planned row whose value for $column the duplicated key
-     * holds: the whole key, or one part of a composite key (`12-5`).
+     * holds: that column's own value when the database named it, or else
+     * the whole key's text, or one `-`-separated part of a composite key
+     * (`12-5`) when no row holds the whole text.
      *
      * @param list<array<string, mixed>> $rows
+     * @param array{exact: string|null, joined: string|null} $duplicate
      */
-    private static function rowHolding(array $rows, string $column, string $duplicate): ?int
+    private static function rowHolding(array $rows, string $column, array $duplicate): ?int
     {
-        $found = null;
+        $whole = null;
+        $part = null;
 
         foreach ($rows as $index => $row) {
             $value = $row['values'][$column] ?? null;
@@ -1212,12 +1249,18 @@ final readonly class RecordWriter
                 default => null,
             };
 
-            if ($text !== null && $text !== '' && ($duplicate === $text || in_array($text, preg_split('/[-,]\s*/', $duplicate) ?: [], true))) {
-                $found = $index;
+            if ($text === null || $text === '') {
+                continue;
+            }
+
+            if ($text === ($duplicate['exact'] ?? $duplicate['joined'])) {
+                $whole = $index;
+            } elseif ($duplicate['joined'] !== null && str_contains("-{$duplicate['joined']}-", "-{$text}-")) {
+                $part = $index;
             }
         }
 
-        return $found;
+        return $whole ?? $part;
     }
 
     /**
@@ -1273,7 +1316,7 @@ final readonly class RecordWriter
 
         // MySQL's message carries the duplicate value too (`Duplicate entry 'name' for key '…'`):
         // only the index name is searched, so a submitted value never names another field
-        if (preg_match("/for key '([^']*)'/", $message, $m) === 1) {
+        if (preg_match("/.*for key '([^']*)'/s", $message, $m) === 1) {
             $message = $m[1];
         }
 
