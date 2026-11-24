@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
-import { VAutocomplete, VBtn, VSelect } from 'vuetify/components'
+import { VAutocomplete, VBtn, VCombobox, VSelect } from 'vuetify/components'
 import VxListFilterBar from '#vector/app/components/Vx/List/FilterBar.vue'
 import { field, resource } from '../fixtures'
 
@@ -13,6 +13,7 @@ const profiles = resource({
         field({ name: 'contact', label: 'Contact by', type: 'booleanGroup', storage: 'columns', filterable: true, operators: ['any', 'all'], options: [{ value: 'newsletter', label: 'Newsletter', color: null }, { value: 'acceptsSms', label: 'Text message', color: null }] }),
         field({ name: 'country', type: 'country', filterable: true, autocomplete: true, operators: ['eq', 'ne', 'in', 'nin'], options: [{ value: 'DE', label: 'Germany', color: null }, { value: 'NL', label: 'Netherlands', color: null }] }),
         field({ name: 'served', type: 'country', multiple: true, filterable: true, autocomplete: true, operators: ['any', 'all'], options: [{ value: 'DE', label: 'Germany', color: null }, { value: 'NL', label: 'Netherlands', color: null }] }),
+        field({ name: 'keywords', type: 'tag', filterable: true, operators: ['any', 'all'] }),
     ],
 })
 
@@ -92,5 +93,17 @@ describe('VxListFilterBar', () => {
         expect(valueInput(bar).props('modelValue')).toEqual([])
         await pickField(bar, 'country')
         expect(valueInput(bar).props('modelValue')).toBeNull()
+    })
+
+    it('clears the typed tags when another field is chosen', async () => {
+        const bar = await chips({})
+        await pickField(bar, 'keywords')
+        bar.findComponent(VCombobox).vm.$emit('update:modelValue', ['urgent', 'vip'])
+        await flushPromises()
+        expect(bar.findComponent(VCombobox).props('modelValue')).toEqual(['urgent', 'vip'])
+
+        await pickField(bar, 'country')
+        await pickField(bar, 'keywords')
+        expect(bar.findComponent(VCombobox).props('modelValue')).toEqual([])
     })
 })
