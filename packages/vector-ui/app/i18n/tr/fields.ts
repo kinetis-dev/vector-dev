@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: '{label} yükleniyor',
     },
+    json: {
+        invalid: 'Geçerli bir JSON nesnesi veya dizisi girin.',
+    },
     keyValue: {
         key: 'Anahtar',
         value: 'Değer',

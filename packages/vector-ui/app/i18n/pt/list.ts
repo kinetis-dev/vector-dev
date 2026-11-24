@@ -104,6 +104,8 @@ export default {
             like: 'contém',
             nlike: 'não contém',
             between: 'está entre',
+            any: 'inclui um de',
+            all: 'inclui todos',
             null: 'está vazio',
             nnull: 'não está vazio',
         },

@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: '正在加载{label}',
     },
+    json: {
+        invalid: '请输入有效的 JSON 对象或数组。',
+    },
     keyValue: {
         key: '键',
         value: '值',

@@ -5,7 +5,7 @@
 
 export type VectorFieldType =
     | 'id' | 'string' | 'text' | 'markdown' | 'number' | 'money' | 'boolean'
-    | 'enum' | 'date' | 'datetime' | 'email' | 'url' | 'password' | 'slug'
+    | 'select' | 'date' | 'datetime' | 'email' | 'url' | 'password' | 'slug'
     | 'color' | 'json' | 'keyValue' | 'currency' | 'file' | 'image'
     | 'belongsTo' | 'hasOne' | 'hasMany' | 'manyToMany' | 'computed' | 'richtext'
 
@@ -25,11 +25,12 @@ export interface VectorRichText {
 }
 
 /** What a computed field is shown as. */
-export type VectorComputedAs = 'text' | 'number' | 'money' | 'boolean' | 'date' | 'datetime' | 'enum'
+export type VectorComputedAs = 'text' | 'number' | 'money' | 'boolean' | 'date' | 'datetime' | 'select'
 
 export type VectorView = 'index' | 'show' | 'create' | 'update'
 
-export interface VectorEnumOption {
+/** One choice of a select (or a currency): its stored value, label and chip colour. */
+export interface VectorSelectOption {
     value: string | number
     label: string
     color: string | null
@@ -50,7 +51,8 @@ export interface VectorRelation {
     dependsOn?: { field: string, on: string, label: string } | null
 }
 
-export type VectorOperator = 'eq' | 'ne' | 'lt' | 'lte' | 'gt' | 'gte' | 'in' | 'nin' | 'like' | 'nlike' | 'between' | 'null' | 'nnull'
+/** `any` and `all` filter a multiple select's list by a comma-separated list of option values. */
+export type VectorOperator = 'eq' | 'ne' | 'lt' | 'lte' | 'gt' | 'gte' | 'in' | 'nin' | 'like' | 'nlike' | 'between' | 'any' | 'all' | 'null' | 'nnull'
 
 /**
  * A resource's or field's metadata bag, as `#[Resource(meta: ...)]` and
@@ -84,8 +86,14 @@ export interface VectorField {
     hasDefault: boolean
     operators: VectorOperator[]
     nullable?: boolean
-    valueType?: 'string' | 'int' | 'float' | 'bool' | 'timestamp' | 'date'
-    options?: VectorEnumOption[]
+    valueType?: 'string' | 'int' | 'float' | 'bool' | 'timestamp' | 'date' | 'json'
+    options?: VectorSelectOption[]
+    /** A select holding several options: a list, in the order the options are declared. */
+    multiple?: boolean
+    /** A select whose input searches its options (searchable()). */
+    autocomplete?: boolean
+    /** A select shown as coloured chips (badge()). */
+    badge?: boolean
     relation?: VectorRelation
     conditions?: VectorFieldConditions
     /** A computed field: shown as `as`, computed on the server from the `from` fields. */

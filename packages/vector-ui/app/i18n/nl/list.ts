@@ -104,6 +104,8 @@ export default {
             like: 'bevat',
             nlike: 'bevat niet',
             between: 'ligt tussen',
+            any: 'bevat een van',
+            all: 'bevat alle',
             null: 'is leeg',
             nnull: 'is niet leeg',
         },

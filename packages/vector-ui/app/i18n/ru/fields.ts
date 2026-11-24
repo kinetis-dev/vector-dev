@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: 'Загрузка: {label}',
     },
+    json: {
+        invalid: 'Введите корректный объект или массив JSON.',
+    },
     keyValue: {
         key: 'Ключ',
         value: 'Значение',

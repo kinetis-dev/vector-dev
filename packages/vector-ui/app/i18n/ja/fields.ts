@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: '{label} を読み込み中',
     },
+    json: {
+        invalid: '有効な JSON オブジェクトまたは配列を入力してください。',
+    },
     keyValue: {
         key: 'キー',
         value: '値',

@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: '{label} 불러오는 중',
     },
+    json: {
+        invalid: '올바른 JSON 객체 또는 배열을 입력하세요.',
+    },
     keyValue: {
         key: '키',
         value: '값',

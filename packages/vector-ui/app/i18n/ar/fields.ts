@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: 'جارٍ تحميل {label}',
     },
+    json: {
+        invalid: 'يُرجى إدخال كائن JSON أو مصفوفة JSON صالحة.',
+    },
     keyValue: {
         key: 'المفتاح',
         value: 'القيمة',

@@ -104,6 +104,8 @@ export default {
             like: 'içerir',
             nlike: 'içermez',
             between: 'arasında',
+            any: 'şunlardan birini içerir',
+            all: 'şunların hepsini içerir',
             null: 'boş',
             nnull: 'boş değil',
         },

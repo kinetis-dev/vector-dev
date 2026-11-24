@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: '{label} laden',
     },
+    json: {
+        invalid: 'Voer een geldig JSON-object of -array in.',
+    },
     keyValue: {
         key: 'Sleutel',
         value: 'Waarde',

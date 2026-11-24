@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: 'טוען את {label}',
     },
+    json: {
+        invalid: 'יש להזין אובייקט JSON או מערך JSON תקינים.',
+    },
     keyValue: {
         key: 'מפתח',
         value: 'ערך',

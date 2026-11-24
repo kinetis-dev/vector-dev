@@ -4,7 +4,7 @@ import { field } from '../fixtures'
 
 describe('initialValue', () => {
     it('is the field default when it has one', () => {
-        expect(initialValue(field({ name: 'status', type: 'enum', hasDefault: true, default: 'draft' }))).toBe('draft')
+        expect(initialValue(field({ name: 'status', type: 'select', hasDefault: true, default: 'draft' }))).toBe('draft')
         expect(initialValue(field({ name: 'isFeatured', type: 'boolean', hasDefault: true, default: true }))).toBe(true)
     })
 

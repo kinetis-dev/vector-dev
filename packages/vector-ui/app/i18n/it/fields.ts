@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: 'Caricamento di {label}',
     },
+    json: {
+        invalid: 'Inserisci un oggetto o un array JSON valido.',
+    },
     keyValue: {
         key: 'Chiave',
         value: 'Valore',

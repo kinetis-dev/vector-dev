@@ -104,6 +104,8 @@ export default {
             like: 'מכיל',
             nlike: 'אינו מכיל',
             between: 'בין',
+            any: 'כולל אחד מתוך',
+            all: 'כולל את כל',
             null: 'ריק',
             nnull: 'אינו ריק',
         },

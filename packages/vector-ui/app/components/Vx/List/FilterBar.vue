@@ -25,7 +25,7 @@ function openAdd(where: Target, event: Event) {
 
 const { t, locale } = useVectorT()
 
-const OPERATORS: readonly VectorOperator[] = ['eq', 'ne', 'lt', 'lte', 'gt', 'gte', 'in', 'nin', 'like', 'nlike', 'between', 'null', 'nnull']
+const OPERATORS: readonly VectorOperator[] = ['eq', 'ne', 'lt', 'lte', 'gt', 'gte', 'in', 'nin', 'like', 'nlike', 'between', 'any', 'all', 'null', 'nnull']
 
 const operatorLabel = (op: string): string => (OPERATORS as readonly string[]).includes(op) ? t(`list.filter.operators.${op}`) : op
 
@@ -52,7 +52,8 @@ watch(field, (f) => {
 })
 
 const needsValue = computed(() => operator.value !== null && !['null', 'nnull'].includes(operator.value))
-const list = computed(() => operator.value === 'in' || operator.value === 'nin')
+// a list of values: in/nin of a column, any/all of a multiple select's options
+const list = computed(() => ['in', 'nin', 'any', 'all'].includes(operator.value ?? ''))
 
 const searchRelation = useDebounceFn(async (q: string) => {
     if (!field.value) return
@@ -157,7 +158,7 @@ function chipText(name: string, op: string, v: string): string {
 
     let shown = v
 
-    if (f.type === 'enum') shown = v.split(',').map(x => f.options?.find(o => String(o.value) === x)?.label ?? x).join(', ')
+    if (f.type === 'select') shown = v.split(',').map(x => f.options?.find(o => String(o.value) === x)?.label ?? x).join(', ')
     if (f.type === 'currency') shown = v.split(',').map(x => currencyLabel(x, locale.value)).join(', ')
     if (f.type === 'boolean') shown = v === 'true' || v === '1' ? t('list.filter.yes') : t('list.filter.no')
     if (f.type === 'money' && !['in', 'nin', 'between'].includes(op)) shown = (Number(v) / 10 ** moneyDigits(f)).toFixed(moneyDigits(f))
@@ -204,7 +205,7 @@ const anything = computed(() => active.value.length > 0 || groups.value.length >
                 <v-select v-model="fieldName" :label="t('list.field')" :items="filterable" item-title="label" item-value="name" density="compact" hide-details class="mb-3" />
                 <v-select v-if="field" v-model="operator" :label="t('list.filter.condition')" :items="field.operators.map(op => ({ title: operatorLabel(op), value: op }))" density="compact" hide-details class="mb-3" />
                 <template v-if="field && needsValue">
-                    <v-select v-if="field.type === 'enum' || field.type === 'currency'" v-model="value" :label="t('list.filter.value')" :items="field.type === 'currency' ? (field.options ?? []).map(o => ({ value: o.value, label: currencyLabel(String(o.value), locale) })) : (field.options ?? [])" item-title="label" item-value="value" density="compact" hide-details class="mb-3" :multiple="list" @update:model-value="(v: unknown) => value = Array.isArray(v) ? v.join(',') : String(v ?? '')" />
+                    <v-select v-if="field.type === 'select' || field.type === 'currency'" v-model="value" :label="t('list.filter.value')" :items="field.type === 'currency' ? (field.options ?? []).map(o => ({ value: o.value, label: currencyLabel(String(o.value), locale) })) : (field.options ?? [])" item-title="label" item-value="value" density="compact" hide-details class="mb-3" :multiple="list" @update:model-value="(v: unknown) => value = Array.isArray(v) ? v.join(',') : String(v ?? '')" />
                     <v-select v-else-if="field.type === 'boolean'" v-model="value" :label="t('list.filter.value')" :items="[{ title: t('common.yes'), value: 'true' }, { title: t('common.no'), value: 'false' }]" density="compact" hide-details class="mb-3" />
                     <v-autocomplete v-else-if="field.type === 'belongsTo'" v-model:search="relationSearch" :label="t('list.filter.value')" :items="relationOptions" item-title="label" item-value="id" density="compact" hide-details class="mb-3" :multiple="list" no-filter @update:model-value="(v: unknown) => value = Array.isArray(v) ? v.join(',') : String(v ?? '')" />
                     <template v-else>

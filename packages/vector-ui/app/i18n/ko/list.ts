@@ -104,6 +104,8 @@ export default {
             like: '포함',
             nlike: '포함하지 않음',
             between: '범위 내',
+            any: '다음 중 하나를 포함',
+            all: '다음을 모두 포함',
             null: '비어 있음',
             nnull: '비어 있지 않음',
         },

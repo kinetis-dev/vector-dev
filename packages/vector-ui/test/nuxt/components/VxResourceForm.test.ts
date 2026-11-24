@@ -280,6 +280,50 @@ describe('VxResourceForm: unsaved changes and save variants', () => {
     })
 })
 
+describe('VxResourceForm: selects and JSON documents', () => {
+    const products = resource({
+        slug: 'products',
+        label: 'Products',
+        labelSingular: 'Product',
+        fields: [
+            field({ name: 'name', nullable: false }),
+            field({ name: 'channels', type: 'select', multiple: true, nullable: true, options: [{ value: 'web', label: 'Web shop', color: null }, { value: 'retail', label: 'Retail', color: null }] }),
+            field({ name: 'platform', type: 'select', autocomplete: true, nullable: true, options: [{ value: 'ios', label: 'iOS', color: null }, { value: 'api', label: 'API', color: null }] }),
+            field({ name: 'metadata', type: 'json', nullable: true }),
+        ],
+    })
+    const record = { id: 5, name: 'Mug', channels: ['web', 'retail'], platform: 'ios', metadata: { carrier: 'DHL' } }
+
+    it('shows a multiple select as chips, a searchable one as an autocomplete, and a document as JSON text', async () => {
+        const form = await mountForm({ resource: products, operation: 'update', record })
+
+        expect(input(form, 'Channels').findAll('.v-chip').map(c => c.text())).toEqual(['Web shop', 'Retail'])
+        expect(input(form, 'Platform').classes()).toContain('v-autocomplete')
+        expect(input(form, 'Channels').classes()).toContain('v-select')
+        expect(JSON.parse(input(form, 'Metadata').find('textarea').element.value)).toEqual({ carrier: 'DHL' })
+    })
+
+    it('sends the list and the parsed document, and flags text that is no JSON document', async () => {
+        const create = mock('/vector/r/products', { status: 201, body: { data: { id: 6 }, permissions: {} } }, 'POST')
+        const withDefaults = resource({
+            ...products,
+            fields: products.fields.map(f => f.name === 'channels' ? { ...f, hasDefault: true, default: ['retail'] } : f.name === 'platform' ? { ...f, hasDefault: true, default: 'api' } : f),
+        })
+        const form = await mountForm({ resource: withDefaults, operation: 'create' })
+
+        await input(form, 'Name').find('input').setValue('Mug')
+        await input(form, 'Metadata').find('textarea').setValue('not json')
+        await vi.waitFor(() => expect(input(form, 'Metadata').text()).toContain('Enter a valid JSON object or array.'))
+        await input(form, 'Metadata').find('textarea').setValue('{"carrier": "UPS", "parcels": [1]}')
+        expect(input(form, 'Metadata').text()).not.toContain('Enter a valid JSON object or array.')
+
+        await submit(form)
+
+        await vi.waitFor(() => expect(create.requests).toHaveLength(1))
+        expect(create.requests[0]!.body).toEqual({ name: 'Mug', channels: ['retail'], platform: 'api', metadata: { carrier: 'UPS', parcels: [1] } })
+    })
+})
+
 describe('VxResourceForm: a copy of a record', () => {
     const products = resource({
         slug: 'products',
@@ -288,7 +332,7 @@ describe('VxResourceForm: a copy of a record', () => {
         fields: [
             field({ name: 'sku', label: 'SKU', nullable: false, unique: true }),
             field({ name: 'name', nullable: false }),
-            field({ name: 'status', type: 'enum', options: [{ value: 'draft', label: 'Draft', color: null }, { value: 'active', label: 'Active', color: null }] }),
+            field({ name: 'status', type: 'select', options: [{ value: 'draft', label: 'Draft', color: null }, { value: 'active', label: 'Active', color: null }] }),
             field({ name: 'category', type: 'belongsTo', relation: { kind: 'belongsTo', resource: 'categories', titleField: 'name' } }),
             field({ name: 'photo', type: 'image', props: { accept: { 'image/png': 'png' }, maxBytes: 1000 } }),
             field({ name: 'tags', type: 'manyToMany', relation: { kind: 'manyToMany', resource: 'tags', titleField: 'name' } }),
