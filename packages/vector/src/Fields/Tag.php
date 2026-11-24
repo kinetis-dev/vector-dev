@@ -121,7 +121,7 @@ final class Tag extends Field
         $list = [];
 
         foreach ($tags as $tag) {
-            $tag = preg_replace('/^\s+|\s+$/u', '', $tag) ?? trim($tag);
+            $tag = self::trim($tag);
             $key = mb_strtolower($tag);
 
             if ($tag === '' || isset($seen[$key])) {
@@ -133,5 +133,11 @@ final class Tag extends Field
         }
 
         return $list;
+    }
+
+    /** One tag as it is stored: without the whitespace around it, Unicode spaces included. */
+    public static function trim(string $tag): string
+    {
+        return preg_replace('/^\s+|\s+$/u', '', $tag) ?? trim($tag);
     }
 }

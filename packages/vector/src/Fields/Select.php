@@ -71,13 +71,23 @@ class Select extends Field
      */
     public function of(string $enum): static
     {
+        $this->source = self::backedEnum($enum);
+
+        return $this;
+    }
+
+    /**
+     * The class of() accepts: a backed enum, or a refusal.
+     *
+     * @return class-string<BackedEnum>
+     */
+    private static function backedEnum(string $enum): string
+    {
         if (!is_subclass_of($enum, BackedEnum::class)) {
             throw new InvalidArgumentException("{$enum} is not a backed enum.");
         }
 
-        $this->source = $enum;
-
-        return $this;
+        return $enum;
     }
 
     /** Whether the options come from somewhere yet: the compiler fills them from an enum property otherwise. */
@@ -164,7 +174,8 @@ class Select extends Field
         if (is_string($source)) {
             $options = [];
 
-            foreach ($source::cases() as $case) {
+            // a closure naming the enum is held to what of() accepts
+            foreach (self::backedEnum($source)::cases() as $case) {
                 $options[] = $this->option($case->value, self::labelFrom($case->name));
             }
 

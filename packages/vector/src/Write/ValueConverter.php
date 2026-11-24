@@ -47,6 +47,11 @@ final readonly class ValueConverter
     public function convert(array $field, mixed $raw): mixed
     {
         if ($raw === null || ($raw === '' && ($field['valueType'] ?? 'string') !== 'string')) {
+            // a JSON repeater that must hold rows holds none when cleared: its min() refuses that
+            if (self::needsRows($field)) {
+                throw self::rowCount($field['repeater']);
+            }
+
             if (($field['nullable'] ?? false) === true) {
                 return null;
             }
@@ -194,7 +199,19 @@ final readonly class ValueConverter
                 continue;
             }
 
-            $violation = (new $class(...$rule['args']))->validate($raw);
+            // and a list or an object (a multiple select, tags, rows, a document) is present when it holds something;
+            // an empty one is refused with the very violation NotBlank gives a blank string
+            $checked = $raw;
+
+            if (is_string($class) && str_ends_with($class, '\\NotBlank') && is_array($raw)) {
+                if ($raw !== []) {
+                    continue;
+                }
+
+                $checked = '';
+            }
+
+            $violation = (new $class(...$rule['args']))->validate($checked);
 
             if ($violation !== null) {
                 $violations[] = $violation;
@@ -382,7 +399,7 @@ final readonly class ValueConverter
         foreach ($raw as $index => $tag) {
             if (!is_string($tag)) {
                 $violations[] = new Violation([$index], 'type_mismatch', 'must be text.');
-            } elseif (mb_strlen(trim($tag)) > $maxLength) {
+            } elseif (mb_strlen(Tag::trim($tag)) > $maxLength) {
                 $violations[] = new Violation([$index], 'too_long', "may be at most {$maxLength} characters.", ['max' => $maxLength]);
             } else {
                 $texts[] = $tag;
@@ -422,7 +439,7 @@ final readonly class ValueConverter
         }
 
         if (count($raw) < $repeater['min'] || count($raw) > $repeater['max']) {
-            throw new InputViolation(new Violation([], 'count_out_of_range', "must hold {$repeater['min']} to {$repeater['max']} rows.", ['min' => $repeater['min'], 'max' => $repeater['max']]));
+            throw self::rowCount($repeater);
         }
 
         $rowFields = array_column($repeater['rowFields'], null, 'name');
@@ -439,6 +456,23 @@ final readonly class ValueConverter
         }
 
         return $rows;
+    }
+
+    /**
+     * Whether a field is a JSON repeater whose min() asks for rows, so that
+     * no value (null) is too few of them rather than an empty column.
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function needsRows(array $field): bool
+    {
+        return $field['type'] === 'repeater' && ($field['repeater']['mode'] ?? null) === 'json' && ($field['repeater']['min'] ?? 0) > 0;
+    }
+
+    /** @param array<string, mixed> $repeater */
+    private static function rowCount(array $repeater): InputViolation
+    {
+        return new InputViolation(new Violation([], 'count_out_of_range', "must hold {$repeater['min']} to {$repeater['max']} rows.", ['min' => $repeater['min'], 'max' => $repeater['max']]));
     }
 
     /**

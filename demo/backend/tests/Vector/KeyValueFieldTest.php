@@ -26,6 +26,33 @@ use Kinetis\Vector\VectorResource;
 final class KeyValueFieldTest extends VectorTestCase
 {
     use InteractsWithVector;
+    use ValidatesInput;
+
+    /**
+     * required() on a JSON document or an object of text values takes any
+     * non-empty one; an empty one is not_blank.
+     */
+    public function testRequiredJsonAndKeyValueTakeAnyNonEmptyDocument(): void
+    {
+        $json = $this->compiled(new #[Resource(Product::class, slug: 'json-products')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Json::make('attributes')->required()];
+            }
+        }, 'json-products');
+        $keyValue = $this->compiled(new #[Resource(Product::class, slug: 'json-products')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), KeyValue::make('attributes')->required()];
+            }
+        }, 'json-products');
+
+        self::assertSame(['attributes' => ['carrier' => 'DHL']], $this->recordInput($json, ['attributes' => ['carrier' => 'DHL']]));
+        self::assertSame(['attributes' => [1, 2]], $this->recordInput($json, ['attributes' => [1, 2]]));
+        self::assertSame([[['attributes'], 'not_blank']], $this->recordInput($json, ['attributes' => []], true));
+        self::assertSame(['attributes' => ['size' => 'M']], $this->recordInput($keyValue, ['attributes' => ['size' => 'M']]));
+        self::assertSame([[['attributes'], 'not_blank']], $this->recordInput($keyValue, ['attributes' => []], true));
+    }
 
     public function testAStoredObjectReadsAsTextValues(): void
     {

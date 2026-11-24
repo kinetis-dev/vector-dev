@@ -163,6 +163,55 @@ final class ValueConverterTest extends TestCase
         self::assertSame('must be a JSON object or array.', $this->mismatch(fn () => $this->converter()->fromQuery($json, '"text"')));
     }
 
+    /**
+     * required() is NotBlank: a list or an object that holds something is
+     * present, an empty one is not_blank as a blank string is, and text is
+     * held to NotBlank itself.
+     */
+    public function testRequiredTakesAnyNonEmptyListOrObject(): void
+    {
+        $required = ['rules' => [['constraint' => \Kinetis\Validation\Constraints\NotBlank::class, 'args' => []]]];
+        $codes = fn (mixed $raw): array => array_map(static fn (\Kinetis\Validation\Violation $v): string => $v->code, $this->converter()->violationsOfRules($required, $raw));
+
+        foreach (['a multiple select' => ['web'], 'tags' => ['a', 'b'], 'rows' => [['label' => 'x']], 'a JSON object' => ['carrier' => 'DHL'], 'a JSON list' => [1], 'a nested empty value' => [[]]] as $case => $raw) {
+            self::assertSame([], $codes($raw), $case);
+        }
+
+        self::assertSame(['not_blank'], $codes([]), 'an empty list or object');
+        self::assertSame(['not_blank'], $codes(''));
+        self::assertSame(['not_blank'], $codes('   '), 'blank text is still blank');
+        self::assertSame([], $codes('x'));
+        self::assertSame([], $codes(0), 'a number that arrived');
+        self::assertSame([], $codes(false));
+
+        $maxed = ['rules' => [...$required['rules'], ['constraint' => \Kinetis\Validation\Constraints\MaxLength::class, 'args' => [3]]]];
+        self::assertSame([], array_map(static fn (\Kinetis\Validation\Violation $v): string => $v->code, $this->converter()->violationsOfRules($maxed, 'abc')), 'the rules after it check the value itself');
+    }
+
+    /** A nullable JSON repeater with min() holds too few rows when cleared to null. */
+    public function testNullIsTooFewRowsForAJsonRepeaterWithMin(): void
+    {
+        $repeater = ['type' => 'repeater', 'valueType' => 'json', 'nullable' => true, 'repeater' => ['mode' => 'json', 'min' => 1, 'max' => 5, 'rowFields' => []]];
+
+        try {
+            $this->converter()->convert($repeater, null);
+            self::fail('null was accepted.');
+        } catch (InputViolation $e) {
+            self::assertSame(['count_out_of_range', ['min' => 1, 'max' => 5]], [$e->violation->code, $e->violation->parameters]);
+        }
+
+        self::assertNull($this->converter()->convert([...$repeater, 'repeater' => [...$repeater['repeater'], 'min' => 0]], null), 'without min() null clears it');
+    }
+
+    /** A tag's length is the stored tag's: Unicode spaces around it are trimmed first. */
+    public function testATagIsMeasuredAsItIsStored(): void
+    {
+        $tags = ['type' => 'tag', 'valueType' => 'json', 'nullable' => false, 'tags' => ['maxLength' => 3, 'maxTags' => 10]];
+
+        self::assertSame(['abc', 'de'], $this->converter()->convert($tags, ["\u{00A0}abc\u{3000}", "\u{2003}de"]));
+        self::assertSame('may be at most 3 characters.', $this->mismatch(fn () => $this->converter()->convert($tags, ["\u{00A0}abcd"])));
+    }
+
     private function expectNotAccepted(\Closure $conversion, string $label): void
     {
         try {

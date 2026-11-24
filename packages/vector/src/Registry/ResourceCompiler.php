@@ -526,7 +526,9 @@ final class ResourceCompiler
 
     /**
      * A select's default must be one of its options (a list of them for a
-     * multiple one), compared by text.
+     * multiple one), compared by text, and is kept as the matched option's
+     * own typed value: a write converts strictly, so `default(404)` on
+     * options stored as text must be sent as "404", and the other way round.
      *
      * @param array<string, mixed> $array
      * @return array<string, mixed>
@@ -537,19 +539,31 @@ final class ResourceCompiler
             return $array;
         }
 
-        $known = array_map(strval(...), array_column($array['options'], 'value'));
+        $known = [];
+
+        foreach (array_column($array['options'], 'value') as $option) {
+            $known[(string) $option] ??= $option;
+        }
+
         $default = $array['default'] instanceof \BackedEnum ? $array['default']->value : $array['default'];
-        $values = self::isMultiple($array) ? $default : [$default];
+        $multiple = self::isMultiple($array);
+        $values = $multiple ? $default : [$default];
 
         if (!is_array($values) || !array_is_list($values)) {
             throw ResourceCompileException::field($owner, $array['name'], 'is a multiple select, whose default is a list of option values');
         }
 
+        $typed = [];
+
         foreach ($values as $value) {
-            if (!is_scalar($value) || !in_array((string) $value, $known, true)) {
+            if (!is_scalar($value) || !array_key_exists((string) $value, $known)) {
                 throw ResourceCompileException::field($owner, $array['name'], 'defaults to "' . (is_scalar($value) ? (string) $value : get_debug_type($value)) . '", which is not one of its options');
             }
+
+            $typed[] = $known[(string) $value];
         }
+
+        $array['default'] = $multiple ? $typed : $typed[0];
 
         return $array;
     }

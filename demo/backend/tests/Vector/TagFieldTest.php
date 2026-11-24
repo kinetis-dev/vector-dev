@@ -28,6 +28,7 @@ use Kinetis\Vector\VectorResource;
 final class TagFieldTest extends VectorTestCase
 {
     use InteractsWithVector;
+    use ValidatesInput;
 
     private ?EntityManager $supportManager = null;
 
@@ -86,6 +87,20 @@ final class TagFieldTest extends VectorTestCase
         self::assertSame(['json', ['any', 'all', 'null', 'nnull']], [$keywords['valueType'], $keywords['operators']]);
         self::assertSame(['suggestions' => ['gift', 'Eco'], 'maxLength' => 12, 'maxTags' => 5], $keywords['tags'], 'suggestions are normalized as tags are');
         self::assertNotContains('keywords', $valid['table_view']['groupable']);
+    }
+
+    /** required() takes any list holding a tag; an empty one is not_blank. */
+    public function testRequiredTagsTakeAnyNonEmptyList(): void
+    {
+        $compiled = $this->compiled(new #[Resource(Product::class, slug: 'tag-products')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Tag::make('keywords')->required()];
+            }
+        }, 'tag-products');
+
+        self::assertSame(['keywords' => ['a', 'B']], $this->recordInput($compiled, ['keywords' => [' a', 'B']]));
+        self::assertSame([[['keywords'], 'not_blank']], $this->recordInput($compiled, ['keywords' => []], true));
     }
 
     public function testATagListIsNormalizedOnWrite(): void

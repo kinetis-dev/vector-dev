@@ -33,6 +33,7 @@ use Kinetis\Vector\VectorResource;
 final class SelectFieldTest extends VectorTestCase
 {
     use InteractsWithVector;
+    use ValidatesInput;
 
     private ?EntityManager $supportManager = null;
 
@@ -131,6 +132,72 @@ final class SelectFieldTest extends VectorTestCase
         self::assertSame([true, false], [$fields['sku']['autocomplete'], $fields['sku']['searchable']], 'searchable() is the input\'s search box, not the list\'s search');
         self::assertSame([true, 'json', ['any', 'all', 'null', 'nnull'], true, 'primary'], [$fields['channels']['multiple'], $fields['channels']['valueType'], $fields['channels']['operators'], $fields['channels']['badge'], $fields['channels']['options'][0]['color']]);
         self::assertNotContains('channels', $valid['table_view']['groupable']);
+    }
+
+    /**
+     * required() on a multiple select asks for at least one option: a
+     * list holding one passes, an empty list is not_blank, as a blank
+     * string is, on a record and in an action's dialog.
+     */
+    public function testARequiredMultipleSelectTakesAnyNonEmptyList(): void
+    {
+        $compiled = $this->compiled(new #[Resource(Product::class, slug: 'select-products')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Select::make('channels')->options(ProductResource::CHANNELS)->multiple()->required()];
+            }
+        }, 'select-products');
+
+        self::assertSame(['channels' => ['web', 'retail']], $this->recordInput($compiled, ['channels' => ['retail', 'web']]));
+        self::assertSame(['channels' => ['web']], $this->recordInput($compiled, ['channels' => ['web']], true));
+        self::assertSame([[['channels'], 'not_blank']], $this->recordInput($compiled, ['channels' => []], true));
+        self::assertSame([[['channels'], 'required']], $this->recordInput($compiled, []), 'a create still needs it');
+
+        $loose = ['channels' => ResourceCompiler::compileLoose(Select::make('channels')->options(ProductResource::CHANNELS)->multiple()->required(), [], 'an action')];
+        self::assertSame(['channels' => ['web']], $this->fieldInput($loose, ['channels' => ['web']]));
+        self::assertSame([[['channels'], 'not_blank']], $this->fieldInput($loose, ['channels' => []]));
+    }
+
+    /**
+     * A default is compared to the options by text when the resource is
+     * built, and kept as the matched option's own value, since a write
+     * matches strictly: an int default on options stored as text (and the
+     * other way round) is what a create leaving the field out stores.
+     */
+    public function testADefaultIsKeptAsTheOptionsOwnValue(): void
+    {
+        $compiled = $this->compiled(new #[Resource(Product::class, slug: 'select-products')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [
+                    Id::make(),
+                    Select::make('sku')->options([404 => 'Not found', 'ok' => 'Fine'])->default(404),
+                    Select::make('stock')->options([0 => 'None', 10 => 'Ten'])->default('10'),
+                    Select::make('channels')->options([1 => 'One', 2 => 'Two'])->multiple()->default(['2', 1]),
+                ];
+            }
+        }, 'select-products');
+        $fields = array_column($compiled['fields'], null, 'name');
+
+        self::assertSame(['404', 10, [2, 1]], [$fields['sku']['default'], $fields['stock']['default'], $fields['channels']['default']]);
+        self::assertSame(['sku' => '404', 'stock' => 10, 'channels' => [1, 2]], $this->recordInput($compiled, []), 'a create leaving them out takes the defaults');
+
+        // an action's select hidden by its condition takes its default, as the option's own value
+        $fields = [
+            'mode' => ResourceCompiler::compileLoose(Select::make('mode')->options(['a' => 'A', 'b' => 'B']), [], 'an action'),
+            'code' => ResourceCompiler::compileLoose(Select::make('code')->options([404 => 'Not found', 500 => 'Error'])->default('404')->visibleWhen('mode', 'eq', 'b'), [], 'an action'),
+        ];
+        self::assertSame(404, $fields['code']['default']);
+        self::assertSame(['mode' => 'a', 'code' => 404], $this->fieldInput($fields, ['mode' => 'a']));
+        self::assertSame(['mode' => 'b', 'code' => 404], $this->fieldInput($fields, ['mode' => 'b']));
+    }
+
+    public function testAnOptionsClosureNamingAClassMustNameABackedEnum(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('is not a backed enum');
+
+        Select::make('status')->options(static fn (): string => \stdClass::class)->toArray();
     }
 
     public function testAnUnknownOptionIsRefusedOnWritePerValue(): void

@@ -43,6 +43,7 @@ use Kinetis\Vector\Write\ValueConverter;
 final class JsonRepeaterTest extends VectorTestCase
 {
     use InteractsWithVector;
+    use ValidatesInput;
 
     public function testTheSchemaPublishesTheRowFields(): void
     {
@@ -109,6 +110,26 @@ final class JsonRepeaterTest extends VectorTestCase
         } finally {
             $this->shop()->table('products')->where('id', '=', $id)->update(['specs' => $stored]);
         }
+    }
+
+    /**
+     * required() takes any list holding a row; an empty one is not_blank.
+     * With min(), null on update is too few rows, not a way around it.
+     */
+    public function testRequiredAndMinHoldForEveryEmptyValue(): void
+    {
+        $compiled = $this->compiled(new #[Resource(Product::class, slug: 'json-repeater-products')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Repeater::make('specs')->fields([Text::make('label')])->required(), Repeater::make('keywords')->fields([Text::make('label')])->min(1)];
+            }
+        }, 'json-repeater-products');
+
+        self::assertSame(['specs' => [['label' => 'x']]], $this->recordInput($compiled, ['specs' => [['label' => 'x']]], true));
+        self::assertSame([[['specs'], 'not_blank']], $this->recordInput($compiled, ['specs' => []], true));
+        self::assertSame([[['keywords'], 'count_out_of_range']], $this->recordInput($compiled, ['keywords' => null], true));
+        self::assertSame([[['keywords'], 'count_out_of_range']], $this->recordInput($compiled, ['keywords' => []], true));
+        self::assertSame(['keywords' => [['label' => 'x']]], $this->recordInput($compiled, ['keywords' => [['label' => 'x']]], true));
     }
 
     public function testRowFieldsAreConvertedToPlainJsonValues(): void
