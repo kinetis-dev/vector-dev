@@ -197,7 +197,8 @@ final class SelectFieldTest extends VectorTestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('is not a backed enum');
 
-        Select::make('status')->options(static fn (): string => \stdClass::class)->toArray();
+        // a closure naming a class that is no enum: what the declared type rules out, refused at run time too
+        Select::make('status')->options(static fn (): string => \stdClass::class)->toArray(); // @phpstan-ignore argument.type
     }
 
     public function testAnUnknownOptionIsRefusedOnWritePerValue(): void

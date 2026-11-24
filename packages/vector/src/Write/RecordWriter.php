@@ -1250,10 +1250,14 @@ final readonly class RecordWriter
      */
     private static function rowRefusal(array $plans, string $message): ?ValidationException
     {
-        $key = preg_match("/.*for key '([^']*)'/s", $message, $m) === 1 || preg_match('/unique constraint "([^"]*)"/', $message, $m) === 1 ? $m[1] : null;
+        if (preg_match("/.*for key '([^']*)'/s", $message, $m) !== 1 && preg_match('/unique constraint "([^"]*)"/', $message, $m) !== 1) {
+            return null;
+        }
+
+        $key = $m[1];
         $match = null;
 
-        foreach ($key === null ? [] : $plans as $plan) {
+        foreach ($plans as $plan) {
             /** @var ResourceDescriptor $child */
             $child = $plan['child'];
             $table = $child->table();

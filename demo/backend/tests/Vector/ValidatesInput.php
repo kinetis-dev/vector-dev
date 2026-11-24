@@ -24,7 +24,6 @@ use Kinetis\Vector\Write\RecordInput;
  * an update would answer, without registering the resource.
  *
  * @phpstan-require-extends VectorTestCase
- * @psalm-require-extends VectorTestCase
  */
 trait ValidatesInput
 {
