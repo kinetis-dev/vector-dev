@@ -58,7 +58,8 @@ final readonly class ValueConverter
             'manyToMany' => $this->relatedList($field, $raw),
             'keyValue' => $this->keyValue($field, $raw),
             'json' => self::json($raw),
-            'select' => self::select($field, $raw),
+            'select', 'country' => self::select($field, $raw),
+            'booleanGroup' => self::flags($field, $raw),
             'currency' => self::currency($field, $raw),
             'password' => $this->password($field, $raw),
             default => $this->scalar($field, $raw),
@@ -108,8 +109,13 @@ final readonly class ValueConverter
      */
     public function fromQuery(array $field, string $raw): mixed
     {
-        if ($field['type'] === 'select') {
+        if ($field['type'] === 'select' || $field['type'] === 'country') {
             return ($field['multiple'] ?? false) === true ? self::optionList($field, self::cellList($raw)) : self::option($field, $raw);
+        }
+
+        // an imported cell holds the flags as the JSON object an export writes
+        if ($field['type'] === 'booleanGroup') {
+            return self::flags($field, json_decode($raw, true));
         }
 
         if ($field['type'] === 'currency') {
@@ -302,6 +308,38 @@ final readonly class ValueConverter
         }
 
         return $value;
+    }
+
+    /**
+     * A flag group's value: an object of its option keys to true or
+     * false, every option present in the result; a key left out is false.
+     * A key that is no option is invalid_choice under that key, a value
+     * that is not a boolean a type_mismatch.
+     *
+     * @param array<string, mixed> $field
+     * @return array<string, bool>
+     * @throws InputViolation
+     */
+    public static function flags(array $field, mixed $raw): array
+    {
+        if (!is_array($raw) || ($raw !== [] && array_is_list($raw))) {
+            throw self::mismatch('an object of option keys to true or false');
+        }
+
+        $keys = array_column($field['options'] ?? [], 'value');
+        $flags = array_fill_keys($keys, false);
+
+        foreach ($raw as $key => $on) {
+            $key = (string) $key;
+
+            if (!in_array($key, $keys, true)) {
+                throw new InputViolation(new Violation([$key], 'invalid_choice', 'is not one of the options.', ['choices' => $keys]));
+            }
+
+            $flags[$key] = is_bool($on) ? $on : throw new InputViolation(new Violation([$key], 'type_mismatch', 'must be true or false.'));
+        }
+
+        return $flags;
     }
 
     /**

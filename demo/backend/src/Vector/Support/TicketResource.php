@@ -14,6 +14,7 @@ use App\Vector\Support\Widgets\TicketsByStatus;
 use Kinetis\Vector\Attributes\Resource;
 use Kinetis\Vector\Badge;
 use Kinetis\Vector\Fields\BelongsTo;
+use Kinetis\Vector\Fields\BooleanGroup;
 use Kinetis\Vector\Fields\Boolean;
 use Kinetis\Vector\Fields\Currency;
 use Kinetis\Vector\Fields\DateTime;
@@ -50,7 +51,7 @@ final class TicketResource extends VectorResource
         return [
             Id::make(),
             Tabs::make()
-                ->tab('Ticket', ['number', 'subject', 'status', 'priority', 'channel', 'platforms', 'body'])
+                ->tab('Ticket', ['number', 'subject', 'status', 'priority', 'channel', 'platforms', 'flags', 'body'])
                 ->tab('Customer', ['customerEmail', 'customerRef', 'satisfaction'])
                 ->tab('Handling', [
                     Section::make('Assignment')->fields(['team', 'assignee', 'labels']),
@@ -70,6 +71,8 @@ final class TicketResource extends VectorResource
                 ->sortable()->filterable(),
             Select::make('channel')->of(\App\Domain\Support\Channel::class)->filterable()->hideFromIndex(),
             Select::make('platforms')->options(self::PLATFORMS)->multiple()->searchable()->filterable()->hideFromIndex(),
+            // a flag group in one jsonb object, filtered by "any" or "all" of its keys being on
+            BooleanGroup::make('flags')->options(['vip' => 'VIP customer', 'refundRequested' => 'Refund requested', 'legalHold' => 'Legal hold'])->json()->filterable(),
             Email::make('customerEmail', 'Customer')->required()->max(255)->searchable()->filterable(),
             Number::make('customerRef', 'Customer id (shop)')->hideFromIndex()->help('The shop customer on the MySQL connection, by id: a relationship never spans two databases.'),
             BelongsTo::to('team', TeamResource::class)->sortable()->filterable()->searchable(),

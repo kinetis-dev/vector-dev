@@ -410,6 +410,19 @@ final readonly class OpenApiDocument
                     'schema' => FieldSchemas::filterValue($field, $operator),
                 ];
             }
+
+            // a columns-mode flag group: each flag filters and sorts as a boolean of its own, `group.key`
+            foreach (array_keys($field['flags'] ?? []) as $key) {
+                $flag = $descriptor->flag("{$name}.{$key}") ?? [];
+
+                if (($flag['sortable'] ?? false) === true) {
+                    array_push($sortable, $flag['name'], "-{$flag['name']}");
+                }
+
+                foreach ($flag['operators'] ?? [] as $operator) {
+                    $filters[] = ['name' => "filter[{$flag['name']}][{$operator}]", 'in' => 'query', 'required' => false, 'schema' => ['type' => 'boolean']];
+                }
+            }
         }
 
         $parameters = [];

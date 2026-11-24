@@ -263,6 +263,8 @@
                         "money",
                         "boolean",
                         "select",
+                        "country",
+                        "booleanGroup",
                         "date",
                         "datetime",
                         "email",
@@ -412,6 +414,17 @@
                         "date",
                         "json"
                     ]
+                },
+                "storage": {
+                    "description": "A flag group's storage: `columns`, a bool column per option, each also filtered and sorted as `group.key`; or `json`, one JSON object of option key to bool.",
+                    "enum": [
+                        "columns",
+                        "json"
+                    ]
+                },
+                "flagsSortable": {
+                    "description": "A columns-mode flag group whose flags sort as `group.key`.",
+                    "type": "boolean"
                 },
                 "multiple": {
                     "description": "A select holding several options, a JSON list in the order the options are declared, filtered by `any` or `all` of a list.",

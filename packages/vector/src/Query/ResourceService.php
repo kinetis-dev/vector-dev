@@ -588,6 +588,8 @@ final readonly class ResourceService
             'null' => $query->where($column, '=', null),
             'nnull' => $query->where($column, '!=', null),
             'any', 'all' => self::whereJsonList($query, $dialect, $column, $filter['op'], $value),
+            'keys.any', 'keys.all' => self::whereKeysTrue($query, $dialect, $column, substr($filter['op'], 5), $value),
+            'flags.any', 'flags.all' => self::whereFlags($query, $filter['op'] === 'flags.all', $value),
             default => throw new InvalidListRequestException("Unknown operator {$filter['op']}."),
         };
     }
@@ -607,6 +609,41 @@ final readonly class ResourceService
         /** @var list<int|string> $values */
         $filter = JsonFilter::listContains($dialect, $column, $op, $values);
         return $query->whereRaw($filter['sql'], $filter['params']);
+    }
+
+    /**
+     * A JSON-mode flag group's object holding true under any, or all, of
+     * the keys ListRequest checked against the options.
+     *
+     * @param 'mysql'|'pgsql' $dialect
+     */
+    private static function whereKeysTrue(Query|Conditions $query, string $dialect, string $column, string $mode, mixed $keys): Query|Conditions
+    {
+        if (!is_array($keys) || $keys === [] || !array_is_list($keys) || !array_all($keys, static fn (mixed $key): bool => is_string($key))) {
+            throw new InvalidListRequestException('filter: a flag group takes a list of option keys.');
+        }
+
+        /** @var list<string> $keys */
+        $filter = JsonFilter::keysTrue($dialect, $column, $mode, $keys);
+
+        return $query->whereRaw($filter['sql'], $filter['params']);
+    }
+
+    /**
+     * A columns-mode flag group with any, or all, of the flags' columns
+     * (from the compiled descriptor) true.
+     */
+    private static function whereFlags(Query|Conditions $query, bool $all, mixed $columns): Query|Conditions
+    {
+        if (!is_array($columns) || $columns === []) {
+            throw new InvalidListRequestException('filter: a flag group takes a list of option keys.');
+        }
+
+        return $query->whereGroup(static function (Conditions $group) use ($all, $columns): void {
+            foreach (array_values($columns) as $column) {
+                $all ? $group->where((string) $column, '=', true) : $group->orWhere((string) $column, '=', true);
+            }
+        });
     }
 
     /**
@@ -1342,10 +1379,11 @@ final readonly class ResourceService
             $columns = [$resource->primaryKeyColumn()];
 
             foreach ($fields as $name) {
-                $column = $resource->columns()[$name] ?? null;
-
-                if ($column !== null && !in_array($column, $columns, true)) {
-                    $columns[] = $column;
+                // a flag group in columns mode reads each flag's column
+                foreach ([$resource->columns()[$name] ?? null, ...array_values($resource->field($name)['flags'] ?? [])] as $column) {
+                    if (is_string($column) && !in_array($column, $columns, true)) {
+                        $columns[] = $column;
+                    }
                 }
             }
 

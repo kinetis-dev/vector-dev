@@ -141,6 +141,11 @@ final readonly class RecordInput
             return [$e->violation->under($name)];
         }
 
+        // a flag group in columns mode writes each flag's own bool property; the group itself is none
+        foreach (array_keys($field['flags'] ?? []) as $key) {
+            $values[(string) $key] = $values[$name][$key];
+        }
+
         return array_map(static fn (Violation $v): Violation => $v->under($name), $this->converter->violationsOfRules($field, $raw));
     }
 

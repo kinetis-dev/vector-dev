@@ -60,6 +60,9 @@ final class Ticket
     /** @var list<string>|null the platforms the issue shows on, a multiple select's jsonb list */
     private ?array $platforms = null;
 
+    /** @var array<string, bool>|null a JSON-mode flag group's object of key to bool */
+    private ?array $flags = null;
+
     private int $compensationCents;
 
     private string $currency;
@@ -158,6 +161,12 @@ final class Ticket
     public function affects(?array $platforms): void
     {
         $this->platforms = $platforms;
+    }
+
+    /** @param array<string, bool>|null $flags */
+    public function flag(?array $flags): void
+    {
+        $this->flags = $flags;
     }
 
     public function escalate(): void

@@ -290,9 +290,22 @@ final class OpenApiDocumentTest extends VectorTestCase
         // filters: exactly each field's published operators
         $expectedFilters = [];
 
+        // and a columns-mode flag group's flags, each a boolean of its own (`group.key`)
+        $flags = [];
+
         foreach ($fields as $name => $field) {
             foreach ($field['operators'] as $operator) {
                 $expectedFilters[] = "filter[{$name}][{$operator}]";
+            }
+
+            if (($field['storage'] ?? null) === 'columns') {
+                foreach (array_column($field['options'], 'value') as $key) {
+                    $flags["{$name}.{$key}"] = $field;
+
+                    if ($field['filterable'] === true) {
+                        $expectedFilters[] = "filter[{$name}.{$key}][eq]";
+                    }
+                }
             }
         }
 
@@ -305,7 +318,10 @@ final class OpenApiDocumentTest extends VectorTestCase
         self::assertEqualsCanonicalizing($expectedFilters, $filters, "{$slug}: filter operators");
 
         // sort: the sortable fields, either way
-        $sortable = array_keys(array_filter($fields, static fn (array $f): bool => $f['sortable'] === true));
+        $sortable = [
+            ...array_keys(array_filter($fields, static fn (array $f): bool => $f['sortable'] === true)),
+            ...array_keys(array_filter($flags, static fn (array $group): bool => ($group['flagsSortable'] ?? false) === true)),
+        ];
         $sorts = $parameters['sort']['schema']['items']['enum'] ?? [];
         self::assertEqualsCanonicalizing([...$sortable, ...array_map(static fn (string $n): string => "-{$n}", $sortable)], $sorts, "{$slug}: sort");
 

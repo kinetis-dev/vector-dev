@@ -15,8 +15,8 @@ namespace Kinetis\Vector\Database;
  * operator is written `??`, the query builder's escape for a literal
  * question mark.
  *
- * Each form is one method returning the same shape, so another form
- * (a key holding true, a list of strings) joins as a method of its own.
+ * Each form is one method returning the same shape: a list holding
+ * values (listContains), an object whose keys hold true (keysTrue).
  */
 final class JsonFilter
 {
@@ -62,6 +62,42 @@ final class JsonFilter
         return [
             'sql' => '(' . implode(' OR ', array_fill(0, count($values), "JSON_CONTAINS({$quoted}, ?)")) . ')',
             'params' => array_map(self::encode(...), $values),
+        ];
+    }
+
+    /**
+     * A JSON object column whose keys hold true: any or all of $keys. Each
+     * key travels inside a bound JSON object (`{"key": true}`) matched by
+     * containment, so no key reaches the SQL text or a JSON path; a key
+     * holding false, or absent, does not match. The caller passes only
+     * keys its field declares.
+     *
+     * @param 'mysql'|'pgsql' $dialect
+     * @param string $mode self::ANY or self::ALL
+     * @param list<string> $keys at least one
+     * @return array{sql: string, params: list<string>}
+     */
+    public static function keysTrue(string $dialect, string $column, string $mode, array $keys): array
+    {
+        if (!in_array($mode, [self::ANY, self::ALL], true)) {
+            throw new \InvalidArgumentException("A key filter is \"any\" or \"all\", not \"{$mode}\".");
+        }
+
+        if ($keys === []) {
+            throw new \InvalidArgumentException('A key filter needs at least one key.');
+        }
+
+        $quoted = Sql::quote($dialect, $column);
+        $contains = $dialect === Connections::PGSQL ? "{$quoted} @> ?::jsonb" : "JSON_CONTAINS({$quoted}, ?)";
+        $object = static fn (array $keys): string => self::encode((object) array_fill_keys($keys, true));
+
+        if ($mode === self::ALL) {
+            return ['sql' => $contains, 'params' => [$object($keys)]];
+        }
+
+        return [
+            'sql' => '(' . implode(' OR ', array_fill(0, count($keys), $contains)) . ')',
+            'params' => array_map(static fn (string $key): string => $object([$key]), $keys),
         ];
     }
 

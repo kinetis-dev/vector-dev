@@ -37,6 +37,7 @@ final class FieldSchemas
             'hasMany', 'manyToMany' => ['type' => 'object', 'properties' => ['count' => ['type' => 'integer', 'minimum' => 0]], 'required' => ['count']],
             'keyValue' => self::nullable(['type' => 'object', 'additionalProperties' => ['type' => 'string']], true),
             'json' => self::nullable(self::document(), $nullable),
+            'booleanGroup' => self::nullable(self::flags($field, true), $nullable),
             'computed' => self::nullable(self::computed($field), true),
             // the editor's document, or the stored HTML where the field keeps HTML; a write always sends the document
             'richtext' => self::nullable(['type' => 'string', 'contentMediaType' => ($field['richtext']['storesHtml'] ?? false) === true ? 'text/html' : 'application/json'], $nullable),
@@ -74,6 +75,7 @@ final class FieldSchemas
             'manyToMany' => ['type' => 'array', 'items' => self::key($field)],
             'keyValue' => ['type' => 'object', 'additionalProperties' => ['type' => 'string']],
             'json' => self::document(),
+            'booleanGroup' => self::flags($field, false),
             'password' => ['type' => 'string', 'writeOnly' => true],
             default => self::scalar($field),
         };
@@ -93,8 +95,12 @@ final class FieldSchemas
     {
         return match ($operator) {
             'in', 'nin', 'between' => ['type' => 'string', 'description' => 'Comma-separated values.'],
-            'any' => ['type' => 'string', 'description' => 'Comma-separated option values; matches a record holding at least one of them.'] + self::optionPattern($field),
-            'all' => ['type' => 'string', 'description' => 'Comma-separated option values; matches a record holding every one of them.'] + self::optionPattern($field),
+            'any' => ['type' => 'string', 'description' => $field['type'] === 'booleanGroup'
+                ? 'Comma-separated option keys; matches a record with at least one of those flags on.'
+                : 'Comma-separated option values; matches a record holding at least one of them.'] + self::optionPattern($field),
+            'all' => ['type' => 'string', 'description' => $field['type'] === 'booleanGroup'
+                ? 'Comma-separated option keys; matches a record with every one of those flags on.'
+                : 'Comma-separated option values; matches a record holding every one of them.'] + self::optionPattern($field),
             'null', 'nnull' => ['type' => 'string', 'description' => 'Any value; the operator alone decides.'],
             'like', 'nlike' => ['type' => 'string'],
             default => match ($field['type']) {
@@ -113,9 +119,13 @@ final class FieldSchemas
      */
     private static function scalar(array $field): array
     {
-        if ($field['type'] === 'select' && ($field['multiple'] ?? false) === true) {
+        if (in_array($field['type'], ['select', 'country'], true) && ($field['multiple'] ?? false) === true) {
             // a list of option values, each at most once
             return ['type' => 'array', 'items' => ['enum' => array_column($field['options'], 'value')], 'uniqueItems' => true];
+        }
+
+        if ($field['type'] === 'country') {
+            return ['enum' => array_column($field['options'], 'value'), 'description' => 'An ISO 3166-1 alpha-2 country code.'];
         }
 
         if (in_array($field['type'], ['select', 'currency'], true) && is_array($field['options'] ?? null)) {
@@ -138,6 +148,25 @@ final class FieldSchemas
                 default => ['type' => 'string'],
             },
         };
+    }
+
+    /**
+     * A flag group: an object of its option keys to booleans, every key
+     * present when read; a write may leave a key out, which is false.
+     *
+     * @param array<string, mixed> $field
+     * @return array<string, mixed>
+     */
+    private static function flags(array $field, bool $read): array
+    {
+        $keys = array_column($field['options'] ?? [], 'value');
+        $schema = [
+            'type' => 'object',
+            'properties' => array_fill_keys($keys, ['type' => 'boolean']),
+            'additionalProperties' => false,
+        ];
+
+        return $read ? [...$schema, 'required' => $keys] : $schema;
     }
 
     /**

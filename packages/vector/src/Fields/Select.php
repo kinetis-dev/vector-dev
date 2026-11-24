@@ -23,7 +23,7 @@ use InvalidArgumentException;
  * A value outside the options is refused on write and throws on read, so
  * removing an option needs a data migration first.
  */
-final class Select extends Field
+class Select extends Field
 {
     /** @var array<int|string, string>|Closure|class-string<BackedEnum>|null */
     private array|Closure|string|null $source = null;

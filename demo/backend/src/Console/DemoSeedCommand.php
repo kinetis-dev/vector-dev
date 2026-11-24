@@ -216,7 +216,10 @@ final readonly class DemoSeedCommand
 
             if (mt_rand(0, 3) !== 0) {
                 [$city, $country] = self::CITIES[array_rand(self::CITIES)];
-                $customer->profile(new CustomerProfile($customer, mt_rand(1, 200) . ' Main Street', $city, (string) mt_rand(1000, 9999), $country, mt_rand(0, 1) === 1));
+                $profile = new CustomerProfile($customer, mt_rand(1, 200) . ' Main Street', $city, (string) mt_rand(1000, 9999), $country, mt_rand(0, 1) === 1);
+                // from the index, so the seeded random sequence stays as it was
+                $profile->reachableBy($i % 3 === 0, $i % 5 === 0);
+                $customer->profile($profile);
             }
 
             $this->entities->persist($customer);

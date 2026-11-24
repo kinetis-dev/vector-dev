@@ -27,6 +27,9 @@ final readonly class SupportSeeder
 {
     private const array TEAMS = ['Billing' => 'billing@vector.local', 'Shipping' => 'shipping@vector.local', 'Technical' => 'tech@vector.local', 'Returns' => 'returns@vector.local'];
 
+    /** @var array<string, list<string>> team => the ISO 3166-1 alpha-2 codes it serves; Technical serves everywhere */
+    private const array SERVES = ['Billing' => ['NL', 'DE', 'AT'], 'Shipping' => ['NL', 'DE', 'PT', 'IE'], 'Returns' => ['IL', 'CZ', 'NO']];
+
     private const array LABELS = ['refund' => '#E53935', 'damaged' => '#FB8C00', 'late-delivery' => '#FDD835', 'invoice' => '#43A047', 'warranty' => '#1E88E5', 'vip' => '#8E24AA', 'bug' => '#6D4C41', 'feedback' => '#00ACC1', 'duplicate' => '#757575', 'follow-up' => '#3949AB'];
 
     private const array SUBJECTS = ['Where is my order', 'Refund not received', 'Item arrived damaged', 'Wrong size delivered', 'Invoice needs a VAT number', 'Cannot log in', 'Warranty claim', 'Change delivery address', 'Discount code rejected', 'Product stopped working'];
@@ -59,6 +62,8 @@ final readonly class SupportSeeder
 
         foreach (self::TEAMS as $name => $email) {
             $team = new Team($name, strtolower($name), $email);
+            // a multiple country field: the countries each team serves
+            $team->serve(self::SERVES[$name] ?? null);
             $entities->persist($team);
             $teams[] = $team;
         }
@@ -130,6 +135,8 @@ final readonly class SupportSeeder
             $ticket->annotate(['browser' => ['Chrome', 'Firefox', 'Safari'][mt_rand(0, 2)], 'orderRef' => sprintf('ORD-%06d', mt_rand(1, 400))]);
             // a multiple select: some of the platforms, in the order the resource lists them
             $ticket->affects(DemoSeedCommand::someOf(TicketResource::PLATFORMS, $i * 7));
+            // a JSON-mode flag group: from the index, a key at times left out (it reads as false)
+            $ticket->flag(self::flagsOf($i));
 
             for ($r = mt_rand(0, 3); $r > 0; $r--) {
                 $ticket->reply(mt_rand(0, 1) === 0 ? 'Customer' : self::AGENTS[array_rand(self::AGENTS)], 'Thanks, we are looking into it.', mt_rand(0, 4) === 0, $createdAt->modify("+{$r} hours"));
@@ -161,5 +168,26 @@ final readonly class SupportSeeder
     private function manager(): EntityManager
     {
         return $this->managers->manager('support');
+    }
+
+    /**
+     * A ticket's flags, picked from its index: every fourth ticket has
+     * none (null), and one key is at times left out rather than false.
+     *
+     * @return array<string, bool>|null
+     */
+    private static function flagsOf(int $i): ?array
+    {
+        if ($i % 4 === 0) {
+            return null;
+        }
+
+        $flags = ['vip' => $i % 3 === 0, 'refundRequested' => $i % 5 === 0];
+
+        if ($i % 2 === 0) {
+            $flags['legalHold'] = $i % 7 === 0;
+        }
+
+        return $flags;
     }
 }

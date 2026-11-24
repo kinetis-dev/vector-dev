@@ -101,9 +101,8 @@ final class ResourceDescription
             'relation' => isset($field['relation']) ? ['kind' => $field['relation']['kind'], 'resource' => $field['relation']['resource']] : null,
             'money' => $field['type'] === 'money' ? self::money($field) : null,
             'filter' => ($field['filterable'] ?? false) === true && ($field['operators'] ?? []) !== [] ? $field['operators'] : null,
-            'filterHelp' => ($field['multiple'] ?? false) === true && ($field['filterable'] ?? false) === true
-                ? 'any: holds at least one of the comma-separated option values; all: holds every one of them'
-                : null,
+            'filterHelp' => ($field['filterable'] ?? false) === true ? self::filterHelp($field, $compiled) : null,
+            'flags' => self::flags($field, $compiled),
             'sortable' => ($field['sortable'] ?? false) === true ? true : null,
             'searchable' => ($field['searchable'] ?? false) === true ? true : null,
         ];
@@ -119,11 +118,58 @@ final class ResourceDescription
      */
     private static function format(array $field): ?string
     {
-        if ($field['type'] === 'select' && ($field['multiple'] ?? false) === true) {
-            return 'a list of option values, each at most once; stored in the order the options are listed';
+        $multiple = ($field['multiple'] ?? false) === true;
+
+        return match (true) {
+            $field['type'] === 'country' && $multiple => 'a list of ISO 3166-1 alpha-2 country codes in upper case, each at most once; stored in the order the options are listed',
+            $field['type'] === 'country' => 'an ISO 3166-1 alpha-2 country code in upper case',
+            $field['type'] === 'select' && $multiple => 'a list of option values, each at most once; stored in the order the options are listed',
+            $field['type'] === 'booleanGroup' => 'an object of option key to true or false, every key present when read; a key a write leaves out is false',
+            default => self::FORMATS[$field['type']] ?? null,
+        };
+    }
+
+    /**
+     * How a field's list filter reads, where its operators alone do not say.
+     *
+     * @param array<string, mixed> $field the published field
+     * @param array<string, mixed> $compiled
+     */
+    private static function filterHelp(array $field, array $compiled): ?string
+    {
+        if ($field['type'] === 'booleanGroup') {
+            return 'any: at least one of the comma-separated option keys is on; all: every one of them is on'
+                . (isset($compiled['flags']) ? '; each flag also filters on its own as filter[' . $field['name'] . '.<key>]=true or false' : '');
         }
 
-        return self::FORMATS[$field['type']] ?? null;
+        return ($field['multiple'] ?? false) === true ? 'any: holds at least one of the comma-separated option values; all: holds every one of them' : null;
+    }
+
+    /**
+     * A columns-mode flag group's flags, each filtered or sorted by name
+     * (`group.key`) as a boolean of its own.
+     *
+     * @param array<string, mixed> $field the published field
+     * @param array<string, mixed> $compiled
+     * @return list<array<string, mixed>>|null
+     */
+    private static function flags(array $field, array $compiled): ?array
+    {
+        if (!isset($compiled['flags'])) {
+            return null;
+        }
+
+        $flags = [];
+
+        foreach (array_keys($compiled['flags']) as $key) {
+            $flags[] = self::compact([
+                'name' => "{$field['name']}.{$key}",
+                'filter' => ($field['filterable'] ?? false) === true ? ['eq'] : null,
+                'sortable' => ($field['flagsSortable'] ?? false) === true ? true : null,
+            ]);
+        }
+
+        return $flags;
     }
 
     /**

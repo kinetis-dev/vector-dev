@@ -48,7 +48,7 @@ final readonly class AggregateRequest
     public const string TIMEZONE = 'UTC';
 
     /** The field types a group key may be: a bounded set of values, a scalar, a date by bucket, or a belongsTo's key. */
-    private const array GROUPABLE = ['select', 'currency', 'boolean', 'string', 'text', 'email', 'url', 'slug', 'color', 'number', 'date', 'datetime', 'belongsTo'];
+    private const array GROUPABLE = ['select', 'country', 'currency', 'boolean', 'string', 'text', 'email', 'url', 'slug', 'color', 'number', 'date', 'datetime', 'belongsTo'];
 
     /** What sum and avg take. */
     private const array SUMMABLE = ['number', 'money'];
@@ -165,7 +165,8 @@ final readonly class AggregateRequest
             'richtext' => 'is a rich-text field, which cannot be grouped or aggregated',
             'keyValue' => 'is a key-value field, which cannot be grouped or aggregated',
             'json' => 'is a JSON field, which cannot be grouped or aggregated',
-            'select' => ($field['multiple'] ?? false) === true ? 'is a multiple select, a list of values, which cannot be grouped or aggregated' : null,
+            'select', 'country' => ($field['multiple'] ?? false) === true ? 'is a multiple select, a list of values, which cannot be grouped or aggregated' : null,
+            'booleanGroup' => 'is a flag group, several values, which cannot be grouped or aggregated',
             'hasOne', 'hasMany', 'manyToMany' => "is a {$type} collection, which cannot be grouped or aggregated",
             default => isset($field['column']) ? null : 'maps no column and cannot be grouped or aggregated',
         };

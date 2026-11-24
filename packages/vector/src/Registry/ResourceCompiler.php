@@ -11,6 +11,7 @@ use Kinetis\Vector\Attributes\Resource;
 use Kinetis\Vector\Auth\PasswordHasherInterface;
 use Kinetis\Vector\Exception\ResourceCompileException;
 use Kinetis\Vector\Fields\BelongsTo;
+use Kinetis\Vector\Fields\BooleanGroup;
 use Kinetis\Vector\Fields\Boolean;
 use Kinetis\Vector\Fields\Computed;
 use Kinetis\Vector\Fields\Currency;
@@ -26,6 +27,7 @@ use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\Fields\RelationField;
 use Kinetis\Vector\Fields\Select;
 use Kinetis\Vector\Fields\Text;
+use Kinetis\Vector\Support\Countries;
 use Kinetis\Vector\VectorResource;
 use Kinetis\Vector\Write\RecordInput;
 use ReflectionClass;
@@ -62,7 +64,8 @@ final class ResourceCompiler
         'boolean' => ['eq'],
         'datetime' => ['eq', 'ne', 'lt', 'lte', 'gt', 'gte', 'between'],
         'enum' => ['eq', 'ne', 'in', 'nin'],
-        // a multiple select's JSON list: holding any, or all, of the given option values
+        // a multiple select's JSON list holding any, or all, of the given option values;
+        // a flag group's flags among the given keys any, or all, of which are on
         'list' => ['any', 'all'],
         'belongsTo' => ['eq', 'ne', 'in', 'nin'],
         'id' => ['eq', 'ne', 'lt', 'lte', 'gt', 'gte', 'between', 'in', 'nin'],
@@ -71,10 +74,10 @@ final class ResourceCompiler
     ];
 
     /** The field types a list cell may edit in place. */
-    private const array INLINE_TYPES = ['string', 'email', 'url', 'slug', 'color', 'number', 'money', 'boolean', 'select', 'currency', 'date', 'datetime', 'belongsTo'];
+    private const array INLINE_TYPES = ['string', 'email', 'url', 'slug', 'color', 'number', 'money', 'boolean', 'select', 'country', 'currency', 'date', 'datetime', 'belongsTo'];
 
     /** The field types a list may group by: a bounded set of values or a sortable scalar. */
-    private const array GROUPABLE = ['select', 'currency', 'belongsTo', 'boolean', 'string', 'date', 'slug', 'email'];
+    private const array GROUPABLE = ['select', 'country', 'currency', 'belongsTo', 'boolean', 'string', 'date', 'slug', 'email'];
 
     /**
      * Which OPERATORS row a field type uses, or null for a field that
@@ -87,7 +90,8 @@ final class ResourceCompiler
             'number', 'money' => 'number',
             'boolean' => 'boolean',
             'date', 'datetime' => 'datetime',
-            'select', 'currency' => 'enum',
+            'select', 'country', 'currency' => 'enum',
+            'booleanGroup' => 'list',
             'belongsTo' => 'belongsTo',
             'richtext' => 'presence',
             'hasOne', 'hasMany', 'manyToMany' => null,
@@ -123,7 +127,61 @@ final class ResourceCompiler
      */
     public static function isMultiple(array $field): bool
     {
-        return $field['type'] === 'select' && ($field['multiple'] ?? false) === true;
+        return self::isSelect($field) && ($field['multiple'] ?? false) === true;
+    }
+
+    /**
+     * Whether a compiled field is a select: a Select, or a preset of one (Country).
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function isSelect(array $field): bool
+    {
+        return in_array($field['type'], ['select', 'country'], true);
+    }
+
+    /**
+     * Whether a compiled field is a flag group whose flags live in bool
+     * columns of their own (BooleanGroup in columns mode).
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function isFlagColumns(array $field): bool
+    {
+        return $field['type'] === 'booleanGroup' && isset($field['flags']);
+    }
+
+    /**
+     * One flag of a columns-mode flag group, addressed as `group.key`, as
+     * the boolean field a filter or a sort reads: its own column, `eq`
+     * when the group is filterable, sortable when the group is.
+     *
+     * @param array<string, mixed> $group the compiled group
+     * @return array<string, mixed>|null
+     */
+    public static function flagField(array $group, string $key): ?array
+    {
+        $column = $group['flags'][$key] ?? null;
+
+        if (!is_string($column)) {
+            return null;
+        }
+
+        $label = array_column($group['options'], 'label', 'value')[$key] ?? $key;
+
+        return [
+            'name' => "{$group['name']}.{$key}",
+            'type' => 'boolean',
+            'label' => "{$group['label']}: {$label}",
+            'column' => $column,
+            'valueType' => 'bool',
+            'nullable' => false,
+            'filterable' => $group['filterable'],
+            'sortable' => $group['flagsSortable'] ?? false,
+            'operators' => $group['filterable'] === true ? ['eq'] : [],
+            'views' => [],
+            'rules' => [],
+        ];
     }
 
     /**
@@ -149,7 +207,7 @@ final class ResourceCompiler
                 throw ResourceCompileException::field($owner, $name, "depends on {$depends['field']}, which is not another field of the form");
             }
 
-            if (in_array($other['type'], ['hasOne', 'hasMany', 'manyToMany', 'json', 'keyValue', 'file', 'image', 'password'], true) || self::isMultiple($other)) {
+            if (in_array($other['type'], ['hasOne', 'hasMany', 'manyToMany', 'json', 'keyValue', 'booleanGroup', 'file', 'image', 'password'], true) || self::isMultiple($other)) {
                 throw ResourceCompileException::field($owner, $name, "depends on {$depends['field']}, a {$other['type']} field, which holds no single value to match");
             }
 
@@ -193,6 +251,10 @@ final class ResourceCompiler
             throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on itself");
         }
 
+        if ($target['type'] === 'booleanGroup') {
+            throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on the flag group \"{$condition['field']}\", which holds several values a condition cannot compare");
+        }
+
         if ((in_array($target['type'], ['hasOne', 'hasMany', 'manyToMany'], true) || self::isMultiple($target)) && !in_array($condition['op'], ['null', 'nnull'], true)) {
             throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on the collection \"{$condition['field']}\"; only null and nnull apply");
         }
@@ -225,11 +287,17 @@ final class ResourceCompiler
             default => 'string',
         };
 
-        if ($type === 'select') {
+        if ($type === 'select' || $type === 'country') {
             $array = self::compileLooseSelect($owner, $array);
         }
 
-        if ($type === 'json' || $type === 'keyValue') {
+        if ($type === 'booleanGroup') {
+            // an action's or a settings group's flags: the object itself, wherever it is kept
+            $array = self::checkFlagOptions($owner, $array);
+            $array['storage'] = 'json';
+        }
+
+        if ($type === 'json' || $type === 'keyValue' || $type === 'booleanGroup') {
             $array['valueType'] = 'json';
         }
 
@@ -261,6 +329,8 @@ final class ResourceCompiler
             throw ResourceCompileException::field($owner, $array['name'], 'is a select with no options; call options()');
         }
 
+        self::checkCountryCodes($owner, $array);
+
         if (self::isMultiple($array)) {
             // a list of backing values: the ORM stores no enum case in JSON
             $array['enum'] = null;
@@ -272,6 +342,130 @@ final class ResourceCompiler
         $array['valueType'] = array_all($values, static fn (mixed $v): bool => is_int($v)) ? 'int' : 'string';
 
         return self::checkSelectDefault($owner, self::typedOptions($array));
+    }
+
+    /**
+     * A country's options must be assigned ISO 3166-1 alpha-2 codes, in
+     * upper case: what only() names is checked here, with the resource.
+     *
+     * @param array<string, mixed> $array
+     */
+    private static function checkCountryCodes(string $owner, array $array): void
+    {
+        if ($array['type'] !== 'country') {
+            return;
+        }
+
+        foreach (array_column($array['options'], 'value') as $code) {
+            if (!is_string($code) || Countries::name($code) === null) {
+                throw ResourceCompileException::field($owner, $array['name'], "offers \"{$code}\", which is not an assigned ISO 3166-1 alpha-2 country code");
+            }
+        }
+    }
+
+    /**
+     * A flag group lists its flags, and its default, if any, is an object
+     * of some of those keys to true or false.
+     *
+     * @param array<string, mixed> $array
+     * @return array<string, mixed>
+     */
+    private static function checkFlagOptions(string $owner, array $array): array
+    {
+        if ($array['options'] === []) {
+            throw ResourceCompileException::field($owner, $array['name'], 'is a flag group with no options; call options()');
+        }
+
+        if (($array['hasDefault'] ?? false) !== true || $array['default'] === null) {
+            return $array;
+        }
+
+        $keys = array_column($array['options'], 'value');
+        $default = $array['default'];
+
+        if (!is_array($default) || ($default !== [] && array_is_list($default))
+            || array_any($default, static fn (mixed $on, int|string $key): bool => !is_bool($on) || !in_array($key, $keys, true))) {
+            throw ResourceCompileException::field($owner, $array['name'], 'is a flag group, whose default is an object of some of its option keys to true or false');
+        }
+
+        return $array;
+    }
+
+    /**
+     * A flag group in columns mode: each option key a non-null bool
+     * property of the entity, its column the flag's; the group's own name
+     * is no property. Its sortable() sorts by each flag (`group.key`), so
+     * the group itself is not sortable.
+     *
+     * @param EntityMapping $entity
+     * @param array<string, mixed> $array
+     * @param array<string, PropertyMapping> $properties
+     * @return array<string, mixed>
+     */
+    private static function compileFlagColumns(string $class, array $entity, array $array, array $properties): array
+    {
+        $name = $array['name'];
+
+        if (isset($properties[$name])) {
+            throw ResourceCompileException::field($class, $name, "is a flag group in columns mode, which maps one bool property per option, but \"{$name}\" is a property itself; call json() to keep the flags in it");
+        }
+
+        $array = self::checkFlagOptions($class, $array);
+        $flags = [];
+
+        foreach (array_column($array['options'], 'value') as $key) {
+            $property = $properties[$key] ?? null;
+
+            if ($property === null || $property['type'] !== 'bool' || $property['target'] !== null || $property['nullable']) {
+                throw ResourceCompileException::field($class, $name, "names the flag \"{$key}\", which is not a bool property of {$entity['class']}; in columns mode every option key is one, or call json()");
+            }
+
+            $flags[$key] = $property['column'];
+        }
+
+        $array['flags'] = $flags;
+        $array['nullable'] = false;
+        $array['valueType'] = 'json';
+        $array['flagsSortable'] = $array['sortable'];
+        $array['sortable'] = false;
+
+        return $array;
+    }
+
+    /**
+     * What a flag group needs once the form is compiled: in JSON mode an
+     * `array` property and no sort; in columns mode no flag that is also
+     * a field of its own, since the group writes it.
+     *
+     * @param array<string, mixed> $field
+     * @param array<string, array<string, mixed>> $fields
+     * @return array<string, mixed>
+     */
+    private static function compileBooleanGroup(string $class, array $field, array $fields): array
+    {
+        $name = $field['name'];
+
+        if (self::isFlagColumns($field)) {
+            foreach (array_keys($field['flags']) as $key) {
+                if (isset($fields[$key])) {
+                    throw ResourceCompileException::field($class, $name, "names the flag \"{$key}\", which is also a field of the resource; a flag is written by its group alone");
+                }
+            }
+
+            return $field;
+        }
+
+        $valueType = $field['valueType'] ?? null;
+
+        if ($valueType !== 'json') {
+            throw ResourceCompileException::field($class, $name, "is a flag group stored as JSON, which needs an array or ?array property, not {$valueType}");
+        }
+
+        if ($field['sortable']) {
+            throw ResourceCompileException::field($class, $name, 'is a flag group stored as JSON, which cannot be sorted; keep its flags in bool columns to sort by each');
+        }
+
+        return self::checkFlagOptions($class, $field);
     }
 
     /**
@@ -725,6 +919,11 @@ final class ResourceCompiler
                 $columns[$name] = $array['column'];
             }
 
+            // each flag of a columns-mode group sorts by its own column, named `group.key`
+            foreach ($array['flags'] ?? [] as $key => $column) {
+                $columns["{$name}.{$key}"] = $column;
+            }
+
             $compiledFields[$name] = $array;
         }
 
@@ -753,6 +952,10 @@ final class ResourceCompiler
 
         if ($field instanceof RelationField) {
             return $this->compileRelation($class, $field, $array, $properties, $inverses, $joins);
+        }
+
+        if ($field instanceof BooleanGroup && $array['storage'] === BooleanGroup::COLUMNS) {
+            return self::compileFlagColumns($class, $entity, $array, $properties);
         }
 
         $property = $properties[$name] ?? throw ResourceCompileException::field($class, $name, "is not a mapped property of {$entity['class']}");
@@ -791,7 +994,7 @@ final class ResourceCompiler
      */
     private static function checkCapabilities(string $class, string $name, array $array): void
     {
-        if ($array['sortable'] === true && !isset($array['column'])) {
+        if ($array['sortable'] === true && !isset($array['column']) && !self::isFlagColumns($array)) {
             throw ResourceCompileException::field($class, $name, 'maps no column and cannot be sortable');
         }
 
@@ -822,7 +1025,7 @@ final class ResourceCompiler
             $direction = str_starts_with($sort, '-') ? 'desc' : 'asc';
             $name = ltrim($sort, '-');
 
-            if (($fields[$name]['sortable'] ?? false) !== true) {
+            if (($fields[$name]['sortable'] ?? false) !== true && (self::flagOf($fields, $name)['sortable'] ?? false) !== true) {
                 throw ResourceCompileException::resource($class, "default sort names \"{$name}\", which is not a sortable field");
             }
 
@@ -834,6 +1037,20 @@ final class ResourceCompiler
         }
 
         return $defaultSort;
+    }
+
+    /**
+     * The flag `group.key` names among the fields, or null.
+     *
+     * @param array<string, array<string, mixed>> $fields
+     * @return array<string, mixed>|null
+     */
+    public static function flagOf(array $fields, string $name): ?array
+    {
+        [$group, $key] = str_contains($name, '.') ? explode('.', $name, 2) : [$name, ''];
+        $field = $fields[$group] ?? null;
+
+        return $field !== null && self::isFlagColumns($field) ? self::flagField($field, $key) : null;
     }
 
     /**
@@ -993,8 +1210,12 @@ final class ResourceCompiler
                 self::checkJsonColumn($class, $name, $field);
             }
 
-            if ($field['type'] === 'select') {
+            if (self::isSelect($field)) {
                 $compiledFields[$name] = self::compileSelect($class, $field);
+            }
+
+            if ($field['type'] === 'booleanGroup') {
+                $compiledFields[$name] = self::compileBooleanGroup($class, $field, $compiledFields);
             }
 
             self::checkInline($class, $name, $field);
@@ -1074,6 +1295,8 @@ final class ResourceCompiler
             throw ResourceCompileException::field($class, $name, 'is a select with no options; call options(), or map it to a backed enum property');
         }
 
+        self::checkCountryCodes($class, $field);
+
         if (self::isMultiple($field)) {
             if ($valueType !== 'json') {
                 throw ResourceCompileException::field($class, $name, "is a multiple select, which stores a JSON list: declare the property array or ?array, not {$valueType}");
@@ -1142,10 +1365,18 @@ final class ResourceCompiler
      */
     private static function creation(array $entity, array $entityProperties, array $fields, array $timestamps): array
     {
+        $creates = static fn (array $field): bool => $field['readonly'] !== true && in_array(Field::VIEW_CREATE, $field['views'], true);
+        // a flag group in columns mode writes each flag's property
+        $flags = [];
+
+        foreach ($fields as $field) {
+            if (self::isFlagColumns($field) && $creates($field)) {
+                $flags = [...$flags, ...array_keys($field['flags'])];
+            }
+        }
+
         foreach ($entityProperties as $name => $property) {
-            $writable = isset($fields[$name])
-                && $fields[$name]['readonly'] !== true
-                && in_array(Field::VIEW_CREATE, $fields[$name]['views'], true);
+            $writable = (isset($fields[$name]) && $creates($fields[$name])) || in_array($name, $flags, true);
             $supplied = $writable || $property['nullable'] || $property['hasDefault'] || in_array($name, $timestamps, true)
                 || $name === $entity['id'] || in_array($property['kind'], ['hasOne', 'hasMany', 'manyToMany'], true);
 
@@ -1482,7 +1713,7 @@ final class ResourceCompiler
     }
 
     /** The types a search subtitle shows as they are stored. */
-    private const array SUBTITLE_TYPES = ['string', 'email', 'url', 'slug', 'text', 'number', 'select'];
+    private const array SUBTITLE_TYPES = ['string', 'email', 'url', 'slug', 'text', 'number', 'select', 'country'];
 
     /**
      * What a global search result shows besides its title: a subtitle
@@ -1760,7 +1991,7 @@ final class ResourceCompiler
     private function firstStringField(array $fields): ?string
     {
         foreach ($fields as $name => $field) {
-            if (($field['valueType'] ?? null) === 'string' && ($field['enum'] ?? null) === null && !in_array($field['type'], ['password', 'json', 'keyValue', 'select', 'file', 'image', 'color', 'richtext', 'markdown', 'text'], true)) {
+            if (($field['valueType'] ?? null) === 'string' && ($field['enum'] ?? null) === null && !in_array($field['type'], ['password', 'json', 'keyValue', 'select', 'country', 'booleanGroup', 'file', 'image', 'color', 'richtext', 'markdown', 'text'], true)) {
                 return $name;
             }
         }

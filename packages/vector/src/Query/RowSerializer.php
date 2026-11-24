@@ -48,7 +48,8 @@ final readonly class RowSerializer
                 'hasMany', 'manyToMany' => ['count' => (int) ($relations[$name][$this->key($row, $resource)] ?? 0)],
                 'keyValue' => self::keyValue($name, $row[$field['column']] ?? null),
                 'json' => self::json($name, $row[$field['column']] ?? null),
-                'select' => self::select($name, $field, $row[$field['column']] ?? null),
+                'select', 'country' => self::select($name, $field, $row[$field['column']] ?? null),
+                'booleanGroup' => self::flags($name, $field, $row),
                 default => $this->scalar($field, $row[$field['column']] ?? null),
             };
         }
@@ -176,6 +177,50 @@ final readonly class RowSerializer
         }
 
         return array_map($find, $list);
+    }
+
+    /**
+     * A flag group's object of every option key to true or false: read
+     * from each flag's column, or from the JSON object, where a key left
+     * out is false and a key that is no option throws.
+     *
+     * @param array<string, mixed> $field
+     * @param array<string, mixed> $row
+     * @return array<string, bool>|null
+     */
+    private static function flags(string $name, array $field, array $row): ?array
+    {
+        $flags = array_fill_keys(array_column($field['options'], 'value'), false);
+
+        if (isset($field['flags'])) {
+            foreach ($field['flags'] as $key => $column) {
+                $flags[$key] = \Kinetis\Vector\Database\Sql::bool($row[$column] ?? false);
+            }
+
+            return $flags;
+        }
+
+        $stored = self::decode($name, $row[$field['column']] ?? null, true);
+
+        if ($stored === null) {
+            return null;
+        }
+
+        if (!is_array($stored) || ($stored !== [] && array_is_list($stored))) {
+            throw StoredValueException::invalidJson($name);
+        }
+
+        foreach ($stored as $key => $on) {
+            $key = (string) $key;
+
+            if (!array_key_exists($key, $flags)) {
+                throw StoredValueException::unknownOption($name, $key);
+            }
+
+            $flags[$key] = is_bool($on) ? $on : throw StoredValueException::invalidJson($name);
+        }
+
+        return $flags;
     }
 
     /** A JSON column as the driver returns it: text to decode, or a value it already decoded. */
