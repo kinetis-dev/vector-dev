@@ -40,29 +40,6 @@ final class JsonObjects
         return $values;
     }
 
-    /**
-     * The members of the JSON object $json, read with every object kept,
-     * through keep(); null when $json is not a JSON object, nests deeper
-     * than $depth levels, or holds a key PHP cannot hold as a property.
-     * $depth is the levels of nested arrays and objects the store $json
-     * came from holds (JsonDepth), so whatever it stored reads back.
-     *
-     * @param array<string, array<string, mixed>> $fields field name => compiled field
-     * @param positive-int $depth
-     * @return array<array-key, mixed>|null
-     */
-    public static function decode(array $fields, string $json, int $depth): ?array
-    {
-        try {
-            // json_decode() at a depth reads one level fewer
-            $tree = json_decode($json, false, $depth + 1, JSON_THROW_ON_ERROR);
-        } catch (\JsonException) {
-            return null;
-        }
-
-        return $tree instanceof \stdClass ? self::keep($fields, get_object_vars($tree)) : null;
-    }
-
     /** $value with every stdClass in it a plain array, at any depth. */
     public static function arrays(mixed $value): mixed
     {

@@ -142,8 +142,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The compiler refuses a relationship repeater whose child lives on
   another connection than its parent, since the save is one
   transaction.
-- **Breaking:** `JsonObjects::decode()` takes the depth it reads, in
-  levels, with no default.
 - Requires `kinetis/orm` ^1.16.0, `kinetis/persistence` ^1.5.0 and
   `kinetis/database-bridge` ^1.4.7, whose links report the JSON depth
   their server stores.
