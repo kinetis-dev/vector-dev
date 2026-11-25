@@ -90,7 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from the audit trail, and a list stays a list. The `create()` and
   `apply()` hooks receive a `stdClass` there.
 - A resource with no fields of its own derives a `Json` field for a
-  `stdClass` or `array|stdClass` property too.
+  `stdClass` or `array|stdClass` property, and none for an `array` one.
 
 ### Changed
 
@@ -122,14 +122,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and any code that set it to JSON text to set the document), and the
   column to `JSON` on MySQL and MariaDB or `jsonb` on PostgreSQL
   (`ALTER TABLE t ALTER COLUMN c TYPE jsonb USING c::jsonb`). A client
-  that sent JSON text to a `Json` field sends the document.
-- **Breaking:** the build refuses a `Json` or `KeyValue` field on an
-  `array` or `?array` property, naming the resource, the property and
-  the four accepted types: PHP holds `{}` and `[]` as one array, so an
-  empty object, nested or not, was stored as `[]`. Declare the property
-  `array|stdClass` (`array|stdClass|null` for `?array`); the column
-  stays as it is, and a root list is still a list. A resource with no
-  fields of its own derives no field for an `array` property.
+  that sent JSON text to a `Json` field sends the document. An `array`
+  or `?array` property is refused too, naming the resource, the property
+  and the four accepted types: PHP holds `{}` and `[]` as one array, so
+  an empty object, nested or not, would be stored as `[]`.
 - **Breaking:** select values are strict. A body value outside the
   options is `invalid_choice` (on its index for a multiple select), and
   a JSON body must send an option's own type (`2`, not `"2"`, for an int
