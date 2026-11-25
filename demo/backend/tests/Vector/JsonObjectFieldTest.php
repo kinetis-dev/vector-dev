@@ -34,9 +34,9 @@ use stdClass;
  * lives on PostgreSQL, the product's attributes (`?stdClass`) on MySQL.
  *
  * The test's own registry adds two resources with no timestamps, so a write
- * that changes nothing has nothing to stamp, one JSON field over an `array`
- * property, which still holds `{}` as `[]`, and marks the product's
+ * that changes nothing has nothing to stamp, and marks the product's
  * attributes as not nullable, so an empty one is stored rather than cleared.
+ * An `array` property is refused for either field (JsonColumnTypesTest).
  */
 final class JsonObjectFieldTest extends VectorTestCase
 {
@@ -54,7 +54,7 @@ final class JsonObjectFieldTest extends VectorTestCase
         $metadata = MetadataRegistry::fromArray(new DiscoveryContext(dirname(__DIR__, 2))->compiled(OrmMetadata::class));
 
         // each on its own: two resources over one entity in one compile would ask which one relations link to
-        foreach ([ObjectTickets::class, RequiredObjectTickets::class, ArrayProducts::class] as $class) {
+        foreach ([ObjectTickets::class, RequiredObjectTickets::class] as $class) {
             $data['resources'] += (new ResourceCompiler($metadata, [$class]))->compile();
         }
 
@@ -228,26 +228,6 @@ final class JsonObjectFieldTest extends VectorTestCase
         }
     }
 
-    /** An `array` property is what it was: `{}` arrives, and is stored, as `[]`. */
-    public function testAnArrayPropertyStillHoldsAnEmptyObjectAsAList(): void
-    {
-        $row = $this->shop()->table('products')->select('id', 'specs')->where('deleted_at', '=', null)->orderBy('id', 'ASC')->first();
-        self::assertIsArray($row);
-        $id = (int) $row['id'];
-        $products = $this->vector($this->adminHeaders())->resource('array-products');
-
-        try {
-            $answer = self::objects($products->update($id, ['specs' => (object) ['box' => new stdClass(), 'n' => 1]])->assertOk());
-            self::assertSame('{"box":[],"n":1}', self::canonical(json_encode($answer->data->specs, JSON_THROW_ON_ERROR)));
-            self::assertSame('{"box":[],"n":1}', self::canonical((string) $this->shop()->table('products')->select('specs')->where('id', '=', $id)->value('specs')));
-
-            $answer = self::objects($products->update($id, ['specs' => new stdClass()])->assertOk());
-            self::assertSame('[]', json_encode($answer->data->specs, JSON_THROW_ON_ERROR));
-        } finally {
-            $this->shop()->table('products')->where('id', '=', $id)->update(['specs' => $row['specs']]);
-        }
-    }
-
     /** A revert from the audit trail puts back the object a change replaced, empty or nested. */
     public function testARevertRestoresAnObject(): void
     {
@@ -329,17 +309,17 @@ final class JsonObjectFieldTest extends VectorTestCase
         }
     }
 
-    /** A field over an `array` property receives arrays from the MCP tools too, as from a REST body. */
-    public function testTheMcpToolsHandAnArrayPropertyArrays(): void
+    /** A field that keeps no objects (a JSON repeater's rows) receives arrays from the MCP tools too, as from a REST body. */
+    public function testTheMcpToolsHandAFieldThatKeepsNoObjectsArrays(): void
     {
         $row = $this->shop()->table('products')->select('id', 'specs')->where('deleted_at', '=', null)->orderBy('id', 'ASC')->first();
         self::assertIsArray($row);
         $id = (int) $row['id'];
 
         try {
-            $answer = $this->mcp('vector_update', ['resource' => 'array-products', 'id' => (string) $id, 'values' => ['specs' => (object) ['box' => new stdClass(), 'n' => 1]]]);
-            self::assertSame('{"box":[],"n":1}', self::canonical(json_encode($answer->data->specs, JSON_THROW_ON_ERROR)));
-            self::assertSame('{"box":[],"n":1}', self::canonical((string) $this->shop()->table('products')->select('specs')->where('id', '=', $id)->value('specs')));
+            $answer = $this->mcp('vector_update', ['resource' => 'products', 'id' => (string) $id, 'values' => ['specs' => [(object) ['label' => 'Box', 'value' => 'none']]]]);
+            self::assertSame('[{"label":"Box","value":"none"}]', self::canonical(json_encode($answer->data->specs, JSON_THROW_ON_ERROR)));
+            self::assertSame('[{"label":"Box","value":"none"}]', self::canonical((string) $this->shop()->table('products')->select('specs')->where('id', '=', $id)->value('specs')));
         } finally {
             $this->shop()->table('products')->where('id', '=', $id)->update(['specs' => $row['specs']]);
         }
@@ -474,22 +454,6 @@ final class RequiredObjectTickets extends VectorResource
     public function fields(): array
     {
         return [Id::make(), Json::make('metadata')->required()];
-    }
-
-    #[\Override]
-    public function timestamps(): array
-    {
-        return ['created' => null, 'updated' => null];
-    }
-}
-
-/** A JSON field over the product's specs, an `array` property. */
-#[Resource(Product::class, slug: 'array-products')]
-final class ArrayProducts extends VectorResource
-{
-    public function fields(): array
-    {
-        return [Id::make(), Json::make('specs')];
     }
 
     #[\Override]

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Vector;
 
 use App\Domain\Product;
+use App\Domain\Support\Ticket;
 use Kinetis\Cache\DiscoveryContext;
 use Kinetis\DatabaseBridge\OrmMetadata;
 use Kinetis\Orm\Metadata\MetadataRegistry;
@@ -35,12 +36,12 @@ final class KeyValueFieldTest extends VectorTestCase
      */
     public function testRequiredJsonAndKeyValueTakeAnyNonEmptyDocument(): void
     {
-        $json = $this->compiled(new #[Resource(Product::class, slug: 'json-products')] class extends VectorResource {
+        $json = $this->compiled(new #[Resource(Ticket::class, slug: 'json-tickets')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), Json::make('specs')->required()];
+                return [Id::make(), Json::make('metadata')->required()];
             }
-        }, 'json-products');
+        }, 'json-tickets');
         $keyValue = $this->compiled(new #[Resource(Product::class, slug: 'json-products')] class extends VectorResource {
             public function fields(): array
             {
@@ -48,10 +49,11 @@ final class KeyValueFieldTest extends VectorTestCase
             }
         }, 'json-products');
 
-        // an `array` property (the specs): a document is an array
-        self::assertSame(['specs' => ['carrier' => 'DHL']], $this->recordInput($json, ['specs' => ['carrier' => 'DHL']]));
-        self::assertSame(['specs' => [1, 2]], $this->recordInput($json, ['specs' => [1, 2]]));
-        self::assertSame([[['specs'], 'not_blank']], $this->recordInput($json, ['specs' => []], true));
+        // an `array|stdClass|null` property (the ticket's metadata): an object is a stdClass, a list a list
+        self::assertEquals(['metadata' => (object) ['carrier' => 'DHL']], $this->recordInput($json, ['metadata' => (object) ['carrier' => 'DHL']]));
+        self::assertSame(['metadata' => [1, 2]], $this->recordInput($json, ['metadata' => [1, 2]]));
+        self::assertSame([[['metadata'], 'not_blank']], $this->recordInput($json, ['metadata' => []], true));
+        self::assertSame([[['metadata'], 'not_blank']], $this->recordInput($json, ['metadata' => new \stdClass()], true));
         // a `?stdClass` property (the attributes): an object of text values is a stdClass, and {} is as empty as []
         self::assertEquals(['attributes' => (object) ['size' => 'M']], $this->recordInput($keyValue, ['attributes' => ['size' => 'M']]));
         self::assertEquals(['attributes' => (object) ['size' => 'M']], $this->recordInput($keyValue, ['attributes' => (object) ['size' => 'M']]));
@@ -135,7 +137,7 @@ final class KeyValueFieldTest extends VectorTestCase
 
         foreach ([
             [$sorted, 'cannot be sorted'],
-            [$number, 'stores its value in a JSON column: declare the property array, ?array, stdClass, ?stdClass, array|stdClass or array|stdClass|null'],
+            [$number, 'stores its value in a JSON column: declare the property stdClass, ?stdClass, array|stdClass or array|stdClass|null'],
             [$text, 'is a key-value field, which stores its value in a JSON column'],
             [$json, 'is a JSON field, which stores its value in a JSON column'],
         ] as [$resource, $message]) {
