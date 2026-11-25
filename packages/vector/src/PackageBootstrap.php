@@ -7,10 +7,12 @@ namespace Kinetis\Vector;
 use Kinetis\Config\Config;
 use Kinetis\Container\AppScope;
 use Kinetis\Container\PackageBootstrapInterface;
+use Kinetis\Orm\OrmFactoryRegistry;
 use Kinetis\Runtime\ProjectRoot;
 use Kinetis\Vector\Auth\PasswordHasherInterface;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Database\Connections;
+use Kinetis\Vector\Database\JsonDepth;
 use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\Vector\Files\VectorStorage;
 use Kinetis\Vector\Write\EntityWriter;
@@ -47,6 +49,15 @@ final readonly class PackageBootstrap implements PackageBootstrapInterface
         $app->instance(OpenApiCache::class, new OpenApiCache());
         // Vector's own tables, on VECTOR_DB_CONNECTION or the default connection; the link is resolved on first use.
         $app->instance(VectorDatabase::class, VectorDatabase::fromConfig($app, $config));
+        // How deeply a JSON value nests on each connection: built on first use, as the ORM's factories it reads are.
+        $app->bind(JsonDepth::class, static function (AppScope $app): JsonDepth {
+            $factories = $app->get(OrmFactoryRegistry::class);
+            $vector = $app->get(VectorDatabase::class);
+
+            return $factories instanceof OrmFactoryRegistry && $vector instanceof VectorDatabase
+                ? new JsonDepth($factories, $vector)
+                : throw new \LogicException(OrmFactoryRegistry::class . ' and ' . VectorDatabase::class . ' are bound to something else.');
+        });
         // The dialect of each connection, and the reflection the default writer needs: request-neutral memos.
         $app->instance(Connections::class, new Connections($app, $config));
         $app->instance(EntityWriter::class, new EntityWriter());

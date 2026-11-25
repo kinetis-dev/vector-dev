@@ -318,6 +318,21 @@ final class JsonObjectFieldTest extends VectorTestCase
         }
     }
 
+    /** JsonDepth reads request-neutral facts, so every unit of work shares the worker's one instance. */
+    public function testJsonDepthIsOnePerWorker(): void
+    {
+        $first = $this->app->createRequestScope();
+        $second = $this->app->createRequestScope();
+
+        try {
+            self::assertSame($this->app->get(JsonDepth::class), $first->get(JsonDepth::class));
+            self::assertSame($first->get(JsonDepth::class), $second->get(JsonDepth::class));
+        } finally {
+            $first->dispose();
+            $second->dispose();
+        }
+    }
+
     /**
      * An imported Json cell deeper than any field holds is refused at the
      * field's own limit, as a cell deeper than that limit but shallower

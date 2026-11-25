@@ -53,7 +53,7 @@ final class ImportRowMapperTest extends TestCase
     /** Never read here: no cell of these nests too deeply. */
     private function depth(): JsonDepth
     {
-        return new JsonDepth(EntityManagerRegistry::create(OrmFactoryRegistry::create([], MetadataRegistry::fromClasses([]))), VectorDatabase::fromConfig(new AppScope(), new Config([])));
+        return new JsonDepth(OrmFactoryRegistry::create([], MetadataRegistry::fromClasses([])), VectorDatabase::fromConfig(new AppScope(), new Config([])));
     }
 
     /** @return array<string, mixed> a compiled resource with one field of each text-parsed type */

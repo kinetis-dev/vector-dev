@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Kinetis\Vector\Database;
 
-use Kinetis\Orm\EntityManagerRegistry;
+use Kinetis\Orm\OrmFactoryRegistry;
 use Kinetis\Validation\Violation;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 
@@ -23,6 +23,10 @@ use Kinetis\Vector\Registry\ResourceDescriptor;
  * value in ANSWER_LEVELS. forField() is the strictest of the three, so a
  * value it admits is stored, audited and answered on any pair of
  * connections. One helper, so every site agrees on the limit.
+ *
+ * One instance per worker, bound on AppScope: it reads each connection's
+ * depth from its OrmFactory and from VectorDatabase, both request-neutral,
+ * and holds nothing request-scoped.
  */
 final readonly class JsonDepth
 {
@@ -39,7 +43,7 @@ final readonly class JsonDepth
     public const int MOST = self::ANSWER_DEPTH - self::ANSWER_LEVELS;
 
     public function __construct(
-        private EntityManagerRegistry $managers,
+        private OrmFactoryRegistry $factories,
         private VectorDatabase $vector,
     ) {}
 
@@ -50,7 +54,7 @@ final readonly class JsonDepth
      */
     public function ofRecord(ResourceDescriptor $resource): int
     {
-        return $this->managers->managerFor($resource->entityClass())->jsonDepth();
+        return $this->factories->factoryFor($resource->entityClass())->jsonDepth();
     }
 
     /**
