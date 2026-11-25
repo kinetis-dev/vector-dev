@@ -22,6 +22,9 @@ use Kinetis\QueryBuilder\Query;
  */
 final readonly class AuditStore
 {
+    /** How deep record() lets the changes nest: json_encode()'s own default. */
+    public const int ENCODE_DEPTH = 512;
+
     public function __construct(private VectorDatabase $db) {}
 
     /**
@@ -32,7 +35,7 @@ final readonly class AuditStore
     {
         $rows = [];
         $now = JobStore::now();
-        $encoded = json_encode($changes, JSON_THROW_ON_ERROR);
+        $encoded = json_encode($changes, JSON_THROW_ON_ERROR, self::ENCODE_DEPTH);
 
         foreach ($recordIds as $id) {
             $rows[] = [
@@ -81,15 +84,16 @@ final readonly class AuditStore
      * stdClass, so a value recorded as `{}` or `{"a": {}}` reads back as
      * the object it was, and a list as a list; only the entry's own
      * shape is arrays: field => value on a create, field => `{from, to}`
-     * otherwise. The depth is json_encode()'s own, so whatever record()
-     * stored reads back.
+     * otherwise. json_encode() writes ENCODE_DEPTH levels where
+     * json_decode() at that depth reads one fewer, so the read allows one
+     * more, and whatever record() stored reads back.
      *
      * @param array<string, mixed> $row
      * @return AuditRow
      */
     private static function entry(array $row): array
     {
-        $tree = json_decode((string) $row['changes'], false, 512, JSON_THROW_ON_ERROR);
+        $tree = json_decode((string) $row['changes'], false, self::ENCODE_DEPTH + 1, JSON_THROW_ON_ERROR);
         $changes = [];
 
         foreach ($tree instanceof \stdClass ? get_object_vars($tree) : [] as $name => $change) {

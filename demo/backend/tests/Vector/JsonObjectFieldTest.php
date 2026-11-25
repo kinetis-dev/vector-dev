@@ -20,6 +20,7 @@ use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Json;
 use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Registry\VectorRegistry;
+use Kinetis\Vector\Store\AuditStore;
 use Kinetis\Vector\Testing\InteractsWithVector;
 use Kinetis\Vector\Testing\VectorResponse;
 use Kinetis\Vector\VectorResource;
@@ -271,6 +272,34 @@ final class JsonObjectFieldTest extends VectorTestCase
             }
         } finally {
             $this->support()->table('tickets')->where('id', '=', $id)->update(['metadata' => $stored]);
+        }
+    }
+
+    /** Changes nested as deep as record() encodes read back through the trail and one entry. */
+    public function testAnEntryAtTheEncodeDepthReadsBack(): void
+    {
+        $value = new stdClass();
+
+        // the entry, its field and its {from, to} are three levels; the value fills the rest
+        for ($level = 3; $level < AuditStore::ENCODE_DEPTH; $level++) {
+            $value = (object) ['a' => $value];
+        }
+
+        $changes = ['metadata' => ['from' => $value, 'to' => null]];
+        self::assertFalse(json_encode($changes, 0, AuditStore::ENCODE_DEPTH - 1), 'nested to the encode depth exactly');
+        $audit = $this->app->get(AuditStore::class);
+        self::assertInstanceOf(AuditStore::class, $audit);
+
+        try {
+            $audit->record('depth-probe', ['1'], 'update', $changes, '1', null);
+            $trail = $audit->trail('depth-probe', '1');
+            self::assertCount(1, $trail);
+            $expected = json_encode($value, 0, AuditStore::ENCODE_DEPTH);
+            self::assertSame($expected, json_encode($trail[0]['changes']['metadata']['from'] ?? null, 0, AuditStore::ENCODE_DEPTH), 'the trail');
+            $entry = $audit->find('depth-probe', '1', $trail[0]['id']);
+            self::assertSame($expected, json_encode($entry['changes']['metadata']['from'] ?? null, 0, AuditStore::ENCODE_DEPTH), 'one entry');
+        } finally {
+            $this->vectorQuery()->table('vector_audit')->where('resource', '=', 'depth-probe')->delete();
         }
     }
 
