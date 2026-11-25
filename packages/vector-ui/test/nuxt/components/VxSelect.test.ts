@@ -12,7 +12,7 @@ afterEach(() => {
     mounted.splice(0).forEach(wrapper => wrapper.unmount())
 })
 
-const options = [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }]
+const options = [{ value: 'a', label: 'A', color: null }, { value: 'b', label: 'B', color: null }]
 
 async function mountSelect(props: { autocomplete?: boolean, disabled?: boolean }) {
     const wrapper = await mountSuspended(SelectInput, {
