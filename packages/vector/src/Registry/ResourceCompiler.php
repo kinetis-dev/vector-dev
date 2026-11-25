@@ -1522,20 +1522,26 @@ final class ResourceCompiler
 
     /**
      * A key-value or JSON field lives in a JSON column, which the database
-     * neither sorts, filters, searches nor sums for Vector: an `array` or
-     * `?array` property, which holds an empty object as `[]`, or a
+     * neither sorts, filters, searches nor sums for Vector, on a
      * `stdClass`, `?stdClass`, `array|stdClass` or `array|stdClass|null`
-     * one, which keeps every object an object (compiled with
-     * `jsonObjects`).
+     * property, which keeps every object an object (compiled with
+     * `jsonObjects`). An `array` or `?array` property is refused: PHP
+     * holds `{}` and `[]` as one array, so an empty object, nested or
+     * not, would be stored as `[]`.
      *
      * @param array<string, mixed> $field
      */
     private static function checkJsonColumn(string $class, string $name, array $field): void
     {
         $kind = $field['type'] === 'json' ? 'a JSON' : 'a key-value';
+        $accepted = 'declare the property stdClass, ?stdClass, array|stdClass or array|stdClass|null';
 
         if (($field['valueType'] ?? null) !== 'json') {
-            throw ResourceCompileException::field($class, $name, "is {$kind} field, which stores its value in a JSON column: declare the property array, ?array, stdClass, ?stdClass, array|stdClass or array|stdClass|null");
+            throw ResourceCompileException::field($class, $name, "is {$kind} field, which stores its value in a JSON column: {$accepted}");
+        }
+
+        if (!isset($field['jsonObjects'])) {
+            throw ResourceCompileException::field($class, $name, "is {$kind} field on the array property \"{$name}\", which would store {} as []: {$accepted}");
         }
 
         if ($field['sortable'] || $field['filterable'] || $field['searchable'] || ($field['summary'] ?? null) !== null) {
@@ -2225,7 +2231,8 @@ final class ResourceCompiler
 
     /**
      * The field a mapped property implies, or null for the version
-     * property and a relationship whose target has no resource.
+     * property, a relationship whose target has no resource, and an
+     * `array` property, which a `Json` field cannot map (checkJsonColumn()).
      *
      * @param EntityMapping $entity
      * @param PropertyMapping $property
@@ -2238,6 +2245,7 @@ final class ResourceCompiler
             $name === $entity['version'] => null,
             $name === $entity['id'] => Id::make($name),
             $property['target'] !== null => $this->deriveBelongsTo($name, $property['target']),
+            $property['type'] === 'json' => null,
             default => self::deriveColumn($name, $property),
         };
     }
@@ -2254,7 +2262,7 @@ final class ResourceCompiler
     {
         $field = match (true) {
             $property['enum'] !== null => Select::make($name)->of($property['enum'])->filterable(),
-            in_array($property['type'], ['json', 'jsonObject', 'jsonObjectOrList'], true) => Json::make($name)->hideFromIndex(),
+            in_array($property['type'], ['jsonObject', 'jsonObjectOrList'], true) => Json::make($name)->hideFromIndex(),
             $property['type'] === 'string' => Text::make($name)->searchable(),
             $property['type'] === 'int' => Number::make($name),
             $property['type'] === 'float' => Number::make($name)->decimals(2),
@@ -2263,7 +2271,7 @@ final class ResourceCompiler
             default => DateTime::make($name)->filterable(),
         };
 
-        if (!in_array($property['type'], ['json', 'jsonObject', 'jsonObjectOrList'], true)) {
+        if (!in_array($property['type'], ['jsonObject', 'jsonObjectOrList'], true)) {
             $field->sortable();
         }
 
