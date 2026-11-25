@@ -47,9 +47,8 @@ final class JsonColumnTypesTest extends TestCase
     {
         $shapes = ['object' => 'object', 'maybeObject' => 'object', 'either' => 'objectOrList', 'maybeEither' => 'objectOrList', 'reordered' => 'objectOrList'];
 
-        foreach ([JsonOnObjects::class => 'json', KeyValueOnObjects::class => 'keyValue'] as $class => $type) {
-            $compiled = self::compile($class);
-            $fields = array_column(reset($compiled)['fields'], null, 'name');
+        foreach ([[JsonOnObjects::class, 'json-on-objects', 'json'], [KeyValueOnObjects::class, 'key-value-on-objects', 'keyValue']] as [$class, $slug, $type]) {
+            $fields = array_column(self::compile($class)[$slug]['fields'], null, 'name');
 
             foreach ($shapes as $property => $shape) {
                 self::assertSame([$type, $shape], [$fields[$property]['type'], $fields[$property]['jsonObjects']], "{$type} on {$property}");
@@ -59,8 +58,7 @@ final class JsonColumnTypesTest extends TestCase
 
     public function testADerivedResourceLeavesAnArrayPropertyOut(): void
     {
-        $compiled = self::compile(DerivedJsonShapes::class);
-        $names = array_column(reset($compiled)['fields'], 'name');
+        $names = array_column(self::compile(DerivedJsonShapes::class)['derived-json-shapes']['fields'], 'name');
 
         self::assertSame(['id', 'object', 'maybeObject', 'either', 'maybeEither', 'reordered'], $names);
     }
