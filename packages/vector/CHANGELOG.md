@@ -30,7 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stored as `{}`.
 - A `requiredWhen()` condition took a stored empty `KeyValue` object as a
   value; it now counts as empty, as an empty list does.
-
 - `required()` on a multiple `Select`, a `Tag`, a JSON `Repeater`, a
   `Json` or a `KeyValue` field refused every value. Any non-empty list
   or object now passes, and an empty one is refused with `not_blank`, as

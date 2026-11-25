@@ -315,7 +315,8 @@ tree (or a list, where the property allows one) and a `KeyValue` value a
 own rules check the value as sent, which on those properties holds a
 `stdClass` for every JSON object of a REST body. A value that reaches
 the write path as an associative array (an MCP tool's `values`, which
-the MCP layer decodes to arrays) is read as the object it was, but an
+the MCP layer decodes to arrays, or a value restored by a revert from
+the history, which is read back as arrays) is read as the object it was, but an
 empty object arrives there as `[]`: it is stored as `{}` as a whole
 `stdClass` property's value or a `KeyValue`, and as a list anywhere
 else. An action's or a settings group's `Json` and `KeyValue` inputs
