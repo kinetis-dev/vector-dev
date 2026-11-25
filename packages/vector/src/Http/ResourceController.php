@@ -337,8 +337,7 @@ final readonly class ResourceController
     public function action(string $resource, string $action, ServerRequestInterface $request): ResponseInterface
     {
         $descriptor = $this->service->resource($resource);
-        $compiled = $descriptor->action($action);
-        $fields = $compiled === null ? [] : array_column($compiled['fields'], null, 'name');
+        $fields = ActionRunner::fieldsOf($descriptor->action($action));
         $response = $this->actions->run($descriptor, $action, $this->withObjects($request, $fields, $this->body($request), 'fields'));
 
         if ($response->type === 'download') {

@@ -21,9 +21,9 @@ use Kinetis\Vector\Exception\VectorException;
 use Kinetis\Vector\Query\AggregateRequest;
 use Kinetis\Vector\Query\ListRequest;
 use Kinetis\Vector\Query\ResourceService;
-use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Widgets\WidgetRunner;
+use Kinetis\Vector\Write\JsonObjects;
 use Kinetis\Vector\Write\RecordWriter;
 use Kinetis\Vector\Write\ValueConverter;
 
@@ -163,7 +163,7 @@ final readonly class VectorTools
         return $this->guarded(function () use ($resource, $values): array {
             $descriptor = $this->reader->resource($resource);
 
-            return ['data' => $this->writer->create($descriptor, self::withObjects($descriptor, $values))];
+            return ['data' => $this->writer->create($descriptor, JsonObjects::keep($descriptor->fields(), $values))];
         });
     }
 
@@ -177,39 +177,8 @@ final readonly class VectorTools
         return $this->guarded(function () use ($resource, $id, $values, $version): array {
             $descriptor = $this->reader->resource($resource);
 
-            return ['data' => $this->writer->update($descriptor, $id, self::withObjects($descriptor, $values), $version === '' ? null : $version)];
+            return ['data' => $this->writer->update($descriptor, $id, JsonObjects::keep($descriptor->fields(), $values), $version === '' ? null : $version)];
         });
-    }
-
-    /**
-     * A tool's values as a REST body hands them to the writer: a field
-     * whose property keeps JSON objects keeps its stdClass tree, `{}`
-     * nested or not, and every other value is a plain array again at any
-     * depth.
-     *
-     * @param array<array-key, mixed> $values
-     * @return array<array-key, mixed>
-     */
-    private static function withObjects(ResourceDescriptor $resource, array $values): array
-    {
-        $fields = $resource->fields();
-
-        foreach ($values as $name => $value) {
-            if (!isset($fields[$name]) || !ValueConverter::keepsObjects($fields[$name])) {
-                $values[$name] = self::arrays($value);
-            }
-        }
-
-        return $values;
-    }
-
-    private static function arrays(mixed $value): mixed
-    {
-        if ($value instanceof \stdClass) {
-            $value = get_object_vars($value);
-        }
-
-        return is_array($value) ? array_map(self::arrays(...), $value) : $value;
     }
 
     /** @return array<string, mixed>|ToolResult */
