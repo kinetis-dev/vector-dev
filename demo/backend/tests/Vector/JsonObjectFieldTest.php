@@ -247,6 +247,33 @@ final class JsonObjectFieldTest extends VectorTestCase
         }
     }
 
+    /** A revert from the audit trail puts back the object a change replaced, empty or nested. */
+    public function testARevertRestoresAnObject(): void
+    {
+        [$id, $stored] = $this->ticket();
+        $tickets = $this->vector($this->adminHeaders())->resource('object-tickets');
+
+        try {
+            foreach (['{}' => new stdClass(), '{"a":{}}' => (object) ['a' => new stdClass()]] as $json => $old) {
+                $tickets->update($id, ['metadata' => $old])->assertOk();
+                $tickets->update($id, ['metadata' => [1, 2]])->assertOk();
+                self::assertSame('[1,2]', $this->storedMetadata($id));
+
+                $trail = json_decode($this->client->get("/vector/r/object-tickets/{$id}/audit", headers: $this->adminHeaders())->assertOk()->body(), false, 512, JSON_THROW_ON_ERROR);
+                self::assertInstanceOf(stdClass::class, $trail);
+                $entry = $trail->data[0];
+                self::assertSame($json, json_encode($entry->changes->metadata->from, JSON_THROW_ON_ERROR), "{$json}: the trail answers the object");
+
+                $reverted = json_decode($this->client->post("/vector/r/object-tickets/{$id}/audit/{$entry->id}/revert", headers: $this->adminHeaders())->assertOk()->body(), false, 512, JSON_THROW_ON_ERROR);
+                self::assertInstanceOf(stdClass::class, $reverted);
+                self::assertSame($json, json_encode($reverted->data->metadata, JSON_THROW_ON_ERROR), "{$json}: answered");
+                self::assertSame($json, $this->storedMetadata($id), "{$json}: stored");
+            }
+        } finally {
+            $this->support()->table('tickets')->where('id', '=', $id)->update(['metadata' => $stored]);
+        }
+    }
+
     /** The MCP create and update tools keep a field's objects as a REST body does. */
     public function testTheMcpToolsKeepANestedEmptyObject(): void
     {

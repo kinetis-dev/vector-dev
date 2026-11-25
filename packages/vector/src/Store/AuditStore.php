@@ -12,9 +12,10 @@ use Kinetis\QueryBuilder\Query;
 /**
  * `vector_audit`: field-level history per record. The writer records
  * what changed, `{field: {from, to}}` on an update, every value on a
- * create, and who did it, impersonator included, and the channel it
- * came through (ActorContext::$origin) when that was not the admin's own
- * hand. A null origin is not written, so an installation that has not
+ * create (each value as the record serialized it, a JSON object a
+ * stdClass when read back), and who did it, impersonator included, and
+ * the channel it came through (ActorContext::$origin) when that was not
+ * the admin's own hand. A null origin is not written, so an installation that has not
  * yet added the `origin` column keeps recording its own writes.
  *
  * @phpstan-type AuditRow array{id: int, event: string, actorId: string, impersonatorId: string|null, origin: string|null, changes: array<string, mixed>, createdAt: string}
@@ -76,12 +77,24 @@ final readonly class AuditStore
     }
 
     /**
+     * One row as an entry. The changes are read with every JSON object a
+     * stdClass, so a value recorded as `{}` or `{"a": {}}` reads back as
+     * the object it was, and a list as a list; only the entry's own
+     * shape is arrays: field => value on a create, field => `{from, to}`
+     * otherwise. The depth is json_encode()'s own, so whatever record()
+     * stored reads back.
+     *
      * @param array<string, mixed> $row
      * @return AuditRow
      */
     private static function entry(array $row): array
     {
-        $changes = json_decode((string) $row['changes'], true, 16, JSON_THROW_ON_ERROR);
+        $tree = json_decode((string) $row['changes'], false, 512, JSON_THROW_ON_ERROR);
+        $changes = [];
+
+        foreach ($tree instanceof \stdClass ? get_object_vars($tree) : [] as $name => $change) {
+            $changes[(string) $name] = $row['event'] !== 'create' && $change instanceof \stdClass ? get_object_vars($change) : $change;
+        }
 
         return [
             'id' => (int) $row['id'],
@@ -90,7 +103,7 @@ final readonly class AuditStore
             'impersonatorId' => $row['impersonator_id'] === null ? null : (string) $row['impersonator_id'],
             // absent where the column has not been added yet
             'origin' => isset($row['origin']) ? (string) $row['origin'] : null,
-            'changes' => is_array($changes) ? $changes : [],
+            'changes' => $changes,
             'createdAt' => (new DateTimeImmutable((string) $row['created_at'], new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.v\Z'),
         ];
     }

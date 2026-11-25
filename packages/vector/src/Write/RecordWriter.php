@@ -146,7 +146,9 @@ final readonly class RecordWriter
                 continue;
             }
 
+            // the stored value as a REST body hands it over: objects kept only where the field keeps them
             $from = $change['from'] ?? null;
+            $from = ValueConverter::keepsObjects($field) ? $from : JsonObjects::arrays($from);
             $payload[$name] = $field['type'] === 'belongsTo' && is_array($from) ? ($from['id'] ?? null) : $from;
         }
 
@@ -1415,9 +1417,9 @@ final readonly class RecordWriter
     }
 
     /**
-     * A serialized value as the audit trail stored it: the trail keeps
-     * JSON decoded to arrays, while a record carries an empty key-value
-     * map as an object, and `{}` and `[]` must compare equal.
+     * A serialized value compared loosely, `{}` and `[]` alike: an
+     * `array` property holds the two as one value, so telling them apart
+     * would see a change where its record has none.
      */
     private static function comparable(mixed $value): string
     {
