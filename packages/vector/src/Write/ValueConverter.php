@@ -684,10 +684,11 @@ final readonly class ValueConverter
         $map = [];
 
         foreach ($raw as $key => $value) {
-            $key = trim((string) $key);
+            // a NUL is refused before trim(), which would strip it
+            $key = str_contains((string) $key, "\0") ? '' : trim((string) $key);
 
             if ($key === '' || mb_strlen($key) > KeyValue::KEY_LENGTH) {
-                throw new InputViolation(new Violation([], 'invalid_key', 'has a key that is empty or longer than ' . KeyValue::KEY_LENGTH . ' characters.'));
+                throw new InputViolation(new Violation([], 'invalid_key', 'has a key that is empty, holds a NUL character or is longer than ' . KeyValue::KEY_LENGTH . ' characters.'));
             }
 
             if ($value !== null && !is_scalar($value)) {

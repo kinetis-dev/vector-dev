@@ -171,6 +171,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `required()` on a `KeyValue` field refused every value. Any non-empty
   object now passes, and an empty one is refused with `not_blank`, as a
   blank string is.
+- A `KeyValue` key holding a NUL character was stored, a leading or
+  trailing one trimmed away. Such a key is now refused with
+  `invalid_key`.
 - The rows endpoint of a relationship repeater loaded at most `max()`
   children, so saving the form deleted every child past `max()`. It now
   loads all of them, and `max()` refuses that save with a 422.

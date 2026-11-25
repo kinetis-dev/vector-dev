@@ -98,6 +98,8 @@ final class KeyValueFieldTest extends VectorTestCase
         try {
             $products->update($id, ['attributes' => ['a', 'b']])->assertInvalid('attributes', 'type_mismatch');
             $products->update($id, ['attributes' => ['  ' => 'x']])->assertInvalid('attributes', 'invalid_key');
+            $products->update($id, ['attributes' => ["\0a" => 'x']])->assertInvalid('attributes', 'invalid_key');
+            $products->update($id, ['attributes' => ["a\0" => 'x']])->assertInvalid('attributes', 'invalid_key');
             $products->update($id, ['attributes' => ['a' => ['b' => 1]]])->assertInvalid('attributes', 'type_mismatch');
             $products->update($id, ['attributes' => array_combine(array_map(static fn (int $i): string => "k{$i}", range(1, 51)), array_fill(0, 51, 'v'))])
                 ->assertInvalid('attributes', 'too_many_entries');
