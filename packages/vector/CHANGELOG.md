@@ -106,8 +106,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   text, since a job's arguments are arrays, which would hold `{}` as
   `[]`. A queued action job pushed before the upgrade fails to start;
   let the queue drain first.
-- `Select` is no longer `final`, so `Country` can extend it; its API is
-  unchanged.
 - Requires `kinetis/orm` ^1.15.0 and `kinetis/query-builder` ^1.8.6.
 - Requires `kinetis/framework` ^1.32.0 and `kinetis/mcp` ^1.10.0, whose
   `#[ObjectMap(keepObjects: true)]` lets the MCP write tools keep JSON
