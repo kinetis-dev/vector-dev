@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "159a1432e48f40c9f68927fd7d0fbb79",
+    "content-hash": "0256f1b1cedc8fe227d2ad7d45e00dd0",
     "packages": [
         {
             "name": "amphp/amp",
@@ -1846,16 +1846,16 @@
         },
         {
             "name": "kinetis/framework",
-            "version": "v1.31.0",
+            "version": "v1.32.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/framework.git",
-                "reference": "c6ceb57270b8a2408f14428d589f3b033b63d206"
+                "reference": "28dc004195b97c3018e6a3c602f602afe4af2732"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/framework/zipball/c6ceb57270b8a2408f14428d589f3b033b63d206",
-                "reference": "c6ceb57270b8a2408f14428d589f3b033b63d206",
+                "url": "https://api.github.com/repos/kinetis-dev/framework/zipball/28dc004195b97c3018e6a3c602f602afe4af2732",
+                "reference": "28dc004195b97c3018e6a3c602f602afe4af2732",
                 "shasum": ""
             },
             "require": {
@@ -1909,27 +1909,27 @@
             "description": "The Runtime-Aware PHP Framework",
             "support": {
                 "issues": "https://github.com/kinetis-dev/framework/issues",
-                "source": "https://github.com/kinetis-dev/framework/tree/v1.31.0"
+                "source": "https://github.com/kinetis-dev/framework/tree/v1.32.0"
             },
-            "time": "2026-11-23T21:17:00+00:00",
-            "published-time": "2026-11-23T21:30:14+00:00"
+            "time": "2026-11-25T12:17:44+00:00",
+            "published-time": "2026-11-25T12:28:24+00:00"
         },
         {
             "name": "kinetis/mcp",
-            "version": "v1.9.1",
+            "version": "v1.10.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/mcp.git",
-                "reference": "87eee49d9e39c5e0929dda6f048ba44ba07e3eb8"
+                "reference": "5f0fcfe23b2e95c6bca3e79e9d8ccae5c3ce6db4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/mcp/zipball/87eee49d9e39c5e0929dda6f048ba44ba07e3eb8",
-                "reference": "87eee49d9e39c5e0929dda6f048ba44ba07e3eb8",
+                "url": "https://api.github.com/repos/kinetis-dev/mcp/zipball/5f0fcfe23b2e95c6bca3e79e9d8ccae5c3ce6db4",
+                "reference": "5f0fcfe23b2e95c6bca3e79e9d8ccae5c3ce6db4",
                 "shasum": ""
             },
             "require": {
-                "kinetis/framework": "^1.29.1",
+                "kinetis/framework": "^1.32.0",
                 "kinetis/mcp-protocol": "^1.1.3",
                 "nyholm/psr7": "^1.8.2",
                 "php": ">=8.4 <8.6",
@@ -1970,10 +1970,10 @@
             "description": "The Model Context Protocol server for Kinetis — tools and resources declared with attributes and validated like HTTP routes, served over stdio and as an ordinary /mcp route.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/mcp/issues",
-                "source": "https://github.com/kinetis-dev/mcp/tree/v1.9.1"
+                "source": "https://github.com/kinetis-dev/mcp/tree/v1.10.0"
             },
-            "time": "2026-11-22T14:06:10+00:00",
-            "published-time": "2026-11-22T14:20:00+00:00"
+            "time": "2026-11-25T12:17:44+00:00",
+            "published-time": "2026-11-25T12:28:28+00:00"
         },
         {
             "name": "kinetis/mcp-protocol",
@@ -2765,7 +2765,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector",
-                "reference": "4f9d5ed6c8f3587e2d7c5637f37c725863cb7659"
+                "reference": "c4507ff4f24f1b89d8515e2109276b757572f6fc"
             },
             "require": {
                 "composer-runtime-api": "^2.0",
@@ -2773,8 +2773,8 @@
                 "ext-zlib": "*",
                 "kinetis/authorization": "^1.0.9",
                 "kinetis/database-bridge": "^1.4.6",
-                "kinetis/framework": "^1.31.0",
-                "kinetis/mcp": "^1.9.1",
+                "kinetis/framework": "^1.32.0",
+                "kinetis/mcp": "^1.10.0",
                 "kinetis/mcp-protocol": "^1.1.3",
                 "kinetis/migrations": "^1.5.1",
                 "kinetis/orm": "^1.15.0",
@@ -2839,13 +2839,13 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector-ai",
-                "reference": "0b6828605ff0fe20f34e214e4b0b7760033cbcf6"
+                "reference": "37205fe99341871bc888cec38ace62113239d9bf"
             },
             "require": {
                 "ext-sodium": "*",
                 "kinetis/aws-sigv4": "^1.3.8",
-                "kinetis/framework": "^1.31.0",
-                "kinetis/mcp": "^1.9.1",
+                "kinetis/framework": "^1.32.0",
+                "kinetis/mcp": "^1.10.0",
                 "kinetis/neuron": "^1.3.4",
                 "kinetis/query-builder": "^1.8.6",
                 "kinetis/revolt-http-client": "^1.9.2",
