@@ -32,7 +32,7 @@ use Kinetis\Vector\Widgets\WidgetRunner;
 use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Vector\Query\ListRequest;
 use Kinetis\Vector\Query\ResourceService;
-use Kinetis\Vector\Registry\ResourceDescriptor;
+use Kinetis\Vector\Write\JsonObjects;
 use Kinetis\Vector\Write\RecordWriter;
 use Kinetis\Vector\Write\ValueConverter;
 use Psr\Http\Message\ResponseInterface;
@@ -337,7 +337,9 @@ final readonly class ResourceController
     public function action(string $resource, string $action, ServerRequestInterface $request): ResponseInterface
     {
         $descriptor = $this->service->resource($resource);
-        $response = $this->actions->run($descriptor, $action, $this->body($request));
+        $compiled = $descriptor->action($action);
+        $fields = $compiled === null ? [] : array_column($compiled['fields'], null, 'name');
+        $response = $this->actions->run($descriptor, $action, $this->withObjects($request, $fields, $this->body($request), 'fields'));
 
         if ($response->type === 'download') {
             return FileResponse::fromContents((string) $response->contents, (string) $response->contentType, 200, (string) $response->filename, ['Cache-Control' => 'no-store']);
@@ -389,7 +391,7 @@ final readonly class ResourceController
     public function create(string $resource, ServerRequestInterface $request): ResponseInterface
     {
         $descriptor = $this->service->resource($resource);
-        $record = $this->writer->create($descriptor, $this->withObjects($request, $descriptor, $this->body($request)));
+        $record = $this->writer->create($descriptor, $this->withObjects($request, $descriptor->fields(), $this->body($request)));
 
         return JsonResponse::create(['data' => $record, 'permissions' => $this->service->recordPermissions($descriptor, $record)], 201);
     }
@@ -400,7 +402,7 @@ final readonly class ResourceController
     {
         $descriptor = $this->service->resource($resource);
         $ifMatch = trim($request->getHeaderLine('If-Match'), " \t\"");
-        $record = $this->writer->update($descriptor, $id, $this->withObjects($request, $descriptor, $this->body($request)), $ifMatch === '' ? null : $ifMatch);
+        $record = $this->writer->update($descriptor, $id, $this->withObjects($request, $descriptor->fields(), $this->body($request)), $ifMatch === '' ? null : $ifMatch);
 
         return ['data' => $record, 'permissions' => $this->service->recordPermissions($descriptor, $record)];
     }
@@ -442,7 +444,7 @@ final readonly class ResourceController
     public function batch(string $resource, ServerRequestInterface $request): array
     {
         $descriptor = $this->service->resource($resource);
-        $body = $this->withObjects($request, $descriptor, $this->body($request), 'fields');
+        $body = $this->withObjects($request, $descriptor->fields(), $this->body($request), 'fields');
         $operation = $body['action'] ?? null;
 
         if (!in_array($operation, ['delete', 'restore', 'forceDelete', 'update'], true)) {
@@ -481,19 +483,20 @@ final readonly class ResourceController
     }
 
     /**
-     * The values of a record body ($under: of its `fields` member, a bulk
-     * edit's) whose fields keep JSON objects, read again with every object
-     * a stdClass: the array the body decodes to holds `{}` as `[]`.
+     * The values of a body ($under: of its `fields` member, a bulk edit's
+     * or an action's) read again with every JSON object a stdClass, kept
+     * for the $fields that keep objects (JsonObjects::keep()): the array
+     * the body decodes to holds `{}` as `[]`.
      *
+     * @param array<string, array<string, mixed>> $fields field name => compiled field
      * @param array<array-key, mixed> $body
      * @return array<array-key, mixed>
      */
-    private function withObjects(ServerRequestInterface $request, ResourceDescriptor $resource, array $body, ?string $under = null): array
+    private function withObjects(ServerRequestInterface $request, array $fields, array $body, ?string $under = null): array
     {
-        $names = array_keys(array_filter($resource->fields(), ValueConverter::keepsObjects(...)));
         $values = $under === null ? $body : ($body[$under] ?? null);
 
-        if ($names === [] || !is_array($values) || array_intersect($names, array_keys($values)) === []) {
+        if (!is_array($values) || !array_any(array_keys($values), static fn (int|string $name): bool => isset($fields[(string) $name]) && ValueConverter::keepsObjects($fields[(string) $name]))) {
             return $body;
         }
 
@@ -509,11 +512,7 @@ final readonly class ResourceController
             return $body;
         }
 
-        foreach ($names as $name) {
-            if (array_key_exists($name, $values) && property_exists($tree, $name)) {
-                $values[$name] = $tree->{$name};
-            }
-        }
+        $values = JsonObjects::keep($fields, get_object_vars($tree));
 
         if ($under === null) {
             return $values;

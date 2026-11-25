@@ -91,7 +91,7 @@ final class VectorQueueTest extends VectorTestCase
             self::assertTrue($queue->available(), 'availability reads configuration only and opens nothing');
 
             try {
-                $queue->push(new RunActionJob(0, 'products', 'reprice-products', [], [], '1'));
+                $queue->push(new RunActionJob(0, 'products', 'reprice-products', [], '{}', '1'));
                 self::fail("a {$type} connection was pushed to");
             } catch (ForbiddenOperationException $e) {
                 self::assertSame($message, $e->getMessage());
@@ -118,7 +118,7 @@ final class VectorQueueTest extends VectorTestCase
         self::assertNull($queue->connection);
         self::assertNull($queue->unavailableReason());
 
-        $queue->push(new RunActionJob(0, 'products', 'reprice-products', [], [], '1'));
+        $queue->push(new RunActionJob(0, 'products', 'reprice-products', [], '{}', '1'));
         $appQueue = $this->app->get(QueueInterface::class);
         self::assertInstanceOf(RecordingQueue::class, $appQueue);
         self::assertSame([['job' => RunActionJob::class, 'queue' => self::QUEUE, 'maxAttempts' => 1]], $appQueue->pushed);

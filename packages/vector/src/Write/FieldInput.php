@@ -17,6 +17,11 @@ final readonly class FieldInput
     public function __construct(private ValueConverter $converter) {}
 
     /**
+     * $payload may hold its JSON objects as stdClass: a `Json` or
+     * `KeyValue` input keeps them (a stdClass tree, a list where JSON
+     * sent one; a stdClass of strings), and every other input reads them
+     * as arrays (JsonObjects::keep()).
+     *
      * @param array<string, array<string, mixed>> $fields field name => compiled field
      * @param array<array-key, mixed> $payload
      * @return array<string, mixed> field name => converted value, for every field (absent ones as null or their default)
@@ -24,6 +29,7 @@ final readonly class FieldInput
      */
     public function validate(array $fields, array $payload): array
     {
+        $payload = JsonObjects::keep($fields, $payload);
         $values = [];
         $violations = [];
 

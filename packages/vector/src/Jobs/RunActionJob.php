@@ -26,14 +26,14 @@ final readonly class RunActionJob implements Job
 {
     /**
      * @param array<string, mixed> $selection `{ids: [...]}` or `{all: {filter, q}}`
-     * @param array<string, mixed> $fields the dialog's raw values
+     * @param string $fields the dialog's raw values as a JSON object's text, so `{}` stays an object
      */
     public function __construct(
         public int $jobId,
         public string $resource,
         public string $action,
         public array $selection,
-        public array $fields,
+        public string $fields,
         public string $actorId,
     ) {}
 
@@ -60,7 +60,7 @@ final readonly class RunActionJob implements Job
                 $response = $context->inFreshScope(function (JobContext $fresh) use ($descriptor, $chunk): ActionResponse {
                     [$runner, $visible] = self::resolved($fresh, $descriptor);
 
-                    return $runner->runNow($visible, $this->action, $chunk, $this->fields, $this->jobId);
+                    return $runner->runNow($visible, $this->action, $chunk, $this->dialog(), $this->jobId);
                 });
 
                 if ($response->type === 'danger') {
@@ -76,7 +76,7 @@ final readonly class RunActionJob implements Job
             $finished = $context->inFreshScope(function (JobContext $fresh) use ($descriptor): ?ActionResponse {
                 [$runner, $visible] = self::resolved($fresh, $descriptor);
 
-                return $runner->finish($visible, $this->action, $this->fields, $this->jobId);
+                return $runner->finish($visible, $this->action, $this->dialog(), $this->jobId);
             });
 
             if ($finished?->type === 'danger') {
@@ -117,5 +117,22 @@ final readonly class RunActionJob implements Job
         }
 
         return [$runner, $service->visible($descriptor)];
+    }
+
+    /**
+     * The dialog's raw values with every JSON object a stdClass, for
+     * FieldInput to keep where an input keeps objects.
+     *
+     * @return array<array-key, mixed>
+     */
+    private function dialog(): array
+    {
+        try {
+            $fields = json_decode($this->fields, false, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            throw new JobFailedException("The action's dialog values are not a JSON object.");
+        }
+
+        return $fields instanceof \stdClass ? get_object_vars($fields) : throw new JobFailedException("The action's dialog values are not a JSON object.");
     }
 }

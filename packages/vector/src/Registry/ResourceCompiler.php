@@ -300,7 +300,9 @@ final class ResourceCompiler
     /**
      * Compiles a field that maps no entity property (an action's or a
      * settings group's input) inferring the value type from the field
-     * type. A belongsTo resolves to a registered resource's slug.
+     * type. A belongsTo resolves to a registered resource's slug. A
+     * `Json` or `KeyValue` input keeps its JSON objects, as one on a
+     * `stdClass` property does.
      *
      * @param array<string, string> $slugByClass resource class => slug
      * @return array<string, mixed>
@@ -337,6 +339,11 @@ final class ResourceCompiler
 
         if ($type === 'json' || $type === 'keyValue' || $type === 'booleanGroup' || $type === 'tag') {
             $array['valueType'] = 'json';
+        }
+
+        // no property to hold {} as []: a JSON input keeps every object, a key-value input is one
+        if ($type === 'json' || $type === 'keyValue') {
+            $array['jsonObjects'] = $type === 'keyValue' ? 'object' : 'objectOrList';
         }
 
         if ($field instanceof RelationField) {

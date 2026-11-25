@@ -9,6 +9,7 @@ use DateTimeZone;
 use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\QueryBuilder\Query;
 use Kinetis\Vector\Registry\SettingsDescriptor;
+use Kinetis\Vector\Write\JsonObjects;
 
 /**
  * `vector_settings`: one row per group and key, the value as JSON.
@@ -20,21 +21,29 @@ final readonly class SettingsStore
     public function __construct(private VectorDatabase $db) {}
 
     /**
-     * The group's values: what was saved over the group's defaults.
+     * The group's values: what was saved over the group's defaults. A
+     * `Json` or `KeyValue` input's value keeps its JSON objects (a
+     * stdClass tree, or a list; a stdClass of strings); every other value
+     * reads them as arrays.
      *
      * @return array<string, mixed>
      */
     public function values(SettingsDescriptor $group): array
     {
         $values = $group->defaults();
+        $fields = $group->fields();
 
         foreach ($this->query()->table('vector_settings')->select('key', 'value')->where('group', '=', $group->name())->get() as $row) {
-            if (array_key_exists($row['key'], $values)) {
+            $key = (string) $row['key'];
+
+            if (array_key_exists($key, $values)) {
                 try {
-                    $values[$row['key']] = json_decode((string) $row['value'], true, 32, JSON_THROW_ON_ERROR);
+                    $value = json_decode((string) $row['value'], false, 32, JSON_THROW_ON_ERROR);
                 } catch (\JsonException) {
-                    // a value this reader cannot decode keeps the group's default rather than failing every page
+                    continue; // a value this reader cannot decode keeps the group's default rather than failing every page
                 }
+
+                $values[$key] = JsonObjects::keep($fields, [$key => $value])[$key];
             }
         }
 
