@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Requires `kinetis/orm` ^1.15.0.
+
 ### Fixed
 
 - `required()` on a multiple `Select`, a `Tag`, a JSON `Repeater`, a

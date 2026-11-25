@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0e2d841dcdfe2bb6c48e8b6b3bef0e61",
+    "content-hash": "159a1432e48f40c9f68927fd7d0fbb79",
     "packages": [
         {
             "name": "amphp/amp",
@@ -2140,16 +2140,16 @@
         },
         {
             "name": "kinetis/orm",
-            "version": "v1.14.0",
+            "version": "v1.15.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kinetis-dev/orm.git",
-                "reference": "54a570b06d373988d10d820be44dc02dcef21052"
+                "reference": "62ef477d15552dfca40b5800fe24664db40253bf"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kinetis-dev/orm/zipball/54a570b06d373988d10d820be44dc02dcef21052",
-                "reference": "54a570b06d373988d10d820be44dc02dcef21052",
+                "url": "https://api.github.com/repos/kinetis-dev/orm/zipball/62ef477d15552dfca40b5800fe24664db40253bf",
+                "reference": "62ef477d15552dfca40b5800fe24664db40253bf",
                 "shasum": ""
             },
             "require": {
@@ -2188,10 +2188,10 @@
             "description": "A data mapper over kinetis/query-builder: attributed plain PHP entities compiled into portable metadata, typed repositories and entity queries, constructor-free hydration, explicit belongs-to, has-one, has-many and many-to-many relationships loaded eagerly through batched secondary queries, owned relationships that persist, reorder and remove a whole aggregate as one graph, owning join collections that write their join table as part of it, a unit of work with an identity map, snapshot change tracking and a dependency-ordered transactional flush, factory-owned transaction sessions with locking entity reads, and per-entity connection affinity with one factory and one manager per connection. Usable standalone; kinetis/database-bridge wires it into Kinetis.",
             "support": {
                 "issues": "https://github.com/kinetis-dev/orm/issues",
-                "source": "https://github.com/kinetis-dev/orm/tree/v1.14.0"
+                "source": "https://github.com/kinetis-dev/orm/tree/v1.15.0"
             },
-            "time": "2026-11-24T09:52:55+00:00",
-            "published-time": "2026-11-24T10:05:50+00:00"
+            "time": "2026-11-25T07:55:13+00:00",
+            "published-time": "2026-11-25T08:05:38+00:00"
         },
         {
             "name": "kinetis/persistence",
@@ -2765,7 +2765,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/vector",
-                "reference": "a511cadef460a0098e4bb99f19e48781334cc0df"
+                "reference": "4f9d5ed6c8f3587e2d7c5637f37c725863cb7659"
             },
             "require": {
                 "composer-runtime-api": "^2.0",
@@ -2777,7 +2777,7 @@
                 "kinetis/mcp": "^1.9.1",
                 "kinetis/mcp-protocol": "^1.1.3",
                 "kinetis/migrations": "^1.5.1",
-                "kinetis/orm": "^1.14.0",
+                "kinetis/orm": "^1.15.0",
                 "kinetis/persistence": "^1.4.8",
                 "kinetis/query-builder": "^1.8.6",
                 "kinetis/queue": "^1.10.3",
