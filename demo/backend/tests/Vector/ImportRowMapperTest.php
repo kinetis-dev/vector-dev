@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Vector;
 
+use Kinetis\Config\Config;
 use Kinetis\Container\AppScope;
 use Kinetis\Container\RequestScope;
 use Kinetis\Orm\Date;
 use Kinetis\Orm\EntityManagerRegistry;
 use Kinetis\Orm\Metadata\MetadataRegistry;
 use Kinetis\Orm\OrmFactoryRegistry;
+use Kinetis\Vector\Database\JsonDepth;
+use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\Vector\Import\RowMapper;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Registry\VectorRegistry;
@@ -29,7 +32,7 @@ final class ImportRowMapperTest extends TestCase
         $agents = new ResourceDescriptor($this->data());
         $mapping = ['Joined' => 'joinedOn', 'Seen' => 'lastSeenAt', 'Active' => 'active', 'Name' => 'name'];
 
-        $payload = (new RowMapper($converter))->payload($agents, $mapping, ['Joined' => '2026-03-04', 'Seen' => '2026-03-04T10:30:00+02:00', 'Active' => 'yes', 'Name' => 'Ada']);
+        $payload = (new RowMapper($converter, $this->depth()))->payload($agents, $mapping, ['Joined' => '2026-03-04', 'Seen' => '2026-03-04T10:30:00+02:00', 'Active' => 'yes', 'Name' => 'Ada']);
 
         // a date-only cell once came out as a Date object, which the writer refused: "must be a date as YYYY-MM-DD."
         $joined = $converter->convert($agents->fields()['joinedOn'], $payload['joinedOn']);
@@ -45,6 +48,12 @@ final class ImportRowMapperTest extends TestCase
         $managers = EntityManagerRegistry::create(OrmFactoryRegistry::create([], MetadataRegistry::fromClasses([])));
 
         return new ValueConverter($registry, $managers, new RequestScope(new AppScope()));
+    }
+
+    /** Never read here: no cell of these nests too deeply. */
+    private function depth(): JsonDepth
+    {
+        return new JsonDepth(EntityManagerRegistry::create(OrmFactoryRegistry::create([], MetadataRegistry::fromClasses([]))), VectorDatabase::fromConfig(new AppScope(), new Config([])));
     }
 
     /** @return array<string, mixed> a compiled resource with one field of each text-parsed type */

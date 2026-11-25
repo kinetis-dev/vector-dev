@@ -26,6 +26,7 @@ use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Json;
 use Kinetis\Vector\Fields\Repeater;
+use Kinetis\Vector\Import\RowMapper;
 use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Testing\InteractsWithVector;
@@ -314,6 +315,36 @@ final class JsonObjectFieldTest extends VectorTestCase
             $this->support()->table('tickets')->where('id', '=', $id)->update(['metadata' => $stored]);
             // a trail this deep is more than a client decoding at json_decode()'s default reads: other tests read this ticket's
             $this->vectorQuery()->table('vector_audit')->where('resource', '=', 'object-tickets')->where('record_id', '=', (string) $id)->where('id', '>', $lastEntry)->delete();
+        }
+    }
+
+    /**
+     * An imported Json cell deeper than any field holds is refused at the
+     * field's own limit, as a cell deeper than that limit but shallower
+     * is: the same field reports one `max`, whichever check refuses it.
+     */
+    public function testAnImportCellDeeperThanAnyFieldReportsTheFieldsOwnLimit(): void
+    {
+        $registry = $this->app->get(VectorRegistry::class);
+        self::assertInstanceOf(VectorRegistry::class, $registry);
+        $resource = $registry->resource('object-tickets');
+        $scope = $this->app->createRequestScope();
+
+        try {
+            $depth = $scope->get(JsonDepth::class);
+            self::assertInstanceOf(JsonDepth::class, $depth);
+            $mapper = $scope->get(RowMapper::class);
+            self::assertInstanceOf(RowMapper::class, $mapper);
+            $cell = json_encode(self::nested(JsonDepth::MOST + 1), JSON_THROW_ON_ERROR, JsonDepth::MOST + 1);
+
+            try {
+                $mapper->payload($resource, ['Metadata' => 'metadata'], ['Metadata' => $cell]);
+                self::fail('A cell deeper than any field holds was read.');
+            } catch (ValidationException $e) {
+                self::assertSame([[['metadata'], 'too_deep', ['max' => $depth->forField($resource)]]], array_map(static fn (Violation $v): array => [$v->path, $v->code, $v->parameters], $e->violations));
+            }
+        } finally {
+            $scope->dispose();
         }
     }
 

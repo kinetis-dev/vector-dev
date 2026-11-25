@@ -150,12 +150,13 @@ final readonly class ValueConverter
             return is_array($decoded) || $decoded instanceof \stdClass ? $decoded : throw self::mismatch('a JSON object of text values');
         }
 
-        // read as deep as any field may nest (JsonDepth::MOST), so RecordInput refuses a deeper one for its own resource
+        // read as deep as any field may nest (JsonDepth::MOST); a deeper cell's refusal names no limit, and the caller
+        // that knows the resource gives it its field's (JsonDepth::limited()), as RecordInput refuses a shallower one
         if ($field['type'] === 'json') {
             try {
                 $decoded = json_decode($raw, !self::keepsObjects($field), JsonDepth::MOST + 1, JSON_THROW_ON_ERROR);
             } catch (\JsonException $e) {
-                throw $e->getCode() === JSON_ERROR_DEPTH ? new InputViolation(JsonDepth::tooDeep(JsonDepth::MOST)) : self::mismatch('a JSON object or array');
+                throw $e->getCode() === JSON_ERROR_DEPTH ? new InputViolation(JsonDepth::tooDeep(null)) : self::mismatch('a JSON object or array');
             }
 
             return is_array($decoded) || $decoded instanceof \stdClass ? $decoded : throw self::mismatch('a JSON object or array');

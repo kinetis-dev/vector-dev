@@ -194,7 +194,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the limit as `max`, and nothing is written. The audit trail and a
   record's JSON columns are read as deep as their connection stores, and
   an import's `Json` cell 507 levels deep, so one nested deeper is
-  `too_deep` rather than `type_mismatch`.
+  `too_deep`, with the field's own limit as `max`, rather than
+  `type_mismatch`.
 
 ## [0.17.1] - 2026-11-23
 

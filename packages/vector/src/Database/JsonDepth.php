@@ -97,9 +97,28 @@ final readonly class JsonDepth
         return $deepest + 1;
     }
 
-    /** The refusal of a value nested deeper than $max levels, at the field it is reported under. */
-    public static function tooDeep(int $max): Violation
+    /**
+     * The refusal of a value nested deeper than $max levels, at the field
+     * it is reported under. Without $max, the refusal of a value deeper
+     * than any field holds, for a caller that does not know the
+     * resource: whoever does gives it the field's own limit (limited()).
+     */
+    public static function tooDeep(?int $max): Violation
     {
-        return new Violation([], 'too_deep', "nests deeper than {$max} levels.", ['max' => $max]);
+        return $max === null
+            ? new Violation([], 'too_deep', 'nests too deeply.')
+            : new Violation([], 'too_deep', "nests deeper than {$max} levels.", ['max' => $max]);
+    }
+
+    /** $violation with the limit of a field of $resource (forField()) when it is a too_deep refusal that names none; any other unchanged. */
+    public function limited(ResourceDescriptor $resource, Violation $violation): Violation
+    {
+        if ($violation->code !== 'too_deep' || array_key_exists('max', $violation->parameters)) {
+            return $violation;
+        }
+
+        $limited = self::tooDeep($this->forField($resource));
+
+        return new Violation($violation->path, $limited->code, $limited->message, $limited->parameters);
     }
 }

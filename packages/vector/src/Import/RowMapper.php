@@ -6,6 +6,7 @@ namespace Kinetis\Vector\Import;
 
 use Kinetis\Validation\Exception\ValidationException;
 use Kinetis\Validation\Violation;
+use Kinetis\Vector\Database\JsonDepth;
 use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Write\InputViolation;
@@ -26,7 +27,10 @@ final readonly class RowMapper
 {
     public const array MODES = ['create', 'update', 'upsert'];
 
-    public function __construct(private ValueConverter $converter) {}
+    public function __construct(
+        private ValueConverter $converter,
+        private JsonDepth $depth,
+    ) {}
 
     /**
      * The mapping's fields must exist, be written by the mode's view
@@ -185,7 +189,7 @@ final readonly class RowMapper
                 ? $this->converter->identifier($resource->primaryKeyType(), $raw)
                 : $this->converter->fromQuery($field, $raw);
         } catch (InputViolation $e) {
-            throw ValidationException::fromViolations([$e->violation->under($key)]);
+            throw ValidationException::fromViolations([$this->depth->limited($resource, $e->violation)->under($key)]);
         }
     }
 
@@ -225,7 +229,8 @@ final readonly class RowMapper
             try {
                 $payload[$name] = $this->cell($field, $raw);
             } catch (InputViolation $e) {
-                $violations[] = $e->violation->under($name);
+                // a Json cell deeper than any field holds is refused at this field's own limit
+                $violations[] = $this->depth->limited($resource, $e->violation)->under($name);
             }
         }
 
