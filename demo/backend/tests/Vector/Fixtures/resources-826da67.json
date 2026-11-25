@@ -5286,6 +5286,7 @@
                 "nullable": true,
                 "valueType": "json",
                 "enum": null,
+                "jsonObjects": "object",
                 "operators": []
             },
             {
@@ -6462,7 +6463,7 @@
                 "kind": "column",
                 "nullable": true,
                 "hasDefault": true,
-                "type": "json"
+                "type": "jsonObject"
             },
             "channels": {
                 "kind": "column",
@@ -11222,6 +11223,7 @@
                 "nullable": true,
                 "valueType": "json",
                 "enum": null,
+                "jsonObjects": "objectOrList",
                 "operators": []
             },
             {
@@ -12265,7 +12267,7 @@
                 "kind": "column",
                 "nullable": true,
                 "hasDefault": true,
-                "type": "json"
+                "type": "jsonObjectOrList"
             },
             "platforms": {
                 "kind": "column",
