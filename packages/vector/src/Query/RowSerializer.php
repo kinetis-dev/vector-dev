@@ -6,6 +6,7 @@ namespace Kinetis\Vector\Query;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Kinetis\Vector\Database\JsonDepth;
 use Kinetis\Vector\Exception\StoredValueException;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\VectorResource;
@@ -13,10 +14,13 @@ use Kinetis\Vector\VectorResource;
 /**
  * Turns a database row into the record a client sees: every field
  * converted by its compiled value type, relation columns replaced by the
- * display values the service loaded in bulk.
+ * display values the service loaded in bulk. A JSON column is read as
+ * deep as its connection stores (JsonDepth::ofRecord()).
  */
 final readonly class RowSerializer
 {
+    public function __construct(private JsonDepth $depth) {}
+
     /**
      * @param array<string, mixed> $row
      * @param list<string> $fieldNames the fields to include
@@ -27,6 +31,7 @@ final readonly class RowSerializer
     public function serialize(ResourceDescriptor $resource, array $row, array $fieldNames, array $relations, ?VectorResource $instance = null): array
     {
         $record = [];
+        $depth = null; // read on the first JSON column the record holds
 
         foreach ($fieldNames as $name) {
             $field = $resource->field($name);
@@ -49,12 +54,12 @@ final readonly class RowSerializer
                 // a child repeater's rows are child records, counted; a JSON one's are the column's list
                 'repeater' => isset($field['relation'])
                     ? ['count' => (int) ($relations[$name][$this->key($row, $resource)] ?? 0)]
-                    : self::list($name, $row[$field['column']] ?? null),
-                'tag' => self::list($name, $row[$field['column']] ?? null),
-                'keyValue' => self::keyValue($name, $row[$field['column']] ?? null),
-                'json' => self::json($name, $row[$field['column']] ?? null),
-                'select', 'country' => self::select($name, $field, $row[$field['column']] ?? null),
-                'booleanGroup' => self::flags($name, $field, $row),
+                    : self::list($name, $row[$field['column']] ?? null, $depth ??= $this->depth->ofRecord($resource)),
+                'tag' => self::list($name, $row[$field['column']] ?? null, $depth ??= $this->depth->ofRecord($resource)),
+                'keyValue' => self::keyValue($name, $row[$field['column']] ?? null, $depth ??= $this->depth->ofRecord($resource)),
+                'json' => self::json($name, $row[$field['column']] ?? null, $depth ??= $this->depth->ofRecord($resource)),
+                'select', 'country' => self::select($name, $field, $row[$field['column']] ?? null, $depth ??= $this->depth->ofRecord($resource)),
+                'booleanGroup' => self::flags($name, $field, $row, $depth ??= $this->depth->ofRecord($resource)),
                 default => $this->scalar($field, $row[$field['column']] ?? null),
             };
         }
@@ -109,10 +114,12 @@ final readonly class RowSerializer
     /**
      * The stored JSON as an object of text values; an object even when
      * empty or keyed by digits; a nested value reads as its JSON text.
+     *
+     * @param positive-int $depth
      */
-    private static function keyValue(string $name, mixed $stored): ?\stdClass
+    private static function keyValue(string $name, mixed $stored, int $depth): ?\stdClass
     {
-        $decoded = self::decode($name, $stored, true);
+        $decoded = self::decode($name, $stored, true, $depth);
 
         if ($decoded === null) {
             return null;
@@ -139,21 +146,24 @@ final readonly class RowSerializer
     /**
      * A JSON column's document as it is stored: an object stays an
      * object, even an empty one, and a list stays a list.
+     *
+     * @param positive-int $depth
      */
-    private static function json(string $name, mixed $stored): mixed
+    private static function json(string $name, mixed $stored, int $depth): mixed
     {
-        return self::decode($name, $stored, false);
+        return self::decode($name, $stored, false, $depth);
     }
 
     /**
      * A JSON column holding a list (tags, a JSON repeater's rows), decoded
      * to arrays; anything but a list is not what the field stored.
      *
+     * @param positive-int $depth
      * @return list<mixed>|null
      */
-    private static function list(string $name, mixed $stored): ?array
+    private static function list(string $name, mixed $stored, int $depth): ?array
     {
-        $decoded = self::decode($name, $stored, true);
+        $decoded = self::decode($name, $stored, true, $depth);
 
         if ($decoded === null) {
             return null;
@@ -168,9 +178,10 @@ final readonly class RowSerializer
      * rather than vanishing from the record.
      *
      * @param array<string, mixed> $field
+     * @param positive-int $depth
      * @return int|string|list<int|string>|null
      */
-    private static function select(string $name, array $field, mixed $stored): int|string|array|null
+    private static function select(string $name, array $field, mixed $stored, int $depth): int|string|array|null
     {
         if ($stored === null) {
             return null;
@@ -192,7 +203,7 @@ final readonly class RowSerializer
             return $find($stored);
         }
 
-        $list = self::decode($name, $stored, true);
+        $list = self::decode($name, $stored, true, $depth);
 
         if (!is_array($list) || !array_is_list($list)) {
             throw StoredValueException::invalidJson($name);
@@ -208,9 +219,10 @@ final readonly class RowSerializer
      *
      * @param array<string, mixed> $field
      * @param array<string, mixed> $row
+     * @param positive-int $depth
      * @return array<string, bool>|null
      */
-    private static function flags(string $name, array $field, array $row): ?array
+    private static function flags(string $name, array $field, array $row, int $depth): ?array
     {
         $flags = array_fill_keys(array_column($field['options'], 'value'), false);
 
@@ -222,7 +234,7 @@ final readonly class RowSerializer
             return $flags;
         }
 
-        $stored = self::decode($name, $row[$field['column']] ?? null, true);
+        $stored = self::decode($name, $row[$field['column']] ?? null, true, $depth);
 
         if ($stored === null) {
             return null;
@@ -245,19 +257,25 @@ final readonly class RowSerializer
         return $flags;
     }
 
-    /** A JSON column as the driver returns it: text to decode, or a value it already decoded. */
-    private static function decode(string $name, mixed $stored, bool $associative): mixed
+    /**
+     * A JSON column as the driver returns it: text to decode, or a value
+     * it already decoded. $depth is the levels the column's connection
+     * stores; json_decode() at a depth reads one level fewer.
+     *
+     * @param positive-int $depth
+     */
+    private static function decode(string $name, mixed $stored, bool $associative, int $depth): mixed
     {
         if ($stored === null) {
             return null;
         }
 
         if (!is_string($stored)) {
-            return $associative || !is_array($stored) ? $stored : json_decode(json_encode($stored, JSON_THROW_ON_ERROR), false);
+            return $associative || !is_array($stored) ? $stored : json_decode(json_encode($stored, JSON_THROW_ON_ERROR, $depth), false, $depth + 1);
         }
 
         try {
-            return json_decode($stored, $associative, 512, JSON_THROW_ON_ERROR);
+            return json_decode($stored, $associative, $depth + 1, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
             throw StoredValueException::invalidJson($name);
         }

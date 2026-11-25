@@ -92,6 +92,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `apply()` hooks receive a `stdClass` there.
 - A resource with no fields of its own derives a `Json` field for a
   `stdClass` or `array|stdClass` property, and none for an `array` one.
+- `Database\JsonDepth`: how deep a JSON value may nest, from what each
+  database stores (100 levels on MySQL, 31 on MariaDB before 12.2, 2499
+  on MariaDB 12.2 and later and on PostgreSQL), and
+  `VectorDatabase::jsonDepth()` for Vector's own connection.
 
 ### Changed
 
@@ -138,6 +142,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The compiler refuses a relationship repeater whose child lives on
   another connection than its parent, since the save is one
   transaction.
+- **Breaking:** `JsonObjects::decode()` takes the depth it reads, in
+  levels, with no default.
+- Requires `kinetis/orm` ^1.16.0, `kinetis/persistence` ^1.5.0 and
+  `kinetis/database-bridge` ^1.4.7, whose links report the JSON depth
+  their server stores.
 
 ### Removed
 
@@ -177,6 +186,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The rows endpoint of a relationship repeater loaded at most `max()`
   children, so saving the form deleted every child past `max()`. It now
   loads all of them, and `max()` refuses that save with a 422.
+- Vector wrote and read JSON 512 levels deep, which no database stores:
+  on MySQL an audit row deeper than 100 levels failed the write with
+  `SQLSTATE[22032]` (3157) after the record was saved. A `Json` field's
+  value, or a JSON repeater's rows, now nests at most the least of what
+  the record's connection stores, what Vector's connection stores less
+  the two levels the audit row wraps around it, and 507, the most an
+  answer carries; a deeper one is a `422` on the field, `too_deep`, with
+  the limit as `max`, and nothing is written. The audit trail and a
+  record's JSON columns are read as deep as their connection stores, and
+  an import's `Json` cell 507 levels deep, so one nested deeper is
+  `too_deep` rather than `type_mismatch`.
 
 ## [0.17.1] - 2026-11-23
 

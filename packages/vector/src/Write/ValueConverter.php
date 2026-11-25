@@ -13,6 +13,7 @@ use Kinetis\Orm\EntityManagerRegistry;
 use Kinetis\Validation\Constraint;
 use Kinetis\Validation\Violation;
 use Kinetis\Vector\Auth\PasswordHasherInterface;
+use Kinetis\Vector\Database\JsonDepth;
 use Kinetis\Vector\Fields\KeyValue;
 use Kinetis\Vector\Fields\Tag;
 use Kinetis\Vector\Query\ResourceService;
@@ -149,11 +150,12 @@ final readonly class ValueConverter
             return is_array($decoded) || $decoded instanceof \stdClass ? $decoded : throw self::mismatch('a JSON object of text values');
         }
 
+        // read as deep as any field may nest (JsonDepth::MOST), so RecordInput refuses a deeper one for its own resource
         if ($field['type'] === 'json') {
             try {
-                $decoded = json_decode($raw, !self::keepsObjects($field), 512, JSON_THROW_ON_ERROR);
-            } catch (\JsonException) {
-                throw self::mismatch('a JSON object or array');
+                $decoded = json_decode($raw, !self::keepsObjects($field), JsonDepth::MOST + 1, JSON_THROW_ON_ERROR);
+            } catch (\JsonException $e) {
+                throw $e->getCode() === JSON_ERROR_DEPTH ? new InputViolation(JsonDepth::tooDeep(JsonDepth::MOST)) : self::mismatch('a JSON object or array');
             }
 
             return is_array($decoded) || $decoded instanceof \stdClass ? $decoded : throw self::mismatch('a JSON object or array');

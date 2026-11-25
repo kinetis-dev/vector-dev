@@ -18,13 +18,15 @@ use Kinetis\QueryBuilder\Query;
  * the admin's own hand. A null origin is not written, so an installation that has not
  * yet added the `origin` column keeps recording its own writes.
  *
+ * The changes nest as deep as a JSON column of Vector's connection
+ * stores (VectorDatabase::jsonDepth()), which is JsonDepth::AUDIT_LEVELS
+ * more than a field's own value: a write refuses a value deeper than
+ * JsonDepth::forField() before it gets here.
+ *
  * @phpstan-type AuditRow array{id: int, event: string, actorId: string, impersonatorId: string|null, origin: string|null, changes: array<string, mixed>, createdAt: string}
  */
 final readonly class AuditStore
 {
-    /** How deep record() lets the changes nest: json_encode()'s own default. */
-    public const int ENCODE_DEPTH = 512;
-
     public function __construct(private VectorDatabase $db) {}
 
     /**
@@ -35,7 +37,7 @@ final readonly class AuditStore
     {
         $rows = [];
         $now = JobStore::now();
-        $encoded = json_encode($changes, JSON_THROW_ON_ERROR, self::ENCODE_DEPTH);
+        $encoded = json_encode($changes, JSON_THROW_ON_ERROR, $this->db->jsonDepth());
 
         foreach ($recordIds as $id) {
             $rows[] = [
@@ -64,7 +66,7 @@ final readonly class AuditStore
             ->limit($limit)
             ->get();
 
-        return array_map(self::entry(...), $rows);
+        return array_map($this->entry(...), $rows);
     }
 
     /** @return AuditRow|null one entry of one record's trail */
@@ -76,7 +78,7 @@ final readonly class AuditStore
             ->where('record_id', '=', $recordId)
             ->first();
 
-        return is_array($row) ? self::entry($row) : null;
+        return is_array($row) ? $this->entry($row) : null;
     }
 
     /**
@@ -84,16 +86,16 @@ final readonly class AuditStore
      * stdClass, so a value recorded as `{}` or `{"a": {}}` reads back as
      * the object it was, and a list as a list; only the entry's own
      * shape is arrays: field => value on a create, field => `{from, to}`
-     * otherwise. json_encode() writes ENCODE_DEPTH levels where
-     * json_decode() at that depth reads one fewer, so the read allows one
-     * more, and whatever record() stored reads back.
+     * otherwise. The column holds at most the connection's JSON depth,
+     * and json_decode() at a depth reads one level fewer, so the read
+     * allows one more, and whatever the column holds reads back.
      *
      * @param array<string, mixed> $row
      * @return AuditRow
      */
-    private static function entry(array $row): array
+    private function entry(array $row): array
     {
-        $tree = json_decode((string) $row['changes'], false, self::ENCODE_DEPTH + 1, JSON_THROW_ON_ERROR);
+        $tree = json_decode((string) $row['changes'], false, $this->db->jsonDepth() + 1, JSON_THROW_ON_ERROR);
         $changes = [];
 
         foreach ($tree instanceof \stdClass ? get_object_vars($tree) : [] as $name => $change) {

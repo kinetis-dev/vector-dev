@@ -248,10 +248,14 @@ final class ComputedFieldTest extends VectorTestCase
             }
         };
         $descriptor = new ResourceDescriptor(self::compile($resource)['computed-lines']);
-        $serialize = static function (mixed $value) use ($resource, $descriptor): array {
+        $scope = $this->app->createRequestScope();
+        $serializer = $scope->get(RowSerializer::class);
+        $scope->dispose(); // the record has no JSON column, so the serializer never reads a connection
+        self::assertInstanceOf(RowSerializer::class, $serializer);
+        $serialize = static function (mixed $value) use ($resource, $descriptor, $serializer): array {
             $resource->value = $value;
 
-            return new RowSerializer()->serialize($descriptor, [], ['asNumber', 'asDate', 'asDatetime'], [], $resource);
+            return $serializer->serialize($descriptor, [], ['asNumber', 'asDate', 'asDatetime'], [], $resource);
         };
 
         $instant = new \DateTimeImmutable('2026-10-21 23:30:00', new \DateTimeZone('+02:00'));

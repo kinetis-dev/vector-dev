@@ -6,6 +6,7 @@ namespace Kinetis\Vector\Write;
 
 use Kinetis\Validation\Exception\ValidationException;
 use Kinetis\Validation\Violation;
+use Kinetis\Vector\Database\JsonDepth;
 use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 
@@ -26,6 +27,7 @@ final readonly class RecordInput
         private \Kinetis\Vector\Files\VectorStorage $storage,
         private \Kinetis\Vector\Query\ResourceService $service,
         private \Kinetis\Vector\RichText\Document $document,
+        private JsonDepth $depth,
     ) {}
 
     /**
@@ -146,6 +148,13 @@ final readonly class RecordInput
         } catch (InputViolation $e) {
             // a JSON repeater's rows or a list of tags report each part at its own path
             return array_map(static fn (Violation $v): Violation => $v->under($name), $e->all());
+        }
+
+        // a document (or a JSON repeater's rows) is stored, audited and answered only as deep as JsonDepth allows
+        if (in_array($field['type'], ['json', 'repeater'], true) && JsonDepth::levels($values[$name]) > ($max = $this->depth->forField($resource))) {
+            unset($values[$name]);
+
+            return [JsonDepth::tooDeep($max)->under($name)];
         }
 
         // a flag group in columns mode writes each flag's own bool property; the group itself is none

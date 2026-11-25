@@ -11,6 +11,10 @@ serialized it, so `GET /vector/r/{resource}/{id}/audit` answers a JSON
 object as an object; deletes, restores and action runs are recorded as
 the event alone (`action:<name>` for an action). A
 record's **History** shows it, limited to the fields the viewer may see.
+The changes are stored as JSON on Vector's own connection, so a `Json`
+field's value nests only as deep as that connection stores, less the
+two levels an entry wraps around it ({doc}`fields`, "How deep a value
+nests").
 
 ```{image} _static/screenshots/product-history-light.png
 :alt: A product's History: an Adjust stock action run, then an update publishing it (Status draft → active, Released at set), then an update of its Price, each by user 3 with its time, and Revert on both updates

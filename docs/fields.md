@@ -287,8 +287,8 @@ of these types, in any union order:
 
 | Property | Holds | `{}` |
 |---|---|---|
-| `stdClass`, `?stdClass` | a JSON object | kept, at any depth |
-| `array\|stdClass`, `array\|stdClass\|null` | a JSON object, or a JSON array as a list | kept, at any depth |
+| `stdClass`, `?stdClass` | a JSON object | kept, at any depth the field allows |
+| `array\|stdClass`, `array\|stdClass\|null` | a JSON object, or a JSON array as a list | kept, at any depth the field allows |
 
 Every JSON object is a `stdClass` and every JSON array a list, so `{}`,
 `{"box": {}}` and `[]` are stored and answered as sent. The build
@@ -323,6 +323,33 @@ MCP `vector_run_action` tool or a queued run. An empty `KeyValue` input
 that is not required is `null`.
 
 Neither is sorted, filtered, searched, summarized or grouped.
+
+### How deep a value nests
+
+A database stores a JSON document only so deep, counted in nested
+objects and arrays (the outermost is the first level): 100 levels on
+MySQL, 31 on MariaDB before 12.2, and 2499 on MariaDB 12.2 and later
+and on PostgreSQL, as the connection's client reports it. A `Json`
+field's value, and a JSON repeater's rows, are written to the record's
+column on the entity's connection and to `vector_audit` on Vector's own
+connection, which wraps the value in two more levels (`{field: {from,
+to}}`). They are also answered: a JSON answer is encoded 512 levels
+deep at most, and a record's history wraps a value in five. So a value
+nests at most the least of:
+
+- the levels the record's connection stores;
+- the levels Vector's connection stores, less 2;
+- 507.
+
+That is 98 levels wherever Vector's tables are on MySQL, 29 on MariaDB
+before 12.2, and 507 when both connections are PostgreSQL. A deeper
+value is a `422` on the field, `too_deep`, with the limit as `max`,
+whether it came from a form, a bulk edit, an inline edit, the MCP tools,
+a revert or an import; nothing is written. A row of a relationship
+repeater is checked against its child resource's own connection. A REST
+body itself is read 63 levels deep at most, so a value sent through
+REST nests at most 62 levels before this limit applies; the MCP tools
+and an import carry deeper values to it.
 
 ## Rich text
 

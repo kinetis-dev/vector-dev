@@ -20,6 +20,7 @@ use Kinetis\Vector\Exception\ConflictException;
 use Kinetis\Vector\Exception\ForbiddenOperationException;
 use Kinetis\Vector\Exception\RecordNotFoundException;
 use Kinetis\Vector\Auth\ActorContext;
+use Kinetis\Vector\Database\JsonDepth;
 use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Registry\ResourceCompiler;
@@ -47,6 +48,7 @@ final readonly class RecordWriter
         private VectorDatabase $vector,
         private ValueConverter $converter,
         private ActorContext $actor,
+        private JsonDepth $depth,
     ) {}
 
     /**
@@ -131,6 +133,7 @@ final readonly class RecordWriter
 
         $payload = [];
         $changedSince = [];
+        $depth = $this->depth->stored($resource);
 
         foreach ($entry['changes'] as $name => $change) {
             $field = $resource->field($name);
@@ -140,7 +143,7 @@ final readonly class RecordWriter
                 continue;
             }
 
-            if (self::comparable($current[$name] ?? null) !== self::comparable($change['to'] ?? null)) {
+            if (self::comparable($current[$name] ?? null, $depth) !== self::comparable($change['to'] ?? null, $depth)) {
                 $changedSince[] = $field['label'];
 
                 continue;
@@ -1419,11 +1422,14 @@ final readonly class RecordWriter
     /**
      * A serialized value compared loosely, `{}` and `[]` alike: an
      * `array` property holds the two as one value, so telling them apart
-     * would see a change where its record has none.
+     * would see a change where its record has none. $depth is the levels
+     * either store of the value holds (JsonDepth::stored()).
+     *
+     * @param positive-int $depth
      */
-    private static function comparable(mixed $value): string
+    private static function comparable(mixed $value, int $depth): string
     {
-        return json_encode(json_decode(json_encode($value, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR), JSON_THROW_ON_ERROR);
+        return json_encode(json_decode(json_encode($value, JSON_THROW_ON_ERROR, $depth), true, $depth + 1, JSON_THROW_ON_ERROR), JSON_THROW_ON_ERROR, $depth);
     }
 
     /**

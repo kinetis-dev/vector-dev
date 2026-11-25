@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Vector;
 
+use App\Auth\DemoActor;
 use App\Domain\Product;
 use App\Domain\Support\Ticket;
 use App\Domain\Support\TicketReply;
@@ -11,21 +12,26 @@ use Kinetis\Cache\DiscoveryContext;
 use Kinetis\Config\Config;
 use Kinetis\Container\AppScope;
 use Kinetis\DatabaseBridge\OrmMetadata;
+use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Orm\EntityManager;
 use Kinetis\Orm\Metadata\MetadataRegistry;
 use Kinetis\Orm\OrmFactoryRegistry;
 use Kinetis\Persistence\Contract\MysqlLink;
 use Kinetis\QueryBuilder\Query;
+use Kinetis\Validation\Exception\ValidationException;
+use Kinetis\Validation\Violation;
 use Kinetis\Vector\Attributes\Resource;
+use Kinetis\Vector\Database\JsonDepth;
+use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Json;
 use Kinetis\Vector\Fields\Repeater;
 use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Registry\VectorRegistry;
-use Kinetis\Vector\Store\AuditStore;
 use Kinetis\Vector\Testing\InteractsWithVector;
 use Kinetis\Vector\Testing\VectorResponse;
 use Kinetis\Vector\VectorResource;
+use Kinetis\Vector\Write\RecordWriter;
 use stdClass;
 
 /**
@@ -257,31 +263,57 @@ final class JsonObjectFieldTest extends VectorTestCase
         }
     }
 
-    /** Changes nested as deep as record() encodes read back through the trail and one entry. */
-    public function testAnEntryAtTheEncodeDepthReadsBack(): void
+    /**
+     * A document exactly as deep as JsonDepth allows the field is saved,
+     * audited and answered, by the record and by its audit trail; one level
+     * deeper is a 422 on the field and writes nothing. The ticket lives on
+     * PostgreSQL (2499 levels); the audit row, which wraps the value in two
+     * more, on Vector's connection: PostgreSQL, or MySQL (100 levels) when
+     * VECTOR_TEST_DB_CONNECTION puts Vector's tables there. Written through
+     * the writer itself: a REST body nests at most 64 levels.
+     */
+    public function testAValueAtTheJsonDepthReadsBackAndOneDeeperIsRefused(): void
     {
-        $value = new stdClass();
-
-        // the entry, its field and its {from, to} are three levels; the value fills the rest
-        for ($level = 3; $level < AuditStore::ENCODE_DEPTH; $level++) {
-            $value = (object) ['a' => $value];
-        }
-
-        $changes = ['metadata' => ['from' => $value, 'to' => null]];
-        self::assertFalse(json_encode($changes, 0, AuditStore::ENCODE_DEPTH - 1), 'nested to the encode depth exactly');
-        $audit = $this->app->get(AuditStore::class);
-        self::assertInstanceOf(AuditStore::class, $audit);
+        [$id, $stored] = $this->ticket();
+        $vector = $this->app->get(VectorDatabase::class);
+        self::assertInstanceOf(VectorDatabase::class, $vector);
+        $registry = $this->app->get(VectorRegistry::class);
+        self::assertInstanceOf(VectorRegistry::class, $registry);
+        $resource = $registry->resource('object-tickets');
+        $scope = $this->app->createRequestScope();
+        $scope->instance(CurrentUserInterface::class, new DemoActor(1, 'Test', true));
+        $lastEntry = (int) $this->vectorQuery()->table('vector_audit')->select('id')->orderBy('id', 'DESC')->value('id');
 
         try {
-            $audit->record('depth-probe', ['1'], 'update', $changes, '1', null);
-            $trail = $audit->trail('depth-probe', '1');
-            self::assertCount(1, $trail);
-            $expected = json_encode($value, 0, AuditStore::ENCODE_DEPTH);
-            self::assertSame($expected, json_encode($trail[0]['changes']['metadata']['from'] ?? null, 0, AuditStore::ENCODE_DEPTH), 'the trail');
-            $entry = $audit->find('depth-probe', '1', $trail[0]['id']);
-            self::assertSame($expected, json_encode($entry['changes']['metadata']['from'] ?? null, 0, AuditStore::ENCODE_DEPTH), 'one entry');
+            $depth = $scope->get(JsonDepth::class);
+            self::assertInstanceOf(JsonDepth::class, $depth);
+            $max = $depth->forField($resource);
+            // MySQL's 100 less the audit's two; on PostgreSQL, what the audit trail's answer still carries
+            self::assertSame($vector->isPostgres() ? 507 : 98, $max);
+            $writer = $scope->get(RecordWriter::class);
+            self::assertInstanceOf(RecordWriter::class, $writer);
+
+            $deepest = self::nested($max);
+            $writer->update($resource, (string) $id, ['metadata' => $deepest], null);
+            $expected = json_encode($deepest, JSON_THROW_ON_ERROR, $max);
+            self::assertSame($expected, json_encode(self::objects($this->vector($this->adminHeaders())->resource('object-tickets')->show($id)->assertOk())->data->metadata, JSON_THROW_ON_ERROR, $max), 'the record');
+            $trail = json_decode($this->client->get("/vector/r/object-tickets/{$id}/audit", headers: $this->adminHeaders())->assertOk()->body(), false, JsonDepth::ANSWER_DEPTH + 1, JSON_THROW_ON_ERROR);
+            self::assertInstanceOf(stdClass::class, $trail);
+            self::assertSame($expected, json_encode($trail->data[0]->changes->metadata->to, JSON_THROW_ON_ERROR, $max), 'its audit row');
+
+            try {
+                $writer->update($resource, (string) $id, ['metadata' => self::nested($max + 1)], null);
+                self::fail('A document one level deeper was written.');
+            } catch (ValidationException $e) {
+                self::assertSame([[['metadata'], 'too_deep', ['max' => $max]]], array_map(static fn (Violation $v): array => [$v->path, $v->code, $v->parameters], $e->violations));
+            }
+
+            self::assertSame(self::canonical($expected), $this->storedMetadata($id), 'nothing was written');
         } finally {
-            $this->vectorQuery()->table('vector_audit')->where('resource', '=', 'depth-probe')->delete();
+            $scope->dispose();
+            $this->support()->table('tickets')->where('id', '=', $id)->update(['metadata' => $stored]);
+            // a trail this deep is more than a client decoding at json_decode()'s default reads: other tests read this ticket's
+            $this->vectorQuery()->table('vector_audit')->where('resource', '=', 'object-tickets')->where('record_id', '=', (string) $id)->where('id', '>', $lastEntry)->delete();
         }
     }
 
@@ -455,6 +487,18 @@ final class JsonObjectFieldTest extends VectorTestCase
         $value = $this->shop()->table('products')->select('attributes')->where('id', '=', $id)->value('attributes');
 
         return $value === null ? null : self::canonical((string) $value);
+    }
+
+    /** Objects nested $levels deep, the innermost holding a number. */
+    private static function nested(int $levels): stdClass
+    {
+        $value = (object) ['n' => 1];
+
+        for ($level = 1; $level < $levels; $level++) {
+            $value = (object) ['a' => $value];
+        }
+
+        return $value;
     }
 
     /** JSON text with every object kept and its keys sorted, so a server's own key order is no difference. */
