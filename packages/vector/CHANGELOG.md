@@ -147,42 +147,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   delete policy and hooks and auditing the delete, and a row naming a
   hidden child's `id` updated it. A save now leaves hidden children as
   they are, position included, and refuses such a row as `unknown_row`.
-- An empty `KeyValue` on a column that may not hold `null` was stored as
-  `[]` though the API answered `{}`. On a `stdClass` property it is now
-  stored as `{}`.
-- A `requiredWhen()` condition took a stored empty `KeyValue` object as a
-  value; it now counts as empty, as an empty list does.
-- `required()` on a multiple `Select`, a `Tag`, a JSON `Repeater`, a
-  `Json` or a `KeyValue` field refused every value. Any non-empty list
-  or object now passes, and an empty one is refused with `not_blank`, as
-  a blank string is.
-- A `Select` default given as an int for options stored as text (or the
-  other way round) made every create leaving the field out fail with
-  `invalid_choice`, and threw for an action input hidden by its
-  condition. The compiled default is now the matched option's own value.
+- `required()` on a `KeyValue` field refused every value. Any non-empty
+  object now passes, and an empty one is refused with `not_blank`, as a
+  blank string is.
 - The rows endpoint of a relationship repeater loaded at most `max()`
   children, so saving the form deleted every child past `max()`. It now
   loads all of them, and `max()` refuses that save with a 422.
-- A child row's unique violation was matched to its repeater by
-  searching the whole driver message for the child's table, so a table
-  named inside another table's name or in the duplicated value could
-  claim it, and a value holding a dash or a comma could point at the
-  wrong row. Only the key's name is read now, the table matched as a
-  whole, and the row found by its column's own value.
-- `null` on update bypassed a nullable JSON `Repeater`'s `min()`; it now
-  counts as no rows and is refused with `count_out_of_range`.
-- A tag padded with Unicode spaces was measured against `maxLength()`
-  before the Unicode trim storage applies; it is now measured as stored.
-- A `Select` options closure returning a class string skipped the
-  backed enum check `of()` applies; it is now held to it.
-- A columns-mode `BooleanGroup` was required on every create. When every
-  flag's property declares a default, the group now defaults to those
-  values, so a create may leave it out; otherwise it stays required.
-- An action's or a settings group's `BooleanGroup` without `required()`
-  was nullable, so a form with no box ticked sent `null`. It is now
-  always an object of every key, every flag off when left out.
-- Two columns-mode `BooleanGroup` fields naming the same flag are now
-  refused at build.
 
 ## [0.17.1] - 2026-11-23
 

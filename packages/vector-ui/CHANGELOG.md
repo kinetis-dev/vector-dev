@@ -79,14 +79,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- An action dialog's or a settings page's flag group with no box ticked
-  sent `null`; with kinetis/vector publishing such a group non-nullable,
-  it sends every flag, off.
 - With kinetis/vector loading every child into the rows endpoint, a
   relationship repeater's form holds every stored row, past `max()`
   too, so a save can no longer delete the rows past it: the server
   refuses that save instead.
-- Portuguese (pt) country names now use European Portuguese; pt-BR keeps Brazilian names.
 
 ## [0.14.0] - 2026-11-23
 
