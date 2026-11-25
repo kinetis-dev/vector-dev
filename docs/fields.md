@@ -15,7 +15,7 @@ second column.
 | `Id` | `id` | The identifier. Read-only, sortable, never on a form. |
 | `Text`, `Email`, `Url`, `Password`, `Slug`, `Color` | `string`, `email`, `url`, `password`, `slug`, `color` | String columns; `searchable()` allowed. `Slug::from('name')` derives a slug. `Email` must be an address and `Url` an absolute http(s) URL (the admin shows it as a link), unless the field declares an e-mail, URL or pattern rule of its own. `Password`: see [Passwords](#passwords). |
 | `Textarea` | `text` | Long text, edited in a wide input. |
-| `Json` | `json` | A JSON object or array in a JSON column (an `array` or `?array` property); see [JSON columns](#json-columns). Edited as JSON text; on the wire it is the document itself. Never sorted, filtered, searched or summarized. |
+| `Json` | `json` | A JSON object or array in a JSON column (an `array`, `?array`, `stdClass`, `?stdClass`, `array\|stdClass` or `array\|stdClass\|null` property); see [JSON columns](#json-columns). Edited as JSON text; on the wire it is the document itself. Never sorted, filtered, searched or summarized. |
 | `RichText` | `richtext` | Formatted content (headings, lists, links, tables, images) stored as a structured document; see below. |
 | `Markdown` | `markdown` | Markdown text for technical content, edited visually or as source; `toolbar([...])`. |
 | `Number` | `number` | Numbers; `decimals(n)`, `step()`. |
@@ -26,7 +26,7 @@ second column.
 | `Select` | `select` | A choice among fixed options, one value or several with `multiple()`; see [Select](#select). |
 | `BooleanGroup` | `booleanGroup` | Named on/off options shown as one cell and edited as one group of checkboxes, in a bool column each or in one JSON column; see [BooleanGroup](#booleangroup). |
 | `Country` | `country` | An ISO 3166-1 alpha-2 country code, or several: a select over every assigned code; see [Country](#country). |
-| `KeyValue` | `keyValue` | A JSON object of text values in a JSON column (an `array` or `?array` property), edited as key/value rows; `columns('Attribute', 'Value')`, `maxEntries(n)` (50 by default). On the wire it is an object; a stored number or boolean reads back as text, and an empty object stores `null` where the column allows it, and `[]` where it does not (see [JSON columns](#json-columns)). Keys are trimmed and at most 100 characters. A JSON column may reorder the keys. It cannot be sorted, filtered, searched or summarized, and is imported as JSON text. |
+| `KeyValue` | `keyValue` | A JSON object of text values in a JSON column (a `?stdClass` property, or any property `Json` takes), edited as key/value rows; `columns('Attribute', 'Value')`, `maxEntries(n)` (50 by default). On the wire it is an object; a stored number or boolean reads back as text, and an empty object stores `null` where the column allows it, and `{}` where it does not on a `stdClass` property (`[]` on an `array` one; see [JSON columns](#json-columns)). Keys are trimmed and at most 100 characters. A JSON column may reorder the keys. It cannot be sorted, filtered, searched or summarized, and is imported as JSON text. |
 | `Repeater` | `repeater` | Rows edited inside the form: a JSON list of objects of declared fields, or an owned has-many relation's child records; see [Repeater](#repeater). |
 | `Tag` | `tag` | Free-text tags in a JSON list column, shown as chips, filtered by any or all; see [Tag](#tag). |
 | `File`, `Image` | `file`, `image` | An uploaded file's storage key; see {doc}`files`. |
@@ -281,23 +281,45 @@ and names live in `Kinetis\Vector\Support\Countries`.
 
 ## JSON columns
 
-`Json` and `KeyValue` live in JSON columns: an `array` or `?array`
-property, which the ORM decodes to arrays (a JSON object becomes an
-associative array, a JSON array a list). Declare the column `JSON` on
-MySQL and MariaDB and `jsonb` on PostgreSQL. The build refuses either
-field on any other property.
+`Json` and `KeyValue` live in JSON columns. Declare the column `JSON`
+on MySQL and MariaDB and `jsonb` on PostgreSQL. The property's type
+decides whether a JSON object keeps its shape:
+
+| Property | Holds | `{}` |
+|---|---|---|
+| `stdClass`, `?stdClass` | a JSON object | kept, at any depth |
+| `array\|stdClass`, `array\|stdClass\|null` | a JSON object or array | kept, at any depth |
+| `array`, `?array` | a JSON object or array, decoded to PHP arrays | stored and read back as `[]` |
+
+On a `stdClass` or `array|stdClass` property every JSON object is a
+`stdClass` and every JSON array a list, so `{}`, `{"box": {}}` and `[]`
+are stored and answered as sent. Prefer it for new fields. An `array`
+property still works as before: PHP holds `{}` and `[]` as the same
+array, so a `Json` value sent as `{}`, or holding one, is stored and
+read back with `[]` in its place, and an empty `KeyValue` on a column
+that may not hold `null` is stored as `[]` (the API answers it as
+`{}`). Lists are the same either way. The build refuses either field on
+any other property.
 
 - `Json` reads as the stored document and writes a JSON object or
-  array; a bare string, number or boolean is refused. A CSV cell is the
-  document's JSON text.
+  array; a bare string, number or boolean is refused, and so is a list
+  on a `stdClass` property, which holds an object only. A CSV cell is
+  the document's JSON text.
 - `KeyValue` reads and writes an object of text values.
+- `required()` refuses an empty object, `{}` as much as `[]`.
 
-For now an empty object does not keep its shape: the ORM holds a JSON
-column as a PHP array, where `{}` and `[]` are the same value, so a
-`Json` value sent as `{}`, or holding one (`{"box": {}}`), is stored
-and read back with `[]` in its place. An empty `KeyValue` on a column
-that may not hold `null` is stored as `[]` too, though the API still
-answers it as `{}`. Lists are unaffected.
+The `create()` and `apply()` hooks see the property's own type: on a
+`stdClass` or `array|stdClass` property a `Json` value is a `stdClass`
+tree (or a list, where the property allows one) and a `KeyValue` value a
+`stdClass` of strings; on an `array` property both are arrays. A field's
+own rules check the value as sent, which on those properties holds a
+`stdClass` for every JSON object of a REST body. A value that reaches
+the write path as an associative array (an MCP tool's `values`, which
+the MCP layer decodes to arrays) is read as the object it was, but an
+empty object arrives there as `[]`: it is stored as `{}` as a whole
+`stdClass` property's value or a `KeyValue`, and as a list anywhere
+else. An action's or a settings group's `Json` and `KeyValue` inputs
+have no property, and are arrays.
 
 Neither is sorted, filtered, searched, summarized or grouped.
 

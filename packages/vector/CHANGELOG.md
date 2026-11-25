@@ -7,11 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Json` and `KeyValue` fields take a `stdClass`, `?stdClass`,
+  `array|stdClass` or `array|stdClass|null` property, which keeps every
+  JSON object an object: `{}` and a nested `{}` are stored and answered
+  as sent through a REST create, update or bulk edit and a CSV import,
+  and a list stays a list. The `create()` and `apply()` hooks receive a
+  `stdClass` there. An `array` or `?array` property still holds `{}` as
+  `[]`.
+- A resource with no fields of its own derives a `Json` field for a
+  `stdClass` or `array|stdClass` property too.
+
 ### Changed
 
 - Requires `kinetis/orm` ^1.15.0.
 
 ### Fixed
+
+- An empty `KeyValue` on a column that may not hold `null` was stored as
+  `[]` though the API answered `{}`. On a `stdClass` property it is now
+  stored as `{}`.
+- A `requiredWhen()` condition took a stored empty `KeyValue` object as a
+  value; it now counts as empty, as an empty list does.
 
 - `required()` on a multiple `Select`, a `Tag`, a JSON `Repeater`, a
   `Json` or a `KeyValue` field refused every value. Any non-empty list

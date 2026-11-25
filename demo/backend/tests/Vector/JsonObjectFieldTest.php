@@ -170,6 +170,16 @@ final class JsonObjectFieldTest extends VectorTestCase
         }
     }
 
+    /** A resource with no fields of its own derives a JSON field for a property that keeps objects. */
+    public function testADerivedFieldOfAStdClassPropertyIsJson(): void
+    {
+        $metadata = MetadataRegistry::fromArray(new DiscoveryContext(dirname(__DIR__, 2))->compiled(OrmMetadata::class));
+        $derived = new #[Resource(Product::class, slug: 'derived-object-products')] class extends VectorResource {};
+        $field = array_column((new ResourceCompiler($metadata, [$derived::class]))->compile()['derived-object-products']['fields'], null, 'name')['attributes'];
+
+        self::assertSame(['json', 'json', 'object', false], [$field['type'], $field['valueType'], $field['jsonObjects'], $field['sortable']]);
+    }
+
     /** A bulk edit's fields keep their objects as a single update does. */
     public function testABulkEditKeepsANestedEmptyObject(): void
     {
