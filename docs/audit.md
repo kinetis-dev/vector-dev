@@ -6,8 +6,10 @@ Every write through Vector (create, update, delete, restore, attach,
 detach, actions, bulk and inline edits, imports, repeater rows) is
 recorded in `vector_audit` with the actor, and the impersonator when
 there is one. Creates, updates, reverts and membership changes carry the
-field-level changes the writer observed; deletes, restores and action
-runs are recorded as the event alone (`action:<name>` for an action). A
+field-level changes the writer observed, each value as the record
+serialized it, so `GET /vector/r/{resource}/{id}/audit` answers a JSON
+object as an object; deletes, restores and action runs are recorded as
+the event alone (`action:<name>` for an action). A
 record's **History** shows it, limited to the fields the viewer may see.
 
 ```{image} _static/screenshots/product-history-light.png
@@ -40,7 +42,9 @@ whether or not it has been applied.
 `update` (or earlier `revert`) changed:
 
 - each field of the entry the user may see and edit gets its earlier
-  value;
+  value, as recorded: a JSON object, `{}` and a nested `{}` included,
+  is put back as an object where the field keeps objects
+  ({doc}`fields`);
 - the write goes through the update path: policy, validation,
   conditions, dependent choices and hooks all apply;
 - it is pinned to the record's current version, and recorded as a

@@ -313,14 +313,16 @@ The `create()` and `apply()` hooks see the property's own type: on a
 tree (or a list, where the property allows one) and a `KeyValue` value a
 `stdClass` of strings; on an `array` property both are arrays. A field's
 own rules check the value as sent, which on those properties holds a
-`stdClass` for every JSON object of a REST body or of the `values` of
-the MCP `vector_create` and `vector_update` tools. A value restored by a
-revert from the history is read back as arrays: it is read as the object
-it was, but an empty object arrives there as `[]`, and is stored as `{}`
-as a whole `stdClass` property's value or a `KeyValue`, and as a list
-anywhere else. An action's or a settings group's `Json` and `KeyValue`
-inputs have no property, and are arrays, from the MCP
-`vector_run_action` tool too.
+`stdClass` for every JSON object of a REST body, of the `values` of the
+MCP `vector_create` and `vector_update` tools, and of a value a revert
+puts back from the history.
+
+An action's or a settings group's `Json` and `KeyValue` inputs have no
+property and keep their objects the same way: a `Json` input is a
+`stdClass` tree (or a list, where JSON sent one) and a `KeyValue` input
+a `stdClass` of strings, whether the value came from a REST body, the
+MCP `vector_run_action` tool or a queued run. An empty `KeyValue` input
+that is not required is `null`.
 
 Neither is sorted, filtered, searched, summarized or grouped.
 

@@ -86,8 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `array|stdClass` or `array|stdClass|null` property, which keeps every
   JSON object an object: `{}` and a nested `{}` are stored and answered
   as sent through a REST create, update or bulk edit, the MCP
-  `vector_create` and `vector_update` tools and a CSV import, and a list
-  stays a list. The `create()` and `apply()` hooks receive a
+  `vector_create` and `vector_update` tools, a CSV import and a revert
+  from the audit trail, and a list stays a list. The `create()` and `apply()` hooks receive a
   `stdClass` there. An `array` or `?array` property still holds `{}` as
   `[]`.
 - A resource with no fields of its own derives a `Json` field for a
@@ -95,6 +95,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** an action's or a settings group's `Json` input is a
+  `stdClass` tree (a list where JSON sent one) and a `KeyValue` input a
+  `stdClass` of strings, instead of PHP arrays, so `{}` and a nested
+  `{}` stay objects: in `ActionRequest::$fields`, a settings group's
+  `validate()`, `SettingsStore::values()` and the settings API, from a
+  REST run or save, the MCP `vector_run_action` tool and a queued run.
+  Every other input is unchanged. An action or a settings consumer that
+  reads such an input as an array reads it as an object, or converts it.
+- **Breaking:** `RunActionJob::$fields` is the dialog's values as JSON
+  text, since a job's arguments are arrays, which would hold `{}` as
+  `[]`. A queued action job pushed before the upgrade fails to start;
+  let the queue drain first.
 - `Select` is no longer `final`, so `Country` can extend it; its API is
   unchanged.
 - Requires `kinetis/orm` ^1.15.0 and `kinetis/query-builder` ^1.8.6.
@@ -146,6 +158,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The audit trail read its recorded values with every JSON object a PHP
+  array, so `GET /vector/r/{resource}/{id}/audit` answered an empty
+  `KeyValue` map, or any recorded `{}`, as `[]`. It now answers a
+  recorded object as an object.
 - Saving a record through a relationship `Repeater` deleted the children
   the child resource's `scope()` hides from the user, after running the
   delete policy and hooks and auditing the delete, and a row naming a
