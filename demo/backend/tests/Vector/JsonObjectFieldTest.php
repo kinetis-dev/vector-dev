@@ -247,6 +247,48 @@ final class JsonObjectFieldTest extends VectorTestCase
         }
     }
 
+    /** The MCP create and update tools keep a field's objects as a REST body does. */
+    public function testTheMcpToolsKeepANestedEmptyObject(): void
+    {
+        [$id, $stored] = $this->ticket();
+        $teamId = (int) $this->support()->table('support_teams')->select('id')->orderBy('id', 'ASC')->value('id');
+        $number = 'TCK-M' . substr(bin2hex(random_bytes(4)), 0, 7);
+
+        try {
+            $updated = $this->mcp('vector_update', ['resource' => 'object-tickets', 'id' => (string) $id, 'values' => ['metadata' => (object) ['box' => new stdClass(), 'list' => []]]]);
+            self::assertSame('{"box":{},"list":[]}', self::canonical(json_encode($updated->data->metadata, JSON_THROW_ON_ERROR)), 'update: answered');
+            self::assertSame('{"box":{},"list":[]}', $this->storedMetadata($id), 'update: stored');
+            self::assertSame('{"box":{},"list":[]}', self::canonical(json_encode(self::objects($this->vector($this->adminHeaders())->resource('tickets')->show($id)->assertOk())->data->metadata, JSON_THROW_ON_ERROR)), 'update: read back');
+
+            $created = $this->mcp('vector_create', ['resource' => 'tickets', 'values' => [
+                'number' => $number, 'subject' => 'Empty box', 'body' => json_encode(['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Nothing inside.']]]]], JSON_THROW_ON_ERROR),
+                'status' => 'open', 'priority' => 'low', 'channel' => 'email', 'customerEmail' => 'box@example.com', 'team' => $teamId,
+                'compensationCents' => 0, 'currency' => 'EUR', 'isEscalated' => false, 'metadata' => (object) ['box' => new stdClass(), 'items' => []],
+            ]]);
+            self::assertSame('{"box":{},"items":[]}', self::canonical(json_encode($created->data->metadata, JSON_THROW_ON_ERROR)), 'create: answered');
+            self::assertSame('{"box":{},"items":[]}', $this->storedMetadata((int) $created->data->id), 'create: stored');
+        } finally {
+            $this->support()->table('tickets')->where('id', '=', $id)->update(['metadata' => $stored]);
+            $this->support()->table('tickets')->where('number', '=', $number)->delete();
+        }
+    }
+
+    /** A field over an `array` property receives arrays from the MCP tools too, as from a REST body. */
+    public function testTheMcpToolsHandAnArrayPropertyArrays(): void
+    {
+        $row = $this->shop()->table('products')->select('id', 'specs')->where('deleted_at', '=', null)->orderBy('id', 'ASC')->first();
+        self::assertIsArray($row);
+        $id = (int) $row['id'];
+
+        try {
+            $answer = $this->mcp('vector_update', ['resource' => 'array-products', 'id' => (string) $id, 'values' => ['specs' => (object) ['box' => new stdClass(), 'n' => 1]]]);
+            self::assertSame('{"box":[],"n":1}', self::canonical(json_encode($answer->data->specs, JSON_THROW_ON_ERROR)));
+            self::assertSame('{"box":[],"n":1}', self::canonical((string) $this->shop()->table('products')->select('specs')->where('id', '=', $id)->value('specs')));
+        } finally {
+            $this->shop()->table('products')->where('id', '=', $id)->update(['specs' => $row['specs']]);
+        }
+    }
+
     #[\Override]
     protected function tearDown(): void
     {
@@ -322,6 +364,25 @@ final class JsonObjectFieldTest extends VectorTestCase
         }
 
         return $sorted;
+    }
+
+    /**
+     * A successful MCP tool call's answer, with every JSON object a stdClass.
+     *
+     * @param array<string, mixed> $arguments
+     */
+    private function mcp(string $tool, array $arguments): stdClass
+    {
+        $body = json_encode(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'tools/call', 'params' => ['name' => $tool, 'arguments' => (object) $arguments]], JSON_THROW_ON_ERROR);
+        $headers = [...$this->adminHeaders(), 'MCP-Protocol-Version' => '2025-06-18', 'Content-Type' => 'application/json'];
+        $response = json_decode($this->client->raw('POST', '/mcp', $body, $headers)->assertOk()->body(), false, 512, JSON_THROW_ON_ERROR);
+        self::assertInstanceOf(stdClass::class, $response);
+        self::assertObjectHasProperty('result', $response, json_encode($response, JSON_THROW_ON_ERROR));
+        self::assertFalse($response->result->isError ?? false, $response->result->content[0]->text ?? '');
+        $answer = json_decode($response->result->content[0]->text, false, 512, JSON_THROW_ON_ERROR);
+        self::assertInstanceOf(stdClass::class, $answer);
+
+        return $answer;
     }
 
     /** The response body with every JSON object a stdClass. */
