@@ -170,6 +170,28 @@ final class JsonObjectFieldTest extends VectorTestCase
         }
     }
 
+    /** A bulk edit's fields keep their objects as a single update does. */
+    public function testABulkEditKeepsANestedEmptyObject(): void
+    {
+        $rows = $this->support()->table('tickets')->select('id', 'metadata')->where('deleted_at', '=', null)->orderBy('id', 'ASC')->limit(2)->get();
+        self::assertCount(2, $rows);
+        $ids = array_map(static fn (array $row): int => (int) $row['id'], $rows);
+
+        try {
+            $this->vector($this->adminHeaders())->resource('object-tickets')
+                ->batch('update', $ids, fields: ['metadata' => (object) ['box' => new stdClass()]])
+                ->assertOk();
+
+            foreach ($ids as $id) {
+                self::assertSame('{"box":{}}', $this->storedMetadata($id));
+            }
+        } finally {
+            foreach ($rows as $row) {
+                $this->support()->table('tickets')->where('id', '=', $row['id'])->update(['metadata' => $row['metadata']]);
+            }
+        }
+    }
+
     /**
      * Sending back what the API answered changes nothing the ORM compares,
      * so the row is not written: its version stays where it was.

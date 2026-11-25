@@ -164,6 +164,37 @@ final class ValueConverterTest extends TestCase
     }
 
     /**
+     * A property that keeps objects (`stdClass`, `array|stdClass`) takes a
+     * stdClass tree: an object stays one, {} included, and a list a list,
+     * whether the value arrives decoded with objects (a REST body, a CSV
+     * cell) or as an associative array (an MCP tool's values).
+     */
+    public function testAPropertyThatKeepsObjectsTakesAStdClassTree(): void
+    {
+        $document = ['type' => 'json', 'valueType' => 'json', 'jsonObjects' => 'objectOrList', 'nullable' => true];
+        $object = ['type' => 'json', 'valueType' => 'json', 'jsonObjects' => 'object', 'nullable' => false];
+        $keyValue = ['type' => 'keyValue', 'valueType' => 'json', 'jsonObjects' => 'object', 'nullable' => false, 'props' => []];
+        $encode = static fn (mixed $value): string => json_encode($value, JSON_THROW_ON_ERROR);
+
+        self::assertSame('{"box":{},"list":[1,{}]}', $encode($this->converter()->convert($document, json_decode('{"box":{},"list":[1,{}]}', false))));
+        self::assertSame('[]', $encode($this->converter()->convert($document, [])), 'an empty array is a list where a list is allowed');
+        self::assertSame('{"a":{"b":1},"c":[]}', $encode($this->converter()->convert($document, ['a' => ['b' => 1], 'c' => []])), 'an associative array is an object');
+        self::assertSame('{}', $encode($this->converter()->convert($object, [])), 'an empty array is {} where only an object is');
+        self::assertSame('must be a JSON object.', $this->mismatch(fn () => $this->converter()->convert($object, [1, 2])));
+        self::assertSame('must be a JSON object or array.', $this->mismatch(fn () => $this->converter()->convert($document, 'text')));
+        self::assertStringContainsString('NUL', $this->mismatch(fn () => $this->converter()->convert($document, ["\0a" => 1])));
+
+        // an exported cell is the document's JSON text
+        self::assertSame('{"box":{}}', $encode($this->converter()->fromQuery($document, '{"box": {}}')));
+        self::assertSame('{}', $encode($this->converter()->fromQuery($keyValue, '{}')));
+
+        self::assertSame('{}', $encode($this->converter()->convert($keyValue, new \stdClass())), 'an empty object kept where null is not allowed');
+        self::assertSame('{"0":"zero"}', $encode($this->converter()->convert($keyValue, json_decode('{"0": "zero"}', false))), 'a digit key of an object');
+        self::assertSame('{"size":"M","n":"3"}', $encode($this->converter()->convert($keyValue, ['size' => 'M', 'n' => 3])));
+        self::assertNull($this->converter()->convert([...$keyValue, 'nullable' => true], new \stdClass()), 'cleared where null is allowed');
+    }
+
+    /**
      * required() is NotBlank: a list or an object that holds something is
      * present, an empty one is not_blank as a blank string is, and text is
      * held to NotBlank itself.
