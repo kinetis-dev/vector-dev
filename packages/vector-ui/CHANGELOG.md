@@ -83,6 +83,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   relationship repeater's form holds every stored row, past `max()`
   too, so a save can no longer delete the rows past it: the server
   refuses that save instead.
+- A collapsible form section opens again after it was collapsed: the
+  form recorded every click on its title as a close.
 
 ## [0.14.0] - 2026-11-23
 
