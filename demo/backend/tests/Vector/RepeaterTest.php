@@ -23,6 +23,7 @@ use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\Fields\Repeater;
 use Kinetis\Vector\Registry\ResourceCompiler;
+use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Store\AuditStore;
 use Kinetis\Vector\Testing\InteractsWithVector;
 use Kinetis\Vector\VectorResource;
@@ -40,6 +41,12 @@ final class RepeaterTest extends VectorTestCase
     /** A unit price no seeded line has: the lines a test's unique index covers. */
     private const int UNIQUE_PRICE = 777_777;
 
+    /** A unit price no seeded line has: the lines ScopedOrderLines hides. */
+    private const int HIDDEN_PRICE = 333_333;
+
+    /** The tests whose order lines are ScopedOrderLines, which hide the HIDDEN_PRICE lines. */
+    private const array SCOPED = ['testAChildTheScopeHidesIsLeftAloneBySaving', 'testARowNamingAHiddenChildIsRefusedAsAStrangersRow'];
+
     private RepeaterPolicy $policy;
 
     protected function registerTestDoubles(AppScope $app, Config $config): void
@@ -47,6 +54,14 @@ final class RepeaterTest extends VectorTestCase
         parent::registerTestDoubles($app, $config);
         $this->policy = new RepeaterPolicy();
         $app->instance(AllowAllPolicy::class, $this->policy);
+
+        if (in_array($this->name(), self::SCOPED, true)) {
+            $registry = $app->get(VectorRegistry::class);
+            self::assertInstanceOf(VectorRegistry::class, $registry);
+            $data = $registry->toArray();
+            $data['resources']['order-lines']['class'] = ScopedOrderLines::class;
+            $app->instance(VectorRegistry::class, VectorRegistry::fromArray($data));
+        }
     }
 
     public function testTheSchemaDescribesTheRowsAForm(): void
@@ -265,6 +280,80 @@ final class RepeaterTest extends VectorTestCase
         }
     }
 
+    /**
+     * A line the order lines' scope hides never reaches the form, so a
+     * save that leaves it out has not removed it: it stays as it was, in
+     * its own position, and nothing records a delete of it.
+     */
+    public function testAChildTheScopeHidesIsLeftAloneBySaving(): void
+    {
+        $orders = $this->vector($this->realAdminHeaders())->resource('orders');
+        [$p1, $p2, $p3] = $this->productIds(3);
+        $id = $orders->create($this->order([
+            ['product' => $p1, 'quantity' => 1, 'unitPriceCents' => 100],
+            ['product' => $p2, 'quantity' => 2, 'unitPriceCents' => 100],
+        ]))->assertCreated()->id();
+
+        try {
+            $hidden = $this->hiddenLine($id, $p3);
+            $before = $this->line($hidden);
+            $rows = $this->rows($id);
+            self::assertSame([$p1, $p2], array_map(static fn (array $row): int => $row['product']['id'], $rows), 'the form gets the lines the scope shows');
+
+            $orders->update($id, ['lines' => [
+                ['id' => $rows[1]['id'], 'product' => $p2, 'quantity' => 7, 'unitPriceCents' => 100],
+                ['id' => $rows[0]['id'], 'product' => $p1, 'quantity' => 1, 'unitPriceCents' => 100],
+            ]])->assertOk();
+
+            self::assertSame($before, $this->line($hidden), 'the hidden line is unchanged, its position included');
+            self::assertSame([[$p2, 7, 0], [$p1, 1, 1]], array_map(fn (array $row): array => [$row['product']['id'], $row['quantity'], (int) $this->line((int) $row['id'])['position']], $this->rows($id)), 'the lines sent are written in their order');
+            $audit = $this->app->get(AuditStore::class);
+            self::assertInstanceOf(AuditStore::class, $audit);
+            self::assertNotContains('delete', array_column($audit->trail('order-lines', (string) $hidden), 'event'), 'no delete is recorded for it');
+
+            // a save that leaves every line out removes the ones it shows, and still not the hidden one
+            $orders->update($id, ['lines' => [['product' => $p1, 'quantity' => 3, 'unitPriceCents' => 100]]])->assertOk();
+            self::assertSame($before, $this->line($hidden));
+            self::assertSame(2, $this->shop()->table('order_lines')->where('order_id', '=', $id)->count());
+        } finally {
+            $this->shop()->table('order_lines')->where('order_id', '=', $id)->where('unit_price_cents', '=', self::HIDDEN_PRICE)->delete();
+            $orders->batch('delete', [$id])->assertOk();
+        }
+    }
+
+    /**
+     * A row that names a hidden line by its id is refused exactly as one
+     * naming another order's line is, so the answer says nothing about
+     * whether the hidden line exists, and the line is not touched.
+     */
+    public function testARowNamingAHiddenChildIsRefusedAsAStrangersRow(): void
+    {
+        $orders = $this->vector($this->realAdminHeaders())->resource('orders');
+        [$p1, $p2] = $this->productIds(2);
+        $id = $orders->create($this->order([['product' => $p1, 'quantity' => 1, 'unitPriceCents' => 100]]))->assertCreated()->id();
+        $other = $orders->create($this->order([['product' => $p1, 'quantity' => 1, 'unitPriceCents' => 100]]))->assertCreated()->id();
+
+        try {
+            $hidden = $this->hiddenLine($id, $p2);
+            $before = $this->line($hidden);
+            $stranger = (int) $this->rows($other)[0]['id'];
+            $errors = [];
+
+            foreach (['hidden' => $hidden, 'stranger' => $stranger] as $case => $lineId) {
+                $answer = $orders->update($id, ['lines' => [['id' => $lineId, 'product' => $p2, 'quantity' => 9, 'unitPriceCents' => 100]]])->assertStatus(422)->json();
+                $errors[$case] = array_values(array_filter($answer['errors'], static fn (array $e): bool => $e['path'] === ['lines', 0, 'id']));
+            }
+
+            self::assertSame('unknown_row', $errors['hidden'][0]['code'] ?? null);
+            self::assertSame($errors['stranger'], $errors['hidden'], 'the same answer as for a line of another order');
+            self::assertSame($before, $this->line($hidden), 'the hidden line is unchanged');
+            self::assertSame(2, $this->shop()->table('order_lines')->where('order_id', '=', $id)->count(), 'nothing was created or removed');
+        } finally {
+            $this->shop()->table('order_lines')->where('order_id', '=', $id)->where('unit_price_cents', '=', self::HIDDEN_PRICE)->delete();
+            $orders->batch('delete', [$id, $other])->assertOk();
+        }
+    }
+
     public function testARepeaterNeedsAnOwnedRelationAndEveryRequiredField(): void
     {
         $metadata = MetadataRegistry::fromArray(new DiscoveryContext(dirname(__DIR__, 2))->compiled(OrmMetadata::class));
@@ -435,6 +524,24 @@ final class RepeaterTest extends VectorTestCase
         return array_map(static fn (array $row): array => [(int) $row['product_id'], (int) $row['position']], $rows);
     }
 
+    /** A line of the order that ScopedOrderLines hides, after the lines it has: its id. */
+    private function hiddenLine(int|string $orderId, int $productId): int
+    {
+        $position = $this->shop()->table('order_lines')->where('order_id', '=', (int) $orderId)->count();
+        $this->shop()->table('order_lines')->insert(['order_id' => (int) $orderId, 'product_id' => $productId, 'quantity' => 4, 'unit_price_cents' => self::HIDDEN_PRICE, 'position' => $position]);
+
+        return (int) $this->shop()->table('order_lines')->select('id')->where('order_id', '=', (int) $orderId)->where('unit_price_cents', '=', self::HIDDEN_PRICE)->value('id');
+    }
+
+    /** @return array<string, mixed> one line as stored */
+    private function line(int $lineId): array
+    {
+        $row = $this->shop()->table('order_lines')->select('order_id', 'product_id', 'quantity', 'unit_price_cents', 'position')->where('id', '=', $lineId)->first();
+        self::assertIsArray($row, "line {$lineId} is gone");
+
+        return $row;
+    }
+
     /** @return list<int> */
     private function productIds(int $count): array
     {
@@ -466,6 +573,35 @@ final class RepeaterPolicy extends ResourcePolicy
     public function delete(CurrentUserInterface $user, array $record): bool
     {
         return $this->allowLineDelete || !array_key_exists('unitPriceCents', $record);
+    }
+}
+
+/**
+ * The order lines, as the demo's resource compiles them, with a scope that
+ * hides the lines priced at RepeaterTest::HIDDEN_PRICE (333 333).
+ */
+final class ScopedOrderLines extends VectorResource
+{
+    #[\Override]
+    public function fields(): array
+    {
+        return [];
+    }
+
+    #[\Override]
+    public function scope(Query $query, CurrentUserInterface $user): Query
+    {
+        return $query->where('unit_price_cents', '<>', 333_333);
+    }
+
+    /**
+     * The computed line total the compiled resource names.
+     *
+     * @param array<string, mixed> $line
+     */
+    public function lineTotal(array $line): ?int
+    {
+        return is_int($line['quantity'] ?? null) && is_int($line['unitPriceCents'] ?? null) ? $line['quantity'] * $line['unitPriceCents'] : null;
     }
 }
 

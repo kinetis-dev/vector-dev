@@ -276,6 +276,9 @@ final readonly class RecordWriter
      * record, one without as a create) and pairs every row with what it
      * writes. `$owner` is the loaded parent (null when creating): the rows
      * its collection holds now, of which the ones not sent are removed.
+     * A child the child resource's scope hides from this user is not a
+     * row of the form: the save never names, changes, reorders or removes
+     * it.
      *
      * @param array<string, mixed> $rowsOf field => the rows sent
      * @return array{0: list<array<string, mixed>>, 1: list<Violation>} a plan per field, and every violation under its field and row
@@ -329,6 +332,9 @@ final readonly class RecordWriter
         }
 
         $currentOf = $this->reader->records($child, array_map(strval(...), array_keys($existing)));
+        // the children the scope hides: the client never saw them, so leaving them out is no removal
+        $hidden = array_values(array_diff_key($existing, $currentOf));
+        $existing = array_intersect_key($existing, $currentOf);
         $violations = [];
         $planned = [];
         $kept = [];
@@ -352,7 +358,7 @@ final readonly class RecordWriter
             }
         }
 
-        return [['field' => $name, 'property' => $property, 'child' => $child, 'inverse' => $field['relation']['inverse'], 'order' => $repeater['orderBy'] ?? null, 'rows' => $planned, 'removed' => $removed], $violations];
+        return [['field' => $name, 'property' => $property, 'child' => $child, 'inverse' => $field['relation']['inverse'], 'order' => $repeater['orderBy'] ?? null, 'rows' => $planned, 'removed' => $removed, 'hidden' => $hidden], $violations];
     }
 
     /**
@@ -405,7 +411,7 @@ final readonly class RecordWriter
      * One row of a repeater validated as the child's update (it names a
      * row of this record by `id`) or create (it names none).
      *
-     * @param array<array-key, mixed> $existing child id => the child entity the owner holds now
+     * @param array<array-key, mixed> $existing child id => the child entity the owner holds now, of those the scope shows
      * @param array<string, array<string, mixed>> $currentOf child id => that child, serialized
      * @param array<array-key, true> $kept the ids rows already named
      * @param-out array<array-key, true> $kept
@@ -476,9 +482,11 @@ final readonly class RecordWriter
     /**
      * Writes the planned rows into the owner's collections: children
      * changed in place, new ones built pointing at the owner, and the rest
-     * left out, which the flush deletes. A repeater ordered by a child
-     * property writes each row's index into it. Each child's resource
-     * hooks run as they would for a record of its own.
+     * left out, which the flush deletes. The children the scope hides stay
+     * in the collection as they are, so the flush keeps them, and keep
+     * their own position. A repeater ordered by a child property writes
+     * each row's index into it. Each child's resource hooks run as they
+     * would for a record of its own.
      *
      * @param list<array<string, mixed>> $plans
      * @return list<array<string, mixed>> the plans, every row holding its entity and context
@@ -510,7 +518,7 @@ final readonly class RecordWriter
                 $instance->beforeDelete($row['entity'], new WriteContext($child, $this->user, $this->manager($child), []));
             }
 
-            $this->writer->assign($resource, $owner, [$plan['property'] => $collection]);
+            $this->writer->assign($resource, $owner, [$plan['property'] => [...$collection, ...$plan['hidden']]]);
         }
 
         return $plans;
