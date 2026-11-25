@@ -128,9 +128,9 @@ vendor/bin/kinetis migrate
 ```
 
 Requires PHP 8.4 or 8.5 with `ext-sodium`,
-[`kinetis/framework`](https://github.com/kinetis-dev/framework) 1.30.0
+[`kinetis/framework`](https://github.com/kinetis-dev/framework) 1.32.0
 or later and [`kinetis/vector`](https://packagist.org/packages/kinetis/vector)
-0.17, on MySQL or PostgreSQL.
+0.18, on MySQL or PostgreSQL.
 `vector-ai:install` publishes the migrations into `migrations/`, or
 `migrations/<name>/` with `--connection=<name>` when Vector's tables are
 on another connection. Schedule `vector:jobs:reap`, then
