@@ -132,9 +132,10 @@ final class Ticket
         $this->labels = $labels;
     }
 
-    public function reply(string $author, string $body, bool $internal, DateTimeImmutable $at): void
+    /** @param array<array-key, mixed>|stdClass|null $metadata */
+    public function reply(string $author, string $body, bool $internal, DateTimeImmutable $at, array|stdClass|null $metadata = null): void
     {
-        $this->replies[] = new TicketReply($this, $author, $body, $internal, $at);
+        $this->replies[] = new TicketReply($this, $author, $body, $internal, $at, $metadata);
 
         if (!$internal && $this->status === TicketStatus::Open) {
             $this->status = TicketStatus::Pending;

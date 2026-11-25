@@ -17,6 +17,7 @@ use Kinetis\Orm\Date;
 use DateTimeZone;
 use Kinetis\Orm\EntityManager;
 use Kinetis\Orm\EntityManagerRegistry;
+use stdClass;
 
 /**
  * Seeds the support desk on the PostgreSQL connection "support", through
@@ -141,7 +142,8 @@ final readonly class SupportSeeder
             $ticket->keyword(DemoSeedCommand::someOf(array_combine(TicketResource::KEYWORDS, TicketResource::KEYWORDS), $i * 5));
 
             for ($r = mt_rand(0, 3); $r > 0; $r--) {
-                $ticket->reply(mt_rand(0, 1) === 0 ? 'Customer' : self::AGENTS[array_rand(self::AGENTS)], 'Thanks, we are looking into it.', mt_rand(0, 4) === 0, $createdAt->modify("+{$r} hours"));
+                // the metadata from the index and the reply alone: the random sequence stays as it was
+                $ticket->reply(mt_rand(0, 1) === 0 ? 'Customer' : self::AGENTS[array_rand(self::AGENTS)], 'Thanks, we are looking into it.', mt_rand(0, 4) === 0, $createdAt->modify("+{$r} hours"), self::replyMetadataOf($i, $r));
             }
 
             $roll = mt_rand(1, 10);
@@ -170,6 +172,25 @@ final readonly class SupportSeeder
     private function manager(): EntityManager
     {
         return $this->managers->manager('support');
+    }
+
+    /**
+     * A reply's metadata, from its ticket's index and its own number: about
+     * half the replies carry none, and of the rest some hold the client
+     * and channel they came through, an empty object or one with an empty
+     * object inside, which a JSON field keeps as sent.
+     *
+     * An object is a stdClass at every level: the property keeps objects.
+     */
+    private static function replyMetadataOf(int $i, int $r): ?stdClass
+    {
+        return match (($i * 3 + $r) % 8) {
+            0 => (object) ['channel' => 'email', 'client' => (object) ['name' => 'Mail', 'locale' => 'en-GB']],
+            1 => (object) ['channel' => 'chat', 'client' => (object) ['name' => 'Web widget', 'version' => '4.2.1'], 'attachments' => 0],
+            2 => new stdClass(),
+            3 => (object) ['channel' => 'phone', 'transcript' => new stdClass()],
+            default => null,
+        };
     }
 
     /**
