@@ -33,8 +33,8 @@ final class AdjustStock extends VectorAction
 ```
 
 `fields()` become the action's dialog, validated like a form, with
-conditions and defaults; an action's fields are scalar, select and
-belongs-to fields. A multiple select hands the action a list of option
+conditions and defaults; an action's fields are scalar, select,
+belongs-to, `Json` and `KeyValue` fields. A multiple select hands the action a list of option
 values, never enum cases. A `Json` input hands it a `stdClass` tree (a
 list where JSON sent one, so `{}` stays an object) and a `KeyValue`
 input a `stdClass` of strings, on every path: a REST run, the MCP
