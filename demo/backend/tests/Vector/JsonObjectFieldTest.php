@@ -29,6 +29,7 @@ use Kinetis\Vector\Fields\Repeater;
 use Kinetis\Vector\Import\RowMapper;
 use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Registry\VectorRegistry;
+use Kinetis\Vector\Store\AuditStore;
 use Kinetis\Vector\Testing\InteractsWithVector;
 use Kinetis\Vector\Testing\VectorResponse;
 use Kinetis\Vector\VectorResource;
@@ -315,6 +316,45 @@ final class JsonObjectFieldTest extends VectorTestCase
             $this->support()->table('tickets')->where('id', '=', $id)->update(['metadata' => $stored]);
             // a trail this deep is more than a client decoding at json_decode()'s default reads: other tests read this ticket's
             $this->vectorQuery()->table('vector_audit')->where('resource', '=', 'object-tickets')->where('record_id', '=', (string) $id)->where('id', '>', $lastEntry)->delete();
+        }
+    }
+
+    /**
+     * A record that already holds a value deeper than the audit row can
+     * (saved before Vector refused it: the ticket on PostgreSQL, Vector's
+     * tables on MySQL) is still updated: the audit row records the earlier
+     * value as AuditStore::TOO_DEEP, and reverting that entry is refused
+     * rather than writing the marker into the record.
+     */
+    public function testAnUpdateOfAValueTooDeepToAuditRecordsAMarker(): void
+    {
+        $vector = $this->app->get(VectorDatabase::class);
+        self::assertInstanceOf(VectorDatabase::class, $vector);
+
+        if ($vector->isPostgres()) {
+            self::markTestSkipped('Vector\'s connection stores as deep as the record\'s: run with VECTOR_TEST_DB_CONNECTION=default.');
+        }
+
+        [$id, $stored] = $this->ticket();
+        $legacy = self::nested($vector->jsonDepth() - JsonDepth::AUDIT_LEVELS + 1);
+        $this->support()->table('tickets')->where('id', '=', $id)->update(['metadata' => json_encode($legacy, JSON_THROW_ON_ERROR, JsonDepth::ANSWER_DEPTH)]);
+        $tickets = $this->vector($this->adminHeaders())->resource('object-tickets');
+
+        try {
+            $tickets->update($id, ['metadata' => ['plain' => true]])->assertOk();
+            self::assertSame('{"plain":true}', $this->storedMetadata($id), 'the update was saved');
+
+            $entry = $tickets->audit($id)->assertOk()->json()['data'][0] ?? null;
+            self::assertIsArray($entry);
+            // MySQL keeps an object's keys in its own order
+            self::assertEquals(['from' => AuditStore::TOO_DEEP, 'to' => ['plain' => true]], $entry['changes']['metadata'], 'its audit row');
+
+            $errors = $tickets->revert($id, (int) $entry['id'])->assertStatus(422)->json()['errors'] ?? null;
+            self::assertIsArray($errors);
+            self::assertSame(['not_revertable'], array_column($errors, 'code'), (string) json_encode($errors));
+            self::assertSame('{"plain":true}', $this->storedMetadata($id), 'the revert wrote nothing');
+        } finally {
+            $this->support()->table('tickets')->where('id', '=', $id)->update(['metadata' => $stored]);
         }
     }
 

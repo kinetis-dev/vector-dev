@@ -14,7 +14,10 @@ record's **History** shows it, limited to the fields the viewer may see.
 The changes are stored as JSON on Vector's own connection, so a `Json`
 field's value nests only as deep as that connection stores, less the
 two levels an entry wraps around it ({doc}`fields`, "How deep a value
-nests").
+nests"). A record can still hold a deeper value saved before Vector
+refused one; when an update replaces it, the entry records that earlier
+value as `{"truncated": "too_deep"}`, and History shows that marker in
+its place.
 
 ```{image} _static/screenshots/product-history-light.png
 :alt: A product's History: an Adjust stock action run, then an update publishing it (Status draft → active, Released at set), then an update of its Price, each by user 3 with its time, and Revert on both updates
@@ -58,7 +61,9 @@ If any of those fields changed since the entry, the revert answers `409`
 and writes nothing, so it never overwrites a later edit. Collections and
 read-only fields are left alone. Other events (`create`, `delete`,
 `attach`, actions) cannot be reverted and are refused with
-`not_revertable`.
+`not_revertable`, as is an entry that recorded a field's earlier value
+as `{"truncated": "too_deep"}`: there is no value to put back, so the
+revert answers `422` and writes nothing rather than writing the marker.
 
 ## Impersonation
 

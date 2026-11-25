@@ -196,6 +196,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an import's `Json` cell 507 levels deep, so one nested deeper is
   `too_deep`, with the field's own limit as `max`, rather than
   `type_mismatch`.
+- A record holding a value deeper than the audit row stores, saved
+  before that limit, failed its next update with a `500` after the
+  record was saved. The audit entry now records that earlier value as
+  `AuditStore::TOO_DEEP` (`{"truncated": "too_deep"}`), and reverting
+  the entry is refused with `not_revertable` instead of writing the
+  marker into the record.
 
 ## [0.17.1] - 2026-11-23
 

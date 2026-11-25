@@ -6,6 +6,7 @@ namespace Kinetis\Vector\Store;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Kinetis\Vector\Database\JsonDepth;
 use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\QueryBuilder\Query;
 
@@ -21,13 +22,25 @@ use Kinetis\QueryBuilder\Query;
  * The changes nest as deep as a JSON column of Vector's connection
  * stores (VectorDatabase::jsonDepth()), which is JsonDepth::AUDIT_LEVELS
  * more than a field's own value: a write refuses a value deeper than
- * JsonDepth::forField() before it gets here.
+ * JsonDepth::forField() before it gets here. A value a record already
+ * held deeper than that (stored before Vector refused it, and now an
+ * update's `from`) is recorded as TOO_DEEP instead, so the write it
+ * audits, already saved, is still recorded.
  *
  * @phpstan-type AuditRow array{id: int, event: string, actorId: string, impersonatorId: string|null, origin: string|null, changes: array<string, mixed>, createdAt: string}
  */
 final readonly class AuditStore
 {
+    /** What a recorded value nested deeper than Vector's connection stores is recorded as instead. */
+    public const array TOO_DEEP = ['truncated' => 'too_deep'];
+
     public function __construct(private VectorDatabase $db) {}
+
+    /** Whether a recorded value, read back as trail() reads it, is TOO_DEEP in place of the value. */
+    public static function truncated(mixed $value): bool
+    {
+        return ($value instanceof \stdClass ? get_object_vars($value) : $value) === self::TOO_DEEP;
+    }
 
     /**
      * @param list<string> $recordIds
@@ -37,7 +50,7 @@ final readonly class AuditStore
     {
         $rows = [];
         $now = JobStore::now();
-        $encoded = json_encode($changes, JSON_THROW_ON_ERROR, $this->db->jsonDepth());
+        $encoded = $this->encode($event, $changes);
 
         foreach ($recordIds as $id) {
             $rows[] = [
@@ -54,6 +67,36 @@ final readonly class AuditStore
         if ($rows !== []) {
             $this->query()->table('vector_audit')->insert($rows);
         }
+    }
+
+    /**
+     * $changes as JSON text no deeper than Vector's connection stores,
+     * each value too deep for it TOO_DEEP: within the entry's object on a
+     * create, within an update's `{from, to}` otherwise.
+     *
+     * @param array<string, mixed> $changes
+     */
+    private function encode(string $event, array $changes): string
+    {
+        $depth = $this->db->jsonDepth();
+
+        try {
+            return json_encode($changes, JSON_THROW_ON_ERROR, $depth);
+        } catch (\JsonException $e) {
+            if ($e->getCode() !== JSON_ERROR_DEPTH) {
+                throw $e;
+            }
+        }
+
+        $fits = static fn (mixed $value, int $wrapping): mixed => JsonDepth::levels($value) + $wrapping > $depth ? self::TOO_DEEP : $value;
+
+        foreach ($changes as $name => $change) {
+            $changes[$name] = $event !== 'create' && is_array($change)
+                ? array_map(static fn (mixed $value): mixed => $fits($value, JsonDepth::AUDIT_LEVELS), $change)
+                : $fits($change, 1);
+        }
+
+        return json_encode($changes, JSON_THROW_ON_ERROR, $depth);
     }
 
     /** @return list<AuditRow> newest first */
