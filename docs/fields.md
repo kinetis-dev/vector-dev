@@ -341,11 +341,12 @@ nests at most the least of:
 - the levels Vector's connection stores, less 2;
 - 507.
 
-That is 98 levels wherever Vector's tables are on MySQL, 29 on MariaDB
-before 12.2, and 507 when both connections are PostgreSQL. A deeper
-value is a `422` on the field, `too_deep`, with the limit as `max`,
-whether it came from a form, a bulk edit, an inline edit, the MCP tools,
-a revert or an import; nothing is written. A row of a relationship
+That is at most 98 levels wherever Vector's tables are on MySQL (31
+when the record's connection is MariaDB before 12.2), at most 29
+wherever they are on MariaDB before 12.2, and 507 when both connections
+are PostgreSQL. A deeper value is a `422` on the field, `too_deep`,
+with the limit as `max`, whether it came from a form, a bulk edit, an
+inline edit, the MCP tools, a revert or an import; nothing is written. A row of a relationship
 repeater is checked against its child resource's own connection. A REST
 body itself is read 63 levels deep at most, so a value sent through
 REST nests at most 62 levels before this limit applies; the MCP tools

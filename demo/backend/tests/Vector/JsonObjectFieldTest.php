@@ -272,7 +272,7 @@ final class JsonObjectFieldTest extends VectorTestCase
      * PostgreSQL (2499 levels); the audit row, which wraps the value in two
      * more, on Vector's connection: PostgreSQL, or MySQL (100 levels) when
      * VECTOR_TEST_DB_CONNECTION puts Vector's tables there. Written through
-     * the writer itself: a REST body nests at most 64 levels.
+     * the writer itself: a REST body nests at most 63 levels.
      */
     public function testAValueAtTheJsonDepthReadsBackAndOneDeeperIsRefused(): void
     {
