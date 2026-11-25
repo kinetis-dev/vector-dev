@@ -538,7 +538,10 @@ it can write by default, never the one pointing back at the parent).
 The child resource is the one administering the child entity, or the
 one marked `relationTarget`; `relationship('lines', OrderLineResource::class)`
 names it. A row with an `id` updates that child, one without creates it
-pointing at the parent, and a child left out is deleted. Each row is
+pointing at the parent, and a child left out is deleted. A child the
+child resource's `scope()` hides is not a row of the form: a save leaves
+it as it is, position included, and a row naming its `id` is refused as
+`unknown_row`, as one naming another record's child is. Each row is
 validated, authorized, hooked and audited as the child's own create,
 update or delete; {doc}`forms` has the details.
 

@@ -25,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Saving a record through a relationship `Repeater` deleted the children
+  the child resource's `scope()` hides from the user, after running the
+  delete policy and hooks and auditing the delete, and a row naming a
+  hidden child's `id` updated it. A save now leaves hidden children as
+  they are, position included, and refuses such a row as `unknown_row`.
 - An empty `KeyValue` on a column that may not hold `null` was stored as
   `[]` though the API answered `{}`. On a `stdClass` property it is now
   stored as `{}`.
