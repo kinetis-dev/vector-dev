@@ -87,7 +87,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   JSON object an object: `{}` and a nested `{}` are stored and answered
   as sent through a REST create, update or bulk edit, the MCP
   `vector_create` and `vector_update` tools, a CSV import and a revert
-  from the audit trail, and a list stays a list. The `create()` and
+  from the audit trail, in a relationship repeater's row as on the
+  record itself, and a list stays a list. The `create()` and
   `apply()` hooks receive a `stdClass` there.
 - A resource with no fields of its own derives a `Json` field for a
   `stdClass` or `array|stdClass` property, and none for an `array` one.

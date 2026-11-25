@@ -115,8 +115,9 @@ final class ResourcesPerEntityTest extends TestCase
      * orders_number_unique key), enum fields have become select fields
      * (products' status a badge), JSON fields JSON columns, products
      * and tickets a multiple select each, orders' lines a relationship
-     * repeater, products a JSON repeater and tags, and tickets tags; the
-     * fixture holds them with those declarations.
+     * repeater, products a JSON repeater and tags, tickets tags, and ticket
+     * replies a JSON metadata column; the fixture holds them with those
+     * declarations.
      */
     public function testEveryExistingDescriptorIsUnchanged(): void
     {

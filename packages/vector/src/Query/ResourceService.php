@@ -71,6 +71,34 @@ final readonly class ResourceService
         return array_map($this->visible(...), $this->registry->resources());
     }
 
+    /**
+     * The fields of each relationship repeater's child whose rows hold a
+     * field that keeps JSON objects, for JsonObjects::keep(): the rows a
+     * body or a tool's values send are kept against them, row by row.
+     * Empty when no repeater row keeps objects.
+     *
+     * @return array<string, array<string, array<string, mixed>>> repeater field => the child's compiled fields
+     */
+    public function repeaterRowFields(ResourceDescriptor $resource): array
+    {
+        $rowFields = [];
+
+        foreach ($resource->fields() as $name => $field) {
+            if (!ResourceCompiler::isChildRepeater($field)) {
+                continue;
+            }
+
+            $childFields = $this->resource($field['relation']['resource'])->fields();
+            $written = array_intersect_key($childFields, array_flip($field['repeater']['fields']));
+
+            if (array_any($written, static fn (array $child): bool => ValueConverter::keepsObjects($child))) {
+                $rowFields[$name] = $childFields;
+            }
+        }
+
+        return $rowFields;
+    }
+
     public function visible(ResourceDescriptor $resource): ResourceDescriptor
     {
         $policy = $this->policy($resource);

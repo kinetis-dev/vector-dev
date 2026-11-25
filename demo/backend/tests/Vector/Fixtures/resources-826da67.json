@@ -9370,6 +9370,12 @@
                 "nullable": false,
                 "hasDefault": false,
                 "type": "timestamp"
+            },
+            "metadata": {
+                "kind": "column",
+                "nullable": true,
+                "hasDefault": true,
+                "type": "jsonObjectOrList"
             }
         },
         "timestamps": {

@@ -390,7 +390,7 @@ final readonly class ResourceController
     public function create(string $resource, ServerRequestInterface $request): ResponseInterface
     {
         $descriptor = $this->service->resource($resource);
-        $record = $this->writer->create($descriptor, $this->withObjects($request, $descriptor->fields(), $this->body($request)));
+        $record = $this->writer->create($descriptor, $this->withObjects($request, $descriptor->fields(), $this->body($request), null, $this->service->repeaterRowFields($descriptor)));
 
         return JsonResponse::create(['data' => $record, 'permissions' => $this->service->recordPermissions($descriptor, $record)], 201);
     }
@@ -401,7 +401,7 @@ final readonly class ResourceController
     {
         $descriptor = $this->service->resource($resource);
         $ifMatch = trim($request->getHeaderLine('If-Match'), " \t\"");
-        $record = $this->writer->update($descriptor, $id, $this->withObjects($request, $descriptor->fields(), $this->body($request)), $ifMatch === '' ? null : $ifMatch);
+        $record = $this->writer->update($descriptor, $id, $this->withObjects($request, $descriptor->fields(), $this->body($request), null, $this->service->repeaterRowFields($descriptor)), $ifMatch === '' ? null : $ifMatch);
 
         return ['data' => $record, 'permissions' => $this->service->recordPermissions($descriptor, $record)];
     }
@@ -443,7 +443,7 @@ final readonly class ResourceController
     public function batch(string $resource, ServerRequestInterface $request): array
     {
         $descriptor = $this->service->resource($resource);
-        $body = $this->withObjects($request, $descriptor->fields(), $this->body($request), 'fields');
+        $body = $this->withObjects($request, $descriptor->fields(), $this->body($request), 'fields', $this->service->repeaterRowFields($descriptor));
         $operation = $body['action'] ?? null;
 
         if (!in_array($operation, ['delete', 'restore', 'forceDelete', 'update'], true)) {
@@ -484,18 +484,26 @@ final readonly class ResourceController
     /**
      * The values of a body ($under: of its `fields` member, a bulk edit's
      * or an action's) read again with every JSON object a stdClass, kept
-     * for the $fields that keep objects (JsonObjects::keep()): the array
-     * the body decodes to holds `{}` as `[]`.
+     * for the $fields that keep objects (JsonObjects::keep()), and for the
+     * child fields that keep objects in a relationship repeater's rows:
+     * the array the body decodes to holds `{}` as `[]`.
      *
      * @param array<string, array<string, mixed>> $fields field name => compiled field
      * @param array<array-key, mixed> $body
+     * @param array<string, array<string, array<string, mixed>>> $rowFields relationship repeater => its child's compiled fields (ResourceService::repeaterRowFields())
      * @return array<array-key, mixed>
      */
-    private function withObjects(ServerRequestInterface $request, array $fields, array $body, ?string $under = null): array
+    private function withObjects(ServerRequestInterface $request, array $fields, array $body, ?string $under = null, array $rowFields = []): array
     {
         $values = $under === null ? $body : ($body[$under] ?? null);
 
-        if (!is_array($values) || !array_any(array_keys($values), static fn (int|string $name): bool => isset($fields[(string) $name]) && ValueConverter::keepsObjects($fields[(string) $name]))) {
+        if (!is_array($values)) {
+            return $body;
+        }
+
+        $rowFields = array_intersect_key($rowFields, $values);
+
+        if ($rowFields === [] && !array_any(array_keys($values), static fn (int|string $name): bool => isset($fields[(string) $name]) && ValueConverter::keepsObjects($fields[(string) $name]))) {
             return $body;
         }
 
@@ -511,7 +519,7 @@ final readonly class ResourceController
             return $body;
         }
 
-        $values = JsonObjects::keep($fields, get_object_vars($tree));
+        $values = JsonObjects::keep($fields, get_object_vars($tree), $rowFields);
 
         if ($under === null) {
             return $values;

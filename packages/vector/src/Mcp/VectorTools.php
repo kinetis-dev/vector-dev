@@ -163,7 +163,7 @@ final readonly class VectorTools
         return $this->guarded(function () use ($resource, $values): array {
             $descriptor = $this->reader->resource($resource);
 
-            return ['data' => $this->writer->create($descriptor, JsonObjects::keep($descriptor->fields(), $values))];
+            return ['data' => $this->writer->create($descriptor, JsonObjects::keep($descriptor->fields(), $values, $this->reader->repeaterRowFields($descriptor)))];
         });
     }
 
@@ -177,7 +177,7 @@ final readonly class VectorTools
         return $this->guarded(function () use ($resource, $id, $values, $version): array {
             $descriptor = $this->reader->resource($resource);
 
-            return ['data' => $this->writer->update($descriptor, $id, JsonObjects::keep($descriptor->fields(), $values), $version === '' ? null : $version)];
+            return ['data' => $this->writer->update($descriptor, $id, JsonObjects::keep($descriptor->fields(), $values, $this->reader->repeaterRowFields($descriptor)), $version === '' ? null : $version)];
         });
     }
 

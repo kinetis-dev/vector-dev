@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Kinetis\Orm\Attributes\BelongsTo;
 use Kinetis\Orm\Attributes\Entity;
 use Kinetis\Orm\Attributes\Id;
+use stdClass;
 
 #[Entity(table: 'ticket_replies', connection: 'support')]
 final class TicketReply
@@ -25,6 +26,9 @@ final class TicketReply
     private bool $isInternal;
 
     private DateTimeImmutable $createdAt;
+
+    /** @var array<array-key, mixed>|stdClass|null free-form metadata: an array|stdClass property keeps {} an object */
+    private array|stdClass|null $metadata = null;
 
     public function __construct(Ticket $ticket, string $author, string $body, bool $isInternal, DateTimeImmutable $createdAt)
     {

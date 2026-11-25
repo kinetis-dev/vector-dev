@@ -6,6 +6,7 @@ namespace App\Tests\Vector;
 
 use App\Domain\Product;
 use App\Domain\Support\Ticket;
+use App\Domain\Support\TicketReply;
 use Kinetis\Cache\DiscoveryContext;
 use Kinetis\Config\Config;
 use Kinetis\Container\AppScope;
@@ -18,6 +19,7 @@ use Kinetis\QueryBuilder\Query;
 use Kinetis\Vector\Attributes\Resource;
 use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Json;
+use Kinetis\Vector\Fields\Repeater;
 use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Store\AuditStore;
@@ -54,8 +56,8 @@ final class JsonObjectFieldTest extends VectorTestCase
         $metadata = MetadataRegistry::fromArray(new DiscoveryContext(dirname(__DIR__, 2))->compiled(OrmMetadata::class));
 
         // each on its own: two resources over one entity in one compile would ask which one relations link to
-        foreach ([ObjectTickets::class, RequiredObjectTickets::class] as $class) {
-            $data['resources'] += (new ResourceCompiler($metadata, [$class]))->compile();
+        foreach ([[ObjectTickets::class], [RequiredObjectTickets::class], [RepliedTickets::class, ObjectReplies::class]] as $classes) {
+            $data['resources'] += (new ResourceCompiler($metadata, $classes))->compile();
         }
 
         foreach ($data['resources']['products']['fields'] as $i => $field) {
@@ -325,6 +327,57 @@ final class JsonObjectFieldTest extends VectorTestCase
         }
     }
 
+    /**
+     * A relationship repeater's row keeps the objects of its child's JSON
+     * field, through a REST update and the MCP update tool. Every row
+     * names a reply the ticket holds, so the save only changes them.
+     */
+    public function testARelationshipRepeaterRowKeepsItsObjects(): void
+    {
+        [$ticketId, $stored] = $this->ticketReplies();
+        $first = array_key_first($stored);
+        $tickets = $this->vector($this->adminHeaders())->resource('replied-tickets');
+        $rows = static fn (mixed $metadata): array => array_map(static fn (int $id): array => $id === $first ? ['id' => $id, 'metadata' => $metadata] : ['id' => $id], array_keys($stored));
+
+        try {
+            foreach ([
+                'an empty object' => [new stdClass(), '{}'],
+                'a nested empty object' => [(object) ['a' => new stdClass()], '{"a":{}}'],
+                'a list' => [[1, new stdClass(), []], '[1,{},[]]'],
+                'an object' => [(object) ['a' => (object) ['b' => new stdClass()], 'list' => [], 'n' => 1], '{"a":{"b":{}},"list":[],"n":1}'],
+            ] as $case => [$sent, $json]) {
+                $tickets->update($ticketId, ['replies' => $rows($sent)])->assertOk();
+                self::assertSame($json, $this->storedReplyMetadata($first), "{$case}: stored");
+                self::assertSame($json, self::canonical(json_encode(self::objects($this->vector($this->adminHeaders())->resource('object-replies')->show($first)->assertOk())->data->metadata, JSON_THROW_ON_ERROR)), "{$case}: read back");
+            }
+
+            $this->mcp('vector_update', ['resource' => 'replied-tickets', 'id' => (string) $ticketId, 'values' => ['replies' => $rows((object) ['box' => new stdClass()])]]);
+            self::assertSame('{"box":{}}', $this->storedReplyMetadata($first), 'MCP: stored');
+        } finally {
+            foreach ($stored as $id => $metadata) {
+                $this->support()->table('ticket_replies')->where('id', '=', $id)->update(['metadata' => $metadata]);
+            }
+        }
+    }
+
+    /**
+     * A row's JSON key PHP cannot hold as a property (one starting with
+     * NUL) is refused at its row and field, as at the top level, rather
+     * than failing the request.
+     */
+    public function testARelationshipRepeaterRowRefusesANulKey(): void
+    {
+        [$ticketId, $stored] = $this->ticketReplies();
+        $first = array_key_first($stored);
+        $rows = array_map(static fn (int $id): array => $id === $first ? ['id' => $id, 'metadata' => ["\0a" => 1]] : ['id' => $id], array_keys($stored));
+
+        $errors = $this->vector($this->adminHeaders())->resource('replied-tickets')->update($ticketId, ['replies' => $rows])->assertStatus(422)->json()['errors'] ?? null;
+
+        self::assertIsArray($errors);
+        self::assertContains(['replies', 0, 'metadata'], array_column($errors, 'path'), (string) json_encode($errors));
+        self::assertSame($stored[$first] === null ? null : self::canonical($stored[$first]), $this->storedReplyMetadata($first), 'nothing was written');
+    }
+
     #[\Override]
     protected function tearDown(): void
     {
@@ -359,6 +412,35 @@ final class JsonObjectFieldTest extends VectorTestCase
         self::assertIsArray($row);
 
         return [(int) $row['id'], $row['metadata'] === null ? null : (string) $row['metadata']];
+    }
+
+    /**
+     * A ticket with replies, and each reply's stored metadata, the first
+     * reply first.
+     *
+     * @return array{0: int, 1: non-empty-array<int, string|null>}
+     */
+    private function ticketReplies(): array
+    {
+        $ticketId = (int) $this->support()->table('ticket_replies')->select('ticket_id')->orderBy('id', 'ASC')->value('ticket_id');
+        $stored = [];
+
+        foreach ($this->support()->table('ticket_replies')->select('id', 'metadata')->where('ticket_id', '=', $ticketId)->orderBy('id', 'ASC')->get() as $row) {
+            $stored[(int) $row['id']] = $row['metadata'] === null ? null : (string) $row['metadata'];
+        }
+
+        if ($stored === []) {
+            self::fail('No ticket has replies.');
+        }
+
+        return [$ticketId, $stored];
+    }
+
+    private function storedReplyMetadata(int $id): ?string
+    {
+        $value = $this->support()->table('ticket_replies')->select('metadata')->where('id', '=', $id)->value('metadata');
+
+        return $value === null ? null : self::canonical((string) $value);
     }
 
     private function storedMetadata(int $id): ?string
@@ -460,5 +542,31 @@ final class RequiredObjectTickets extends VectorResource
     public function timestamps(): array
     {
         return ['created' => null, 'updated' => null];
+    }
+}
+
+/** A ticket whose replies are a relationship repeater's rows. */
+#[Resource(Ticket::class, slug: 'replied-tickets')]
+final class RepliedTickets extends VectorResource
+{
+    public function fields(): array
+    {
+        return [Id::make(), Repeater::make('replies')->relationship('replies', ObjectReplies::class)->fields(['metadata'])->max(500)];
+    }
+
+    #[\Override]
+    public function timestamps(): array
+    {
+        return ['created' => null, 'updated' => null];
+    }
+}
+
+/** A reply's metadata (`array|stdClass|null`) as a JSON field, the row of RepliedTickets' repeater. */
+#[Resource(TicketReply::class, slug: 'object-replies')]
+final class ObjectReplies extends VectorResource
+{
+    public function fields(): array
+    {
+        return [Id::make(), Json::make('metadata')];
     }
 }
