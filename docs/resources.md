@@ -149,7 +149,8 @@ create and delete in its policy instead.
 
 An empty resource derives every field from the entity's mapping: a
 string column becomes a searchable `Text`, a backed enum a filterable
-`Select`, an `array` property (a JSON column) a `Json`, a `#[BelongsTo]`
+`Select`, a `stdClass` or `array|stdClass` property (a JSON column) a
+`Json` (an `array` property derives nothing), a `#[BelongsTo]`
 a relation when its target has a resource, and so on. An owned
 `#[HasMany]` derives a `HasMany` shown as a count and a panel; editing
 its rows inside the parent's form is a `Repeater` in relationship mode,

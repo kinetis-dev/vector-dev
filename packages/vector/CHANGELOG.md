@@ -87,9 +87,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   JSON object an object: `{}` and a nested `{}` are stored and answered
   as sent through a REST create, update or bulk edit, the MCP
   `vector_create` and `vector_update` tools, a CSV import and a revert
-  from the audit trail, and a list stays a list. The `create()` and `apply()` hooks receive a
-  `stdClass` there. An `array` or `?array` property still holds `{}` as
-  `[]`.
+  from the audit trail, and a list stays a list. The `create()` and
+  `apply()` hooks receive a `stdClass` there.
 - A resource with no fields of its own derives a `Json` field for a
   `stdClass` or `array|stdClass` property too.
 
@@ -113,16 +112,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requires `kinetis/framework` ^1.32.0 and `kinetis/mcp` ^1.10.0, whose
   `#[ObjectMap(keepObjects: true)]` lets the MCP write tools keep JSON
   objects.
-- **Breaking:** `Json` and `KeyValue` map JSON columns: an `array` or
-  `?array` property instead of JSON text in a `?string` one, and the
-  build refuses any other property. `Json` reads as the stored document
-  (an object or an array) instead of its text and writes a JSON object
-  or array; a string is refused. `KeyValue` writes the object itself.
-  To migrate, change the property to `?array` (and any code that set it
-  to JSON text to set the array), and the column to `JSON` on MySQL and
-  MariaDB or `jsonb` on PostgreSQL (`ALTER TABLE t ALTER COLUMN c TYPE
-  jsonb USING c::jsonb`). A client that sent JSON text to a `Json` field
-  sends the document.
+- **Breaking:** `Json` and `KeyValue` map JSON columns: a `stdClass`,
+  `?stdClass`, `array|stdClass` or `array|stdClass|null` property
+  instead of JSON text in a `?string` one, and the build refuses any
+  other property. `Json` reads as the stored document (an object or an
+  array) instead of its text and writes a JSON object or array; a string
+  is refused. `KeyValue` writes the object itself. To migrate, change
+  the property to `array|stdClass|null` (`?stdClass` for a `KeyValue`;
+  and any code that set it to JSON text to set the document), and the
+  column to `JSON` on MySQL and MariaDB or `jsonb` on PostgreSQL
+  (`ALTER TABLE t ALTER COLUMN c TYPE jsonb USING c::jsonb`). A client
+  that sent JSON text to a `Json` field sends the document.
+- **Breaking:** the build refuses a `Json` or `KeyValue` field on an
+  `array` or `?array` property, naming the resource, the property and
+  the four accepted types: PHP holds `{}` and `[]` as one array, so an
+  empty object, nested or not, was stored as `[]`. Declare the property
+  `array|stdClass` (`array|stdClass|null` for `?array`); the column
+  stays as it is, and a root list is still a list. A resource with no
+  fields of its own derives no field for an `array` property.
 - **Breaking:** select values are strict. A body value outside the
   options is `invalid_choice` (on its index for a multiple select), and
   a JSON body must send an option's own type (`2`, not `"2"`, for an int
@@ -130,7 +137,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `StoredValueException` on read: before removing an option, migrate the
   rows that still hold it.
 - **Breaking:** `Computed::as('enum')` is `as('select')`.
-- An `array` property derives a `Json` field.
 - A form condition's `null` and `nnull` treat an empty list as empty.
 - `GET /vector/r/{resource}/{id}/{field}/rows` serves a relationship
   repeater's rows, in the order its `orderBy()` property holds.
