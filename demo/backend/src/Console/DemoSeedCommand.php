@@ -171,7 +171,7 @@ final readonly class DemoSeedCommand
             $product->describe(
                 self::descriptionDocument($name, $category->name()),
                 // a key-value field: text values
-                ['color' => ['black', 'silver', 'white'][mt_rand(0, 2)], 'warrantyMonths' => ['12', '24', '36'][mt_rand(0, 2)]],
+                (object) ['color' => ['black', 'silver', 'white'][mt_rand(0, 2)], 'warrantyMonths' => ['12', '24', '36'][mt_rand(0, 2)]],
                 mt_rand(0, 3) === 0 ? null : $this->image($i, $colourOf[$category->name()] ?? [96, 96, 96]),
             );
 

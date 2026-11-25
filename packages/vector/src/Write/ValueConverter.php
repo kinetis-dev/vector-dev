@@ -63,7 +63,7 @@ final readonly class ValueConverter
             'belongsTo' => $this->related($field, $raw),
             'manyToMany' => $this->relatedList($field, $raw),
             'keyValue' => $this->keyValue($field, $raw),
-            'json' => self::json($raw),
+            'json' => self::keepsObjects($field) ? self::document($field, $raw) : self::json($raw),
             'select', 'country' => self::select($field, $raw),
             'booleanGroup' => self::flags($field, $raw),
             'tag' => self::tags($field, $raw),
@@ -142,21 +142,21 @@ final readonly class ValueConverter
             return is_array($decoded) && array_is_list($decoded) ? $decoded : throw self::mismatch('a JSON list of rows');
         }
 
-        // an imported cell holds the object as JSON text
+        // an imported cell holds the object as JSON text; a property that keeps objects reads {} as one
         if ($field['type'] === 'keyValue') {
-            $decoded = json_decode($raw, true);
+            $decoded = json_decode($raw, !self::keepsObjects($field));
 
-            return is_array($decoded) ? $decoded : throw self::mismatch('a JSON object of text values');
+            return is_array($decoded) || $decoded instanceof \stdClass ? $decoded : throw self::mismatch('a JSON object of text values');
         }
 
         if ($field['type'] === 'json') {
             try {
-                $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+                $decoded = json_decode($raw, !self::keepsObjects($field), 512, JSON_THROW_ON_ERROR);
             } catch (\JsonException) {
                 throw self::mismatch('a JSON object or array');
             }
 
-            return is_array($decoded) ? $decoded : throw self::mismatch('a JSON object or array');
+            return is_array($decoded) || $decoded instanceof \stdClass ? $decoded : throw self::mismatch('a JSON object or array');
         }
 
         if ($field['type'] === 'belongsTo') {
@@ -200,11 +200,11 @@ final readonly class ValueConverter
             }
 
             // and a list or an object (a multiple select, tags, rows, a document) is present when it holds something;
-            // an empty one is refused with the very violation NotBlank gives a blank string
+            // an empty one, {} included, is refused with the very violation NotBlank gives a blank string
             $checked = $raw;
 
-            if (is_string($class) && str_ends_with($class, '\\NotBlank') && is_array($raw)) {
-                if ($raw !== []) {
+            if (is_string($class) && str_ends_with($class, '\\NotBlank') && (is_array($raw) || $raw instanceof \stdClass)) {
+                if ((array) $raw !== []) {
                     continue;
                 }
 
@@ -578,17 +578,100 @@ final readonly class ValueConverter
     }
 
     /**
-     * An object of text values for a JSON column: keys trimmed and
-     * non-empty, a number or boolean kept as its text, nothing nested.
-     * An empty object is null where the column allows it.
+     * Whether a JSON or key-value field maps a property that keeps JSON
+     * objects (`stdClass`, `array|stdClass`, nullable or not), so its value
+     * is a stdClass rather than an associative array.
      *
      * @param array<string, mixed> $field
-     * @return array<string, string>|null
+     */
+    public static function keepsObjects(array $field): bool
+    {
+        return isset($field['jsonObjects']);
+    }
+
+    /**
+     * Any JSON object or array, for a property that keeps objects: every
+     * object a stdClass and every array a list, at any depth, so `{}`
+     * stays an object. An associative array (a value that came through a
+     * path that decodes objects to arrays) is read as the object it was;
+     * an empty array is a list, except as the whole value of a `stdClass`
+     * property, which holds an object only.
+     *
+     * @param array<string, mixed> $field
+     * @return \stdClass|list<mixed>
      * @throws InputViolation
      */
-    private function keyValue(array $field, mixed $raw): ?array
+    private static function document(array $field, mixed $raw): \stdClass|array
     {
-        if (!is_array($raw) || ($raw !== [] && array_is_list($raw))) {
+        $objectOnly = $field['jsonObjects'] === 'object';
+
+        if (!is_array($raw) && !$raw instanceof \stdClass) {
+            throw self::mismatch($objectOnly ? 'a JSON object' : 'a JSON object or array');
+        }
+
+        if ($objectOnly && $raw === []) {
+            return new \stdClass();
+        }
+
+        $tree = self::objectTree($raw);
+
+        return $objectOnly && !$tree instanceof \stdClass ? throw self::mismatch('a JSON object') : $tree;
+    }
+
+    /**
+     * A decoded JSON value with every object a stdClass and every array a
+     * list. A key starting with NUL is refused: PHP cannot hold it as a
+     * property, so it would not be stored.
+     *
+     * @throws InputViolation
+     */
+    private static function objectTree(mixed $value): mixed
+    {
+        if (!is_array($value) && !$value instanceof \stdClass) {
+            return $value;
+        }
+
+        $members = $value instanceof \stdClass ? get_object_vars($value) : $value;
+        $tree = [];
+
+        foreach ($members as $key => $member) {
+            if (str_starts_with((string) $key, "\0")) {
+                throw self::mismatch('a JSON document with no key starting with a NUL character');
+            }
+
+            $tree[$key] = self::objectTree($member);
+        }
+
+        if (is_array($value) && array_is_list($tree)) {
+            return $tree;
+        }
+
+        $object = new \stdClass();
+
+        foreach ($tree as $key => $member) {
+            $object->{(string) $key} = $member;
+        }
+
+        return $object;
+    }
+
+    /**
+     * An object of text values for a JSON column: keys trimmed and
+     * non-empty, a number or boolean kept as its text, nothing nested.
+     * An empty object is null where the column allows it. A property that
+     * keeps objects receives a stdClass, `{}` when empty.
+     *
+     * @param array<string, mixed> $field
+     * @return array<string, string>|\stdClass|null
+     * @throws InputViolation
+     */
+    private function keyValue(array $field, mixed $raw): array|\stdClass|null
+    {
+        // a stdClass is an object even when its keys read as 0, 1, 2
+        $object = $raw instanceof \stdClass;
+        $raw = $object ? get_object_vars($raw) : $raw;
+
+        if (!is_array($raw) || (!$object && $raw !== [] && array_is_list($raw))) {
             throw self::mismatch('an object of text values');
         }
 
@@ -622,7 +705,7 @@ final readonly class ValueConverter
             return null;
         }
 
-        return $map;
+        return self::keepsObjects($field) ? (object) $map : $map;
     }
 
     /**

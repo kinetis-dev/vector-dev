@@ -12,6 +12,7 @@ use Kinetis\Orm\Attributes\HasMany;
 use Kinetis\Orm\Attributes\Id;
 use Kinetis\Orm\Attributes\ManyToMany;
 use Kinetis\Orm\Attributes\Version;
+use stdClass;
 
 /**
  * A support ticket, on PostgreSQL. The customer is referenced by value
@@ -54,8 +55,8 @@ final class Ticket
     #[HasMany(target: TicketReply::class, mappedBy: 'ticket', owned: true)]
     private array $replies;
 
-    /** @var array<string, mixed>|null */
-    private ?array $metadata = null;
+    /** @var stdClass|list<mixed>|null a JSON document: an array|stdClass property keeps every object, {} included */
+    private array|stdClass|null $metadata = null;
 
     /** @var list<string>|null the platforms the issue shows on, a multiple select's jsonb list */
     private ?array $platforms = null;
@@ -154,8 +155,8 @@ final class Ticket
         $this->status = TicketStatus::Closed;
     }
 
-    /** @param array<string, mixed>|null $metadata */
-    public function annotate(?array $metadata): void
+    /** @param stdClass|list<mixed>|null $metadata */
+    public function annotate(array|stdClass|null $metadata): void
     {
         $this->metadata = $metadata;
     }

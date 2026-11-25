@@ -132,7 +132,7 @@ final readonly class SupportSeeder
             }
 
             $ticket->label(array_values($chosen));
-            $ticket->annotate(['browser' => ['Chrome', 'Firefox', 'Safari'][mt_rand(0, 2)], 'orderRef' => sprintf('ORD-%06d', mt_rand(1, 400))]);
+            $ticket->annotate((object) ['browser' => ['Chrome', 'Firefox', 'Safari'][mt_rand(0, 2)], 'orderRef' => sprintf('ORD-%06d', mt_rand(1, 400))]);
             // a multiple select: some of the platforms, in the order the resource lists them
             $ticket->affects(DemoSeedCommand::someOf(TicketResource::PLATFORMS, $i * 7));
             // a JSON-mode flag group: from the index, a key at times left out (it reads as false)

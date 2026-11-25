@@ -11,6 +11,7 @@ use Kinetis\Orm\Attributes\Entity;
 use Kinetis\Orm\Attributes\Id;
 use Kinetis\Orm\Attributes\ManyToMany;
 use Kinetis\Orm\Attributes\Version;
+use stdClass;
 
 /**
  * The widest entity of the demo domain: every scalar field type Vector
@@ -45,8 +46,8 @@ final class Product
 
     private bool $isFeatured;
 
-    /** @var array<string, string>|null */
-    private ?array $attributes = null;
+    /** an object of text values, a key-value field's: a stdClass property keeps {} an object */
+    private ?stdClass $attributes = null;
 
     /** @var list<string>|null the sales channels, a multiple select's JSON list */
     private ?array $channels = null;
@@ -113,8 +114,8 @@ final class Product
         return $this->priceCents;
     }
 
-    /** @param array<string, string>|null $attributes */
-    public function describe(?string $description, ?array $attributes, ?string $imageKey): void
+    /** @param stdClass|null $attributes an object of text values */
+    public function describe(?string $description, ?stdClass $attributes, ?string $imageKey): void
     {
         $this->description = $description;
         $this->attributes = $attributes;

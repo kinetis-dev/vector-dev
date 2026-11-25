@@ -32,6 +32,7 @@ use Kinetis\Vector\Widgets\WidgetRunner;
 use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Vector\Query\ListRequest;
 use Kinetis\Vector\Query\ResourceService;
+use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Write\RecordWriter;
 use Kinetis\Vector\Write\ValueConverter;
 use Psr\Http\Message\ResponseInterface;
@@ -388,7 +389,7 @@ final readonly class ResourceController
     public function create(string $resource, ServerRequestInterface $request): ResponseInterface
     {
         $descriptor = $this->service->resource($resource);
-        $record = $this->writer->create($descriptor, $this->body($request));
+        $record = $this->writer->create($descriptor, $this->withObjects($request, $descriptor, $this->body($request)));
 
         return JsonResponse::create(['data' => $record, 'permissions' => $this->service->recordPermissions($descriptor, $record)], 201);
     }
@@ -399,7 +400,7 @@ final readonly class ResourceController
     {
         $descriptor = $this->service->resource($resource);
         $ifMatch = trim($request->getHeaderLine('If-Match'), " \t\"");
-        $record = $this->writer->update($descriptor, $id, $this->body($request), $ifMatch === '' ? null : $ifMatch);
+        $record = $this->writer->update($descriptor, $id, $this->withObjects($request, $descriptor, $this->body($request)), $ifMatch === '' ? null : $ifMatch);
 
         return ['data' => $record, 'permissions' => $this->service->recordPermissions($descriptor, $record)];
     }
@@ -441,7 +442,7 @@ final readonly class ResourceController
     public function batch(string $resource, ServerRequestInterface $request): array
     {
         $descriptor = $this->service->resource($resource);
-        $body = $this->body($request);
+        $body = $this->withObjects($request, $descriptor, $this->body($request), 'fields');
         $operation = $body['action'] ?? null;
 
         if (!in_array($operation, ['delete', 'restore', 'forceDelete', 'update'], true)) {
@@ -477,6 +478,50 @@ final readonly class ResourceController
         $affected = $this->writer->batch($descriptor, array_map(strval(...), $ids), $operation);
 
         return ['affected' => $affected, 'deleted' => $operation === 'delete' ? $affected : 0];
+    }
+
+    /**
+     * The values of a record body ($under: of its `fields` member, a bulk
+     * edit's) whose fields keep JSON objects, read again with every object
+     * a stdClass: the array the body decodes to holds `{}` as `[]`.
+     *
+     * @param array<array-key, mixed> $body
+     * @return array<array-key, mixed>
+     */
+    private function withObjects(ServerRequestInterface $request, ResourceDescriptor $resource, array $body, ?string $under = null): array
+    {
+        $names = array_keys(array_filter($resource->fields(), ValueConverter::keepsObjects(...)));
+        $values = $under === null ? $body : ($body[$under] ?? null);
+
+        if ($names === [] || !is_array($values) || array_intersect($names, array_keys($values)) === []) {
+            return $body;
+        }
+
+        try {
+            $tree = json_decode((string) $request->getBody(), false, 64, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return $body; // a key PHP cannot hold as a property: the converter refuses it from the array
+        }
+
+        $tree = $under === null ? $tree : ($tree->{$under} ?? null);
+
+        if (!$tree instanceof \stdClass) {
+            return $body;
+        }
+
+        foreach ($names as $name) {
+            if (array_key_exists($name, $values) && property_exists($tree, $name)) {
+                $values[$name] = $tree->{$name};
+            }
+        }
+
+        if ($under === null) {
+            return $values;
+        }
+
+        $body[$under] = $values;
+
+        return $body;
     }
 
     /**

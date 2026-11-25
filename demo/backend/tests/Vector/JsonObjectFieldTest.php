@@ -1,0 +1,351 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tests\Vector;
+
+use App\Domain\Product;
+use App\Domain\Support\Ticket;
+use Kinetis\Cache\DiscoveryContext;
+use Kinetis\Config\Config;
+use Kinetis\Container\AppScope;
+use Kinetis\DatabaseBridge\OrmMetadata;
+use Kinetis\Orm\EntityManager;
+use Kinetis\Orm\Metadata\MetadataRegistry;
+use Kinetis\Orm\OrmFactoryRegistry;
+use Kinetis\Persistence\Contract\MysqlLink;
+use Kinetis\QueryBuilder\Query;
+use Kinetis\Vector\Attributes\Resource;
+use Kinetis\Vector\Fields\Id;
+use Kinetis\Vector\Fields\Json;
+use Kinetis\Vector\Registry\ResourceCompiler;
+use Kinetis\Vector\Registry\VectorRegistry;
+use Kinetis\Vector\Testing\InteractsWithVector;
+use Kinetis\Vector\Testing\VectorResponse;
+use Kinetis\Vector\VectorResource;
+use stdClass;
+
+/**
+ * A JSON or key-value field on a property that keeps JSON objects
+ * (`stdClass`, `array|stdClass`): a REST create or update stores an object
+ * as an object, an empty or nested one included, and a list as a list, and
+ * the API answers it the same way. The ticket's metadata (`array|stdClass|null`)
+ * lives on PostgreSQL, the product's attributes (`?stdClass`) on MySQL.
+ *
+ * The test's own registry adds two resources with no timestamps, so a write
+ * that changes nothing has nothing to stamp, one JSON field over an `array`
+ * property, which still holds `{}` as `[]`, and marks the product's
+ * attributes as not nullable, so an empty one is stored rather than cleared.
+ */
+final class JsonObjectFieldTest extends VectorTestCase
+{
+    use InteractsWithVector;
+
+    private ?EntityManager $supportManager = null;
+
+    #[\Override]
+    protected function registerTestDoubles(AppScope $app, Config $config): void
+    {
+        parent::registerTestDoubles($app, $config);
+        $registry = $app->get(VectorRegistry::class);
+        self::assertInstanceOf(VectorRegistry::class, $registry);
+        $data = $registry->toArray();
+        $metadata = MetadataRegistry::fromArray(new DiscoveryContext(dirname(__DIR__, 2))->compiled(OrmMetadata::class));
+
+        // each on its own: two resources over one entity in one compile would ask which one relations link to
+        foreach ([ObjectTickets::class, RequiredObjectTickets::class, ArrayProducts::class] as $class) {
+            $data['resources'] += (new ResourceCompiler($metadata, [$class]))->compile();
+        }
+
+        foreach ($data['resources']['products']['fields'] as $i => $field) {
+            if (is_array($field) && ($field['name'] ?? null) === 'attributes') {
+                $data['resources']['products']['fields'][$i]['nullable'] = false;
+            }
+        }
+
+        $app->instance(VectorRegistry::class, VectorRegistry::fromArray($data));
+    }
+
+    public function testAJsonDocumentKeepsItsObjectsOnPostgres(): void
+    {
+        [$id, $stored] = $this->ticket();
+        $tickets = $this->vector($this->adminHeaders())->resource('tickets');
+
+        try {
+            foreach ([
+                'an empty object' => [new stdClass(), '{}'],
+                'a nested empty object' => [(object) ['box' => new stdClass()], '{"box":{}}'],
+                'an object' => [(object) ['carrier' => 'DHL', 'parcels' => [1, 2], 'insured' => false], '{"carrier":"DHL","insured":false,"parcels":[1,2]}'],
+                'a list' => [[1, new stdClass(), []], '[1,{},[]]'],
+            ] as $case => [$sent, $json]) {
+                $answer = self::objects($tickets->update($id, ['metadata' => $sent])->assertOk());
+                self::assertEquals(json_decode($json, false), $answer->data->metadata, "{$case}: answered");
+                self::assertSame(self::canonical($json), self::canonical(json_encode($answer->data->metadata, JSON_THROW_ON_ERROR)), "{$case}: answered with its shape");
+                self::assertSame(self::canonical($json), $this->storedMetadata($id), "{$case}: stored");
+                self::assertSame(self::canonical($json), self::canonical(json_encode(self::objects($tickets->show($id)->assertOk())->data->metadata, JSON_THROW_ON_ERROR)), "{$case}: read back");
+            }
+        } finally {
+            $this->support()->table('tickets')->where('id', '=', $id)->update(['metadata' => $stored]);
+        }
+    }
+
+    public function testACreatedTicketKeepsANestedEmptyObject(): void
+    {
+        $teamId = (int) $this->support()->table('support_teams')->select('id')->orderBy('id', 'ASC')->value('id');
+        $number = 'TCK-J' . substr(bin2hex(random_bytes(4)), 0, 7);
+
+        try {
+            $created = $this->client->post('/vector/r/tickets', body: [
+                'number' => $number, 'subject' => 'Empty box', 'body' => json_encode(['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Nothing inside.']]]]], JSON_THROW_ON_ERROR),
+                'status' => 'open', 'priority' => 'low', 'channel' => 'email', 'customerEmail' => 'box@example.com', 'team' => $teamId,
+                'compensationCents' => 0, 'currency' => 'EUR', 'isEscalated' => false, 'metadata' => (object) ['box' => new stdClass(), 'items' => []],
+            ], headers: $this->adminHeaders())->assertCreated();
+            $answer = json_decode($created->body(), false, 512, JSON_THROW_ON_ERROR);
+            self::assertInstanceOf(stdClass::class, $answer);
+
+            self::assertSame('{"box":{},"items":[]}', self::canonical(json_encode($answer->data->metadata, JSON_THROW_ON_ERROR)));
+            self::assertSame('{"box":{},"items":[]}', $this->storedMetadata((int) $answer->data->id));
+        } finally {
+            $this->support()->table('tickets')->where('number', '=', $number)->delete();
+        }
+    }
+
+    public function testAKeyValueFieldStoresAndAnswersAnEmptyObjectOnMysql(): void
+    {
+        $products = $this->vector($this->adminHeaders())->resource('products');
+        $row = $this->shop()->table('products')->select('id', 'attributes')->where('deleted_at', '=', null)->orderBy('id', 'ASC')->first();
+        self::assertIsArray($row);
+        $id = (int) $row['id'];
+
+        try {
+            $answer = self::objects($products->update($id, ['attributes' => new stdClass()])->assertOk());
+            self::assertSame('{}', json_encode($answer->data->attributes, JSON_THROW_ON_ERROR), 'answered as an empty object');
+            self::assertSame('{}', $this->storedAttributes($id), 'stored as an empty object');
+
+            $answer = self::objects($products->update($id, ['attributes' => (object) [' size ' => 'M', '0' => 'zero', 'count' => 3]])->assertOk());
+            self::assertEquals((object) ['size' => 'M', '0' => 'zero', 'count' => '3'], $answer->data->attributes, 'keys trimmed, values text');
+            self::assertEquals((object) ['size' => 'M', '0' => 'zero', 'count' => '3'], json_decode((string) $this->storedAttributes($id), false));
+
+            $products->update($id, ['attributes' => ['a', 'b']])->assertInvalid('attributes', 'type_mismatch');
+            $products->update($id, ['attributes' => (object) ['a' => (object) ['b' => 1]]])->assertInvalid('attributes', 'type_mismatch');
+        } finally {
+            $this->shop()->table('products')->where('id', '=', $id)->update(['attributes' => $row['attributes']]);
+        }
+    }
+
+    public function testACreatedProductKeepsAnObjectOfTextValuesOnMysql(): void
+    {
+        $categoryId = (int) $this->shop()->table('categories')->select('id')->orderBy('id', 'ASC')->value('id');
+        $sku = 'SKU-JSON-' . bin2hex(random_bytes(4));
+
+        try {
+            $created = $this->client->post('/vector/r/products', body: [
+                'sku' => $sku, 'name' => 'Object product', 'slug' => 'object-product-' . $sku, 'status' => 'draft',
+                'category' => $categoryId, 'priceCents' => 1999, 'currency' => 'EUR', 'stock' => 3, 'weightKg' => 0.5,
+                'isFeatured' => false, 'attributes' => new stdClass(),
+            ], headers: $this->adminHeaders())->assertCreated();
+            $answer = json_decode($created->body(), false, 512, JSON_THROW_ON_ERROR);
+            self::assertInstanceOf(stdClass::class, $answer);
+
+            self::assertSame('{}', json_encode($answer->data->attributes, JSON_THROW_ON_ERROR));
+            self::assertSame('{}', $this->storedAttributes((int) $answer->data->id));
+        } finally {
+            $this->shop()->table('products')->where('sku', '=', $sku)->delete();
+        }
+    }
+
+    public function testRequiredRefusesAnEmptyObject(): void
+    {
+        [$id, $stored] = $this->ticket();
+
+        try {
+            $this->vector($this->adminHeaders())->resource('object-tickets')->update($id, ['metadata' => (object) ['kept' => true]])->assertOk();
+            $this->vector($this->adminHeaders())->resource('required-object-tickets')->update($id, ['metadata' => new stdClass()])
+                ->assertInvalid('metadata', 'not_blank');
+            $this->vector($this->adminHeaders())->resource('required-object-tickets')->update($id, ['metadata' => []])
+                ->assertInvalid('metadata', 'not_blank');
+            self::assertSame('{"kept":true}', $this->storedMetadata($id), 'nothing was written');
+        } finally {
+            $this->support()->table('tickets')->where('id', '=', $id)->update(['metadata' => $stored]);
+        }
+    }
+
+    /**
+     * Sending back what the API answered changes nothing the ORM compares,
+     * so the row is not written: its version stays where it was.
+     */
+    public function testSendingTheSameDocumentBackWritesNothing(): void
+    {
+        [$id, $stored] = $this->ticket();
+        $tickets = $this->vector($this->adminHeaders())->resource('object-tickets');
+
+        try {
+            $first = self::objects($tickets->update($id, ['metadata' => (object) ['box' => new stdClass(), 'list' => [], 'n' => 1]])->assertOk());
+            self::assertSame('{"box":{},"list":[],"n":1}', $this->storedMetadata($id));
+            $version = $first->data->_version;
+
+            $again = self::objects($tickets->update($id, ['metadata' => $first->data->metadata])->assertOk());
+            self::assertSame($version, $again->data->_version, 'no UPDATE: the version did not move');
+            self::assertSame('{"box":{},"list":[],"n":1}', $this->storedMetadata($id));
+
+            $changed = self::objects($tickets->update($id, ['metadata' => (object) ['box' => new stdClass(), 'list' => [], 'n' => 2]])->assertOk());
+            self::assertSame($version + 1, $changed->data->_version, 'a real change is written');
+        } finally {
+            $this->support()->table('tickets')->where('id', '=', $id)->update(['metadata' => $stored]);
+        }
+    }
+
+    /** An `array` property is what it was: `{}` arrives, and is stored, as `[]`. */
+    public function testAnArrayPropertyStillHoldsAnEmptyObjectAsAList(): void
+    {
+        $row = $this->shop()->table('products')->select('id', 'specs')->where('deleted_at', '=', null)->orderBy('id', 'ASC')->first();
+        self::assertIsArray($row);
+        $id = (int) $row['id'];
+        $products = $this->vector($this->adminHeaders())->resource('array-products');
+
+        try {
+            $answer = self::objects($products->update($id, ['specs' => (object) ['box' => new stdClass(), 'n' => 1]])->assertOk());
+            self::assertSame('{"box":[],"n":1}', self::canonical(json_encode($answer->data->specs, JSON_THROW_ON_ERROR)));
+            self::assertSame('{"box":[],"n":1}', self::canonical((string) $this->shop()->table('products')->select('specs')->where('id', '=', $id)->value('specs')));
+
+            $answer = self::objects($products->update($id, ['specs' => new stdClass()])->assertOk());
+            self::assertSame('[]', json_encode($answer->data->specs, JSON_THROW_ON_ERROR));
+        } finally {
+            $this->shop()->table('products')->where('id', '=', $id)->update(['specs' => $row['specs']]);
+        }
+    }
+
+    #[\Override]
+    protected function tearDown(): void
+    {
+        $this->supportManager?->close();
+        $this->supportManager = null;
+        parent::tearDown();
+    }
+
+    private function shop(): Query
+    {
+        $link = $this->app->get(MysqlLink::class);
+        self::assertInstanceOf(MysqlLink::class, $link);
+
+        return new Query($link);
+    }
+
+    private function support(): Query
+    {
+        if ($this->supportManager === null) {
+            $factories = $this->app->get(OrmFactoryRegistry::class);
+            self::assertInstanceOf(OrmFactoryRegistry::class, $factories);
+            $this->supportManager = $factories->factory('support')->open();
+        }
+
+        return $this->supportManager->builder();
+    }
+
+    /** @return array{0: int, 1: string|null} */
+    private function ticket(): array
+    {
+        $row = $this->support()->table('tickets')->select('id', 'metadata')->where('deleted_at', '=', null)->orderBy('id', 'ASC')->first();
+        self::assertIsArray($row);
+
+        return [(int) $row['id'], $row['metadata'] === null ? null : (string) $row['metadata']];
+    }
+
+    private function storedMetadata(int $id): ?string
+    {
+        $value = $this->support()->table('tickets')->select('metadata')->where('id', '=', $id)->value('metadata');
+
+        return $value === null ? null : self::canonical((string) $value);
+    }
+
+    private function storedAttributes(int $id): ?string
+    {
+        $value = $this->shop()->table('products')->select('attributes')->where('id', '=', $id)->value('attributes');
+
+        return $value === null ? null : self::canonical((string) $value);
+    }
+
+    /** JSON text with every object kept and its keys sorted, so a server's own key order is no difference. */
+    private static function canonical(string $json): string
+    {
+        return json_encode(self::sorted(json_decode($json, false, 512, JSON_THROW_ON_ERROR)), JSON_THROW_ON_ERROR);
+    }
+
+    private static function sorted(mixed $value): mixed
+    {
+        if (is_array($value)) {
+            return array_map(self::sorted(...), $value);
+        }
+
+        if (!$value instanceof stdClass) {
+            return $value;
+        }
+
+        $members = get_object_vars($value);
+        ksort($members, SORT_STRING);
+        $sorted = new stdClass();
+
+        foreach ($members as $key => $member) {
+            $sorted->{(string) $key} = self::sorted($member);
+        }
+
+        return $sorted;
+    }
+
+    /** The response body with every JSON object a stdClass. */
+    private static function objects(VectorResponse $response): stdClass
+    {
+        $decoded = json_decode($response->raw()->body(), false, 512, JSON_THROW_ON_ERROR);
+        self::assertInstanceOf(stdClass::class, $decoded);
+
+        return $decoded;
+    }
+}
+
+/** The ticket's metadata alone, with nothing stamped on an update. */
+#[Resource(Ticket::class, slug: 'object-tickets')]
+final class ObjectTickets extends VectorResource
+{
+    public function fields(): array
+    {
+        return [Id::make(), Json::make('metadata')];
+    }
+
+    #[\Override]
+    public function timestamps(): array
+    {
+        return ['created' => null, 'updated' => null];
+    }
+}
+
+/** The ticket's metadata, required. */
+#[Resource(Ticket::class, slug: 'required-object-tickets')]
+final class RequiredObjectTickets extends VectorResource
+{
+    public function fields(): array
+    {
+        return [Id::make(), Json::make('metadata')->required()];
+    }
+
+    #[\Override]
+    public function timestamps(): array
+    {
+        return ['created' => null, 'updated' => null];
+    }
+}
+
+/** A JSON field over the product's specs, an `array` property. */
+#[Resource(Product::class, slug: 'array-products')]
+final class ArrayProducts extends VectorResource
+{
+    public function fields(): array
+    {
+        return [Id::make(), Json::make('specs')];
+    }
+
+    #[\Override]
+    public function timestamps(): array
+    {
+        return ['created' => null, 'updated' => null];
+    }
+}

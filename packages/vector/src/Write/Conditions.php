@@ -77,10 +77,10 @@ final class Conditions
         return $states;
     }
 
-    /** An empty value for a required check: null, an empty string, an empty list. */
+    /** An empty value for a required check: null, an empty string, an empty list, an empty object. */
     public static function isEmpty(mixed $value): bool
     {
-        return $value === null || $value === '' || $value === [];
+        return $value === null || $value === '' || $value === [] || ($value instanceof \stdClass && get_object_vars($value) === []);
     }
 
     private static function normalize(mixed $value): ?string

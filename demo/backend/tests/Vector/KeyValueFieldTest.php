@@ -20,8 +20,9 @@ use Kinetis\Vector\Testing\InteractsWithVector;
 use Kinetis\Vector\VectorResource;
 
 /**
- * A key-value field: a JSON object of text values in a JSON column (an
- * `array` property), an object on the wire in both directions.
+ * A key-value field: a JSON object of text values in a JSON column (the
+ * demo's is a `?stdClass` property), an object on the wire in both
+ * directions.
  */
 final class KeyValueFieldTest extends VectorTestCase
 {
@@ -37,7 +38,7 @@ final class KeyValueFieldTest extends VectorTestCase
         $json = $this->compiled(new #[Resource(Product::class, slug: 'json-products')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), Json::make('attributes')->required()];
+                return [Id::make(), Json::make('specs')->required()];
             }
         }, 'json-products');
         $keyValue = $this->compiled(new #[Resource(Product::class, slug: 'json-products')] class extends VectorResource {
@@ -47,11 +48,15 @@ final class KeyValueFieldTest extends VectorTestCase
             }
         }, 'json-products');
 
-        self::assertSame(['attributes' => ['carrier' => 'DHL']], $this->recordInput($json, ['attributes' => ['carrier' => 'DHL']]));
-        self::assertSame(['attributes' => [1, 2]], $this->recordInput($json, ['attributes' => [1, 2]]));
-        self::assertSame([[['attributes'], 'not_blank']], $this->recordInput($json, ['attributes' => []], true));
-        self::assertSame(['attributes' => ['size' => 'M']], $this->recordInput($keyValue, ['attributes' => ['size' => 'M']]));
+        // an `array` property (the specs): a document is an array
+        self::assertSame(['specs' => ['carrier' => 'DHL']], $this->recordInput($json, ['specs' => ['carrier' => 'DHL']]));
+        self::assertSame(['specs' => [1, 2]], $this->recordInput($json, ['specs' => [1, 2]]));
+        self::assertSame([[['specs'], 'not_blank']], $this->recordInput($json, ['specs' => []], true));
+        // a `?stdClass` property (the attributes): an object of text values is a stdClass, and {} is as empty as []
+        self::assertEquals(['attributes' => (object) ['size' => 'M']], $this->recordInput($keyValue, ['attributes' => ['size' => 'M']]));
+        self::assertEquals(['attributes' => (object) ['size' => 'M']], $this->recordInput($keyValue, ['attributes' => (object) ['size' => 'M']]));
         self::assertSame([[['attributes'], 'not_blank']], $this->recordInput($keyValue, ['attributes' => []], true));
+        self::assertSame([[['attributes'], 'not_blank']], $this->recordInput($keyValue, ['attributes' => new \stdClass()], true));
     }
 
     public function testAStoredObjectReadsAsTextValues(): void
@@ -130,7 +135,7 @@ final class KeyValueFieldTest extends VectorTestCase
 
         foreach ([
             [$sorted, 'cannot be sorted'],
-            [$number, 'stores its value in a JSON column: declare the property array or ?array'],
+            [$number, 'stores its value in a JSON column: declare the property array, ?array, stdClass, ?stdClass, array|stdClass or array|stdClass|null'],
             [$text, 'is a key-value field, which stores its value in a JSON column'],
             [$json, 'is a JSON field, which stores its value in a JSON column'],
         ] as [$resource, $message]) {

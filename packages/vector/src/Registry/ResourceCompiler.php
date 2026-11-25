@@ -1065,6 +1065,12 @@ final class ResourceCompiler
         $array['valueType'] = $property['type'];
         $array['enum'] = $property['enum'];
 
+        // a JSON or key-value field on a stdClass or array|stdClass property: a JSON value that keeps its objects
+        if (in_array($field->type(), ['json', 'keyValue'], true) && in_array($property['type'], ['jsonObject', 'jsonObjectOrList'], true)) {
+            $array['valueType'] = 'json';
+            $array['jsonObjects'] = $property['type'] === 'jsonObject' ? 'object' : 'objectOrList';
+        }
+
         if ($field instanceof Select && $property['enum'] !== null && $declaredEnum !== null && $declaredEnum !== $property['enum']) {
             throw ResourceCompileException::field($class, $name, "takes its options from {$declaredEnum}, but the property holds {$property['enum']}");
         }
@@ -1508,9 +1514,12 @@ final class ResourceCompiler
     }
 
     /**
-     * A key-value or JSON field lives in a JSON column: an `array` or
-     * `?array` property, which the database neither sorts, filters,
-     * searches nor sums for Vector.
+     * A key-value or JSON field lives in a JSON column, which the database
+     * neither sorts, filters, searches nor sums for Vector: an `array` or
+     * `?array` property, which holds an empty object as `[]`, or a
+     * `stdClass`, `?stdClass`, `array|stdClass` or `array|stdClass|null`
+     * one, which keeps every object an object (compiled with
+     * `jsonObjects`).
      *
      * @param array<string, mixed> $field
      */
@@ -1519,7 +1528,7 @@ final class ResourceCompiler
         $kind = $field['type'] === 'json' ? 'a JSON' : 'a key-value';
 
         if (($field['valueType'] ?? null) !== 'json') {
-            throw ResourceCompileException::field($class, $name, "is {$kind} field, which stores its value in a JSON column: declare the property array or ?array");
+            throw ResourceCompileException::field($class, $name, "is {$kind} field, which stores its value in a JSON column: declare the property array, ?array, stdClass, ?stdClass, array|stdClass or array|stdClass|null");
         }
 
         if ($field['sortable'] || $field['filterable'] || $field['searchable'] || ($field['summary'] ?? null) !== null) {
@@ -2238,7 +2247,7 @@ final class ResourceCompiler
     {
         $field = match (true) {
             $property['enum'] !== null => Select::make($name)->of($property['enum'])->filterable(),
-            $property['type'] === 'json' => Json::make($name)->hideFromIndex(),
+            in_array($property['type'], ['json', 'jsonObject', 'jsonObjectOrList'], true) => Json::make($name)->hideFromIndex(),
             $property['type'] === 'string' => Text::make($name)->searchable(),
             $property['type'] === 'int' => Number::make($name),
             $property['type'] === 'float' => Number::make($name)->decimals(2),
@@ -2247,7 +2256,7 @@ final class ResourceCompiler
             default => DateTime::make($name)->filterable(),
         };
 
-        if ($property['type'] !== 'json') {
+        if (!in_array($property['type'], ['json', 'jsonObject', 'jsonObjectOrList'], true)) {
             $field->sortable();
         }
 

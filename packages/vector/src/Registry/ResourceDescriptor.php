@@ -564,14 +564,14 @@ final readonly class ResourceDescriptor
 
     /**
      * A compiled field without its internals: no column, no enum class,
-     * no flag columns.
+     * no flag columns, no JSON property shape.
      *
      * @param array<string, mixed> $field
      * @return array<string, mixed>
      */
     public static function publicField(array $field): array
     {
-        unset($field['column'], $field['enum'], $field['flags']);
+        unset($field['column'], $field['enum'], $field['flags'], $field['jsonObjects']);
 
         if (isset($field['computed'])) {
             unset($field['computed']['method']);
