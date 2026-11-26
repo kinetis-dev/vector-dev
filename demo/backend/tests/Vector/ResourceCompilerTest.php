@@ -25,8 +25,10 @@ use Kinetis\Vector\Badge;
 use Kinetis\Vector\Exception\ResourceCompileException;
 use Kinetis\Vector\Fields\BelongsTo;
 use Kinetis\Vector\Fields\Boolean;
+use Kinetis\Vector\Fields\BooleanGroup;
 use Kinetis\Vector\Fields\Color;
 use Kinetis\Vector\Fields\Computed;
+use Kinetis\Vector\Fields\Country;
 use Kinetis\Vector\Fields\Currency;
 use Kinetis\Vector\Fields\Date;
 use Kinetis\Vector\Fields\DateTime;
@@ -34,6 +36,7 @@ use Kinetis\Vector\Fields\Email;
 use Kinetis\Vector\Fields\HasMany;
 use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Image;
+use Kinetis\Vector\Fields\Json;
 use Kinetis\Vector\Fields\KeyValue;
 use Kinetis\Vector\Fields\ManyToMany;
 use Kinetis\Vector\Fields\Money;
@@ -42,6 +45,7 @@ use Kinetis\Vector\Fields\Password;
 use Kinetis\Vector\Fields\Repeater;
 use Kinetis\Vector\Fields\RichText;
 use Kinetis\Vector\Fields\Select;
+use Kinetis\Vector\Fields\Tag as TagField;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\Fields\Textarea;
 use Kinetis\Vector\FullText;
@@ -66,7 +70,7 @@ final class ResourceCompilerTest extends TestCase
     {
         $shapes = [];
 
-        foreach (['id', 'number', 'money', 'boolean', 'date', 'datetime', 'select', 'currency', 'belongsTo', 'richtext', 'hasOne', 'hasMany', 'manyToMany', 'string', 'email'] as $type) {
+        foreach (['id', 'number', 'money', 'boolean', 'date', 'datetime', 'select', 'country', 'currency', 'booleanGroup', 'tag', 'belongsTo', 'richtext', 'hasOne', 'hasMany', 'manyToMany', 'repeater', 'string', 'email'] as $type) {
             $shapes[$type] = ResourceCompiler::operatorShape($type);
         }
 
@@ -78,12 +82,16 @@ final class ResourceCompilerTest extends TestCase
             'date' => 'datetime',
             'datetime' => 'datetime',
             'select' => 'enum',
+            'country' => 'enum',
             'currency' => 'enum',
+            'booleanGroup' => 'list',
+            'tag' => 'list',
             'belongsTo' => 'belongsTo',
             'richtext' => 'presence',
             'hasOne' => null,
             'hasMany' => null,
             'manyToMany' => null,
+            'repeater' => null,
             'string' => 'string',
             'email' => 'string',
         ], $shapes);
@@ -142,6 +150,77 @@ final class ResourceCompilerTest extends TestCase
 
         self::assertSame('Resource Owner, field "customer": names no target resource', self::refusal(static fn () => ResourceCompiler::compileLoose(BelongsTo::make('customer'), $slugs, 'Owner')));
         self::assertSame('Resource Owner, field "order": ' . CompilerOrders::class . ' is not a registered resource', self::refusal(static fn () => ResourceCompiler::compileLoose(BelongsTo::to('order', CompilerOrders::class), $slugs, 'Owner')));
+    }
+
+    public function testTheFieldPredicatesReadTheCompiledType(): void
+    {
+        self::assertTrue(ResourceCompiler::isSelect(['type' => 'country']));
+        self::assertFalse(ResourceCompiler::isSelect(['type' => 'currency']));
+        self::assertFalse(ResourceCompiler::isMultiple(['type' => 'select']), 'a select that states no mode holds one value');
+        self::assertTrue(ResourceCompiler::isMultiple(['type' => 'country', 'multiple' => true]));
+        self::assertTrue(ResourceCompiler::isList(['type' => 'tag']));
+        self::assertTrue(ResourceCompiler::isList(['type' => 'select', 'multiple' => true]));
+        self::assertFalse(ResourceCompiler::isList(['type' => 'select', 'multiple' => false]));
+        self::assertTrue(ResourceCompiler::isFlagColumns(['type' => 'booleanGroup', 'flags' => ['vip' => 'is_vip']]));
+        self::assertFalse(ResourceCompiler::isFlagColumns(['type' => 'booleanGroup']), 'a JSON-mode group maps no flag columns');
+        self::assertFalse(ResourceCompiler::isFlagColumns(['type' => 'select', 'flags' => ['vip' => 'is_vip']]));
+        self::assertTrue(ResourceCompiler::isCollection(['type' => 'repeater']));
+        self::assertFalse(ResourceCompiler::isCollection(['type' => 'tag']));
+        self::assertSame(['any', 'all'], ResourceCompiler::operatorsFor(['type' => 'tag', 'filterable' => true]));
+    }
+
+    public function testADependentChoiceListNeverMatchesAFlagGroupOrAList(): void
+    {
+        $others = [
+            'booleanGroup' => ['type' => 'booleanGroup', 'label' => 'Flags'],
+            'tag' => ['type' => 'tag', 'label' => 'Keywords'],
+            'select' => ['type' => 'select', 'multiple' => true, 'label' => 'Platforms'],
+        ];
+
+        foreach ($others as $type => $other) {
+            $fields = ['other' => $other, 'assignee' => ['type' => 'belongsTo', 'label' => 'Assignee', 'relation' => ['dependsOn' => ['field' => 'other', 'on' => 'team']]]];
+            self::assertSame("Resource Owner, field \"assignee\": depends on other, a {$type} field, which holds no single value to match", self::refusal(static fn () => ResourceCompiler::checkDependencies($fields, 'Owner')));
+        }
+    }
+
+    public function testALooseSelectTakesTheValueTypeOfItsOptions(): void
+    {
+        $int = ResourceCompiler::compileLoose(Select::make('code')->options([404 => 'Not found', 500 => 'Error']), [], 'Owner');
+        self::assertSame(['int', [404, 500]], [$int['valueType'], array_column($int['options'], 'value')], 'a select of integers holds an int');
+
+        $text = ResourceCompiler::compileLoose(Select::make('code')->options([404 => 'Not found', 'gone' => 'Gone']), [], 'Owner');
+        self::assertSame(['string', ['404', 'gone']], [$text['valueType'], array_column($text['options'], 'value')], 'one text value makes every value text');
+
+        $many = ResourceCompiler::compileLoose(Select::make('codes')->options(['a' => 'A', 'b' => 'B'])->multiple()->default(['b']), [], 'Owner');
+        self::assertSame(['json', null, ['b']], [$many['valueType'], $many['enum'], $many['default']], 'a multiple select holds a list');
+
+        $country = ResourceCompiler::compileLoose(Country::make('country')->only(['FR', 'DE']), [], 'Owner');
+        self::assertSame(['string', ['FR', 'DE']], [$country['valueType'], array_column($country['options'], 'value')]);
+        self::assertSame(
+            'Resource Owner, field "country": offers "XX", which is not an assigned ISO 3166-1 alpha-2 country code',
+            self::refusal(static fn () => ResourceCompiler::compileLoose(Country::make('country')->only(['FR', 'XX']), [], 'Owner')),
+        );
+    }
+
+    public function testALooseFlagGroupTagOrJsonInputHoldsJson(): void
+    {
+        $flags = ResourceCompiler::compileLoose(BooleanGroup::make('notify')->options(['email' => 'Email', 'sms' => 'SMS'])->default(['sms' => true]), [], 'Owner');
+        self::assertSame(['json', 'json', false, ['sms' => true]], [$flags['valueType'], $flags['storage'], $flags['nullable'], $flags['default']]);
+        self::assertNull(ResourceCompiler::compileLoose(BooleanGroup::make('notify')->options(['email' => 'Email'])->default(null), [], 'Owner')['default'], 'a null default is no default to check');
+
+        foreach ([['push' => true], ['email'], ['email' => 'yes'], 'email'] as $default) {
+            self::assertSame(
+                'Resource Owner, field "notify": is a flag group, whose default is an object of some of its option keys to true or false',
+                self::refusal(static fn () => ResourceCompiler::compileLoose(BooleanGroup::make('notify')->options(['email' => 'Email'])->default($default), [], 'Owner')),
+            );
+        }
+
+        self::assertSame('json', ResourceCompiler::compileLoose(TagField::make('keywords'), [], 'Owner')['valueType']);
+
+        $json = ResourceCompiler::compileLoose(Json::make('doc'), [], 'Owner');
+        $keyValue = ResourceCompiler::compileLoose(KeyValue::make('pairs'), [], 'Owner');
+        self::assertSame([['json', 'objectOrList'], ['json', 'object']], [[$json['valueType'], $json['jsonObjects']], [$keyValue['valueType'], $keyValue['jsonObjects']]]);
+        self::assertArrayNotHasKey('jsonObjects', ResourceCompiler::compileLoose(Text::make('note'), [], 'Owner'), 'only a JSON or key-value input keeps its objects');
     }
 
     public function testTheDescriptorOfAResource(): void
