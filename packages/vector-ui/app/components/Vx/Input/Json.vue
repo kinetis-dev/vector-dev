@@ -11,7 +11,10 @@ const model = defineModel<unknown>()
 const { t } = useVectorT()
 const labelId = useId()
 
-const format = (value: unknown): string => (value === null || value === undefined ? '' : typeof value === 'string' ? value : JSON.stringify(value, null, 2))
+function format(value: unknown): string {
+    if (value === null || value === undefined) return ''
+    return typeof value === 'string' ? value : JSON.stringify(value, null, 2)
+}
 const text = ref(format(model.value))
 const invalid = ref(false)
 // the value this input last set, so its own update leaves the text as typed
