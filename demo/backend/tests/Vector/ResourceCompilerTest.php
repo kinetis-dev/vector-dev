@@ -12,6 +12,7 @@ use App\Domain\Order;
 use App\Domain\OrderLine;
 use App\Domain\OrderStatus;
 use App\Domain\Product;
+use App\Domain\ProductStatus;
 use App\Domain\Tag;
 use App\Domain\User;
 use App\Tests\Vector\Fixtures\Level;
@@ -1198,6 +1199,114 @@ final class ResourceCompilerTest extends TestCase
             }
         };
         $this->assertRefused(self::fieldRefusal($orders, 'lines', 'maps no column and cannot be sortable'), $orders);
+    }
+
+    public function testASelectTypesItsOptionsAndDefaultAsItsPropertyStoresThem(): void
+    {
+        $products = new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [
+                    Id::make(),
+                    // a string property: 404 reads and writes as "404"
+                    Select::make('currency')->options([404 => 'Not found', 'EUR' => 'Euro'])->default(404),
+                    Select::make('stock')->options([1 => 'One', 2 => 'Two']),
+                    Select::make('channels')->options(['web' => 'Web', 'retail' => 'Retail'])->multiple()->filterable()->default(['retail']),
+                    // an enum property and no options: the enum's cases
+                    Select::make('status'),
+                ];
+            }
+        };
+        $compiled = $this->compile($products)['products'];
+        $currency = self::field($compiled, 'currency');
+        $channels = self::field($compiled, 'channels');
+
+        self::assertSame([['404', 'EUR'], '404'], [array_column($currency['options'], 'value'), $currency['default']]);
+        self::assertSame([1, 2], array_column(self::field($compiled, 'stock')['options'], 'value'));
+        self::assertSame([null, ['retail'], ['any', 'all', 'null', 'nnull']], [$channels['enum'], $channels['default'], $channels['operators']]);
+        self::assertSame(['draft', 'active', 'archived'], array_column(self::field($compiled, 'status')['options'], 'value'));
+
+        $orders = new #[Resource(Order::class, slug: 'orders')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [
+                    Id::make(),
+                    // options of its own on an enum property are kept
+                    Select::make('status')->options(['pending' => 'Waiting', 'paid' => 'Paid']),
+                    // an enum's cases offered over a string property
+                    Select::make('currency')->of(OrderStatus::class),
+                ];
+            }
+        };
+        $compiled = $this->compile($orders)['orders'];
+        self::assertSame(['Waiting', 'Paid'], array_column(self::field($compiled, 'status')['options'], 'label'));
+        self::assertSame([null, ['pending', 'paid', 'shipped', 'cancelled']], [self::field($compiled, 'currency')['enum'], array_column(self::field($compiled, 'currency')['options'], 'value')]);
+
+        $boards = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Select::make('level')->of(Level::class)];
+            }
+        };
+        self::assertSame([Level::class, [1, 2]], [self::field($this->compile($boards)['boards'], 'level')['enum'], array_column(self::field($this->compile($boards)['boards'], 'level')['options'], 'value')], 'an int-backed enum');
+    }
+
+    public function testASelectIsRefusedOptionsOrADefaultItsPropertyCannotHold(): void
+    {
+        $refusals = [
+            ['stock', 'stores an int, but not every option value is an integer', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Select::make('stock')->options(['a' => 'A'])];
+                }
+            }],
+            ['status', 'offers "bogus", which is not a case of ' . OrderStatus::class, new #[Resource(Order::class, slug: 'orders')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Select::make('status')->options(['pending' => 'Pending', 'bogus' => 'Bogus'])];
+                }
+            }],
+            ['status', 'takes its options from ' . ProductStatus::class . ', but the property holds ' . OrderStatus::class, new #[Resource(Order::class, slug: 'orders')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Select::make('status')->of(ProductStatus::class)];
+                }
+            }],
+            ['currency', 'defaults to "USD", which is not one of its options', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Select::make('currency')->options(['EUR' => 'Euro'])->default('USD')];
+                }
+            }],
+            ['channels', 'is a multiple select, which cannot be sorted, grouped, summarized or edited inline', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Select::make('channels')->options(['web' => 'Web'])->multiple()->sortable()];
+                }
+            }],
+            ['channels', 'is a multiple select, which cannot be sorted, grouped, summarized or edited inline', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Select::make('channels')->options(['web' => 'Web'])->multiple()->inlineEditable()];
+                }
+            }],
+            ['channels', 'is a multiple select, whose default is a list of option values', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Select::make('channels')->options(['web' => 'Web'])->multiple()->default(['first' => 'web'])];
+                }
+            }],
+            ['country', 'offers "XX", which is not an assigned ISO 3166-1 alpha-2 country code', new #[Resource(CustomerProfile::class, slug: 'profiles')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Country::make('country')->only(['FR', 'XX'])];
+                }
+            }],
+        ];
+
+        foreach ($refusals as [$field, $reason, $resource]) {
+            $this->assertRefused(self::fieldRefusal($resource, $field, $reason), $resource);
+        }
     }
 
     private function assertRefused(string $message, VectorResource ...$resources): void
