@@ -98,6 +98,17 @@ describe('VxInputCode', () => {
         expect(wrapper.find('.cm-placeholder').text()).toBe('assign: round-robin')
     })
 
+    it('destroys its editor when it is unmounted', async () => {
+        const wrapper = await mountInput(routing, 'a: 1')
+        const view = editorOf(wrapper)
+        const destroy = vi.spyOn(view, 'destroy')
+
+        mounted.splice(mounted.indexOf(wrapper), 1)
+        wrapper.unmount()
+
+        expect(destroy).toHaveBeenCalledOnce()
+    })
+
     it('shows a violation on its frame, like the other inputs', async () => {
         const wrapper = await mountInput(routing, 'a: 1', { errorMessages: ['Must be valid YAML'] })
 

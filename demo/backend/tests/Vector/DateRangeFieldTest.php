@@ -114,6 +114,28 @@ final class DateRangeFieldTest extends VectorTestCase
         }
     }
 
+    /**
+     * A columns-mode flag key is a bool property and a range's end a date
+     * one, so no resource compiles to both; the check that keeps them
+     * apart is asked directly, as if one did.
+     */
+    public function testAnEndAFlagGroupWritesIsRefused(): void
+    {
+        $range = ['name' => 'promotion', 'type' => 'dateRange', 'range' => ['kind' => 'date', 'from' => 'promotionStartsOn', 'to' => 'promotionEndsOn']];
+        $flags = ['name' => 'contact', 'type' => 'booleanGroup', 'flags' => ['newsletter' => 'newsletter', 'promotionEndsOn' => 'promotion_ends_on']];
+
+        try {
+            (new \ReflectionMethod(ResourceCompiler::class, 'checkDateRange'))->invoke(null, Product::class, $range, ['promotion' => $range, 'contact' => $flags]);
+            self::fail('an end a flag group writes was taken');
+        } catch (ResourceCompileException $e) {
+            self::assertStringContainsString('maps "promotionEndsOn", which the field "contact" writes too', $e->getMessage());
+        }
+
+        // a flag group in JSON mode writes no property of its own
+        unset($flags['flags']);
+        (new \ReflectionMethod(ResourceCompiler::class, 'checkDateRange'))->invoke(null, Product::class, $range, ['promotion' => $range, 'contact' => $flags]);
+    }
+
     public function testWhatARangeRefusesWhereItIsDeclared(): void
     {
         $refusals = [
