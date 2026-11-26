@@ -285,7 +285,8 @@
                         "richtext",
                         "repeater",
                         "tag",
-                        "code"
+                        "code",
+                        "dateRange"
                     ]
                 },
                 "label": {
@@ -696,6 +697,30 @@
                                     "link"
                                 ]
                             }
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "range": {
+                    "description": "A date range: the properties holding its two ends and whether they are days (`date`) or instants (`datetime`). Its value is `{from, to}`, both set and `to` never before `from`, or null.",
+                    "type": "object",
+                    "required": [
+                        "kind",
+                        "from",
+                        "to"
+                    ],
+                    "properties": {
+                        "kind": {
+                            "enum": [
+                                "date",
+                                "datetime"
+                            ]
+                        },
+                        "from": {
+                            "type": "string"
+                        },
+                        "to": {
+                            "type": "string"
                         }
                     },
                     "additionalProperties": false

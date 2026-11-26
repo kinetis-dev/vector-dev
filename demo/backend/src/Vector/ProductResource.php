@@ -16,6 +16,7 @@ use Kinetis\Vector\Badge;
 use Kinetis\Vector\Fields\BelongsTo;
 use Kinetis\Vector\Fields\Boolean;
 use Kinetis\Vector\Fields\Currency;
+use Kinetis\Vector\Fields\DateRange;
 use Kinetis\Vector\Fields\DateTime;
 use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Image;
@@ -64,7 +65,7 @@ final class ProductResource extends VectorResource
                 ->fields(['priceCents', 'currency', 'stock', 'weightKg']),
             Tabs::make()
                 ->tab('Content', ['description', 'attributes', 'specs', 'imageKey'])
-                ->tab('Publishing', ['isFeatured', 'channels', 'keywords', 'releasedAt', 'tags']),
+                ->tab('Publishing', ['isFeatured', 'channels', 'keywords', 'releasedAt', 'promotion', 'tags']),
             Text::make('sku', 'SKU')->placeholder('A unique stock code, such as KB-0042')->required()->max(40)->unique()->sortable()->searchable()->filterable(),
             Text::make('name')->required()->max(200)->sortable()->searchable()->filterable()->meta('ai.send', true),
             Slug::make('slug')->from('name')->required()->max(220)->unique()->hideFromIndex(),
@@ -97,7 +98,9 @@ final class ProductResource extends VectorResource
             DateTime::make('releasedAt')->sortable()->filterable()
                 ->visibleWhen('status', 'ne', 'draft')
                 ->requiredWhen('status', 'eq', 'active'),
-            DateTime::make('createdAt')->readonly()->sortable()->hideFromForms(),
+            // two DATE columns edited as one period: both ends set or neither, the end never before the start
+            DateRange::make('promotion', from: 'promotionStartsOn', to: 'promotionEndsOn')->minDate('2020-01-01')->hideFromIndex(),
+                        DateTime::make('createdAt')->readonly()->sortable()->hideFromForms(),
             DateTime::make('updatedAt')->readonly()->hideFromForms()->hideFromIndex(),
         ];
     }

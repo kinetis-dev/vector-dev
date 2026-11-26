@@ -79,6 +79,13 @@ export default {
         minDate: 'Deve essere il {limit} o successivo',
         maxDate: 'Deve essere il {limit} o precedente',
     },
+    dateRange: {
+        from: 'Dal',
+        to: 'Al',
+        between: 'dal {from} al {to}',
+        incomplete: 'Indica entrambi gli estremi dell’intervallo, o nessuno',
+        reversed: 'La fine non può precedere l’inizio',
+    },
     rows: {
         add: 'Aggiungi riga',
         remove: 'Rimuovi la riga {n}',

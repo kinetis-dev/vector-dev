@@ -5683,6 +5683,55 @@
                 ]
             },
             {
+                "name": "promotion",
+                "type": "dateRange",
+                "label": "Promotion",
+                "sortable": false,
+                "searchable": false,
+                "filterable": false,
+                "readonly": false,
+                "inline": false,
+                "unique": false,
+                "help": null,
+                "component": null,
+                "views": [
+                    "show",
+                    "create",
+                    "update"
+                ],
+                "rules": [
+                    {
+                        "constraint": "Kinetis\\Vector\\Validation\\DateBounds",
+                        "args": [
+                            "date",
+                            "2020-01-01",
+                            null
+                        ]
+                    }
+                ],
+                "props": [],
+                "summary": null,
+                "default": null,
+                "hasDefault": false,
+                "conditions": {
+                    "visible": [],
+                    "required": [],
+                    "disabled": []
+                },
+                "range": {
+                    "kind": "date",
+                    "from": "promotionStartsOn",
+                    "to": "promotionEndsOn"
+                },
+                "rangeColumns": {
+                    "from": "promotion_starts_on",
+                    "to": "promotion_ends_on"
+                },
+                "nullable": true,
+                "valueType": "date",
+                "operators": []
+            },
+            {
                 "name": "createdAt",
                 "type": "datetime",
                 "label": "Created at",
@@ -5999,6 +6048,17 @@
                                     "collapsed": false,
                                     "columns": null,
                                     "span": null,
+                                    "name": "promotion",
+                                    "children": null
+                                },
+                                {
+                                    "kind": "field",
+                                    "label": null,
+                                    "description": null,
+                                    "collapsible": false,
+                                    "collapsed": false,
+                                    "columns": null,
+                                    "span": null,
                                     "name": "tags",
                                     "children": null
                                 }
@@ -6270,6 +6330,17 @@
                                     "collapsed": false,
                                     "columns": null,
                                     "span": null,
+                                    "name": "promotion",
+                                    "children": null
+                                },
+                                {
+                                    "kind": "field",
+                                    "label": null,
+                                    "description": null,
+                                    "collapsible": false,
+                                    "collapsed": false,
+                                    "columns": null,
+                                    "span": null,
                                     "name": "tags",
                                     "children": null
                                 }
@@ -6396,6 +6467,7 @@
                 "channels",
                 "keywords",
                 "releasedAt",
+                "promotion",
                 "createdAt",
                 "updatedAt"
             ],
@@ -6504,6 +6576,18 @@
                 "nullable": true,
                 "hasDefault": true,
                 "type": "timestamp"
+            },
+            "promotionStartsOn": {
+                "kind": "column",
+                "nullable": true,
+                "hasDefault": true,
+                "type": "date"
+            },
+            "promotionEndsOn": {
+                "kind": "column",
+                "nullable": true,
+                "hasDefault": true,
+                "type": "date"
             },
             "category": {
                 "kind": "belongsTo",

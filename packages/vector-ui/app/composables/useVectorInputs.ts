@@ -30,6 +30,7 @@ const inputs: Record<string, Component> = {
     currency: defineAsyncComponent(() => import('#vector/app/components/Vx/Input/Currency.vue')),
     date: defineAsyncComponent(() => import('#vector/app/components/Vx/Input/DateTime.vue')),
     datetime: defineAsyncComponent(() => import('#vector/app/components/Vx/Input/DateTime.vue')),
+    dateRange: defineAsyncComponent(() => import('#vector/app/components/Vx/Input/DateRange.vue')),
     belongsTo: defineAsyncComponent(() => import('#vector/app/components/Vx/Input/Relation.vue')),
     manyToMany: defineAsyncComponent(() => import('#vector/app/components/Vx/Input/Relation.vue')),
     repeater: defineAsyncComponent(() => import('#vector/app/components/Vx/Input/Repeater.vue')),

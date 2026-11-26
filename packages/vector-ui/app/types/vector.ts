@@ -8,7 +8,7 @@ export type VectorFieldType =
     | 'select' | 'country' | 'booleanGroup' | 'date' | 'datetime' | 'email' | 'url' | 'password' | 'slug'
     | 'color' | 'json' | 'keyValue' | 'currency' | 'file' | 'image'
     | 'belongsTo' | 'hasOne' | 'hasMany' | 'manyToMany' | 'computed' | 'richtext'
-    | 'repeater' | 'tag' | 'code'
+    | 'repeater' | 'tag' | 'code' | 'dateRange'
 
 /**
  * A repeater's rows. `json`: a JSON list of objects of `rowFields`.
@@ -57,6 +57,13 @@ export interface VectorCode {
     language: VectorCodeLanguage
     lineNumbers: boolean
     rows: number
+}
+
+/** A date range's ends: days (`date`) or instants (`datetime`), in the properties `from` and `to` name. */
+export interface VectorDateRange {
+    kind: 'date' | 'datetime'
+    from: string
+    to: string
 }
 
 /** What a computed field is shown as. */
@@ -147,6 +154,8 @@ export interface VectorField {
     markdown?: { toolbar: string[] }
     /** A code field's editor: the language it highlights, its line numbers, and how many lines it shows. */
     code?: VectorCode
+    /** A date range: whether its ends are days or instants, and the properties holding them. Its value is `{from, to}` or null. */
+    range?: VectorDateRange
 }
 
 /** One comparison against another field of the same form. */

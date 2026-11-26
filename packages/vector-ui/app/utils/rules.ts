@@ -4,7 +4,15 @@ import { boundsOfRule, boundViolation, type DateBounds } from '#vector/app/utils
 
 type Rule = (value: unknown) => true | string
 
-const empty = (value: unknown) => value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)
+const blank = (value: unknown) => value === null || value === undefined || value === ''
+
+/** A date range's `{from, to}`, or null for any other value. */
+function rangeOf(value: unknown): { from: unknown, to: unknown } | null {
+    return value !== null && typeof value === 'object' && !Array.isArray(value) && ('from' in value || 'to' in value) ? value as { from: unknown, to: unknown } : null
+}
+
+// a date range with neither end set is no value, as the server reads it
+const empty = (value: unknown) => blank(value) || (Array.isArray(value) && value.length === 0) || (rangeOf(value) !== null && blank(rangeOf(value)!.from) && blank(rangeOf(value)!.to))
 
 /**
  * The descriptor's rules, compiled to Vuetify rule functions. Each
@@ -18,6 +26,10 @@ export function rulesFor(field: VectorField, operation: 'create' | 'update', sta
 
     if (requiredHere) {
         rules.push(value => !empty(value) || vt('common.required'))
+    }
+
+    if (field.type === 'dateRange') {
+        rules.push(rangeRule(field.range?.kind ?? 'date'))
     }
 
     for (const rule of field.rules) {
@@ -73,10 +85,28 @@ function compile(rule: VectorRule): Rule | null {
  */
 function dateRule(bounds: DateBounds): Rule {
     return (value) => {
-        const broken = boundViolation(bounds, value, new Date())
+        const range = rangeOf(value)
+        const now = new Date()
+        // a date range's two ends are bounded alike
+        const broken = range ? boundViolation(bounds, range.from, now) ?? boundViolation(bounds, range.to, now) : boundViolation(bounds, value, now)
         if (!broken) return true
         const limit = typeof broken.bound === 'string' ? formatDate(broken.bound) : formatDateTime(broken.bound.toISOString())
         return vt(broken.side === 'min' ? 'fields.rules.minDate' : 'fields.rules.maxDate', { limit })
+    }
+}
+
+/**
+ * A date range has both ends or neither, and its end is never before its
+ * start: days compared as days, instants as instants.
+ */
+function rangeRule(kind: 'date' | 'datetime'): Rule {
+    return (value) => {
+        const range = rangeOf(value)
+        if (!range || (blank(range.from) && blank(range.to))) return true
+        if (blank(range.from) || blank(range.to)) return vt('fields.dateRange.incomplete')
+        const [from, to] = [String(range.from), String(range.to)]
+        const reversed = kind === 'date' ? to.slice(0, 10) < from.slice(0, 10) : new Date(to).getTime() < new Date(from).getTime()
+        return !reversed || vt('fields.dateRange.reversed')
     }
 }
 

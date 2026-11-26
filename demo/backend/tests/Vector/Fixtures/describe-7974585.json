@@ -1733,6 +1733,22 @@
                 ]
             },
             {
+                "name": "promotion",
+                "label": "Promotion",
+                "type": "dateRange",
+                "valueType": "date",
+                "format": "an object {\"from\": \"YYYY-MM-DD\", \"to\": \"YYYY-MM-DD\"}, both set and to never before from, or null for no range",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "rules": [
+                    "DateBounds(\"date\", \"2020-01-01\", null)"
+                ]
+            },
+            {
                 "name": "createdAt",
                 "label": "Created at",
                 "type": "datetime",

@@ -27,6 +27,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   page and reads left to right in a right-to-left layout. A list shows
   the first line in monospace; the record page a read-only highlighted
   editor.
+- `Vx/Input/DateRange.vue` and `Vx/Cell/DateRange.vue` for kinetis/vector's
+  date range: two native date or date-time controls side by side, the
+  filter bar's, the end's starting no earlier than the start, and a cell
+  reading "from to to" in the UI's language. A new form, bulk edit and an
+  action dialog start it as `{from: null, to: null}`. The form refuses
+  one end alone and an end before the start, applies the field's date
+  bounds to both ends, and shows the server's `range_incomplete` and
+  `range_reversed` in the UI's language.
 
 ### Changed
 

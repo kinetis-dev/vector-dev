@@ -167,6 +167,7 @@ final readonly class AggregateRequest
             'json' => 'is a JSON field, which cannot be grouped or aggregated',
             'select', 'country' => ($field['multiple'] ?? false) === true ? 'is a multiple select, a list of values, which cannot be grouped or aggregated' : null,
             'booleanGroup' => 'is a flag group, several values, which cannot be grouped or aggregated',
+            'dateRange' => 'is a date range, two values, which cannot be grouped or aggregated',
             'tag' => 'is a tag field, a list of values, which cannot be grouped or aggregated',
             'repeater' => 'is a repeater, a list of rows, which cannot be grouped or aggregated',
             'hasOne', 'hasMany', 'manyToMany' => "is a {$type} collection, which cannot be grouped or aggregated",

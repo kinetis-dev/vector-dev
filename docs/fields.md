@@ -24,6 +24,7 @@ second column.
 | `Currency` | `currency` | An ISO 4217 code in a string column, chosen from a searchable list that names each code in the UI's language (`EUR · Euro`). The list holds every code, or `allowed(['EUR', 'USD'])`. Codes are stored upper-case, anything else is refused, and it filters like a single select. It starts from `default('EUR')`, else `VECTOR_CURRENCY`. |
 | `Boolean` | `boolean` | True or false. |
 | `Date`, `DateTime` | `date`, `datetime` | A calendar day, `YYYY-MM-DD` on the wire with no time or zone; or an instant, ISO 8601 on the wire in UTC. `minDate()` and `maxDate()` bound it; see [Date bounds](#date-bounds). See {doc}`databases` for `DATE` columns. |
+| `DateRange` | `dateRange` | A period kept in two date or two date-time properties, `{"from": …, "to": …}` on the wire; see [DateRange](#daterange). |
 | `Select` | `select` | A choice among fixed options, one value or several with `multiple()`; see [Select](#select). |
 | `BooleanGroup` | `booleanGroup` | Named on/off options shown as one cell and edited as one group of checkboxes, in a bool column each or in one JSON column; see [BooleanGroup](#booleangroup). |
 | `Country` | `country` | An ISO 3166-1 alpha-2 country code, or several: a select over every assigned code; see [Country](#country). |
@@ -135,6 +136,57 @@ the UTC instant the server compares.
 The descriptor carries the bounds as the field's `DateBounds` rule
 (`args`: the kind, the minimum and the maximum, each `null` when not set),
 and `vector_describe` lists it among the field's rules.
+
+## DateRange
+
+`DateRange` edits two properties of the entity as one period:
+
+```php
+DateRange::make('promotion', from: 'promotionStartsOn', to: 'promotionEndsOn')->minDate('2020-01-01'),
+```
+
+`from:` and `to:` name the properties holding the first and the last
+day (or instant); the field's own name is not a property, and `make()`
+without both throws. The build reads their types from the entity: both
+`Kinetis\Orm\Date` (a range of days, `YYYY-MM-DD`) or both
+`DateTimeImmutable` (a range of instants, ISO 8601 in UTC). It refuses
+an end that is neither, two ends of different types, one nullable end
+beside one that is not, an end that is another field of the resource,
+and an end another range or flag group writes too.
+
+| Value | Meaning |
+|---|---|
+| `{"from": "2026-12-01", "to": "2026-12-24"}` | The period, both ends included. One day is a range from and to that day. |
+| `null`, or `{"from": null, "to": null}` | No range: both properties null. Only a range whose two properties are nullable may be empty; `required()` asks for both ends. |
+
+Both ends are set or neither is: one alone is refused with
+`range_incomplete` at the missing end (`promotion.to`), and an end
+before the start with `range_reversed` at `to`. A range of instants
+compares instants, whatever zone each end was written in. `minDate()`
+and `maxDate()` bound both ends, as on a `Date` or `DateTime` field (see
+[Date bounds](#date-bounds)), and refuse a bound of the other kind when
+the resource compiles. `min()`, `max()` and `placeholder()` are refused.
+
+A write sets both properties together on create, update and bulk edit,
+the audit trail records the range as one value, and a revert puts both
+back. A CSV export writes the range as an ISO 8601 interval in one
+cell, `2026-12-01/2026-12-24` (an empty cell for none), and an import
+reads that cell back: a cell with one end, such as `2026-12-01/`, fails
+its row. An action dialog or a settings group cannot ask for a range:
+it has no entity to keep the two ends in.
+
+A range is never sorted, filtered or summarized as one value:
+`sortable()`, `filterable()` and `summarize()` throw a `LogicException`
+when the field is defined. It is not edited inline, cannot be grouped
+by, and no condition (`visibleWhen()` and the others) may test it. To
+sort or filter by one end, declare a `Date` or `DateTime` field for that
+property on a resource of its own.
+
+The form edits a range as two native date or date-time controls side by
+side, the ones the filter bar uses, the end's starting no earlier than
+the start, and a list shows `Dec 1, 2026 to Dec 24, 2026` in the UI's
+language. The descriptor publishes the field's `range`: its `kind`
+(`date` or `datetime`) and the properties `from` and `to` name.
 
 ## Select
 

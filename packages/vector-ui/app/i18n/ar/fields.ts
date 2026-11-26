@@ -79,6 +79,13 @@ export default {
         minDate: 'يجب أن يكون في {limit} أو بعده',
         maxDate: 'يجب أن يكون في {limit} أو قبله',
     },
+    dateRange: {
+        from: 'من',
+        to: 'إلى',
+        between: '{from} إلى {to}',
+        incomplete: 'حدّد طرفي النطاق كليهما أو لا تحدد أيًا منهما',
+        reversed: 'لا يجوز أن تكون النهاية قبل البداية',
+    },
     rows: {
         add: 'إضافة صف',
         remove: 'إزالة الصف {n}',

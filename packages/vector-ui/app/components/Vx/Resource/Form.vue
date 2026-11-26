@@ -86,6 +86,8 @@ start()
 function defaultFor(field: VectorField): unknown {
     if (field.type === 'boolean') return false
     if (['manyToMany', 'repeater', 'tag'].includes(field.type)) return []
+    // a date range is both of its ends, each empty until set
+    if (field.type === 'dateRange') return { from: null, to: null }
     return null
 }
 

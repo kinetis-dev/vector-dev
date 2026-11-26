@@ -147,6 +147,9 @@ final class ResourceDescription
             $field['type'] === 'country' => 'an ISO 3166-1 alpha-2 country code in upper case',
             $field['type'] === 'select' && $multiple => 'a list of option values, each at most once; stored in the order the options are listed',
             $field['type'] === 'booleanGroup' => 'an object of option key to true or false, every key present when read; a key a write leaves out is false',
+            $field['type'] === 'dateRange' => ($field['range']['kind'] ?? 'date') === 'date'
+                ? 'an object {"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"}, both set and to never before from, or null for no range'
+                : 'an object {"from": …, "to": …} of ISO 8601 instants in UTC, both set and to never before from, or null for no range',
             $field['type'] === 'code' => ($field['code']['language'] ?? 'plain') === 'plain' ? 'source text' : "source text in {$field['code']['language']}",
             default => self::FORMATS[$field['type']] ?? null,
         };

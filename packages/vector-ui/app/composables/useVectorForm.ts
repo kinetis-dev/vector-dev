@@ -8,6 +8,7 @@ export function initialValue(field: VectorField): unknown {
     if (field.type === 'boolean') return false
     if (field.type === 'manyToMany') return []
     if (field.type === 'tag' || field.type === 'repeater') return []
+    if (field.type === 'dateRange') return { from: null, to: null }
     return null
 }
 

@@ -70,7 +70,8 @@ hidden or disabled field's submitted value is ignored; a field whose
 
 A condition on a field the form does not have, or on the field itself,
 fails the build. A collection can only be tested with `null` or
-`nnull`.
+`nnull`, and a flag group or a date range, which hold several values,
+not at all.
 
 ## Relation choices
 
@@ -154,8 +155,8 @@ checked against the `_version` it was listed at: one stale record
 answers `409` for the whole changeset. A violation's path is
 `changes/{index}/{field}`. Only simple fields editable on update
 qualify: text, email, url, slug, color, number, money, boolean, single
-select, currency, date, datetime and belongs-to. Anything else fails the
-build.
+select, currency, date, datetime and belongs-to. Anything else (a code
+field or a date range among them) fails the build.
 
 ## Optimistic locking
 

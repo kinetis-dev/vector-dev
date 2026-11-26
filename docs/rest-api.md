@@ -177,6 +177,8 @@ write or the list grammar. See {doc}`forms`.
 | Has-many, many-to-many | `{count}` on a record; a list of ids on a write |
 | Rich text | The editor's JSON document in a string, or, where the field `storesHtml`, the stored HTML; a write always sends the document |
 | Markdown | Its source |
+| Code | The text as typed |
+| Date ranges | `{"from", "to"}`, both days or both instants as above, or `null`; a CSV cell holds `from/to` |
 | Computed | Typed by its `computed.as` (money as minor units, a date as `YYYY-MM-DD`, an instant as ISO 8601 UTC), always with the fields it is computed from |
 | Ids | As the entity types them |
 | Trashed | `_trashed` on a soft-deleting resource's records |

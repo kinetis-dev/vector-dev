@@ -79,6 +79,13 @@ export default {
         minDate: 'Должно быть не раньше {limit}',
         maxDate: 'Должно быть не позже {limit}',
     },
+    dateRange: {
+        from: 'С',
+        to: 'По',
+        between: 'с {from} по {to}',
+        incomplete: 'Укажите оба конца периода или ни одного',
+        reversed: 'Конец не может быть раньше начала',
+    },
     rows: {
         add: 'Добавить строку',
         remove: 'Удалить строку {n}',

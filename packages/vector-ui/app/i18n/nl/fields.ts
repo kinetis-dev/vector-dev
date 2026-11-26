@@ -79,6 +79,13 @@ export default {
         minDate: 'Moet op of na {limit} zijn',
         maxDate: 'Moet op of voor {limit} zijn',
     },
+    dateRange: {
+        from: 'Van',
+        to: 'Tot',
+        between: '{from} tot {to}',
+        incomplete: 'Vul beide grenzen van de periode in, of geen van beide',
+        reversed: 'Het einde mag niet voor het begin liggen',
+    },
     rows: {
         add: 'Rij toevoegen',
         remove: 'Rij {n} verwijderen',

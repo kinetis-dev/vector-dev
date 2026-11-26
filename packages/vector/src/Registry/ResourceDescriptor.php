@@ -119,7 +119,7 @@ final readonly class ResourceDescriptor
     }
 
     /**
-     * The properties the columns-mode flag groups among $names write.
+     * The properties the columns-mode flag groups and the date ranges among $names write.
      *
      * @param list<string> $names
      * @return list<string>
@@ -129,7 +129,7 @@ final readonly class ResourceDescriptor
         $flags = [];
 
         foreach ($names as $name) {
-            $flags = [...$flags, ...array_map(strval(...), array_keys($this->fields[$name]['flags'] ?? []))];
+            $flags = [...$flags, ...ResourceCompiler::writtenProperties($this->fields[$name])];
         }
 
         return $flags;
@@ -571,7 +571,7 @@ final readonly class ResourceDescriptor
      */
     public static function publicField(array $field): array
     {
-        unset($field['column'], $field['enum'], $field['flags'], $field['jsonObjects']);
+        unset($field['column'], $field['enum'], $field['flags'], $field['jsonObjects'], $field['rangeColumns']);
 
         if (isset($field['computed'])) {
             unset($field['computed']['method']);

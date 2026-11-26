@@ -45,5 +45,8 @@ export function violationText(violation: Violation): string {
         return vt(side === 'min' ? 'fields.rules.minDate' : 'fields.rules.maxDate', { limit })
     }
 
+    if (violation.code === 'range_incomplete') return vt('fields.dateRange.incomplete')
+    if (violation.code === 'range_reversed') return vt('fields.dateRange.reversed')
+
     return violation.message
 }

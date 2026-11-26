@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kinetis\Vector\Query;
 
 use Kinetis\Vector\Fields\Currency;
+use Kinetis\Vector\Fields\DateRange;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\RichText\Document;
 use OpenSpout\Common\Entity\Cell;
@@ -106,6 +107,7 @@ final class XlsxWriter
                 => new Cell\DateTimeCell($day, $date),
             $field['type'] === 'datetime' && is_string($value) && ($moment = self::moment($value)) !== null => new Cell\DateTimeCell($moment, $dateTime),
             $field['type'] === 'richtext' && is_string($value) => self::text($document->toPlainText($value)),
+            $field['type'] === 'dateRange' && is_array($value) => self::text(DateRange::cell($value)),
             default => self::text(self::plain($value)),
         };
     }

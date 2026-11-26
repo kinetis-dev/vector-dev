@@ -79,6 +79,13 @@ export default {
         minDate: '{limit} 以降にしてください',
         maxDate: '{limit} 以前にしてください',
     },
+    dateRange: {
+        from: '開始',
+        to: '終了',
+        between: '{from} 〜 {to}',
+        incomplete: '期間の開始と終了を両方指定するか、どちらも指定しないでください',
+        reversed: '終了は開始より前にできません',
+    },
     rows: {
         add: '行を追加',
         remove: '行 {n} を削除',

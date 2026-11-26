@@ -79,6 +79,13 @@ export default {
         minDate: '{limit} 이후여야 합니다',
         maxDate: '{limit} 이전이어야 합니다',
     },
+    dateRange: {
+        from: '시작',
+        to: '종료',
+        between: '{from} ~ {to}',
+        incomplete: '기간의 시작과 끝을 모두 지정하거나 둘 다 비워 두세요',
+        reversed: '끝은 시작보다 앞설 수 없습니다',
+    },
     rows: {
         add: '행 추가',
         remove: '{n}행 제거',

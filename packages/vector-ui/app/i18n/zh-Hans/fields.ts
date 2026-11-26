@@ -79,6 +79,13 @@ export default {
         minDate: '必须不早于 {limit}',
         maxDate: '必须不晚于 {limit}',
     },
+    dateRange: {
+        from: '开始',
+        to: '结束',
+        between: '{from} 至 {to}',
+        incomplete: '请同时设置区间的两端，或都不设置',
+        reversed: '结束不能早于开始',
+    },
     rows: {
         add: '添加行',
         remove: '移除第 {n} 行',

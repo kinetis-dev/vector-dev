@@ -3,6 +3,7 @@ import { fieldState, rulesFor } from '#vector/app/utils/rules'
 import { controlLimits } from '#vector/app/utils/internal/dateBounds'
 import { violationText } from '#vector/app/utils/internal/violations'
 import { hasEmailShape, isEmailAddress, phpRegex } from '#vector/app/utils/internal/patterns'
+import type { VectorField } from '#vector/app/types/vector'
 import { field, rule } from '../fixtures'
 
 /** Every rule's verdict on one value: the first message, or true. */
@@ -291,5 +292,44 @@ describe('rulesFor: DateBounds', () => {
         expect(violationText({ path: ['joinedOn'], message: 'must be on or before today.', code: 'date_too_late', parameters: { max: 'today' } })).toBe(`Must be on or before ${formatDate('2026-11-26')}`)
         expect(violationText({ path: ['joinedOn'], message: 'must be on or after 2026-01-01.', code: 'date_too_early', parameters: { min: '2026-01-01' } })).toBe(`Must be on or after ${formatDate('2026-01-01')}`)
         expect(violationText({ path: ['name'], message: 'is required.', code: 'required' })).toBe('is required.')
+    })
+})
+
+describe('rulesFor: dateRange', () => {
+    const promotion = (overrides: Partial<VectorField> = {}) => field({ name: 'promotion', type: 'dateRange', range: { kind: 'date', from: 'promotionStartsOn', to: 'promotionEndsOn' }, ...overrides })
+
+    it('takes both ends or neither, the end never before the start', () => {
+        const rules = rulesFor(promotion(), 'update')
+
+        expect(check(rules, { from: null, to: null })).toBe(true)
+        expect(check(rules, { from: '2026-12-01', to: '2026-12-01' })).toBe(true)
+        expect(check(rules, { from: '2026-12-01', to: null })).toBe('Set both ends of the range, or neither')
+        expect(check(rules, { from: '', to: '2026-12-01' })).toBe('Set both ends of the range, or neither')
+        expect(check(rules, { from: '2026-12-02', to: '2026-12-01' })).toBe('The end must not be before the start')
+        // days compare as days: 2026-12-10 is after 2026-12-9, which text of two lengths would not say
+        expect(check(rules, { from: '2026-12-09', to: '2026-12-10' })).toBe(true)
+    })
+
+    it('compares a range of instants as instants', () => {
+        const rules = rulesFor(promotion({ range: { kind: 'datetime', from: 'startsAt', to: 'endsAt' } }), 'update')
+
+        expect(check(rules, { from: '2026-12-01T10:00:00.000Z', to: '2026-12-01T11:00:00.000+01:00' })).toBe(true)
+        expect(check(rules, { from: '2026-12-01T10:00:00.000Z', to: '2026-12-01T09:59:59.000Z' })).toBe('The end must not be before the start')
+    })
+
+    it('reads an empty range as no value, which a required one refuses', () => {
+        const required = rulesFor(promotion({ nullable: false }), 'create')
+
+        expect(check(required, { from: null, to: null })).toBe('Required')
+        expect(check(rulesFor(promotion({ rules: [rule('NotBlank')] }), 'update'), { from: '', to: '' })).toBe('Required')
+        expect(check(required, { from: '2026-12-01', to: '2026-12-02' })).toBe(true)
+    })
+
+    it('bounds both ends with minDate() and maxDate()', () => {
+        const rules = rulesFor(promotion({ rules: [{ constraint: 'Kinetis\\Vector\\Validation\\DateBounds', args: ['date', '2020-01-01', '2026-12-31'] }] }), 'update')
+
+        expect(check(rules, { from: '2020-01-01', to: '2026-12-31' })).toBe(true)
+        expect(check(rules, { from: '2019-12-31', to: '2026-01-01' })).toBe(`Must be on or after ${formatDate('2020-01-01')}`)
+        expect(check(rules, { from: '2026-01-01', to: '2027-01-01' })).toBe(`Must be on or before ${formatDate('2026-12-31')}`)
     })
 })

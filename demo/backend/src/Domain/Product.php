@@ -11,6 +11,7 @@ use Kinetis\Orm\Attributes\Entity;
 use Kinetis\Orm\Attributes\Id;
 use Kinetis\Orm\Attributes\ManyToMany;
 use Kinetis\Orm\Attributes\Version;
+use Kinetis\Orm\Date;
 use stdClass;
 
 /**
@@ -61,6 +62,11 @@ final class Product
     private ?string $imageKey = null;
 
     private ?DateTimeImmutable $releasedAt = null;
+
+    /** The first and last day of the product's promotion: both set or neither, a date range field's two ends */
+    private ?Date $promotionStartsOn = null;
+
+    private ?Date $promotionEndsOn = null;
 
     #[BelongsTo]
     private Category $category;
@@ -136,6 +142,12 @@ final class Product
     {
         $this->specs = $specs;
         $this->keywords = $keywords;
+    }
+
+    public function promote(Date $from, Date $to): void
+    {
+        $this->promotionStartsOn = $from;
+        $this->promotionEndsOn = $to;
     }
 
     public function activate(DateTimeImmutable $releasedAt, bool $featured): void

@@ -40,7 +40,9 @@ final readonly class RecordInput
      * @param array<string, mixed> $current the stored record, serialized, when updating
      * A columns-mode flag group is returned under its own name, as the
      * object of every flag, and under each flag's property name, as that
-     * flag's bool: create() and apply() receive both.
+     * flag's bool: create() and apply() receive both. A date range is
+     * returned the same way: as `{from, to}` (or null) under its name,
+     * and each end under its property's.
      *
      * @return array<string, mixed> field name => converted value, for every field the payload named
      * @throws ValidationException
@@ -160,6 +162,13 @@ final readonly class RecordInput
         // a flag group in columns mode writes each flag's own bool property; the group itself is none
         foreach (array_keys($field['flags'] ?? []) as $key) {
             $values[(string) $key] = $values[$name][$key];
+        }
+
+        // a date range writes its two ends' properties; the range itself is none
+        if (ResourceCompiler::isDateRange($field)) {
+            $range = $values[$name];
+            $values[(string) $field['range']['from']] = is_array($range) ? $range['from'] : null;
+            $values[(string) $field['range']['to']] = is_array($range) ? $range['to'] : null;
         }
 
         return array_map(static fn (Violation $v): Violation => $v->under($name), $this->converter->violationsOfRules($field, $raw));

@@ -33,6 +33,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `lineNumbers()` and `rows()` (2 to 40) shape the editor. The
   descriptor carries them as the field's `code`; the value is the text
   as typed, and `vector_describe` names its language.
+- `Fields\DateRange`: a period kept in two properties,
+  `DateRange::make('promotion', from: 'promotionStartsOn', to:
+  'promotionEndsOn')`, both `Kinetis\Orm\Date` or both
+  `DateTimeImmutable` as the build reads them from the entity, nullable
+  only when both are. Its value is `{from, to}` or null: one end alone
+  is `range_incomplete` and an end before the start `range_reversed`,
+  each at its end; `required()` asks for both, and `minDate()` and
+  `maxDate()` bound both. A write fans out to both properties on
+  create, update and bulk edit, a read assembles them, the audit trail
+  records the range as one value, and a CSV export and import hold it
+  as `from/to`. OpenAPI describes the object and `vector_describe` its
+  format. The build refuses an end that is another field or that
+  another range or flag group writes, a condition on a range, and a
+  range in an action dialog or settings group; `sortable()`,
+  `filterable()` and `summarize()` throw.
 
 ### Changed
 

@@ -25,6 +25,7 @@ const cells: Record<string, Component> = {
     booleanGroup: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/BooleanGroup.vue')),
     date: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Date.vue')),
     datetime: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/DateTime.vue')),
+    dateRange: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/DateRange.vue')),
     email: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Email.vue')),
     url: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Url.vue')),
     password: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Text.vue')),
