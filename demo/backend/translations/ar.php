@@ -8,6 +8,7 @@ return [
     '30 days' => '30 يومًا',
     '7 days' => '7 أيام',
     '90 days' => '90 يومًا',
+    'A unique stock code, such as KB-0042' => 'رمز مخزون فريد، مثل KB-0042',
     'Access' => 'الوصول',
     'Active' => 'نشط',
     'Address line' => 'سطر العنوان',

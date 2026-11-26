@@ -16,6 +16,7 @@ use Kinetis\Vector\Fields\Boolean;
 use Kinetis\Vector\Fields\Computed;
 use Kinetis\Vector\Fields\Currency;
 use Kinetis\Vector\Fields\Date;
+use Kinetis\Vector\Fields\DateRange;
 use Kinetis\Vector\Fields\DateTime;
 use Kinetis\Vector\Fields\Field;
 use Kinetis\Vector\Fields\HasMany;
@@ -30,6 +31,7 @@ use Kinetis\Vector\Fields\Select;
 use Kinetis\Vector\Fields\Tag;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\Support\Countries;
+use Kinetis\Vector\Validation\DateBounds;
 use Kinetis\Vector\VectorResource;
 use Kinetis\Vector\Write\RecordInput;
 use ReflectionClass;
@@ -243,7 +245,7 @@ final class ResourceCompiler
                 throw ResourceCompileException::field($owner, $name, "depends on {$depends['field']}, which is not another field of the form");
             }
 
-            if (self::isCollection($other) || in_array($other['type'], ['json', 'keyValue', 'booleanGroup', 'file', 'image', 'password'], true) || self::isList($other)) {
+            if (self::isCollection($other) || in_array($other['type'], ['json', 'keyValue', 'booleanGroup', 'dateRange', 'file', 'image', 'password'], true) || self::isList($other)) {
                 throw ResourceCompileException::field($owner, $name, "depends on {$depends['field']}, a {$other['type']} field, which holds no single value to match");
             }
 
@@ -292,6 +294,10 @@ final class ResourceCompiler
             throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on the flag group \"{$condition['field']}\", which holds several values a condition cannot compare");
         }
 
+        if (self::isDateRange($target)) {
+            throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on the date range \"{$condition['field']}\", which holds two values a condition cannot compare");
+        }
+
         if ((self::isCollection($target) || self::isList($target)) && !in_array($condition['op'], ['null', 'nnull'], true)) {
             throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on the collection \"{$condition['field']}\"; only null and nnull apply");
         }
@@ -312,7 +318,7 @@ final class ResourceCompiler
         $array = $field->toArray();
         $type = $field->type();
 
-        if (in_array($type, ['hasOne', 'hasMany', 'manyToMany', 'id', 'repeater'], true)) {
+        if (in_array($type, ['hasOne', 'hasMany', 'manyToMany', 'id', 'repeater', 'dateRange'], true)) {
             throw ResourceCompileException::field($owner, $field->name(), "is a {$type} field, which an action or settings group cannot ask for");
         }
 
@@ -490,6 +496,120 @@ final class ResourceCompiler
         $array['sortable'] = false;
 
         return $array;
+    }
+
+    /**
+     * Whether a compiled field is a date range: two properties, one value.
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function isDateRange(array $field): bool
+    {
+        return $field['type'] === 'dateRange';
+    }
+
+    /**
+     * The properties a field writes besides its own: a columns-mode flag
+     * group's flags, a date range's two ends.
+     *
+     * @param array<string, mixed> $field
+     * @return list<string>
+     */
+    public static function writtenProperties(array $field): array
+    {
+        if (self::isDateRange($field)) {
+            return [$field['range']['from'], $field['range']['to']];
+        }
+
+        return array_map(strval(...), array_keys($field['flags'] ?? []));
+    }
+
+    /**
+     * A date range: two properties of the entity, both `Kinetis\Orm\Date`
+     * (a range of days) or both `DateTimeImmutable` (a range of instants),
+     * nullable only when both are. The field's own name is no property;
+     * its bounds rule is compiled once the kind is known.
+     *
+     * @param EntityMapping $entity
+     * @param array<string, mixed> $array
+     * @param array<string, PropertyMapping> $properties
+     * @return array<string, mixed>
+     */
+    private static function compileDateRange(string $class, array $entity, DateRange $field, array $array, array $properties): array
+    {
+        $name = $array['name'];
+        ['from' => $from, 'to' => $to] = $field->properties();
+
+        if (isset($properties[$name])) {
+            throw ResourceCompileException::field($class, $name, "is a date range, which maps two properties, but \"{$name}\" is a property itself; name the range otherwise");
+        }
+
+        if ($from === $to) {
+            throw ResourceCompileException::field($class, $name, "is a date range from and to the same property \"{$from}\"");
+        }
+
+        $ends = [];
+
+        foreach (['from' => $from, 'to' => $to] as $end => $property) {
+            $mapped = $properties[$property] ?? null;
+
+            if ($mapped === null || $mapped['target'] !== null || !in_array($mapped['type'], ['date', 'timestamp'], true)) {
+                throw ResourceCompileException::field($class, $name, "is a date range whose {$end} is \"{$property}\", which is not a Kinetis\\Orm\\Date or DateTimeImmutable property of {$entity['class']}");
+            }
+
+            $ends[$end] = $mapped;
+        }
+
+        if ($ends['from']['type'] !== $ends['to']['type']) {
+            throw ResourceCompileException::field($class, $name, "is a date range from \"{$from}\", a {$ends['from']['type']}, to \"{$to}\", a {$ends['to']['type']}; both ends are Kinetis\\Orm\\Date or both DateTimeImmutable");
+        }
+
+        if ($ends['from']['nullable'] !== $ends['to']['nullable']) {
+            throw ResourceCompileException::field($class, $name, "is a date range from \"{$from}\" to \"{$to}\", of which only one is nullable; both ends are set or neither is, so both are nullable or neither");
+        }
+
+        $kind = $ends['from']['type'] === 'date' ? DateBounds::DATE : DateBounds::DATETIME;
+
+        try {
+            $rule = $field->boundsRule($kind);
+        } catch (\InvalidArgumentException $e) {
+            throw ResourceCompileException::field($class, $name, $e->getMessage());
+        }
+
+        if ($rule !== null) {
+            $array['rules'][] = $rule;
+        }
+
+        $array['range'] = ['kind' => $kind, 'from' => $from, 'to' => $to];
+        $array['rangeColumns'] = ['from' => $ends['from']['column'], 'to' => $ends['to']['column']];
+        $array['nullable'] = $ends['from']['nullable'];
+        $array['valueType'] = $ends['from']['type'];
+
+        return $array;
+    }
+
+    /**
+     * What a date range needs once the form is compiled: neither end is a
+     * field of its own, nor written by another range or flag group.
+     *
+     * @param array<string, mixed> $field
+     * @param array<string, array<string, mixed>> $fields
+     */
+    private static function checkDateRange(string $class, array $field, array $fields): void
+    {
+        $name = $field['name'];
+
+        foreach (self::writtenProperties($field) as $property) {
+            if (isset($fields[$property])) {
+                throw ResourceCompileException::field($class, $name, "maps \"{$property}\", which is also a field of the resource; a range's ends are written by the range alone");
+            }
+
+            foreach ($fields as $other => $candidate) {
+                if ($other !== $name && in_array($property, self::writtenProperties($candidate), true)) {
+                    throw ResourceCompileException::field($class, $name, "maps \"{$property}\", which the field \"{$other}\" writes too; a property is written by one field alone");
+                }
+            }
+        }
     }
 
     /**
@@ -1055,6 +1175,10 @@ final class ResourceCompiler
             return $this->compileChildRepeater($class, $entity, $field, $array, $inverses);
         }
 
+        if ($field instanceof DateRange) {
+            return self::compileDateRange($class, $entity, $field, $array, $properties);
+        }
+
         $property = $properties[$name] ?? throw ResourceCompileException::field($class, $name, "is not a mapped property of {$entity['class']}");
 
         if ($property['target'] !== null) {
@@ -1474,8 +1598,16 @@ final class ResourceCompiler
                 $compiledFields[$name] = self::compileBooleanGroup($class, $field, $compiledFields);
             }
 
+            if (self::isDateRange($field)) {
+                self::checkDateRange($class, $field, $compiledFields);
+            }
+
             if ($field['type'] === 'tag') {
                 self::checkTag($class, $name, $field);
+            }
+
+            if ($field['type'] === 'code' && ($field['valueType'] ?? null) !== 'string') {
+                throw ResourceCompileException::field($class, $name, 'is a code field, which stores its text in a string property, not ' . ($field['valueType'] ?? 'none'));
             }
 
             if ($field['type'] === 'repeater') {
@@ -1686,12 +1818,12 @@ final class ResourceCompiler
     private static function creation(array $entity, array $entityProperties, array $fields, array $timestamps): array
     {
         $creates = static fn (array $field): bool => $field['readonly'] !== true && in_array(Field::VIEW_CREATE, $field['views'], true);
-        // a flag group in columns mode writes each flag's property
+        // a flag group in columns mode writes each flag's property, a date range its two ends
         $flags = [];
 
         foreach ($fields as $field) {
-            if (self::isFlagColumns($field) && $creates($field)) {
-                $flags = [...$flags, ...array_keys($field['flags'])];
+            if ($creates($field)) {
+                $flags = [...$flags, ...self::writtenProperties($field)];
             }
         }
 
@@ -2310,7 +2442,7 @@ final class ResourceCompiler
     private function firstStringField(array $fields): ?string
     {
         foreach ($fields as $name => $field) {
-            if (($field['valueType'] ?? null) === 'string' && ($field['enum'] ?? null) === null && !in_array($field['type'], ['password', 'json', 'keyValue', 'select', 'country', 'booleanGroup', 'file', 'image', 'color', 'richtext', 'markdown', 'text'], true)) {
+            if (($field['valueType'] ?? null) === 'string' && ($field['enum'] ?? null) === null && !in_array($field['type'], ['password', 'json', 'keyValue', 'select', 'country', 'booleanGroup', 'file', 'image', 'color', 'richtext', 'markdown', 'text', 'code'], true)) {
                 return $name;
             }
         }

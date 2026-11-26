@@ -19,6 +19,7 @@ const decimals = computed(() => {
         :precision="decimals"
         :step="decimals > 0 ? 1 / 10 ** decimals : 1"
         :hint="field.help ?? undefined"
+        :placeholder="field.placeholder ?? undefined"
         :persistent-hint="!!field.help"
         control-variant="stacked"
     />

@@ -310,7 +310,16 @@
                     "create",
                     "update"
                 ],
-                "rules": [],
+                "rules": [
+                    {
+                        "constraint": "Kinetis\\Vector\\Validation\\DateBounds",
+                        "args": [
+                            "date",
+                            "2010-01-01",
+                            "today"
+                        ]
+                    }
+                ],
                 "props": [],
                 "summary": null,
                 "default": null,
@@ -4747,6 +4756,7 @@
                     "required": [],
                     "disabled": []
                 },
+                "placeholder": "A unique stock code, such as KB-0042",
                 "column": "sku",
                 "nullable": false,
                 "valueType": "string",
@@ -5673,6 +5683,55 @@
                 ]
             },
             {
+                "name": "promotion",
+                "type": "dateRange",
+                "label": "Promotion",
+                "sortable": false,
+                "searchable": false,
+                "filterable": false,
+                "readonly": false,
+                "inline": false,
+                "unique": false,
+                "help": null,
+                "component": null,
+                "views": [
+                    "show",
+                    "create",
+                    "update"
+                ],
+                "rules": [
+                    {
+                        "constraint": "Kinetis\\Vector\\Validation\\DateBounds",
+                        "args": [
+                            "date",
+                            "2020-01-01",
+                            null
+                        ]
+                    }
+                ],
+                "props": [],
+                "summary": null,
+                "default": null,
+                "hasDefault": false,
+                "conditions": {
+                    "visible": [],
+                    "required": [],
+                    "disabled": []
+                },
+                "range": {
+                    "kind": "date",
+                    "from": "promotionStartsOn",
+                    "to": "promotionEndsOn"
+                },
+                "rangeColumns": {
+                    "from": "promotion_starts_on",
+                    "to": "promotion_ends_on"
+                },
+                "nullable": true,
+                "valueType": "date",
+                "operators": []
+            },
+            {
                 "name": "createdAt",
                 "type": "datetime",
                 "label": "Created at",
@@ -5989,6 +6048,17 @@
                                     "collapsed": false,
                                     "columns": null,
                                     "span": null,
+                                    "name": "promotion",
+                                    "children": null
+                                },
+                                {
+                                    "kind": "field",
+                                    "label": null,
+                                    "description": null,
+                                    "collapsible": false,
+                                    "collapsed": false,
+                                    "columns": null,
+                                    "span": null,
                                     "name": "tags",
                                     "children": null
                                 }
@@ -6260,6 +6330,17 @@
                                     "collapsed": false,
                                     "columns": null,
                                     "span": null,
+                                    "name": "promotion",
+                                    "children": null
+                                },
+                                {
+                                    "kind": "field",
+                                    "label": null,
+                                    "description": null,
+                                    "collapsible": false,
+                                    "collapsed": false,
+                                    "columns": null,
+                                    "span": null,
                                     "name": "tags",
                                     "children": null
                                 }
@@ -6386,6 +6467,7 @@
                 "channels",
                 "keywords",
                 "releasedAt",
+                "promotion",
                 "createdAt",
                 "updatedAt"
             ],
@@ -6494,6 +6576,18 @@
                 "nullable": true,
                 "hasDefault": true,
                 "type": "timestamp"
+            },
+            "promotionStartsOn": {
+                "kind": "column",
+                "nullable": true,
+                "hasDefault": true,
+                "type": "date"
+            },
+            "promotionEndsOn": {
+                "kind": "column",
+                "nullable": true,
+                "hasDefault": true,
+                "type": "date"
             },
             "category": {
                 "kind": "belongsTo",
@@ -8343,6 +8437,45 @@
                 ]
             },
             {
+                "name": "routingRules",
+                "type": "code",
+                "label": "Routing rules",
+                "sortable": false,
+                "searchable": false,
+                "filterable": false,
+                "readonly": false,
+                "inline": false,
+                "unique": false,
+                "help": "Which tickets the team picks up first, and when they escalate.",
+                "component": null,
+                "views": [
+                    "index",
+                    "show",
+                    "create",
+                    "update"
+                ],
+                "rules": [],
+                "props": [],
+                "summary": null,
+                "default": null,
+                "hasDefault": false,
+                "conditions": {
+                    "visible": [],
+                    "required": [],
+                    "disabled": []
+                },
+                "code": {
+                    "language": "yaml",
+                    "lineNumbers": true,
+                    "rows": 8
+                },
+                "column": "routing_rules",
+                "nullable": true,
+                "valueType": "string",
+                "enum": null,
+                "operators": []
+            },
+            {
                 "name": "createdAt",
                 "type": "datetime",
                 "label": "Created at",
@@ -8469,6 +8602,7 @@
             "slug": "slug",
             "email": "email",
             "countries": "countries",
+            "routingRules": "routing_rules",
             "createdAt": "created_at",
             "updatedAt": "updated_at"
         },
@@ -8479,6 +8613,7 @@
                 "slug",
                 "email",
                 "countries",
+                "routingRules",
                 "createdAt",
                 "updatedAt",
                 "agents"
@@ -8520,6 +8655,7 @@
                 "slug",
                 "email",
                 "countries",
+                "routingRules",
                 "createdAt",
                 "updatedAt",
                 "agents"
@@ -8557,6 +8693,12 @@
                 "nullable": true,
                 "hasDefault": true,
                 "type": "json"
+            },
+            "routingRules": {
+                "kind": "column",
+                "nullable": true,
+                "hasDefault": true,
+                "type": "string"
             },
             "createdAt": {
                 "kind": "column",
@@ -12597,6 +12739,7 @@
                     "required": [],
                     "disabled": []
                 },
+                "placeholder": "name@example.com",
                 "meta": {
                     "ai.send": false
                 },

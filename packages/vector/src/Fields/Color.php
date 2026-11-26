@@ -17,6 +17,12 @@ final class Color extends Field
         return 'color';
     }
 
+    #[\Override]
+    protected function hasTextBox(): bool
+    {
+        return true;
+    }
+
     /** @return array<string, mixed> */
     #[\Override]
     public function toArray(): array

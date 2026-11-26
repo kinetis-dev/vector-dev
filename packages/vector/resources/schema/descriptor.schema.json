@@ -284,7 +284,9 @@
                         "computed",
                         "richtext",
                         "repeater",
-                        "tag"
+                        "tag",
+                        "code",
+                        "dateRange"
                     ]
                 },
                 "label": {
@@ -363,6 +365,10 @@
                         "string",
                         "null"
                     ]
+                },
+                "placeholder": {
+                    "description": "The hint the input shows inside its empty text box (placeholder()). Absent when the field declares none.",
+                    "type": "string"
                 },
                 "component": {
                     "type": [
@@ -691,6 +697,65 @@
                                     "link"
                                 ]
                             }
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "range": {
+                    "description": "A date range: the properties holding its two ends and whether they are days (`date`) or instants (`datetime`). Its value is `{from, to}`, both set and `to` never before `from`, or null.",
+                    "type": "object",
+                    "required": [
+                        "kind",
+                        "from",
+                        "to"
+                    ],
+                    "properties": {
+                        "kind": {
+                            "enum": [
+                                "date",
+                                "datetime"
+                            ]
+                        },
+                        "from": {
+                            "type": "string"
+                        },
+                        "to": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "code": {
+                    "description": "A code field's editor: the language it highlights (`plain` highlights nothing), whether it numbers its lines, and how many lines it shows before it scrolls. The value is the text itself.",
+                    "type": "object",
+                    "required": [
+                        "language",
+                        "lineNumbers",
+                        "rows"
+                    ],
+                    "properties": {
+                        "language": {
+                            "enum": [
+                                "plain",
+                                "json",
+                                "html",
+                                "css",
+                                "javascript",
+                                "typescript",
+                                "sql",
+                                "php",
+                                "yaml",
+                                "markdown",
+                                "xml"
+                            ]
+                        },
+                        "lineNumbers": {
+                            "type": "boolean"
+                        },
+                        "rows": {
+                            "type": "integer",
+                            "minimum": 2,
+                            "maximum": 40
                         }
                     },
                     "additionalProperties": false

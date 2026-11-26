@@ -52,6 +52,12 @@ final class Currency extends Field
         return 'currency';
     }
 
+    #[\Override]
+    protected function hasTextBox(): bool
+    {
+        return true;
+    }
+
     /**
      * The codes a value may take, in the order the list offers them.
      *

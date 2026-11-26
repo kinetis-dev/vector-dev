@@ -8,6 +8,7 @@ return [
     '30 days' => '30 días',
     '7 days' => '7 días',
     '90 days' => '90 días',
+    'A unique stock code, such as KB-0042' => 'Un código de inventario único, como KB-0042',
     'Access' => 'Acceso',
     'Active' => 'Activo',
     'Address line' => 'Dirección',

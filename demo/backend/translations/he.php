@@ -8,6 +8,7 @@ return [
     '30 days' => '30 ימים',
     '7 days' => '7 ימים',
     '90 days' => '90 ימים',
+    'A unique stock code, such as KB-0042' => 'קוד מלאי ייחודי, למשל KB-0042',
     'Access' => 'גישה',
     'Active' => 'פעיל',
     'Address line' => 'שורת כתובת',

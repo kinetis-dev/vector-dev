@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { SubmitEventPromise } from 'vuetify'
 import type { VectorField, VectorFieldState, VectorLayoutNode, VectorRecord, VectorResource } from '#vector/app/types/vector'
-import { type Violation, violationsOf } from '#vector/app/utils/internal/violations'
+import { type Violation, violationsOf, violationText } from '#vector/app/utils/internal/violations'
 import { childRepeater } from '#vector/app/utils/internal/repeater'
 
 // A create or edit form generated from the descriptor: one input per
@@ -86,6 +86,8 @@ start()
 function defaultFor(field: VectorField): unknown {
     if (field.type === 'boolean') return false
     if (['manyToMany', 'repeater', 'tag'].includes(field.type)) return []
+    // a date range is both of its ends, each empty until set
+    if (field.type === 'dateRange') return { from: null, to: null }
     return null
 }
 
@@ -143,7 +145,7 @@ async function allRelatedIds(id: string | number, field: VectorField): Promise<u
     }
 }
 
-const wide = (field: VectorField) => ['markdown', 'richtext', 'text', 'json', 'keyValue', 'repeater'].includes(field.type)
+const wide = (field: VectorField) => ['markdown', 'richtext', 'text', 'json', 'code', 'keyValue', 'repeater'].includes(field.type)
 
 /** Fields the browser's own rules refused on the last submit, by the input id each carries. */
 const clientErrors = ref<string[]>([])
@@ -252,11 +254,13 @@ function showViolation(violation: Violation) {
     const repeated = violation.path.length >= 2 && fields.value.some(f => f.name === violation.path[0] && f.type === 'repeater')
     const key = repeated ? violation.path.slice(0, 3).join('.') : String(violation.path[0] ?? '')
 
+    const message = violationText(violation)
+
     if (key && (key in values || repeated)) {
         serverErrors[key] ??= []
-        serverErrors[key].push(`${violation.message.charAt(0).toUpperCase()}${violation.message.slice(1)}`)
+        serverErrors[key].push(`${message.charAt(0).toUpperCase()}${message.slice(1)}`)
     } else {
-        formError.value = violation.message
+        formError.value = message
     }
 }
 

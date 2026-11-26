@@ -43,6 +43,12 @@ final class RichText extends Field
         return 'richtext';
     }
 
+    #[\Override]
+    protected function hasTextBox(): bool
+    {
+        return true;
+    }
+
     /** @param list<string> $features */
     public function features(array $features): self
     {

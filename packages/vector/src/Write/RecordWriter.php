@@ -144,7 +144,7 @@ final readonly class RecordWriter
                 continue;
             }
 
-            if (self::comparable($current[$name] ?? null, $depth) !== self::comparable($change['to'] ?? null, $depth)) {
+            if (self::comparable(self::ends($field, $current[$name] ?? null), $depth) !== self::comparable(self::ends($field, $change['to'] ?? null), $depth)) {
                 $changedSince[] = $field['label'];
 
                 continue;
@@ -1429,6 +1429,20 @@ final readonly class RecordWriter
         }
 
         return array_values(is_array($value) ? $value : iterator_to_array($value));
+    }
+
+    /**
+     * A date range's value with its ends in one order, from then to: the
+     * audit's JSON column may keep them in another (MySQL sorts its keys).
+     *
+     * @param array<string, mixed> $field
+     */
+    private static function ends(array $field, mixed $value): mixed
+    {
+        // an audit entry's value arrives as the object its JSON column decoded to
+        $range = $value instanceof \stdClass ? get_object_vars($value) : $value;
+
+        return ResourceCompiler::isDateRange($field) && is_array($range) ? ['from' => $range['from'] ?? null, 'to' => $range['to'] ?? null] : $value;
     }
 
     /**

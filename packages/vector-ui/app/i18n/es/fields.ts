@@ -76,6 +76,15 @@ export default {
         lessThanOrEqual: 'Debe ser como máximo {limit}',
         invalidFormat: 'Formato no válido',
         notAllowed: 'Valor no permitido',
+        minDate: 'Debe ser el {limit} o posterior',
+        maxDate: 'Debe ser el {limit} o anterior',
+    },
+    dateRange: {
+        from: 'Desde',
+        to: 'Hasta',
+        between: '{from} a {to}',
+        incomplete: 'Indica ambos extremos del intervalo, o ninguno',
+        reversed: 'El final no puede ser anterior al inicio',
     },
     rows: {
         add: 'Añadir fila',

@@ -76,6 +76,15 @@ export default {
         lessThanOrEqual: 'Должно быть не больше {limit}',
         invalidFormat: 'Неверный формат',
         notAllowed: 'Недопустимое значение',
+        minDate: 'Должно быть не раньше {limit}',
+        maxDate: 'Должно быть не позже {limit}',
+    },
+    dateRange: {
+        from: 'С',
+        to: 'По',
+        between: 'с {from} по {to}',
+        incomplete: 'Укажите оба конца периода или ни одного',
+        reversed: 'Конец не может быть раньше начала',
     },
     rows: {
         add: 'Добавить строку',

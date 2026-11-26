@@ -76,6 +76,15 @@ export default {
         lessThanOrEqual: 'Має бути не більше {limit}',
         invalidFormat: 'Неправильний формат',
         notAllowed: 'Недопустиме значення',
+        minDate: 'Має бути не раніше {limit}',
+        maxDate: 'Має бути не пізніше {limit}',
+    },
+    dateRange: {
+        from: 'З',
+        to: 'По',
+        between: 'з {from} по {to}',
+        incomplete: 'Вкажіть обидва кінці періоду або жодного',
+        reversed: 'Кінець не може бути раніше початку',
     },
     rows: {
         add: 'Додати рядок',

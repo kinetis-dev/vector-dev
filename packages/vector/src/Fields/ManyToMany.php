@@ -13,6 +13,12 @@ final class ManyToMany extends RelationField
     }
 
     #[\Override]
+    protected function hasTextBox(): bool
+    {
+        return true;
+    }
+
+    #[\Override]
     public function mapsColumn(): bool
     {
         return false;

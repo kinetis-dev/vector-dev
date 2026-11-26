@@ -40,6 +40,7 @@ function input(value: string) {
         :suffix="currency ?? undefined"
         :inputmode="digits > 0 ? 'decimal' : 'numeric'"
         :hint="field.help ?? undefined"
+        :placeholder="field.placeholder ?? undefined"
         :persistent-hint="!!field.help"
         @update:model-value="input"
         @blur="text = format(model)"

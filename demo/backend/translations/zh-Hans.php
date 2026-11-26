@@ -8,6 +8,7 @@ return [
     '30 days' => '30 天',
     '7 days' => '7 天',
     '90 days' => '90 天',
+    'A unique stock code, such as KB-0042' => '唯一的库存编码，例如 KB-0042',
     'Access' => '访问权限',
     'Active' => '有效',
     'Address line' => '地址',

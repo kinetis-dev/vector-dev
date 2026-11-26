@@ -12,6 +12,12 @@ final class Slug extends Field
         return 'slug';
     }
 
+    #[\Override]
+    protected function hasTextBox(): bool
+    {
+        return true;
+    }
+
     public function from(string $field): static
     {
         return $this->props(['from' => $field]);

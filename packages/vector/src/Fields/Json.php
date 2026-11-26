@@ -11,4 +11,10 @@ final class Json extends Field
     {
         return 'json';
     }
+
+    #[\Override]
+    protected function hasTextBox(): bool
+    {
+        return true;
+    }
 }

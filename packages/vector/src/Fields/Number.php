@@ -12,6 +12,12 @@ final class Number extends Field
         return 'number';
     }
 
+    #[\Override]
+    protected function hasTextBox(): bool
+    {
+        return true;
+    }
+
     /** A decimal with this many fraction digits; without it the number is an integer. */
     public function decimals(int $decimals): static
     {

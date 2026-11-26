@@ -185,6 +185,12 @@ final readonly class DemoSeedCommand
                 ],
                 self::someOf(array_combine(ProductResource::KEYWORDS, ProductResource::KEYWORDS), $i * 3),
             );
+            // a date range: every third product is on promotion, some of them past, some running, some to come
+            if ($i % 3 === 0) {
+                $start = (new DateTimeImmutable('today', $utc))->modify(($i % 60 - 30) . ' days');
+                $product->promote(Date::fromString($start->format('Y-m-d')), Date::fromString($start->modify('+' . (7 + $i % 15) . ' days')->format('Y-m-d')));
+            }
+
             $roll = mt_rand(1, 10);
 
             if ($roll <= 7) {

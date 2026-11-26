@@ -8,6 +8,7 @@ return [
     '30 days' => '30일',
     '7 days' => '7일',
     '90 days' => '90일',
+    'A unique stock code, such as KB-0042' => '고유한 재고 코드(예: KB-0042)',
     'Access' => '접근 권한',
     'Active' => '활성',
     'Address line' => '주소',

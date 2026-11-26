@@ -76,6 +76,15 @@ export default {
         lessThanOrEqual: 'Deve ser no máximo {limit}',
         invalidFormat: 'Formato inválido',
         notAllowed: 'Valor não permitido',
+        minDate: 'Deve ser em {limit} ou depois',
+        maxDate: 'Deve ser em {limit} ou antes',
+    },
+    dateRange: {
+        from: 'De',
+        to: 'Até',
+        between: '{from} a {to}',
+        incomplete: 'Informe as duas pontas do período, ou nenhuma',
+        reversed: 'O fim não pode ser antes do início',
     },
     rows: {
         add: 'Adicionar linha',

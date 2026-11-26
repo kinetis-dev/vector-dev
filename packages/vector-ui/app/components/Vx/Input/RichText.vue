@@ -34,7 +34,7 @@ async function mentionItems(query: string) {
     return (await client.options(rich.value.mentions, query)).data.slice(0, 8).map(o => ({ id: o.id, label: o.label }))
 }
 
-const extensions = richTextExtensions({ features: rich.value.features, placeholder: props.field.help ?? undefined, imageSource, mentionItems, custom })
+const extensions = richTextExtensions({ features: rich.value.features, placeholder: props.field.placeholder ?? undefined, imageSource, mentionItems, custom })
 let emitting = false
 
 const editor = useEditor({

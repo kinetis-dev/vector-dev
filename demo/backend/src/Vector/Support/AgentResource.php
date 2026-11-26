@@ -30,7 +30,7 @@ final class AgentResource extends VectorResource
             BelongsTo::to('team', TeamResource::class)->sortable()->filterable(),
             Select::make('role')->of(AgentRole::class)->colors(['manager' => 'primary', 'lead' => 'info', 'agent' => 'grey'])->sortable()->filterable(),
             Boolean::make('isActive', 'Active')->sortable()->filterable(),
-            Date::make('joinedOn', 'Joined')->sortable()->filterable(),
+            Date::make('joinedOn', 'Joined')->minDate('2010-01-01')->maxDate('today')->sortable()->filterable(),
             DateTime::make('createdAt')->readonly()->hideFromForms()->hideFromIndex(),
             DateTime::make('updatedAt')->readonly()->hideFromForms()->hideFromIndex(),
         ];

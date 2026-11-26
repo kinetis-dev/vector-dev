@@ -76,6 +76,15 @@ export default {
         lessThanOrEqual: 'Must be at most {limit}',
         invalidFormat: 'Invalid format',
         notAllowed: 'Not an allowed value',
+        minDate: 'Must be on or after {limit}',
+        maxDate: 'Must be on or before {limit}',
+    },
+    dateRange: {
+        from: 'From',
+        to: 'To',
+        between: '{from} to {to}',
+        incomplete: 'Set both ends of the range, or neither',
+        reversed: 'The end must not be before the start',
     },
     rows: {
         add: 'Add row',

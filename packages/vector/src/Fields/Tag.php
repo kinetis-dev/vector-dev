@@ -41,6 +41,12 @@ final class Tag extends Field
         return 'tag';
     }
 
+    #[\Override]
+    protected function hasTextBox(): bool
+    {
+        return true;
+    }
+
     /**
      * Values the input proposes as the user types: a list, or a closure
      * returning one, run once when the resource compiles. They never

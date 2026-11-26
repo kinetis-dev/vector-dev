@@ -14,6 +14,7 @@ use Kinetis\Validation\Constraint;
 use Kinetis\Validation\Violation;
 use Kinetis\Vector\Auth\PasswordHasherInterface;
 use Kinetis\Vector\Database\JsonDepth;
+use Kinetis\Vector\Fields\DateRange;
 use Kinetis\Vector\Fields\KeyValue;
 use Kinetis\Vector\Fields\Tag;
 use Kinetis\Vector\Query\ResourceService;
@@ -69,6 +70,7 @@ final readonly class ValueConverter
             'booleanGroup' => self::flags($field, $raw),
             'tag' => self::tags($field, $raw),
             'repeater' => $this->rows($field, $raw),
+            'dateRange' => $this->range($field, $raw),
             'currency' => self::currency($field, $raw),
             'password' => $this->password($field, $raw),
             default => $this->scalar($field, $raw),
@@ -131,6 +133,13 @@ final readonly class ValueConverter
             return self::currency($field, $raw);
         }
 
+        // an imported cell holds a date range as an ISO 8601 interval, `from/to`, as an export writes it
+        if ($field['type'] === 'dateRange') {
+            $ends = explode(DateRange::SEPARATOR, $raw);
+
+            return count($ends) === 2 ? ['from' => trim($ends[0]), 'to' => trim($ends[1])] : throw self::mismatch('a date range as from/to');
+        }
+
         // a cell of tags, as JSON or separated by `|`, as a multiple select's
         if ($field['type'] === 'tag') {
             return array_map(strval(...), self::cellList($raw));
@@ -189,6 +198,11 @@ final readonly class ValueConverter
     public function violationsOfRules(array $field, mixed $raw): array
     {
         $violations = [];
+
+        // a date range with neither end is no value, which required() refuses
+        if (($field['type'] ?? null) === 'dateRange' && is_array($raw) && self::blank($raw['from'] ?? null) && self::blank($raw['to'] ?? null)) {
+            $raw = null;
+        }
 
         foreach ($field['rules'] as $rule) {
             $class = $rule['constraint'];
@@ -459,6 +473,97 @@ final readonly class ValueConverter
         }
 
         return $rows;
+    }
+
+    /**
+     * A date range: `{from, to}`, each a day or an instant as the range
+     * holds them, or no range. Both ends are set or neither is (no range,
+     * where the properties may be empty), and `to` is never before
+     * `from`. Each problem is reported at its end.
+     *
+     * @param array<string, mixed> $field
+     * @return array{from: Date|DateTimeImmutable, to: Date|DateTimeImmutable}|null
+     * @throws InputViolation
+     */
+    private function range(array $field, mixed $raw): ?array
+    {
+        self::rangeShape($raw);
+
+        $from = $raw['from'] ?? null;
+        $to = $raw['to'] ?? null;
+
+        if (self::blank($from) && self::blank($to)) {
+            return ($field['nullable'] ?? false) === true ? null : throw new InputViolation(new Violation([], 'null_not_allowed', 'may not be null.'));
+        }
+
+        if (self::blank($from) || self::blank($to)) {
+            $missing = self::blank($from) ? 'from' : 'to';
+
+            throw new InputViolation(new Violation([$missing], 'range_incomplete', 'is required when the other end of the range is set.'));
+        }
+
+        $kind = ['type' => $field['range']['kind']];
+        $violations = [];
+        $start = $this->end($kind, $from, 'from', $violations);
+        $end = $this->end($kind, $to, 'to', $violations);
+
+        if ($start === null || $end === null || $violations !== []) {
+            throw $violations === [] ? self::mismatch('a date range') : InputViolation::of($violations);
+        }
+
+        // both as the text a JSON document holds them: a day, or a UTC instant to the millisecond, which sort as they compare
+        $first = (string) self::plain($kind, $start);
+
+        if ((string) self::plain($kind, $end) < $first) {
+            throw new InputViolation(new Violation(['to'], 'range_reversed', 'must not be before the start of the range.', ['from' => $first]));
+        }
+
+        return ['from' => $start, 'to' => $end];
+    }
+
+    /**
+     * A date range is sent as an object whose keys are only `from` and `to`.
+     *
+     * @phpstan-assert array<array-key, mixed> $raw
+     * @psalm-assert array<array-key, mixed> $raw
+     * @throws InputViolation
+     */
+    private static function rangeShape(mixed $raw): void
+    {
+        if (!is_array($raw) || ($raw !== [] && array_is_list($raw))) {
+            throw self::mismatch('an object of from and to');
+        }
+
+        $unexpected = array_diff(array_map(strval(...), array_keys($raw)), ['from', 'to']);
+
+        if ($unexpected !== []) {
+            throw new InputViolation(new Violation([reset($unexpected)], 'unexpected_field', 'is not an end of a date range; send from and to.'));
+        }
+    }
+
+    /**
+     * One end of a date range as its kind holds it, or null with what is
+     * wrong with it added to $violations at that end.
+     *
+     * @param array{type: mixed} $kind
+     * @param list<Violation> $violations
+     * @param-out list<Violation> $violations
+     */
+    private function end(array $kind, mixed $value, string $end, array &$violations): Date|DateTimeImmutable|null
+    {
+        try {
+            return $kind['type'] === 'date' ? $this->day($value) : $this->instant($value);
+        } catch (InputViolation $e) {
+            $violations[] = $e->violation->under($end);
+
+            return null;
+        }
+    }
+
+    /** Whether one end of a date range is left empty. */
+    private static function blank(mixed $value): bool
+    {
+        return $value === null || $value === '';
     }
 
     /**

@@ -167,6 +167,9 @@
                 ],
                 "required": false,
                 "nullable": true,
+                "rules": [
+                    "DateBounds(\"date\", \"2010-01-01\", \"today\")"
+                ],
                 "filter": [
                     "eq",
                     "ne",
@@ -1282,6 +1285,7 @@
                 "label": "SKU",
                 "type": "string",
                 "valueType": "string",
+                "placeholder": "A unique stock code, such as KB-0042",
                 "writable": [
                     "create",
                     "update"
@@ -1729,6 +1733,22 @@
                 ]
             },
             {
+                "name": "promotion",
+                "label": "Promotion",
+                "type": "dateRange",
+                "valueType": "date",
+                "format": "an object {\"from\": \"YYYY-MM-DD\", \"to\": \"YYYY-MM-DD\"}, both set and to never before from, or null for no range",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true,
+                "rules": [
+                    "DateBounds(\"date\", \"2020-01-01\", null)"
+                ]
+            },
+            {
                 "name": "createdAt",
                 "label": "Created at",
                 "type": "datetime",
@@ -2016,6 +2036,20 @@
                 ],
                 "filterHelp": "any: holds at least one of the comma-separated option values; all: holds every one of them",
                 "choices": "249 values, such as AD, AE, AF, AG, AI"
+            },
+            {
+                "name": "routingRules",
+                "label": "Routing rules",
+                "type": "code",
+                "valueType": "string",
+                "format": "source text in yaml",
+                "help": "Which tickets the team picks up first, and when they escalate.",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true
             },
             {
                 "name": "createdAt",
@@ -2970,6 +3004,7 @@
                 "label": "Email",
                 "type": "email",
                 "valueType": "string",
+                "placeholder": "name@example.com",
                 "writable": [
                     "create",
                     "update"

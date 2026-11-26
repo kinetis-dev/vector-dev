@@ -76,6 +76,15 @@ export default {
         lessThanOrEqual: 'يجب ألا تزيد القيمة على {limit}',
         invalidFormat: 'تنسيق غير صالح',
         notAllowed: 'قيمة غير مسموح بها',
+        minDate: 'يجب أن يكون في {limit} أو بعده',
+        maxDate: 'يجب أن يكون في {limit} أو قبله',
+    },
+    dateRange: {
+        from: 'من',
+        to: 'إلى',
+        between: '{from} إلى {to}',
+        incomplete: 'حدّد طرفي النطاق كليهما أو لا تحدد أيًا منهما',
+        reversed: 'لا يجوز أن تكون النهاية قبل البداية',
     },
     rows: {
         add: 'إضافة صف',

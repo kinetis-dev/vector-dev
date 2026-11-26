@@ -60,6 +60,7 @@ final readonly class RowSerializer
                 'json' => self::json($name, $row[$field['column']] ?? null, $depth ??= $this->depth->ofRecord($resource)),
                 'select', 'country' => self::select($name, $field, $row[$field['column']] ?? null, $depth ??= $this->depth->ofRecord($resource)),
                 'booleanGroup' => self::flags($name, $field, $row, $depth ??= $this->depth->ofRecord($resource)),
+                'dateRange' => $this->range($field, $row),
                 default => $this->scalar($field, $row[$field['column']] ?? null),
             };
         }
@@ -255,6 +256,23 @@ final readonly class RowSerializer
         }
 
         return $flags;
+    }
+
+    /**
+     * A date range's `{from, to}` read from its two ends' columns, each
+     * as a Date or DateTime field reads its own; null when neither is set.
+     *
+     * @param array<string, mixed> $field
+     * @param array<string, mixed> $row
+     * @return array{from: mixed, to: mixed}|null
+     */
+    private function range(array $field, array $row): ?array
+    {
+        $end = ['type' => $field['range']['kind'], 'valueType' => $field['valueType']];
+        $from = $this->scalar($end, $row[$field['rangeColumns']['from']] ?? null);
+        $to = $this->scalar($end, $row[$field['rangeColumns']['to']] ?? null);
+
+        return $from === null && $to === null ? null : ['from' => $from, 'to' => $to];
     }
 
     /**

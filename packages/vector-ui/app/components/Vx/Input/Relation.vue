@@ -116,7 +116,7 @@ onMounted(async () => {
         no-filter
         :hint="waiting ? t('fields.relation.dependsFirst', { label: noun(dependsOn!.label) }) : (field.help ?? undefined)"
         :persistent-hint="waiting || !!field.help"
-        :placeholder="t('fields.relation.placeholder')"
+        :placeholder="field.placeholder ?? t('fields.relation.placeholder')"
     >
         <template #item="{ props: itemProps, item }">
             <v-list-item v-bind="itemProps" :subtitle="(item as VectorRelationValue).subtitle ?? undefined">

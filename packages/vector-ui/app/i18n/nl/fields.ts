@@ -76,6 +76,15 @@ export default {
         lessThanOrEqual: 'Moet maximaal {limit} zijn',
         invalidFormat: 'Ongeldige notatie',
         notAllowed: 'Geen toegestane waarde',
+        minDate: 'Moet op of na {limit} zijn',
+        maxDate: 'Moet op of voor {limit} zijn',
+    },
+    dateRange: {
+        from: 'Van',
+        to: 'Tot',
+        between: '{from} tot {to}',
+        incomplete: 'Vul beide grenzen van de periode in, of geen van beide',
+        reversed: 'Het einde mag niet voor het begin liggen',
     },
     rows: {
         add: 'Rij toevoegen',

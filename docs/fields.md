@@ -15,14 +15,16 @@ second column.
 | `Id` | `id` | The identifier. Read-only, sortable, never on a form. |
 | `Text`, `Email`, `Url`, `Password`, `Slug`, `Color` | `string`, `email`, `url`, `password`, `slug`, `color` | String columns; `searchable()` allowed. `Slug::from('name')` derives a slug. `Email` must be an address and `Url` an absolute http(s) URL (the admin shows it as a link), unless the field declares an e-mail, URL or pattern rule of its own. `Password`: see [Passwords](#passwords). |
 | `Textarea` | `text` | Long text, edited in a wide input. |
-| `Json` | `json` | A JSON object or array in a JSON column, on a `stdClass`, `?stdClass`, `array\|stdClass` or `array\|stdClass\|null` property (an `array` one is refused); see [JSON columns](#json-columns). Edited as JSON text; on the wire it is the document itself. Never sorted, filtered, searched or summarized. |
+| `Json` | `json` | A JSON object or array in a JSON column, on a `stdClass`, `?stdClass`, `array\|stdClass` or `array\|stdClass\|null` property (an `array` one is refused); see [JSON columns](#json-columns). Edited as JSON text in the [code editor](#code), highlighted as JSON and flagged while it is not a valid object or array; on the wire it is the document itself. Never sorted, filtered, searched or summarized. |
 | `RichText` | `richtext` | Formatted content (headings, lists, links, tables, images) stored as a structured document; see below. |
+| `Code` | `code` | Source text (a snippet of HTML or CSS, a query, a configuration) in a string column, edited in a code editor that highlights its `language()`; see [Code](#code). |
 | `Markdown` | `markdown` | Markdown text for technical content, edited visually or as source; `toolbar([...])`. |
 | `Number` | `number` | Numbers; `decimals(n)`, `step()`. |
 | `Money` | `money` | An amount in the currency's minor units (cents, whole yen); see [Money and currencies](#money-and-currencies). |
 | `Currency` | `currency` | An ISO 4217 code in a string column, chosen from a searchable list that names each code in the UI's language (`EUR · Euro`). The list holds every code, or `allowed(['EUR', 'USD'])`. Codes are stored upper-case, anything else is refused, and it filters like a single select. It starts from `default('EUR')`, else `VECTOR_CURRENCY`. |
 | `Boolean` | `boolean` | True or false. |
-| `Date`, `DateTime` | `date`, `datetime` | A calendar day, `YYYY-MM-DD` on the wire with no time or zone; or an instant, ISO 8601 on the wire in UTC. See {doc}`databases` for `DATE` columns. |
+| `Date`, `DateTime` | `date`, `datetime` | A calendar day, `YYYY-MM-DD` on the wire with no time or zone; or an instant, ISO 8601 on the wire in UTC. `minDate()` and `maxDate()` bound it; see [Date bounds](#date-bounds). See {doc}`databases` for `DATE` columns. |
+| `DateRange` | `dateRange` | A period kept in two date or two date-time properties, `{"from": …, "to": …}` on the wire; see [DateRange](#daterange). |
 | `Select` | `select` | A choice among fixed options, one value or several with `multiple()`; see [Select](#select). |
 | `BooleanGroup` | `booleanGroup` | Named on/off options shown as one cell and edited as one group of checkboxes, in a bool column each or in one JSON column; see [BooleanGroup](#booleangroup). |
 | `Country` | `country` | An ISO 3166-1 alpha-2 country code, or several: a select over every assigned code; see [Country](#country). |
@@ -40,6 +42,7 @@ Every field takes:
 | Modifier | Effect |
 |---|---|
 | `label()`, `help()` | Its label, and a hint under the input. |
+| `placeholder('Such as KB-0042')` | A hint inside the input's empty text box, translated like the label. Only a field whose input has a text box takes one: text, e-mail, URL, slug, password and colour fields, `Textarea`, `Number`, `Money`, `Json`, `Code`, `Markdown`, `RichText`, `Currency`, `Tag`, `Select` and `Country` (searchable or not), `BelongsTo` and `ManyToMany` (whose input otherwise says "Type to search"). Any other field refuses it with a `LogicException` when it is defined, so a placeholder never goes unseen. `vector_describe` carries it beside `help`. |
 | `required()`, `min()`, `max()`, `rule(Constraint::class, ...)` | Validation, checked by the server and mirrored by the form. Any framework constraint may be used. |
 | `default()` | The value a new record starts with: the create form shows it pre-filled, and a create that leaves the field out takes it, validated like a value that was sent. Action dialogs and settings pages start from defaults too. |
 | `readonly()` | Shown, never written. |
@@ -94,6 +97,98 @@ A filterable field offers the operators its value admits:
 
 A nullable column adds `null` and `nnull`. Collections are never
 filterable. The list grammar and "any of" groups are on {doc}`rest-api`.
+
+## Date bounds
+
+`minDate()` and `maxDate()` give a `Date` or `DateTime` field its earliest
+and latest value, the bound itself included:
+
+```php
+Date::make('joinedOn', 'Joined')->minDate('2010-01-01')->maxDate('today'),
+DateTime::make('publishAt')->minDate('now'),
+```
+
+A bound is a `Kinetis\Orm\Date` (for a date) or a `DateTimeInterface`, a
+string in the field's own format (`YYYY-MM-DD` for a date, ISO 8601 with
+its zone for a date-time, stored as its UTC instant), or a relative
+keyword: `today` for a date, `now` for a date-time. A bound the field does
+not take, and a minimum after the maximum, are refused when the field is
+defined. `min()` and `max()` bound a text's length, so a date field
+refuses them with a `LogicException` that points to `minDate()` and
+`maxDate()`.
+
+The server checks the bounds on every write: create, update, inline and
+bulk edits, action inputs and imports. A value outside them is refused
+with `date_too_early` (its `min` parameter naming the bound as declared,
+`today` included) or `date_too_late` (`max`). A relative bound is
+resolved each time a value is checked, never when the resource compiles,
+so a worker that runs for days still compares with the current day.
+
+`now` is the current instant. `today` is the current calendar day, which
+depends on where one is: the server takes it as the current day anywhere
+on Earth, so a minimum of `today` admits the earliest current day (that
+of UTC-12) and a maximum the latest (that of UTC+14). The form resolves
+`today` to the user's own day in the browser's time zone, which always
+lies within, and uses it for the native control's `min` and `max` and for
+its own check. A date-time's control edits local time and converts it to
+the UTC instant the server compares.
+
+The descriptor carries the bounds as the field's `DateBounds` rule
+(`args`: the kind, the minimum and the maximum, each `null` when not set),
+and `vector_describe` lists it among the field's rules.
+
+## DateRange
+
+`DateRange` edits two properties of the entity as one period:
+
+```php
+DateRange::between('promotion', 'promotionStartsOn', 'promotionEndsOn')->minDate('2020-01-01'),
+```
+
+The second and third arguments name the properties holding the first
+and the last day (or instant); the field's own name is not a property,
+and `make()` throws, since a range needs both. The build reads their
+types from the entity: both `Kinetis\Orm\Date` (a range of days,
+`YYYY-MM-DD`) or both `DateTimeImmutable` (a range of instants,
+ISO 8601 in UTC). It refuses an end that is neither, two ends of
+different types, one nullable end beside one that is not, an end that
+is another field of the resource, and an end another range or flag
+group writes too.
+
+| Value | Meaning |
+|---|---|
+| `{"from": "2026-12-01", "to": "2026-12-24"}` | The period, both ends included. One day is a range from and to that day. |
+| `null`, or `{"from": null, "to": null}` | No range: both properties null. Only a range whose two properties are nullable may be empty; `required()` asks for both ends. |
+
+Both ends are set or neither is: one alone is refused with
+`range_incomplete` at the missing end (`promotion.to`), and an end
+before the start with `range_reversed` at `to`. A range of instants
+compares instants, whatever zone each end was written in. `minDate()`
+and `maxDate()` bound both ends, as on a `Date` or `DateTime` field (see
+[Date bounds](#date-bounds)), and refuse a bound of the other kind when
+the resource compiles. `min()`, `max()` and `placeholder()` are refused.
+
+A write sets both properties together on create, update and bulk edit,
+the audit trail records the range as one value, and a revert puts both
+back. A CSV export writes the range as an ISO 8601 interval in one
+cell, `2026-12-01/2026-12-24` (an empty cell for none), and an import
+reads that cell back: a cell with one end, such as `2026-12-01/`, fails
+its row. An action dialog or a settings group cannot ask for a range:
+it has no entity to keep the two ends in.
+
+A range is never sorted, filtered or summarized as one value:
+`sortable()`, `filterable()` and `summarize()` throw a `LogicException`
+when the field is defined, and so does `unique()`, since a range has no
+column of its own for an import to match rows by. It is not edited inline, cannot be grouped
+by, and no condition (`visibleWhen()` and the others) may test it. To
+sort or filter by one end, declare a `Date` or `DateTime` field for that
+property on a resource of its own.
+
+The form edits a range as two native date or date-time controls side by
+side, the ones the filter bar uses, the end's starting no earlier than
+the start, and a list shows `Dec 1, 2026 to Dec 24, 2026` in the UI's
+language. The descriptor publishes the field's `range`: its `kind`
+(`date` or `datetime`) and the properties `from` and `to` name.
 
 ## Select
 
@@ -278,6 +373,36 @@ names each code in English (in `vector_describe`, OpenAPI and exports);
 the admin shows the name in the UI's language, for each shipped locale,
 from data generated with `scripts/generate-countries.mjs`. The codes
 and names live in `Kinetis\Vector\Support\Countries`.
+
+## Code
+
+`Code` keeps source text in a string property (a `TEXT` column, as a
+`Text` field would) and edits it in a code editor:
+
+```php
+Code::make('routingRules', 'Routing rules')->language('yaml')->rows(8),
+```
+
+| Option | Effect |
+|---|---|
+| `language()` | The highlighting: `plain` (the default, none), `json`, `html`, `css`, `javascript`, `typescript`, `sql`, `php`, `yaml`, `markdown` or `xml`. Any other name is refused when the field is defined. |
+| `lineNumbers(false)` | Turns the gutter's line numbers off, for a short snippet. They are on by default. |
+| `rows(n)` | How many lines the editor shows before it scrolls, 2 to 40 (10 by default). |
+
+None of them changes what is stored: on the wire the value is the text
+as typed, whitespace included, and the server validates it as text
+(`required()`, `max()`, `rule()`), never as the language. It sorts,
+filters and searches as a text column does, and is not edited inline. A
+list shows its first line in monospace, shortened; the record page shows
+it highlighted in a read-only editor.
+
+The editor follows the light and dark theme, is read-only for a
+`readonly()` field and in a disabled form, and shows a violation on its
+frame like any input. Tab moves to the next field, as it does everywhere
+else in the form, and the editor is labelled by the field's label. Code
+reads left to right in a right-to-left layout too. The editor and each
+language's highlighting load only when a form or a record first shows
+one, so pages without a code or JSON field never download them.
 
 ## JSON columns
 

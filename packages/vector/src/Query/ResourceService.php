@@ -1417,8 +1417,8 @@ final readonly class ResourceService
             $columns = [$resource->primaryKeyColumn()];
 
             foreach ($fields as $name) {
-                // a flag group in columns mode reads each flag's column
-                foreach ([$resource->columns()[$name] ?? null, ...array_values($resource->field($name)['flags'] ?? [])] as $column) {
+                // a flag group in columns mode reads each flag's column, a date range both of its ends'
+                foreach ([$resource->columns()[$name] ?? null, ...array_values($resource->field($name)['flags'] ?? []), ...array_values($resource->field($name)['rangeColumns'] ?? [])] as $column) {
                     if (is_string($column) && !in_array($column, $columns, true)) {
                         $columns[] = $column;
                     }

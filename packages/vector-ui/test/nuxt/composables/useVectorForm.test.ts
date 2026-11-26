@@ -22,6 +22,15 @@ describe('initialValue', () => {
         expect(initialValue(field({ name: 'notify', type: 'booleanGroup', nullable: true, options, hasDefault: true, default: { email: true } }))).toEqual({ email: true, sms: false })
     })
 
+    it('is both ends of a date range, empty, which bulk edit and an action dialog start from', () => {
+        const promotion = field({ name: 'promotion', type: 'dateRange', range: { kind: 'date', from: 'promotionStartsOn', to: 'promotionEndsOn' } })
+
+        expect(initialValue(promotion)).toEqual({ from: null, to: null })
+        // a fresh object each time: two forms never share one
+        expect(initialValue(promotion)).not.toBe(initialValue(promotion))
+        expect(initialValue({ ...promotion, hasDefault: true, default: { from: '2026-12-01', to: '2026-12-24' } })).toEqual({ from: '2026-12-01', to: '2026-12-24' })
+    })
+
     it('is null for a nullable flag group without a default', () => {
         const options = [{ value: 'email', label: 'Email', color: null }]
 
@@ -30,6 +39,14 @@ describe('initialValue', () => {
 })
 
 describe('applyViolations', () => {
+    it('shows a date range\'s refusal on the range, in the UI\'s language', () => {
+        const errors: Record<string, string[]> = {}
+
+        applyViolations({ status: 422, data: { errors: [{ path: ['promotion', 'to'], message: 'must not be before the start of the range.', code: 'range_reversed' }] } }, { promotion: { from: '2026-12-02', to: '2026-12-01' } }, errors)
+
+        expect(errors).toEqual({ promotion: ['The end must not be before the start'] })
+    })
+
     const unprocessable = (errors: { path: (string | number)[], message: string }[]) => ({ status: 422, data: { errors } })
 
     it('puts each violation on the field it names, capitalised', () => {

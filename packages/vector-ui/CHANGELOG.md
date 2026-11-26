@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-26
+
+### Added
+
+- A field's `placeholder` shows inside the empty text box of the text,
+  textarea, number, money, JSON, Markdown, rich-text, currency, tag,
+  select (searchable or not) and relation inputs. A relation without one keeps
+  its own "Type to search".
+- A date or date-time field's `DateBounds` rule: the native control's
+  `min` and `max`, and a form rule that compares days as days and
+  instants as instants, with `today` and `now` resolved to the user's
+  own day and instant each time. The server's `date_too_early` and
+  `date_too_late` violations are shown in the UI's language, naming the
+  bound as the user's date.
+- `Vx/Input/Code.vue` and `Vx/Cell/Code.vue` for kinetis/vector's code
+  field, on a CodeMirror 6 editor loaded on demand, with each
+  language's highlighting loaded the first time it is shown. The editor
+  follows the light and dark theme, is read-only for a read-only field
+  and in a disabled form, is labelled by the field, keeps Tab for the
+  page and reads left to right in a right-to-left layout. A list shows
+  the first line in monospace; the record page a read-only highlighted
+  editor.
+- `Vx/Input/DateRange.vue` and `Vx/Cell/DateRange.vue` for kinetis/vector's
+  date range: two native date or date-time controls side by side, the
+  filter bar's, the end's starting no earlier than the start, and a cell
+  reading "from to to" in the UI's language. A new form and bulk edit
+  start it as `{from: null, to: null}` (an action dialog cannot ask for
+  a range). The form refuses
+  one end alone and an end before the start, applies the field's date
+  bounds to both ends, and shows the server's `range_incomplete` and
+  `range_reversed` in the UI's language.
+
+### Changed
+
+- `Vx/Input/Json.vue` edits the document in the code editor, highlighted
+  as JSON, instead of a plain textarea. It still sends the parsed
+  document, and the text with its invalid-JSON message while it is not
+  an object or an array.
+- The rich-text editor's empty-state hint is the field's `placeholder`,
+  no longer its help text, which stays under the input.
+
 ## [0.15.0] - 2026-11-25
 
 ### Added

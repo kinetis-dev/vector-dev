@@ -37,6 +37,8 @@ abstract class Field
 
     protected ?string $help = null;
 
+    protected ?string $placeholder = null;
+
     protected ?string $component = null;
 
     /** @var list<string> */
@@ -169,6 +171,30 @@ abstract class Field
         $this->help = $help;
 
         return $this;
+    }
+
+    /**
+     * The hint the input shows inside its empty text box. Only a field
+     * whose input has a text box takes one: any other refuses it, so a
+     * placeholder never silently goes unseen.
+     *
+     * @throws \LogicException
+     */
+    public function placeholder(string $text): static
+    {
+        if (!$this->hasTextBox()) {
+            throw new \LogicException("\"{$this->name}\": a {$this->type()} field's input has no text box to show a placeholder in.");
+        }
+
+        $this->placeholder = $text;
+
+        return $this;
+    }
+
+    /** Whether the field's input has a text box, which placeholder() fills while it is empty. */
+    protected function hasTextBox(): bool
+    {
+        return false;
     }
 
     /**
@@ -386,7 +412,8 @@ abstract class Field
             'default' => $this->default,
             'hasDefault' => $this->hasDefault,
             'conditions' => $this->conditions,
-        ] + ($this->meta === [] ? [] : ['meta' => $this->meta]);
+        ] + ($this->placeholder === null ? [] : ['placeholder' => $this->placeholder])
+            + ($this->meta === [] ? [] : ['meta' => $this->meta]);
     }
 
     public static function labelFrom(string $name): string

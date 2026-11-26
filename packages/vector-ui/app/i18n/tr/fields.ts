@@ -76,6 +76,15 @@ export default {
         lessThanOrEqual: 'En fazla {limit} olmalı',
         invalidFormat: 'Geçersiz biçim',
         notAllowed: 'İzin verilen bir değer değil',
+        minDate: '{limit} veya sonrası olmalıdır',
+        maxDate: '{limit} veya öncesi olmalıdır',
+    },
+    dateRange: {
+        from: 'Başlangıç',
+        to: 'Bitiş',
+        between: '{from} ile {to} arası',
+        incomplete: 'Aralığın iki ucunu da girin ya da hiçbirini girmeyin',
+        reversed: 'Bitiş, başlangıçtan önce olamaz',
     },
     rows: {
         add: 'Satır ekle',

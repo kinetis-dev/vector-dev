@@ -76,6 +76,15 @@ export default {
         lessThanOrEqual: 'Musi wynosić co najwyżej {limit}',
         invalidFormat: 'Nieprawidłowy format',
         notAllowed: 'Niedozwolona wartość',
+        minDate: 'Musi być {limit} lub później',
+        maxDate: 'Musi być {limit} lub wcześniej',
+    },
+    dateRange: {
+        from: 'Od',
+        to: 'Do',
+        between: '{from} do {to}',
+        incomplete: 'Podaj oba końce zakresu albo żaden',
+        reversed: 'Koniec nie może być przed początkiem',
     },
     rows: {
         add: 'Dodaj wiersz',

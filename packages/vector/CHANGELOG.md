@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-26
+
+### Added
+
+- `Field::placeholder()`: a hint inside the input's empty text box,
+  published as the field's `placeholder` (absent when none is set),
+  translated like its label and carried by `vector_describe`. A field
+  whose input has no text box (`Boolean`, `BooleanGroup`, `Date`,
+  `DateTime`, `File`, `Image`, `KeyValue`, `Repeater`, `Computed`,
+  `Id`, `HasOne`, `HasMany`, `DateRange`) refuses it with a
+  `LogicException` when it is defined.
+- `minDate()` and `maxDate()` on `Date` and `DateTime`: the earliest and
+  latest value, as a `Kinetis\Orm\Date` or `DateTimeInterface`, a
+  string in the field's own format, or the relative `today` (a date)
+  and `now` (a date-time). `Validation\DateBounds` checks them on every
+  write path and refuses a value with `date_too_early` or
+  `date_too_late`, naming the bound as declared. A relative bound is
+  resolved at each check, never at compile time; `today` is the current
+  day anywhere on Earth (UTC-12 for a minimum, UTC+14 for a maximum). A
+  bound the field does not take, or a minimum after the maximum, is
+  refused where it is declared.
+- `Fields\Code`: source text in a string property, edited in a code
+  editor. `language()` picks the highlighting from `Code::LANGUAGES`
+  (`plain`, `json`, `html`, `css`, `javascript`, `typescript`, `sql`,
+  `php`, `yaml`, `markdown`, `xml`) and refuses any other name;
+  `lineNumbers()` and `rows()` (2 to 40) shape the editor. The
+  descriptor carries them as the field's `code`; the value is the text
+  as typed, and `vector_describe` names its language.
+- `Fields\DateRange`: a period kept in two properties,
+  `DateRange::between('promotion', 'promotionStartsOn',
+  'promotionEndsOn')`, both `Kinetis\Orm\Date` or both
+  `DateTimeImmutable` as the build reads them from the entity, nullable
+  only when both are. Its value is `{from, to}` or null: one end alone
+  is `range_incomplete` and an end before the start `range_reversed`,
+  each at its end; `required()` asks for both, and `minDate()` and
+  `maxDate()` bound both. A write fans out to both properties on
+  create, update and bulk edit, a read assembles them, the audit trail
+  records the range as one value, and a CSV export and import hold it
+  as `from/to`. OpenAPI describes the object and `vector_describe` its
+  format. The build refuses an end that is another field or that
+  another range or flag group writes, a condition on a range, and a
+  range in an action dialog or settings group; `sortable()`,
+  `filterable()`, `summarize()` and `unique()` throw, the last because
+  a range has no column of its own to match an import's rows by.
+
+### Changed
+
+- `min()` and `max()` on `Date` and `DateTime` throw a `LogicException`
+  pointing to `minDate()` and `maxDate()`: they bound a text's length.
+
 ## [0.18.0] - 2026-11-25
 
 ### Added

@@ -23,6 +23,12 @@ final class Markdown extends Field
         return 'markdown';
     }
 
+    #[\Override]
+    protected function hasTextBox(): bool
+    {
+        return true;
+    }
+
     /**
      * The toolbar's buttons, from bold, italic, strike, code, heading,
      * list, blockquote, codeBlock, horizontalRule and link. The source

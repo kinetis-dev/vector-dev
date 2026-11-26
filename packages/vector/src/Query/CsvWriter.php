@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kinetis\Vector\Query;
 
+use Kinetis\Vector\Fields\DateRange;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 
 /**
@@ -36,10 +37,15 @@ final class CsvWriter
         $document = new \Kinetis\Vector\RichText\Document();
         $richText = array_filter($fields, static fn (string $name): bool => ($resource->field($name)['type'] ?? null) === 'richtext');
 
+        // a date range exports as the ISO 8601 interval an import reads back, `from/to`
+        $ranges = array_filter($fields, static fn (string $name): bool => ($resource->field($name)['type'] ?? null) === 'dateRange');
+
         foreach ($records as $record) {
-            fputcsv($out, array_map(static fn (string $name): string => self::cell(
-                in_array($name, $richText, true) && is_string($record[$name] ?? null) ? $document->toPlainText($record[$name]) : ($record[$name] ?? null),
-            ), $fields), ',', '"', '\\', "\r\n");
+            fputcsv($out, array_map(static fn (string $name): string => self::cell(match (true) {
+                in_array($name, $richText, true) && is_string($record[$name] ?? null) => $document->toPlainText($record[$name]),
+                in_array($name, $ranges, true) && is_array($record[$name] ?? null) => DateRange::cell($record[$name]),
+                default => $record[$name] ?? null,
+            }), $fields), ',', '"', '\\', "\r\n");
 
             if ($maxBytes !== null && ftell($out) > $maxBytes) {
                 fclose($out);

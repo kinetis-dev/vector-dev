@@ -19,6 +19,7 @@ const items = computed(() => (props.field.options ?? []).map(o => ({ value: Stri
         :error-messages="errorMessages"
         :clearable="field.nullable === true"
         :hint="field.help ?? undefined"
+        :placeholder="field.placeholder ?? undefined"
         :persistent-hint="!!field.help"
         auto-select-first
     />

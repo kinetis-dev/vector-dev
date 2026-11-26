@@ -40,7 +40,9 @@ final readonly class RecordInput
      * @param array<string, mixed> $current the stored record, serialized, when updating
      * A columns-mode flag group is returned under its own name, as the
      * object of every flag, and under each flag's property name, as that
-     * flag's bool: create() and apply() receive both.
+     * flag's bool: create() and apply() receive both. A date range is
+     * returned the same way: as `{from, to}` (or null) under its name,
+     * and each end under its property's.
      *
      * @return array<string, mixed> field name => converted value, for every field the payload named
      * @throws ValidationException
@@ -157,12 +159,31 @@ final readonly class RecordInput
             return [JsonDepth::tooDeep($max)->under($name)];
         }
 
-        // a flag group in columns mode writes each flag's own bool property; the group itself is none
+        self::spread($field, $name, $values);
+
+        return array_map(static fn (Violation $v): Violation => $v->under($name), $this->converter->violationsOfRules($field, $raw));
+    }
+
+    /**
+     * The properties a field's converted value writes besides its own:
+     * a flag group in columns mode writes each flag's bool property, a
+     * date range its two ends' properties.
+     *
+     * @param array<string, mixed> $field
+     * @param array<string, mixed> $values
+     * @param-out array<string, mixed> $values
+     */
+    private static function spread(array $field, string $name, array &$values): void
+    {
         foreach (array_keys($field['flags'] ?? []) as $key) {
             $values[(string) $key] = $values[$name][$key];
         }
 
-        return array_map(static fn (Violation $v): Violation => $v->under($name), $this->converter->violationsOfRules($field, $raw));
+        if (ResourceCompiler::isDateRange($field)) {
+            $range = is_array($values[$name]) ? $values[$name] : ['from' => null, 'to' => null];
+            $values[(string) $field['range']['from']] = $range['from'];
+            $values[(string) $field['range']['to']] = $range['to'];
+        }
     }
 
     /**

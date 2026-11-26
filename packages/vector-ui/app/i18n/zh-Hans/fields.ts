@@ -76,6 +76,15 @@ export default {
         lessThanOrEqual: '必须最多为 {limit}',
         invalidFormat: '格式无效',
         notAllowed: '不是允许的值',
+        minDate: '必须不早于 {limit}',
+        maxDate: '必须不晚于 {limit}',
+    },
+    dateRange: {
+        from: '开始',
+        to: '结束',
+        between: '{from} 至 {to}',
+        incomplete: '请同时设置区间的两端，或都不设置',
+        reversed: '结束不能早于开始',
     },
     rows: {
         add: '添加行',

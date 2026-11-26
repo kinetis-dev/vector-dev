@@ -76,6 +76,15 @@ export default {
         lessThanOrEqual: 'Muss höchstens {limit} sein',
         invalidFormat: 'Ungültiges Format',
         notAllowed: 'Kein zulässiger Wert',
+        minDate: 'Muss am oder nach dem {limit} liegen',
+        maxDate: 'Muss am oder vor dem {limit} liegen',
+    },
+    dateRange: {
+        from: 'Von',
+        to: 'Bis',
+        between: '{from} bis {to}',
+        incomplete: 'Beide Enden des Zeitraums angeben oder keines',
+        reversed: 'Das Ende darf nicht vor dem Beginn liegen',
     },
     rows: {
         add: 'Zeile hinzufügen',

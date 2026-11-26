@@ -8,7 +8,7 @@ export type VectorFieldType =
     | 'select' | 'country' | 'booleanGroup' | 'date' | 'datetime' | 'email' | 'url' | 'password' | 'slug'
     | 'color' | 'json' | 'keyValue' | 'currency' | 'file' | 'image'
     | 'belongsTo' | 'hasOne' | 'hasMany' | 'manyToMany' | 'computed' | 'richtext'
-    | 'repeater' | 'tag'
+    | 'repeater' | 'tag' | 'code' | 'dateRange'
 
 /**
  * A repeater's rows. `json`: a JSON list of objects of `rowFields`.
@@ -47,6 +47,23 @@ export interface VectorRichText {
     /** The stored value is HTML rendered through the schema, not the document. */
     storesHtml: boolean
     maxBytes: number
+}
+
+/** A language a code field highlights: one of Fields\Code::LANGUAGES; `plain` highlights nothing. */
+export type VectorCodeLanguage = 'plain' | 'json' | 'html' | 'css' | 'javascript' | 'typescript' | 'sql' | 'php' | 'yaml' | 'markdown' | 'xml'
+
+/** A code field's editor. */
+export interface VectorCode {
+    language: VectorCodeLanguage
+    lineNumbers: boolean
+    rows: number
+}
+
+/** A date range's ends: days (`date`) or instants (`datetime`), in the properties `from` and `to` name. */
+export interface VectorDateRange {
+    kind: 'date' | 'datetime'
+    from: string
+    to: string
 }
 
 /** What a computed field is shown as. */
@@ -104,6 +121,8 @@ export interface VectorField {
     /** A tag field: free-text strings shown as chips. */
     tags?: VectorTags
     help: string | null
+    /** The hint the input shows inside its empty text box (placeholder()); absent when none. */
+    placeholder?: string
     component: string | null
     views: VectorView[]
     rules: VectorRule[]
@@ -133,6 +152,10 @@ export interface VectorField {
     richtext?: VectorRichText
     /** A Markdown field's toolbar. */
     markdown?: { toolbar: string[] }
+    /** A code field's editor: the language it highlights, its line numbers, and how many lines it shows. */
+    code?: VectorCode
+    /** A date range: whether its ends are days or instants, and the properties holding them. Its value is `{from, to}` or null. */
+    range?: VectorDateRange
 }
 
 /** One comparison against another field of the same form. */

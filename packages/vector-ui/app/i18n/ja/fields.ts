@@ -76,6 +76,15 @@ export default {
         lessThanOrEqual: '{limit} 以下にしてください',
         invalidFormat: '形式が正しくありません',
         notAllowed: '許可されていない値です',
+        minDate: '{limit} 以降にしてください',
+        maxDate: '{limit} 以前にしてください',
+    },
+    dateRange: {
+        from: '開始',
+        to: '終了',
+        between: '{from} 〜 {to}',
+        incomplete: '期間の開始と終了を両方指定するか、どちらも指定しないでください',
+        reversed: '終了は開始より前にできません',
     },
     rows: {
         add: '行を追加',

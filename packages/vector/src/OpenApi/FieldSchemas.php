@@ -41,6 +41,7 @@ final class FieldSchemas
             'keyValue' => self::nullable(['type' => 'object', 'additionalProperties' => ['type' => 'string']], true),
             'json' => self::nullable(self::document(), $nullable),
             'booleanGroup' => self::nullable(self::flags($field, true), $nullable),
+            'dateRange' => self::nullable(self::range($field), $nullable),
             'computed' => self::nullable(self::computed($field), true),
             // the editor's document, or the stored HTML where the field keeps HTML; a write always sends the document
             'richtext' => self::nullable(['type' => 'string', 'contentMediaType' => ($field['richtext']['storesHtml'] ?? false) === true ? 'text/html' : 'application/json'], $nullable),
@@ -81,6 +82,7 @@ final class FieldSchemas
             'keyValue' => ['type' => 'object', 'additionalProperties' => ['type' => 'string']],
             'json' => self::document(),
             'booleanGroup' => self::flags($field, false),
+            'dateRange' => self::range($field),
             'password' => ['type' => 'string', 'writeOnly' => true],
             default => self::scalar($field),
         };
@@ -114,6 +116,25 @@ final class FieldSchemas
                 default => self::scalar($field),
             },
         };
+    }
+
+    /**
+     * A date range's `{from, to}`, each a day or an instant.
+     *
+     * @param array<string, mixed> $field
+     * @return array<string, mixed>
+     */
+    private static function range(array $field): array
+    {
+        $end = ['type' => 'string', 'format' => ($field['range']['kind'] ?? 'date') === 'date' ? 'date' : 'date-time'];
+
+        return [
+            'type' => 'object',
+            'properties' => ['from' => $end, 'to' => $end],
+            'required' => ['from', 'to'],
+            'additionalProperties' => false,
+            'description' => 'A date range: both ends are set, `to` never before `from`; null for no range.',
+        ];
     }
 
     /**
