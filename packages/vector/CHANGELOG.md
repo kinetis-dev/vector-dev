@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-11-26
+
+### Changed
+
+- Internal: simplifies code flagged by static analysis (nested
+  ternaries, a needless regular expression group, a repeated message
+  and two long methods); no behavior change.
+- `vector:install-ui` installs `@kinetis/vector-ui` 0.16.1 by default.
+
 ## [0.19.0] - 2026-11-26
 
 ### Added
