@@ -53,11 +53,6 @@ describe('VxInputCode', () => {
         expect(wrapper.find('.vx-code').attributes('dir')).toBe('ltr')
         expect(wrapper.find('.cm-lineNumbers').exists()).toBe(true)
 
-        // the label focuses the editor, as a label focuses its input
-        const focus = vi.spyOn(view, 'focus')
-        await wrapper.find('label').trigger('click')
-        expect(focus).toHaveBeenCalledOnce()
-
         type(view, 'assign: least-busy\n')
         expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual(['assign: least-busy\n'])
 

@@ -93,9 +93,6 @@ watch(() => [props.readonly, props.disabled], () => {
     view?.dispatch({ effects: editable.reconfigure(editableState()) })
 })
 
-// the label in the frame around the editor focuses it, as a label focuses its input
-defineExpose({ focus: () => view?.focus() })
-
 onBeforeUnmount(() => {
     view?.destroy()
     view = null

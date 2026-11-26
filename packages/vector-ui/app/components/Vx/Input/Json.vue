@@ -10,7 +10,6 @@ const props = withDefaults(defineProps<{ field: VectorField, rules: ((v: unknown
 const model = defineModel<unknown>()
 const { t } = useVectorT()
 const labelId = useId()
-const editor = useTemplateRef<InstanceType<typeof CodeEditor>>('editor')
 
 const format = (value: unknown): string => (value === null || value === undefined ? '' : typeof value === 'string' ? value : JSON.stringify(value, null, 2))
 const text = ref(format(model.value))
@@ -53,9 +52,8 @@ const messages = computed(() => [...(invalid.value ? [t('fields.json.invalid')] 
     <v-input :model-value="model" :rules="rules" :error-messages="messages" :hint="field.help ?? undefined" :persistent-hint="!!field.help" :disabled="props.disabled" class="vx-code-input">
         <template #default="{ isValid, isDisabled, messagesId }">
             <div class="vx-code-frame" :class="{ 'vx-code-frame--error': isValid.value === false }">
-                <label :id="labelId" class="d-block text-caption text-medium-emphasis px-3 pt-2" @click="editor?.focus()">{{ field.label }}</label>
+                <div :id="labelId" class="text-caption text-medium-emphasis px-3 pt-2">{{ field.label }}</div>
                 <CodeEditor
-                    ref="editor"
                     :model-value="text"
                     language="json"
                     :rows="8"
