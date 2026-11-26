@@ -50,7 +50,7 @@ final class DateRange extends Field
 
     /** @throws LogicException always: a range is declared with the two properties it keeps */
     #[\Override]
-    public static function make(string $name, ?string $label = null): static
+    public static function make(string $name, ?string $label = null): never
     {
         throw new LogicException("\"{$name}\": a date range maps two properties; declare it with them, as in DateRange::between('{$name}', 'startsOn', 'endsOn').");
     }
