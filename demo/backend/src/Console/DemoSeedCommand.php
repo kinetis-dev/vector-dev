@@ -11,6 +11,7 @@ use App\Domain\Order;
 use App\Domain\Product;
 use App\Domain\Tag;
 use App\Domain\User;
+use App\Vector\ProductResource;
 use DateTimeImmutable;
 use DateTimeZone;
 use Kinetis\Console\Attributes\Command;
@@ -170,10 +171,20 @@ final readonly class DemoSeedCommand
             $product->describe(
                 self::descriptionDocument($name, $category->name()),
                 // a key-value field: text values
-                json_encode(['color' => ['black', 'silver', 'white'][mt_rand(0, 2)], 'warrantyMonths' => ['12', '24', '36'][mt_rand(0, 2)]], JSON_THROW_ON_ERROR),
+                (object) ['color' => ['black', 'silver', 'white'][mt_rand(0, 2)], 'warrantyMonths' => ['12', '24', '36'][mt_rand(0, 2)]],
                 mt_rand(0, 3) === 0 ? null : $this->image($i, $colourOf[$category->name()] ?? [96, 96, 96]),
             );
 
+            // a multiple select: some of the channels, in the order the resource lists them
+            $product->sellOn(self::someOf(ProductResource::CHANNELS, $i));
+            // a JSON repeater's rows and a tag list, from the index alone: the random sequence stays as it was
+            $product->specify(
+                $i % 4 === 0 ? null : [
+                    ['label' => 'Warranty', 'value' => (12 * (1 + $i % 3)) . ' months'],
+                    ['label' => 'Made in', 'value' => ['Portugal', 'Germany', 'Vietnam'][$i % 3]],
+                ],
+                self::someOf(array_combine(ProductResource::KEYWORDS, ProductResource::KEYWORDS), $i * 3),
+            );
             $roll = mt_rand(1, 10);
 
             if ($roll <= 7) {
@@ -213,7 +224,10 @@ final readonly class DemoSeedCommand
 
             if (mt_rand(0, 3) !== 0) {
                 [$city, $country] = self::CITIES[array_rand(self::CITIES)];
-                $customer->profile(new CustomerProfile($customer, mt_rand(1, 200) . ' Main Street', $city, (string) mt_rand(1000, 9999), $country, mt_rand(0, 1) === 1));
+                $profile = new CustomerProfile($customer, mt_rand(1, 200) . ' Main Street', $city, (string) mt_rand(1000, 9999), $country, mt_rand(0, 1) === 1);
+                // from the index, so the seeded random sequence stays as it was
+                $profile->reachableBy($i % 3 === 0, $i % 5 === 0);
+                $customer->profile($profile);
             }
 
             $this->entities->persist($customer);
@@ -340,6 +354,27 @@ final readonly class DemoSeedCommand
     private function slug(string $text): string
     {
         return trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($text)), '-');
+    }
+
+    /**
+     * Some of the options' values (none, at times) in the order they are
+     * declared: the bits of $n pick them, so the seeded random sequence
+     * every other value is drawn from stays as it was.
+     *
+     * @param array<string, string> $options value => label
+     * @return list<string>|null
+     */
+    public static function someOf(array $options, int $n): ?array
+    {
+        $some = [];
+
+        foreach (array_keys($options) as $bit => $value) {
+            if (($n >> $bit & 1) === 1) {
+                $some[] = $value;
+            }
+        }
+
+        return $some === [] ? null : $some;
     }
 
     /** A product description as the admin's rich-text editor stores it: its JSON document. */

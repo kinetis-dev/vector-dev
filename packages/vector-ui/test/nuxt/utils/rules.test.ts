@@ -180,6 +180,17 @@ describe('fieldState', () => {
         expect(at('nnull', null, 'x')).toBe(true)
     })
 
+    it('treats a list (a multiple select\'s values) as empty only when it holds nothing', () => {
+        const at = (op: 'null' | 'nnull', actual: unknown) =>
+            fieldState(field({ name: 'x', conditions: conditions({ visible: [{ field: 'channels', op, value: null }] }) }), { channels: actual }).visible
+
+        expect(at('nnull', ['web'])).toBe(true)
+        expect(at('null', ['web'])).toBe(false)
+        expect(at('null', [])).toBe(true)
+        expect(at('nnull', [])).toBe(false)
+        expect(at('null', null)).toBe(true)
+    })
+
     it('compares as the server does: relation by id, boolean as text, number as text', () => {
         const eq = (value: unknown, actual: unknown) =>
             fieldState(field({ name: 'x', conditions: conditions({ visible: [{ field: 'f', op: 'eq', value }] }) }), { f: actual }).visible

@@ -3,7 +3,7 @@ import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import VxActionDialog from '#vector/app/components/Vx/Action/Dialog.vue'
 import { endpoint, standaloneApi } from '../endpoints'
-import { resource } from '../fixtures'
+import { field, resource } from '../fixtures'
 import type { VectorAction } from '#vector/app/types/vector'
 
 // What an action's answer asks the client to do. An `url` answer opens
@@ -75,5 +75,44 @@ describe('VxActionDialog', () => {
         expect(push).not.toHaveBeenCalled()
         expect(wrapper.emitted('done')).toEqual([[2]])
         expect(useVectorNotifications().queue.value.map(n => n.text)).toEqual(['Merged.', 'The action asked to open a page outside the admin; it was not opened.'])
+    })
+})
+
+describe('VxActionDialog: a tag field', () => {
+    it('starts a tag field as an empty list and sends it as one when left alone', async () => {
+        const tagged: VectorAction = { ...action, name: 'label', label: 'Label', fields: [field({ name: 'keywords', type: 'tag', nullable: false, tags: { suggestions: [], maxLength: 50, maxTags: 20 } })] }
+        const sent = endpoint('/vector/r/tags/actions/label', { body: { type: 'message', message: 'Done', url: null, affected: 1 } }, 'POST')
+        cleanups.push(sent.unregister)
+        const wrapper = await mountSuspended(VxActionDialog, { props: { resource: resource(), action: tagged, selection: { ids: [1] }, count: 1 } })
+        mounted.push(wrapper)
+        await flushPromises()
+        await vi.waitFor(() => expect(wrapper.findComponent({ name: 'VCombobox' }).exists()).toBe(true))
+
+        expect(wrapper.findComponent({ name: 'VCombobox' }).props('modelValue')).toEqual([])
+
+        const submit = [...document.querySelectorAll<HTMLButtonElement>('.v-overlay__content button[type="submit"]')].find(b => b.textContent?.trim() === 'Label')
+        submit!.click()
+        await vi.waitFor(() => expect(sent.requests).toHaveLength(1))
+
+        expect((sent.requests[0]!.body as { fields: Record<string, unknown> }).fields).toEqual({ keywords: [] })
+    })
+})
+
+describe('VxActionDialog: a flag group', () => {
+    // a loose group is published non-nullable (even without required()): it starts and is sent as every key, off
+    it('sends every flag, off, when no box is ticked', async () => {
+        const options = [{ value: 'email', label: 'Email', color: null }, { value: 'sms', label: 'SMS', color: null }]
+        const flagged: VectorAction = { ...action, name: 'notify', label: 'Notify', fields: [field({ name: 'channels', type: 'booleanGroup', storage: 'json', nullable: false, options })] }
+        const sent = endpoint('/vector/r/tags/actions/notify', { body: { type: 'message', message: 'Done', url: null, affected: 1 } }, 'POST')
+        cleanups.push(sent.unregister)
+        const wrapper = await mountSuspended(VxActionDialog, { props: { resource: resource(), action: flagged, selection: { ids: [1] }, count: 1 } })
+        mounted.push(wrapper)
+        await flushPromises()
+
+        const submit = [...document.querySelectorAll<HTMLButtonElement>('.v-overlay__content button[type="submit"]')].find(b => b.textContent?.trim() === 'Notify')
+        submit!.click()
+        await vi.waitFor(() => expect(sent.requests).toHaveLength(1))
+
+        expect((sent.requests[0]!.body as { fields: Record<string, unknown> }).fields).toEqual({ channels: { email: false, sms: false } })
     })
 })

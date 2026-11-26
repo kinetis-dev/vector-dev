@@ -17,7 +17,6 @@ use Kinetis\Vector\Fields\BelongsTo;
 use Kinetis\Vector\Fields\Boolean;
 use Kinetis\Vector\Fields\Currency;
 use Kinetis\Vector\Fields\DateTime;
-use Kinetis\Vector\Fields\Enum;
 use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Image;
 use Kinetis\Vector\Fields\KeyValue;
@@ -27,7 +26,10 @@ use Kinetis\Vector\Fields\ManyToMany;
 use Kinetis\Vector\Fields\RichText;
 use Kinetis\Vector\Fields\Money;
 use Kinetis\Vector\Fields\Number;
+use Kinetis\Vector\Fields\Repeater;
+use Kinetis\Vector\Fields\Select;
 use Kinetis\Vector\Fields\Slug;
+use Kinetis\Vector\Fields\Tag;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\FullText;
 use Kinetis\Vector\VectorResource;
@@ -43,6 +45,12 @@ use Kinetis\Vector\VectorResource;
 #[Resource(entity: Product::class, group: 'Catalog', icon: 'mdi-package-variant', title: 'name', meta: ['ai.send' => true])]
 final class ProductResource extends VectorResource
 {
+    /** Where a product is sold: the options of its multiple select, in the order it stores them. */
+    public const array CHANNELS = ['web' => 'Web shop', 'retail' => 'Retail stores', 'marketplace' => 'Marketplaces', 'wholesale' => 'Wholesale'];
+
+    /** Keywords the product form suggests; any other text is a keyword too. */
+    public const array KEYWORDS = ['eco', 'bestseller', 'gift', 'bundle', 'clearance'];
+
     #[\Override]
     public function fields(): array
     {
@@ -55,13 +63,14 @@ final class ProductResource extends VectorResource
                 ->collapsible()
                 ->fields(['priceCents', 'currency', 'stock', 'weightKg']),
             Tabs::make()
-                ->tab('Content', ['description', 'attributes', 'imageKey'])
-                ->tab('Publishing', ['isFeatured', 'releasedAt', 'tags']),
+                ->tab('Content', ['description', 'attributes', 'specs', 'imageKey'])
+                ->tab('Publishing', ['isFeatured', 'channels', 'keywords', 'releasedAt', 'tags']),
             Text::make('sku', 'SKU')->required()->max(40)->unique()->sortable()->searchable()->filterable(),
             Text::make('name')->required()->max(200)->sortable()->searchable()->filterable()->meta('ai.send', true),
             Slug::make('slug')->from('name')->required()->max(220)->unique()->hideFromIndex(),
-            Enum::make('status')->of(\App\Domain\ProductStatus::class)
-                ->colors(['draft' => 'warning', 'active' => 'success', 'archived' => 'grey'])
+            // shown as a coloured chip in the list and on the record
+            Select::make('status')->of(\App\Domain\ProductStatus::class)
+                ->badge(['draft' => 'warning', 'active' => 'success', 'archived' => 'grey'])
                 ->sortable()->filterable()->inlineEditable()->meta('ai.send', true),
             // search matches the category's name too
             BelongsTo::to('category', CategoryResource::class)->sortable()->filterable()->searchable()->meta('ai.send', true),
@@ -74,8 +83,17 @@ final class ProductResource extends VectorResource
             // a structured document: headings, lists, links, tables, and images uploaded through the image field
             RichText::make('description')->imageField('imageKey')->hideFromIndex()->columnSpan('full'),
             KeyValue::make('attributes')->columns('Attribute', 'Value')->hideFromIndex()->columnSpan('full'),
+            // rows of a JSON column, each a label and a value, dragged into the order they are shown in
+            Repeater::make('specs', 'Specifications')->fields([
+                Text::make('label')->required()->max(60),
+                Text::make('value')->required()->max(200),
+            ])->max(20)->hideFromIndex()->columnSpan('full'),
             Image::make('imageKey', 'Image')->hideFromIndex(),
             ManyToMany::to('tags', TagResource::class),
+            // several values in a JSON column, filtered by "any" or "all" of them
+            Select::make('channels', 'Sales channels')->options(self::CHANNELS)->multiple()->filterable()->badge(['web' => 'primary', 'retail' => 'success', 'marketplace' => 'info', 'wholesale' => 'grey']),
+            // free text in a JSON list, shown as chips and filtered by "any" or "all" of the keywords
+            Tag::make('keywords')->suggestions(self::KEYWORDS)->filterable()->hideFromIndex(),
             DateTime::make('releasedAt')->sortable()->filterable()
                 ->visibleWhen('status', 'ne', 'draft')
                 ->requiredWhen('status', 'eq', 'active'),

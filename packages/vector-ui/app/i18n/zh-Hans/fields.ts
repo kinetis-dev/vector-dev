@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: '正在加载{label}',
     },
+    json: {
+        invalid: '请输入有效的 JSON 对象或数组。',
+    },
     keyValue: {
         key: '键',
         value: '值',
@@ -73,5 +76,17 @@ export default {
         lessThanOrEqual: '必须最多为 {limit}',
         invalidFormat: '格式无效',
         notAllowed: '不是允许的值',
+    },
+    rows: {
+        add: '添加行',
+        remove: '移除第 {n} 行',
+        row: '第 {n} 行',
+        drag: '移动第 {n} 行：拖动它，或使用方向键',
+        moved: '第 {from} 行已移到第 {to} 位',
+        none: '没有行',
+    },
+    tags: {
+        hint: '输入标签后按 Enter',
+        tooMany: '最多 {max} 个标签',
     },
 }

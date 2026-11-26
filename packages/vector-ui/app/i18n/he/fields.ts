@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: 'טוען את {label}',
     },
+    json: {
+        invalid: 'יש להזין אובייקט JSON או מערך JSON תקינים.',
+    },
     keyValue: {
         key: 'מפתח',
         value: 'ערך',
@@ -73,5 +76,17 @@ export default {
         lessThanOrEqual: 'הערך חייב להיות לכל היותר {limit}',
         invalidFormat: 'תבנית לא תקינה',
         notAllowed: 'ערך לא מותר',
+    },
+    rows: {
+        add: 'הוספת שורה',
+        remove: 'הסרת שורה {n}',
+        row: 'שורה {n}',
+        drag: 'הזזת שורה {n}: יש לגרור אותה או להשתמש במקשי החצים',
+        moved: 'שורה {from} הועברה למקום {to}',
+        none: 'אין שורות',
+    },
+    tags: {
+        hint: 'יש להקליד תגית וללחוץ Enter',
+        tooMany: '{max} תגיות לכל היותר',
     },
 }

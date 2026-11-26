@@ -104,6 +104,8 @@ export default {
             like: '含む',
             nlike: '含まない',
             between: '範囲内',
+            any: 'いずれかを含む',
+            all: 'すべてを含む',
             null: '空',
             nnull: '空ではない',
         },

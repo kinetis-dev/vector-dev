@@ -104,6 +104,8 @@ export default {
             like: '包含',
             nlike: '不包含',
             between: '介于',
+            any: '包含任一',
+            all: '包含全部',
             null: '为空',
             nnull: '不为空',
         },

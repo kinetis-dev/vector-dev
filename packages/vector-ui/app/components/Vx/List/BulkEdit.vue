@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { childRepeater } from '#vector/app/utils/internal/repeater'
 import type { SubmitEventPromise } from 'vuetify'
 import type { VectorResource, VectorSelection } from '#vector/app/types/vector'
 
@@ -19,7 +20,7 @@ const notifications = useVectorNotifications()
 const client = useVectorResource(() => props.resource.slug)
 const { editable } = useVectorInputs()
 
-const editableFields = computed(() => props.resource.fields.filter(f => editable(f, 'update') && f.type !== 'password' && f.type !== 'hasMany'))
+const editableFields = computed(() => props.resource.fields.filter(f => editable(f, 'update') && f.type !== 'password' && !childRepeater(f)))
 const chosen = ref<string[]>([])
 const fields = computed(() => editableFields.value.filter(f => chosen.value.includes(f.name)))
 const values = reactive<Record<string, unknown>>({})

@@ -11,11 +11,13 @@ use App\Domain\Support\Label;
 use App\Domain\Support\Team;
 use App\Domain\Support\Ticket;
 use App\Domain\Support\TicketPriority;
+use App\Vector\Support\TicketResource;
 use DateTimeImmutable;
 use Kinetis\Orm\Date;
 use DateTimeZone;
 use Kinetis\Orm\EntityManager;
 use Kinetis\Orm\EntityManagerRegistry;
+use stdClass;
 
 /**
  * Seeds the support desk on the PostgreSQL connection "support", through
@@ -25,6 +27,9 @@ use Kinetis\Orm\EntityManagerRegistry;
 final readonly class SupportSeeder
 {
     private const array TEAMS = ['Billing' => 'billing@vector.local', 'Shipping' => 'shipping@vector.local', 'Technical' => 'tech@vector.local', 'Returns' => 'returns@vector.local'];
+
+    /** @var array<string, list<string>> team => the ISO 3166-1 alpha-2 codes it serves; Technical serves everywhere */
+    private const array SERVES = ['Billing' => ['NL', 'DE', 'AT'], 'Shipping' => ['NL', 'DE', 'PT', 'IE'], 'Returns' => ['IL', 'CZ', 'NO']];
 
     private const array LABELS = ['refund' => '#E53935', 'damaged' => '#FB8C00', 'late-delivery' => '#FDD835', 'invoice' => '#43A047', 'warranty' => '#1E88E5', 'vip' => '#8E24AA', 'bug' => '#6D4C41', 'feedback' => '#00ACC1', 'duplicate' => '#757575', 'follow-up' => '#3949AB'];
 
@@ -58,6 +63,8 @@ final readonly class SupportSeeder
 
         foreach (self::TEAMS as $name => $email) {
             $team = new Team($name, strtolower($name), $email);
+            // a multiple country field: the countries each team serves
+            $team->serve(self::SERVES[$name] ?? null);
             $entities->persist($team);
             $teams[] = $team;
         }
@@ -126,10 +133,17 @@ final readonly class SupportSeeder
             }
 
             $ticket->label(array_values($chosen));
-            $ticket->annotate(json_encode(['browser' => ['Chrome', 'Firefox', 'Safari'][mt_rand(0, 2)], 'orderRef' => sprintf('ORD-%06d', mt_rand(1, 400))], JSON_THROW_ON_ERROR));
+            $ticket->annotate((object) ['browser' => ['Chrome', 'Firefox', 'Safari'][mt_rand(0, 2)], 'orderRef' => sprintf('ORD-%06d', mt_rand(1, 400))]);
+            // a multiple select: some of the platforms, in the order the resource lists them
+            $ticket->affects(DemoSeedCommand::someOf(TicketResource::PLATFORMS, $i * 7));
+            // a JSON-mode flag group: from the index, a key at times left out (it reads as false)
+            $ticket->flag(self::flagsOf($i));
+            // a tag list, from the index alone: the random sequence stays as it was
+            $ticket->keyword(DemoSeedCommand::someOf(array_combine(TicketResource::KEYWORDS, TicketResource::KEYWORDS), $i * 5));
 
             for ($r = mt_rand(0, 3); $r > 0; $r--) {
-                $ticket->reply(mt_rand(0, 1) === 0 ? 'Customer' : self::AGENTS[array_rand(self::AGENTS)], 'Thanks, we are looking into it.', mt_rand(0, 4) === 0, $createdAt->modify("+{$r} hours"));
+                // the metadata from the index and the reply alone: the random sequence stays as it was
+                $ticket->reply(mt_rand(0, 1) === 0 ? 'Customer' : self::AGENTS[array_rand(self::AGENTS)], 'Thanks, we are looking into it.', mt_rand(0, 4) === 0, $createdAt->modify("+{$r} hours"), self::replyMetadataOf($i, $r));
             }
 
             $roll = mt_rand(1, 10);
@@ -158,5 +172,45 @@ final readonly class SupportSeeder
     private function manager(): EntityManager
     {
         return $this->managers->manager('support');
+    }
+
+    /**
+     * A reply's metadata, from its ticket's index and its own number: about
+     * half the replies carry none, and of the rest some hold the client
+     * and channel they came through, an empty object or one with an empty
+     * object inside, which a JSON field keeps as sent.
+     *
+     * An object is a stdClass at every level: the property keeps objects.
+     */
+    private static function replyMetadataOf(int $i, int $r): ?stdClass
+    {
+        return match (($i * 3 + $r) % 8) {
+            0 => (object) ['channel' => 'email', 'client' => (object) ['name' => 'Mail', 'locale' => 'en-GB']],
+            1 => (object) ['channel' => 'chat', 'client' => (object) ['name' => 'Web widget', 'version' => '4.2.1'], 'attachments' => 0],
+            2 => new stdClass(),
+            3 => (object) ['channel' => 'phone', 'transcript' => new stdClass()],
+            default => null,
+        };
+    }
+
+    /**
+     * A ticket's flags, picked from its index: every fourth ticket has
+     * none (null), and one key is at times left out rather than false.
+     *
+     * @return array<string, bool>|null
+     */
+    private static function flagsOf(int $i): ?array
+    {
+        if ($i % 4 === 0) {
+            return null;
+        }
+
+        $flags = ['vip' => $i % 3 === 0, 'refundRequested' => $i % 5 === 0];
+
+        if ($i % 2 === 0) {
+            $flags['legalHold'] = $i % 7 === 0;
+        }
+
+        return $flags;
     }
 }

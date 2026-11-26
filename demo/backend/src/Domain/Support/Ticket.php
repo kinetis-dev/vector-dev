@@ -12,6 +12,7 @@ use Kinetis\Orm\Attributes\HasMany;
 use Kinetis\Orm\Attributes\Id;
 use Kinetis\Orm\Attributes\ManyToMany;
 use Kinetis\Orm\Attributes\Version;
+use stdClass;
 
 /**
  * A support ticket, on PostgreSQL. The customer is referenced by value
@@ -54,7 +55,17 @@ final class Ticket
     #[HasMany(target: TicketReply::class, mappedBy: 'ticket', owned: true)]
     private array $replies;
 
-    private ?string $metadata = null;
+    /** @var stdClass|list<mixed>|null a JSON document: an array|stdClass property keeps every object, {} included */
+    private array|stdClass|null $metadata = null;
+
+    /** @var list<string>|null the platforms the issue shows on, a multiple select's jsonb list */
+    private ?array $platforms = null;
+
+    /** @var array<string, bool>|null a JSON-mode flag group's object of key to bool */
+    private ?array $flags = null;
+
+    /** @var list<string>|null free-text keywords, a tag field's jsonb list */
+    private ?array $keywords = null;
 
     private int $compensationCents;
 
@@ -121,9 +132,10 @@ final class Ticket
         $this->labels = $labels;
     }
 
-    public function reply(string $author, string $body, bool $internal, DateTimeImmutable $at): void
+    /** @param array<array-key, mixed>|stdClass|null $metadata */
+    public function reply(string $author, string $body, bool $internal, DateTimeImmutable $at, array|stdClass|null $metadata = null): void
     {
-        $this->replies[] = new TicketReply($this, $author, $body, $internal, $at);
+        $this->replies[] = new TicketReply($this, $author, $body, $internal, $at, $metadata);
 
         if (!$internal && $this->status === TicketStatus::Open) {
             $this->status = TicketStatus::Pending;
@@ -144,9 +156,28 @@ final class Ticket
         $this->status = TicketStatus::Closed;
     }
 
-    public function annotate(?string $metadataJson): void
+    /** @param stdClass|list<mixed>|null $metadata */
+    public function annotate(array|stdClass|null $metadata): void
     {
-        $this->metadata = $metadataJson;
+        $this->metadata = $metadata;
+    }
+
+    /** @param list<string>|null $keywords */
+    public function keyword(?array $keywords): void
+    {
+        $this->keywords = $keywords;
+    }
+
+    /** @param list<string>|null $platforms */
+    public function affects(?array $platforms): void
+    {
+        $this->platforms = $platforms;
+    }
+
+    /** @param array<string, bool>|null $flags */
+    public function flag(?array $flags): void
+    {
+        $this->flags = $flags;
     }
 
     public function escalate(): void

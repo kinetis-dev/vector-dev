@@ -11,11 +11,14 @@ use Kinetis\Orm\Attributes\Entity;
 use Kinetis\Orm\Attributes\Id;
 use Kinetis\Orm\Attributes\ManyToMany;
 use Kinetis\Orm\Attributes\Version;
+use stdClass;
 
 /**
  * The widest entity of the demo domain: every scalar field type Vector
- * administers, a money value in minor units, a JSON column held as text,
- * a stored-file key, soft deletion, timestamps and optimistic locking.
+ * administers, a money value in minor units, four JSON columns (an object
+ * of text values, a list of sales channels, a list of spec rows and a
+ * list of free-text keywords), a stored-file key, soft deletion,
+ * timestamps and optimistic locking.
  */
 #[Entity(table: 'products')]
 final class Product
@@ -43,7 +46,17 @@ final class Product
 
     private bool $isFeatured;
 
-    private ?string $attributes = null;
+    /** an object of text values, a key-value field's: a stdClass property keeps {} an object */
+    private ?stdClass $attributes = null;
+
+    /** @var list<string>|null the sales channels, a multiple select's JSON list */
+    private ?array $channels = null;
+
+    /** @var list<array{label: string, value: string}>|null the specification rows, a JSON repeater's list */
+    private ?array $specs = null;
+
+    /** @var list<string>|null free-text keywords, a tag field's JSON list */
+    private ?array $keywords = null;
 
     private ?string $imageKey = null;
 
@@ -101,11 +114,28 @@ final class Product
         return $this->priceCents;
     }
 
-    public function describe(?string $description, ?string $attributesJson, ?string $imageKey): void
+    /** @param stdClass|null $attributes an object of text values */
+    public function describe(?string $description, ?stdClass $attributes, ?string $imageKey): void
     {
         $this->description = $description;
-        $this->attributes = $attributesJson;
+        $this->attributes = $attributes;
         $this->imageKey = $imageKey;
+    }
+
+    /** @param list<string>|null $channels */
+    public function sellOn(?array $channels): void
+    {
+        $this->channels = $channels;
+    }
+
+    /**
+     * @param list<array{label: string, value: string}>|null $specs
+     * @param list<string>|null $keywords
+     */
+    public function specify(?array $specs, ?array $keywords): void
+    {
+        $this->specs = $specs;
+        $this->keywords = $keywords;
     }
 
     public function activate(DateTimeImmutable $releasedAt, bool $featured): void

@@ -17,7 +17,6 @@ const innerAddons = useVectorInputAddons(() => props.field.type, () => 'inner')
         :hint="field.help ?? undefined"
         :persistent-hint="!!field.help"
         :disabled="props.disabled"
-        :class="{ 'font-monospace': props.field.type === 'json' }"
         auto-grow
         rows="3"
     >

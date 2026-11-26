@@ -20,8 +20,10 @@ use Kinetis\Vector\Exception\ConflictException;
 use Kinetis\Vector\Exception\ForbiddenOperationException;
 use Kinetis\Vector\Exception\RecordNotFoundException;
 use Kinetis\Vector\Auth\ActorContext;
+use Kinetis\Vector\Database\JsonDepth;
 use Kinetis\Vector\Database\VectorDatabase;
 use Kinetis\Vector\Query\ResourceService;
+use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Store\AuditStore;
 use Kinetis\Vector\VectorResource;
@@ -46,6 +48,7 @@ final readonly class RecordWriter
         private VectorDatabase $vector,
         private ValueConverter $converter,
         private ActorContext $actor,
+        private JsonDepth $depth,
     ) {}
 
     /**
@@ -66,7 +69,7 @@ final readonly class RecordWriter
         [$plans, $rowViolations] = $this->planRepeaters($resource, $rowsOf, null);
 
         foreach ($resource->fields() as $name => $field) {
-            if (($field['repeater']['min'] ?? 0) > 0 && !array_key_exists($name, $rowsOf) && in_array('create', $field['views'], true)) {
+            if (ResourceCompiler::isChildRepeater($field) && $field['repeater']['min'] > 0 && !array_key_exists($name, $rowsOf) && in_array('create', $field['views'], true)) {
                 $rowViolations[] = new Violation([$name], 'required', "must hold at least {$field['repeater']['min']} rows.");
             }
         }
@@ -88,7 +91,7 @@ final readonly class RecordWriter
         $plans = $this->applyRepeaters($resource, $plans, $entity);
         $instance->beforeCreate($entity, $context);
         $this->manager($resource)->persist($entity);
-        $this->flush($resource);
+        $this->flushWithRows($resource, $plans);
         $instance->afterCreate($entity, $context);
         $this->finishRepeaters($plans);
 
@@ -130,27 +133,42 @@ final readonly class RecordWriter
 
         $payload = [];
         $changedSince = [];
+        $truncated = null;
+        $depth = $this->depth->stored($resource);
 
         foreach ($entry['changes'] as $name => $change) {
             $field = $resource->field($name);
 
             if ($field === null || !is_array($change) || $field['readonly'] === true || !in_array('update', $field['views'], true)
-                || in_array($field['type'], ['id', 'hasOne', 'hasMany', 'manyToMany', 'password'], true)) {
+                || in_array($field['type'], ['id', 'hasOne', 'hasMany', 'manyToMany', 'password'], true) || ResourceCompiler::isChildRepeater($field)) {
                 continue;
             }
 
-            if (self::comparable($current[$name] ?? null) !== self::comparable($change['to'] ?? null)) {
+            if (self::comparable($current[$name] ?? null, $depth) !== self::comparable($change['to'] ?? null, $depth)) {
                 $changedSince[] = $field['label'];
 
                 continue;
             }
 
+            // the earlier value was too deep to record: there is nothing to put back, and the marker is no value
+            if (AuditStore::truncated($change['from'] ?? null)) {
+                $truncated ??= $field['label'];
+
+                continue;
+            }
+
+            // the stored value as a REST body hands it over: objects kept only where the field keeps them
             $from = $change['from'] ?? null;
+            $from = ValueConverter::keepsObjects($field) ? $from : JsonObjects::arrays($from);
             $payload[$name] = $field['type'] === 'belongsTo' && is_array($from) ? ($from['id'] ?? null) : $from;
         }
 
         if ($changedSince !== []) {
             throw ConflictException::changedSince($resource->slug(), $changedSince);
+        }
+
+        if ($truncated !== null) {
+            throw ValidationException::fromViolations([new Violation(['entry'], 'not_revertable', "recorded no earlier value of {$truncated}: it nested too deeply to store.")]);
         }
 
         if ($payload === []) {
@@ -179,7 +197,7 @@ final readonly class RecordWriter
         }
 
         $with = array_keys(array_filter($values, static fn (mixed $v, string $name) => ($resource->field($name)['type'] ?? null) === 'manyToMany', ARRAY_FILTER_USE_BOTH));
-        $entity = $this->load($resource, $id, [...$with, ...array_keys($rowsOf)]);
+        $entity = $this->load($resource, $id, [...$with, ...array_map(static fn (string $name): string => self::rowsProperty($resource, $name), array_keys($rowsOf))]);
         [$plans, $rowViolations] = $this->planRepeaters($resource, $rowsOf, $entity);
 
         if ($violations !== [] || $rowViolations !== []) {
@@ -208,7 +226,7 @@ final readonly class RecordWriter
         }
 
         $instance->beforeUpdate($entity, $context);
-        $this->flush($resource);
+        $this->flushWithRows($resource, $plans);
         $instance->afterUpdate($entity, $context);
         $this->finishRepeaters($plans);
         $this->log($resource, 'update', [$id]);
@@ -239,9 +257,18 @@ final readonly class RecordWriter
         }
     }
 
+    /** The entity property a relationship-mode repeater's rows live in. */
+    private static function rowsProperty(ResourceDescriptor $resource, string $name): string
+    {
+        $property = $resource->fields()[$name]['relation']['property'] ?? $name;
+
+        return is_string($property) ? $property : $name;
+    }
+
     /**
-     * The repeater rows a payload sends, taken out of it: the record's own
-     * input validates without them.
+     * The child repeater rows a payload sends, taken out of it: the
+     * record's own input validates without them. A JSON repeater's rows
+     * are a value of the record and stay.
      *
      * @param array<array-key, mixed> $payload
      * @return array{0: array<array-key, mixed>, 1: array<string, mixed>} the payload without them, and field => the rows sent
@@ -251,7 +278,7 @@ final readonly class RecordWriter
         $rows = [];
 
         foreach ($resource->fields() as $name => $field) {
-            if (($field['repeater'] ?? null) !== null && in_array($view, $field['views'], true) && array_key_exists($name, $payload)) {
+            if (ResourceCompiler::isChildRepeater($field) && in_array($view, $field['views'], true) && array_key_exists($name, $payload)) {
                 $rows[$name] = $payload[$name];
                 unset($payload[$name]);
             }
@@ -266,6 +293,9 @@ final readonly class RecordWriter
      * record, one without as a create) and pairs every row with what it
      * writes. `$owner` is the loaded parent (null when creating): the rows
      * its collection holds now, of which the ones not sent are removed.
+     * A child the child resource's scope hides from this user is not a
+     * row of the form: the save never names, changes, reorders or removes
+     * it.
      *
      * @param array<string, mixed> $rowsOf field => the rows sent
      * @return array{0: list<array<string, mixed>>, 1: list<Violation>} a plan per field, and every violation under its field and row
@@ -312,11 +342,16 @@ final readonly class RecordWriter
         $form = $child->withoutFields(array_values(array_diff(array_keys($child->fields()), $repeater['fields'])));
         $existing = [];
 
-        foreach (($owner === null ? null : $this->writer->read($owner, $name)) ?? [] as $entity) {
+        $property = self::rowsProperty($resource, $name);
+
+        foreach (($owner === null ? null : $this->writer->read($owner, $property)) ?? [] as $entity) {
             $existing[(string) $this->writer->read($entity, $child->primaryKeyField())] = $entity;
         }
 
         $currentOf = $this->reader->records($child, array_map(strval(...), array_keys($existing)));
+        // the children the scope hides: the client never saw them, so leaving them out is no removal
+        $hidden = array_values(array_diff_key($existing, $currentOf));
+        $existing = array_intersect_key($existing, $currentOf);
         $violations = [];
         $planned = [];
         $kept = [];
@@ -330,6 +365,8 @@ final readonly class RecordWriter
             }
         }
 
+        array_push($violations, ...self::duplicateRows($form, $name, $rows));
+
         $removed = [];
 
         foreach ($existing as $id => $entity) {
@@ -338,14 +375,60 @@ final readonly class RecordWriter
             }
         }
 
-        return [['field' => $name, 'child' => $child, 'inverse' => $field['relation']['inverse'], 'rows' => $planned, 'removed' => $removed], $violations];
+        return [['field' => $name, 'property' => $property, 'child' => $child, 'inverse' => $field['relation']['inverse'], 'order' => $repeater['orderBy'] ?? null, 'rows' => $planned, 'removed' => $removed, 'hidden' => $hidden], $violations];
+    }
+
+    /**
+     * Two rows sending the same value for a child field marked unique():
+     * the later one is refused at its row, before anything is written.
+     *
+     * @param list<mixed> $rows the rows as sent
+     * @return list<Violation>
+     */
+    private static function duplicateRows(ResourceDescriptor $form, string $name, array $rows): array
+    {
+        $violations = [];
+
+        foreach ($form->fields() as $column => $field) {
+            if (($field['unique'] ?? false) !== true) {
+                continue;
+            }
+
+            $seen = [];
+
+            foreach ($rows as $index => $row) {
+                $key = is_array($row) ? self::rowKey($row[$column] ?? null) : null;
+
+                if ($key === null) {
+                    continue;
+                }
+
+                if (isset($seen[$key])) {
+                    $violations[] = new Violation([$name, $index, $column], 'unique', 'is already used by another row.');
+                }
+
+                $seen[$key] = true;
+            }
+        }
+
+        return $violations;
+    }
+
+    /** A row's value as the text it compares by: a relation's id, a scalar's text, or null for anything else. */
+    private static function rowKey(mixed $value): ?string
+    {
+        if (is_array($value)) {
+            $value = $value['id'] ?? null;
+        }
+
+        return is_scalar($value) && $value !== '' ? (string) $value : null;
     }
 
     /**
      * One row of a repeater validated as the child's update (it names a
      * row of this record by `id`) or create (it names none).
      *
-     * @param array<array-key, mixed> $existing child id => the child entity the owner holds now
+     * @param array<array-key, mixed> $existing child id => the child entity the owner holds now, of those the scope shows
      * @param array<string, array<string, mixed>> $currentOf child id => that child, serialized
      * @param array<array-key, true> $kept the ids rows already named
      * @param-out array<array-key, true> $kept
@@ -416,8 +499,11 @@ final readonly class RecordWriter
     /**
      * Writes the planned rows into the owner's collections: children
      * changed in place, new ones built pointing at the owner, and the rest
-     * left out, which the flush deletes. Each child's resource hooks run
-     * as they would for a record of its own.
+     * left out, which the flush deletes. The children the scope hides stay
+     * in the collection as they are, so the flush keeps them, and keep
+     * their own position. A repeater ordered by a child property writes
+     * each row's index into it. Each child's resource hooks run as they
+     * would for a record of its own.
      *
      * @param list<array<string, mixed>> $plans
      * @return list<array<string, mixed>> the plans, every row holding its entity and context
@@ -432,11 +518,12 @@ final readonly class RecordWriter
             foreach ($plan['rows'] as $r => $row) {
                 $context = new WriteContext($child, $this->user, $this->manager($child), $row['values']);
                 $entity = $row['entity'];
+                $position = $plan['order'] === null ? [] : [$plan['order'] => $r];
 
                 if ($entity === null) {
-                    $entity = $this->createRow($child, $instance, [...$row['values'], $plan['inverse'] => $owner], $context);
+                    $entity = $this->createRow($child, $instance, [...$row['values'], $plan['inverse'] => $owner], $context, $position);
                 } else {
-                    $this->applyUpdate($child, $instance, $entity, $row['values'], $context);
+                    $this->applyUpdate($child, $instance, $entity, $row['values'], $context, $position);
                 }
 
                 $plans[$p]['rows'][$r]['entity'] = $entity;
@@ -448,21 +535,23 @@ final readonly class RecordWriter
                 $instance->beforeDelete($row['entity'], new WriteContext($child, $this->user, $this->manager($child), []));
             }
 
-            $this->writer->assign($resource, $owner, [$plan['field'] => $collection]);
+            $this->writer->assign($resource, $owner, [$plan['property'] => [...$collection, ...$plan['hidden']]]);
         }
 
         return $plans;
     }
 
     /**
-     * A new child built from a repeater row, stamped, through its
-     * resource's create hooks.
+     * A new child built from a repeater row, positioned, stamped, through
+     * its resource's create hooks.
      *
      * @param array<string, mixed> $values the row's values, its inverse relation pointing at the owner
+     * @param array<string, int> $position the order property => the row's index, when the repeater orders its rows
      */
-    private function createRow(ResourceDescriptor $child, VectorResource $instance, array $values, WriteContext $context): object
+    private function createRow(ResourceDescriptor $child, VectorResource $instance, array $values, WriteContext $context, array $position): object
     {
-        $entity = $instance->create($values, $context) ?? $this->writer->instantiate($child, $values);
+        $entity = $instance->create($values, $context) ?? $this->writer->instantiate($child, [...$values, ...$position]);
+        $this->writer->assign($child, $entity, $position);
 
         foreach (array_filter($child->timestamps()) as $property) {
             $this->writer->stamp($child, $entity, $property);
@@ -478,12 +567,15 @@ final readonly class RecordWriter
      * apply(), or assigned, stamped, through its before-update hook.
      *
      * @param array<string, mixed> $values
+     * @param array<string, int> $position a repeater row's order property => its index
      */
-    private function applyUpdate(ResourceDescriptor $resource, VectorResource $instance, object $entity, array $values, WriteContext $context): void
+    private function applyUpdate(ResourceDescriptor $resource, VectorResource $instance, object $entity, array $values, WriteContext $context, array $position = []): void
     {
         if (!$instance->apply($entity, $values, $context)) {
             $this->writer->assign($resource, $entity, $values);
         }
+
+        $this->writer->assign($resource, $entity, $position);
 
         if (($updated = $resource->timestamps()['updated']) !== null) {
             $this->writer->stamp($resource, $entity, $updated);
@@ -1077,6 +1169,130 @@ final readonly class RecordWriter
     }
 
     /**
+     * The flush of a record written with its repeater rows: the record
+     * and every row in one transaction. A unique key a child row collides
+     * with is reported at that row, `lines.2.sku`, when the database names
+     * the child's table and the duplicated value singles the row out.
+     *
+     * @param list<array<string, mixed>> $plans
+     */
+    private function flushWithRows(ResourceDescriptor $resource, array $plans): void
+    {
+        try {
+            $this->manager($resource)->flush();
+        } catch (OptimisticLockException) {
+            throw ConflictException::stale($resource->slug());
+        } catch (QueryException $e) {
+            throw ($e->isUniqueViolation() ? self::rowRefusal($plans, $e->getMessage()) : null) ?? self::refusal($resource, $e);
+        }
+    }
+
+    /**
+     * A unique violation of a child row, under its repeater and row, or
+     * null when the key the database names is none of the rows' tables'.
+     * Only the key's name is read, never the duplicated value, and a table
+     * matches it as a whole: MySQL's `table.index`, or an index or a
+     * constraint named after its table (`order_lines_sku_key`), the longest
+     * such table winning, so `lines` never claims `order_lines`.
+     *
+     * @param list<array<string, mixed>> $plans
+     */
+    private static function rowRefusal(array $plans, string $message): ?ValidationException
+    {
+        if (preg_match("/.*for key '([^']*)'/s", $message, $m) !== 1 && preg_match('/unique constraint "([^"]*)"/', $message, $m) !== 1) {
+            return null;
+        }
+
+        $key = $m[1];
+        $match = null;
+
+        foreach ($plans as $plan) {
+            /** @var ResourceDescriptor $child */
+            $child = $plan['child'];
+            $table = $child->table();
+            $names = str_contains($key, '.') ? substr($key, 0, (int) strrpos($key, '.')) === $table : ($key === $table || str_starts_with($key, "{$table}_"));
+
+            if ($names && ($match === null || strlen($table) > strlen($match['child']->table()))) {
+                $match = $plan;
+            }
+        }
+
+        if ($match === null) {
+            return null;
+        }
+
+        /** @var ResourceDescriptor $child */
+        $child = $match['child'];
+        $column = self::uniqueField($child, $message);
+
+        if ($column === null) {
+            return ValidationException::fromViolations([new Violation([$match['field']], 'unique', 'has a row that conflicts with an existing record.')]);
+        }
+
+        $index = self::rowHolding($match['rows'], $column, self::duplicateValues($message, $child->columns()[$column] ?? $column));
+        $path = $index === null ? [$match['field'], $column] : [$match['field'], $index, $column];
+
+        return ValidationException::fromViolations([new Violation($path, 'unique', 'is already taken.')]);
+    }
+
+    /**
+     * What the duplicated key holds for $column: PostgreSQL lists each
+     * column with its value (`Key (code, order_id)=(5, 12)`), so that
+     * column's own value when the two lists line up; MySQL gives the whole
+     * key's text (`Duplicate entry '5-12'`), its parts joined by `-`.
+     *
+     * @return array{exact: string|null, joined: string|null}
+     */
+    private static function duplicateValues(string $message, string $column): array
+    {
+        if (preg_match('/Key \(([^)]*)\)=\((.*)\) already exists/s', $message, $m) === 1) {
+            $columns = array_map(static fn (string $c): string => trim($c, ' "'), explode(',', $m[1]));
+            $values = count($columns) === 1 ? [$m[2]] : explode(', ', $m[2]);
+            $at = array_search($column, $columns, true);
+
+            return ['exact' => count($values) === count($columns) && is_int($at) ? $values[$at] : null, 'joined' => null];
+        }
+
+        return ['exact' => null, 'joined' => preg_match("/Duplicate entry '(.*)' for key/s", $message, $m) === 1 ? $m[1] : null];
+    }
+
+    /**
+     * The last planned row whose value for $column the duplicated key
+     * holds: that column's own value when the database named it, or else
+     * the whole key's text, or one `-`-separated part of a composite key
+     * (`12-5`) when no row holds the whole text.
+     *
+     * @param list<array<string, mixed>> $rows
+     * @param array{exact: string|null, joined: string|null} $duplicate
+     */
+    private static function rowHolding(array $rows, string $column, array $duplicate): ?int
+    {
+        $whole = null;
+        $part = null;
+
+        foreach ($rows as $index => $row) {
+            $value = $row['values'][$column] ?? null;
+            $text = match (true) {
+                $value instanceof \BackedEnum => (string) $value->value,
+                is_scalar($value) => (string) $value,
+                default => null,
+            };
+
+            if ($text === null || $text === '') {
+                continue;
+            }
+
+            if ($text === ($duplicate['exact'] ?? $duplicate['joined'])) {
+                $whole = $index;
+            } elseif ($duplicate['joined'] !== null && str_contains("-{$duplicate['joined']}-", "-{$text}-")) {
+                $part = $index;
+            }
+        }
+
+        return $whole ?? $part;
+    }
+
+    /**
      * What a refused write is reported as: a 422 for a value its column
      * cannot hold or a unique key it collides with, and the query's own
      * exception for anything else.
@@ -1129,7 +1345,7 @@ final readonly class RecordWriter
 
         // MySQL's message carries the duplicate value too (`Duplicate entry 'name' for key '…'`):
         // only the index name is searched, so a submitted value never names another field
-        if (preg_match("/for key '([^']*)'/", $message, $m) === 1) {
+        if (preg_match("/.*for key '([^']*)'/s", $message, $m) === 1) {
             $message = $m[1];
         }
 
@@ -1216,13 +1432,16 @@ final readonly class RecordWriter
     }
 
     /**
-     * A serialized value as the audit trail stored it: the trail keeps
-     * JSON decoded to arrays, while a record carries an empty key-value
-     * map as an object, and `{}` and `[]` must compare equal.
+     * A serialized value compared loosely, `{}` and `[]` alike: an
+     * `array` property holds the two as one value, so telling them apart
+     * would see a change where its record has none. $depth is the levels
+     * either store of the value holds (JsonDepth::stored()).
+     *
+     * @param positive-int $depth
      */
-    private static function comparable(mixed $value): string
+    private static function comparable(mixed $value, int $depth): string
     {
-        return json_encode(json_decode(json_encode($value, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR), JSON_THROW_ON_ERROR);
+        return json_encode(json_decode(json_encode($value, JSON_THROW_ON_ERROR, $depth), true, $depth + 1, JSON_THROW_ON_ERROR), JSON_THROW_ON_ERROR, $depth);
     }
 
     /**

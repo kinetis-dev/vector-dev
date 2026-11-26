@@ -24,7 +24,7 @@ use stdClass;
  * here is what the approval later dispatches.
  *
  * The dispatcher's resolution is private; this follows kinetis/mcp
- * v1.9's McpDispatcher::resolveFromPlan() line for line.
+ * v1.10's McpDispatcher::resolveFromPlan() line for line.
  */
 final class ToolArguments
 {
@@ -110,7 +110,7 @@ final class ToolArguments
         $scalarType = is_string($param['scalarType'] ?? null) ? $param['scalarType'] : null;
 
         [, $violations] = $param['objectMap'] === true
-            ? Hydrator::resolveObjectMap([$name], $value, $param['allowsNull'] === true, $constraints)
+            ? Hydrator::resolveObjectMap([$name], $value, $param['allowsNull'] === true, $param['keepObjects'] === true, $constraints)
             : Hydrator::resolveScalar(InputSource::Json, [$name], $value, $scalarType, $param['allowsNull'] === true, $constraints);
 
         return $violations;

@@ -103,11 +103,15 @@ on a property the target does not map, fails the build.
 
 ## Repeaters
 
-A `HasMany` the parent owns can be edited inside the parent's form:
+A `Repeater` edits rows inside the record's form, as a JSON list in one
+column or as the child records of an owned has-many; {doc}`fields` has
+both modes, ordering and their limits. In relationship mode:
 
 ```php
-HasMany::to('lines', OrderLineResource::class)
-    ->repeater(['product', 'quantity', 'unitPriceCents'], min: 1, max: 50),
+Repeater::make('lines')->relationship('lines')
+    ->fields(['product', 'quantity', 'unitPriceCents'])
+    ->min(1)->max(50)
+    ->orderBy('position'),
 ```
 
 The whole list is sent with the parent and written in one transaction:
@@ -118,20 +122,27 @@ The whole list is sent with the parent and written in one transaction:
 
 - a row with an `id` updates that child;
 - a row without one creates a child pointing at the parent;
-- a child left out is deleted.
+- a child left out is deleted;
+- with `orderBy()`, each row's index is written into the child property
+  it names, so the list's order is the rows' order.
 
 Each row is validated as the child resource validates a record, and a
-violation names its row (`lines/1/quantity`). The child's policy
+violation names its row (`lines.1.quantity`), a unique key a row
+collides with included. The child's policy
 authorizes each create, update and delete; its hooks run and its audit
 trail records each change, as if the child had been written on its own.
 The parent's hooks run after the rows are in place, so a total can be
-recomputed there. `GET /vector/r/{resource}/{id}/{relation}/rows`
-returns the current rows for an edit form.
+recomputed there. `GET /vector/r/{resource}/{id}/{field}/rows`
+returns the current rows for an edit form, in their order.
 
 Compilation refuses a repeater that is over a relation that is not
-owned, that leaves out a child field a new row requires, whose child
-resource soft-deletes, or that carries conditions. Repeaters are not
-written in bulk, inline or by import.
+owned, whose child lives on another connection, that leaves out a child
+field a new row requires, whose child resource soft-deletes, or that
+carries conditions. Relationship repeaters are not written in bulk,
+inline or by import.
+
+`HasMany::repeater()` is gone: `HasMany::to('lines', OrderLineResource::class)->repeater(['product', 'quantity'], min: 1, max: 50)`
+is now `Repeater::make('lines')->relationship('lines', OrderLineResource::class)->fields(['product', 'quantity'])->min(1)->max(50)`.
 
 ## Inline editing
 
@@ -142,8 +153,8 @@ record is authorized, validated and hooked as a `PATCH` would be, and
 checked against the `_version` it was listed at: one stale record
 answers `409` for the whole changeset. A violation's path is
 `changes/{index}/{field}`. Only simple fields editable on update
-qualify: text, email, url, slug, color, number, money, boolean, enum,
-currency, date, datetime and belongs-to. Anything else fails the
+qualify: text, email, url, slug, color, number, money, boolean, single
+select, currency, date, datetime and belongs-to. Anything else fails the
 build.
 
 ## Optimistic locking

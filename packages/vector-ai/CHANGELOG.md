@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-25
+
+### Changed
+
+- Requires `kinetis/vector` ^0.18.
+- Requires `kinetis/query-builder` ^1.8.6.
+- Requires `kinetis/framework` ^1.32.0 and `kinetis/mcp` ^1.10.0. A
+  proposal's arguments are checked as the MCP dispatcher of that release
+  checks them.
+- The AI settings' `dataDefault` is a `Select` field, kinetis/vector
+  having retired `Enum`; its options and default are unchanged.
+
 ## [0.2.2] - 2026-11-23
 
 ### Changed

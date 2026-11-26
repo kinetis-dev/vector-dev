@@ -280,6 +280,115 @@ describe('VxResourceForm: unsaved changes and save variants', () => {
     })
 })
 
+describe('VxResourceForm: selects and JSON documents', () => {
+    const products = resource({
+        slug: 'products',
+        label: 'Products',
+        labelSingular: 'Product',
+        fields: [
+            field({ name: 'name', nullable: false }),
+            field({ name: 'channels', type: 'select', multiple: true, nullable: true, options: [{ value: 'web', label: 'Web shop', color: null }, { value: 'retail', label: 'Retail', color: null }] }),
+            field({ name: 'platform', type: 'select', autocomplete: true, nullable: true, options: [{ value: 'ios', label: 'iOS', color: null }, { value: 'api', label: 'API', color: null }] }),
+            field({ name: 'metadata', type: 'json', nullable: true }),
+        ],
+    })
+    const record = { id: 5, name: 'Mug', channels: ['web', 'retail'], platform: 'ios', metadata: { carrier: 'DHL' } }
+
+    it('shows a multiple select as chips, a searchable one as an autocomplete, and a document as JSON text', async () => {
+        const form = await mountForm({ resource: products, operation: 'update', record })
+
+        expect(input(form, 'Channels').findAll('.v-chip').map(c => c.text())).toEqual(['Web shop', 'Retail'])
+        expect(input(form, 'Platform').classes()).toContain('v-autocomplete')
+        expect(input(form, 'Channels').classes()).toContain('v-select')
+        expect(JSON.parse(input(form, 'Metadata').find('textarea').element.value)).toEqual({ carrier: 'DHL' })
+    })
+
+    it('sends the list and the parsed document, and flags text that is no JSON document', async () => {
+        const create = mock('/vector/r/products', { status: 201, body: { data: { id: 6 }, permissions: {} } }, 'POST')
+        const withDefaults = resource({
+            ...products,
+            fields: products.fields.map(f => f.name === 'channels' ? { ...f, hasDefault: true, default: ['retail'] } : f.name === 'platform' ? { ...f, hasDefault: true, default: 'api' } : f),
+        })
+        const form = await mountForm({ resource: withDefaults, operation: 'create' })
+
+        await input(form, 'Name').find('input').setValue('Mug')
+        await input(form, 'Metadata').find('textarea').setValue('not json')
+        await vi.waitFor(() => expect(input(form, 'Metadata').text()).toContain('Enter a valid JSON object or array.'))
+        await input(form, 'Metadata').find('textarea').setValue('{"carrier": "UPS", "parcels": [1]}')
+        expect(input(form, 'Metadata').text()).not.toContain('Enter a valid JSON object or array.')
+
+        await submit(form)
+
+        await vi.waitFor(() => expect(create.requests).toHaveLength(1))
+        expect(create.requests[0]!.body).toEqual({ name: 'Mug', channels: ['retail'], platform: 'api', metadata: { carrier: 'UPS', parcels: [1] } })
+    })
+})
+
+describe('VxResourceForm: flag groups and countries', () => {
+    const profiles = resource({
+        slug: 'customer-profiles',
+        label: 'Customer profiles',
+        labelSingular: 'Customer profile',
+        fields: [
+            field({ name: 'city', nullable: false }),
+            field({ name: 'country', type: 'country', nullable: false, hasDefault: true, default: 'DE', options: [{ value: 'DE', label: 'Germany', color: null }, { value: 'NL', label: 'Netherlands', color: null }] }),
+            field({ name: 'contact', type: 'booleanGroup', storage: 'columns', nullable: false, options: [{ value: 'newsletter', label: 'Newsletter', color: null }, { value: 'acceptsSms', label: 'Text message', color: null }] }),
+        ],
+    })
+
+    it('edits a flag group as checkboxes and sends every flag', async () => {
+        const create = mock('/vector/r/customer-profiles', { status: 201, body: { data: { id: 3 }, permissions: {} } }, 'POST')
+        const form = await mountForm({ resource: profiles, operation: 'create' })
+        const group = form.find('[data-flag-group="contact"]')
+
+        expect(group.find('legend').text()).toBe('Contact')
+        expect(group.findAll('.v-checkbox label').map(l => l.text())).toEqual(['Newsletter', 'Text message'])
+        await input(form, 'City').find('input').setValue('Berlin')
+        await group.findAll('input[type="checkbox"]')[1]!.setValue(true)
+
+        await submit(form)
+
+        await vi.waitFor(() => expect(create.requests).toHaveLength(1))
+        expect(create.requests[0]!.body).toEqual({ city: 'Berlin', country: 'DE', contact: { newsletter: false, acceptsSms: true } })
+    })
+
+    it('creates a record with no box ticked, every flag sent as false', async () => {
+        const create = mock('/vector/r/customer-profiles', { status: 201, body: { data: { id: 4 }, permissions: {} } }, 'POST')
+        const form = await mountForm({ resource: profiles, operation: 'create' })
+
+        await input(form, 'City').find('input').setValue('Oslo')
+        await submit(form)
+
+        await vi.waitFor(() => expect(create.requests).toHaveLength(1))
+        expect(create.requests[0]!.body).toEqual({ city: 'Oslo', country: 'DE', contact: { newsletter: false, acceptsSms: false } })
+    })
+
+    it('starts a flag group from its default, every other flag off', async () => {
+        const create = mock('/vector/r/customer-profiles', { status: 201, body: { data: { id: 5 }, permissions: {} } }, 'POST')
+        const withDefault = resource({ ...profiles, fields: profiles.fields.map(f => f.name === 'contact' ? { ...f, hasDefault: true, default: { acceptsSms: true } } : f) })
+        const form = await mountForm({ resource: withDefault, operation: 'create' })
+
+        expect(form.find('[data-flag-group="contact"]').findAll('input[type="checkbox"]').map(c => (c.element as HTMLInputElement).checked)).toEqual([false, true])
+        await input(form, 'City').find('input').setValue('Oslo')
+        await submit(form)
+
+        await vi.waitFor(() => expect(create.requests).toHaveLength(1))
+        expect(create.requests[0]!.body).toMatchObject({ contact: { newsletter: false, acceptsSms: true } })
+    })
+
+    it('names the chosen country in the UI\'s language', async () => {
+        const locale = useNuxtApp().$vectorI18n.global.locale
+        locale.value = 'fr'
+
+        try {
+            const form = await mountForm({ resource: profiles, operation: 'create' })
+            await vi.waitFor(() => expect(input(form, 'Country').text()).toContain('Allemagne'))
+        } finally {
+            locale.value = 'en'
+        }
+    })
+})
+
 describe('VxResourceForm: a copy of a record', () => {
     const products = resource({
         slug: 'products',
@@ -288,7 +397,7 @@ describe('VxResourceForm: a copy of a record', () => {
         fields: [
             field({ name: 'sku', label: 'SKU', nullable: false, unique: true }),
             field({ name: 'name', nullable: false }),
-            field({ name: 'status', type: 'enum', options: [{ value: 'draft', label: 'Draft', color: null }, { value: 'active', label: 'Active', color: null }] }),
+            field({ name: 'status', type: 'select', options: [{ value: 'draft', label: 'Draft', color: null }, { value: 'active', label: 'Active', color: null }] }),
             field({ name: 'category', type: 'belongsTo', relation: { kind: 'belongsTo', resource: 'categories', titleField: 'name' } }),
             field({ name: 'photo', type: 'image', props: { accept: { 'image/png': 'png' }, maxBytes: 1000 } }),
             field({ name: 'tags', type: 'manyToMany', relation: { kind: 'manyToMany', resource: 'tags', titleField: 'name' } }),

@@ -32,6 +32,7 @@ use Kinetis\Vector\Widgets\WidgetRunner;
 use Kinetis\Http\CurrentUserInterface;
 use Kinetis\Vector\Query\ListRequest;
 use Kinetis\Vector\Query\ResourceService;
+use Kinetis\Vector\Write\JsonObjects;
 use Kinetis\Vector\Write\RecordWriter;
 use Kinetis\Vector\Write\ValueConverter;
 use Psr\Http\Message\ResponseInterface;
@@ -336,7 +337,8 @@ final readonly class ResourceController
     public function action(string $resource, string $action, ServerRequestInterface $request): ResponseInterface
     {
         $descriptor = $this->service->resource($resource);
-        $response = $this->actions->run($descriptor, $action, $this->body($request));
+        $fields = ActionRunner::fieldsOf($descriptor->action($action));
+        $response = $this->actions->run($descriptor, $action, $this->withObjects($request, $fields, $this->body($request), 'fields'));
 
         if ($response->type === 'download') {
             return FileResponse::fromContents((string) $response->contents, (string) $response->contentType, 200, (string) $response->filename, ['Cache-Control' => 'no-store']);
@@ -388,7 +390,7 @@ final readonly class ResourceController
     public function create(string $resource, ServerRequestInterface $request): ResponseInterface
     {
         $descriptor = $this->service->resource($resource);
-        $record = $this->writer->create($descriptor, $this->body($request));
+        $record = $this->writer->create($descriptor, $this->withObjects($request, $descriptor->fields(), $this->body($request), null, $this->service->repeaterRowFields($descriptor)));
 
         return JsonResponse::create(['data' => $record, 'permissions' => $this->service->recordPermissions($descriptor, $record)], 201);
     }
@@ -399,7 +401,7 @@ final readonly class ResourceController
     {
         $descriptor = $this->service->resource($resource);
         $ifMatch = trim($request->getHeaderLine('If-Match'), " \t\"");
-        $record = $this->writer->update($descriptor, $id, $this->body($request), $ifMatch === '' ? null : $ifMatch);
+        $record = $this->writer->update($descriptor, $id, $this->withObjects($request, $descriptor->fields(), $this->body($request), null, $this->service->repeaterRowFields($descriptor)), $ifMatch === '' ? null : $ifMatch);
 
         return ['data' => $record, 'permissions' => $this->service->recordPermissions($descriptor, $record)];
     }
@@ -441,7 +443,7 @@ final readonly class ResourceController
     public function batch(string $resource, ServerRequestInterface $request): array
     {
         $descriptor = $this->service->resource($resource);
-        $body = $this->body($request);
+        $body = $this->withObjects($request, $descriptor->fields(), $this->body($request), 'fields', $this->service->repeaterRowFields($descriptor));
         $operation = $body['action'] ?? null;
 
         if (!in_array($operation, ['delete', 'restore', 'forceDelete', 'update'], true)) {
@@ -477,6 +479,55 @@ final readonly class ResourceController
         $affected = $this->writer->batch($descriptor, array_map(strval(...), $ids), $operation);
 
         return ['affected' => $affected, 'deleted' => $operation === 'delete' ? $affected : 0];
+    }
+
+    /**
+     * The values of a body ($under: of its `fields` member, a bulk edit's
+     * or an action's) read again with every JSON object a stdClass, kept
+     * for the $fields that keep objects (JsonObjects::keep()), and for the
+     * child fields that keep objects in a relationship repeater's rows:
+     * the array the body decodes to holds `{}` as `[]`.
+     *
+     * @param array<string, array<string, mixed>> $fields field name => compiled field
+     * @param array<array-key, mixed> $body
+     * @param array<string, array<string, array<string, mixed>>> $rowFields relationship repeater => its child's compiled fields (ResourceService::repeaterRowFields())
+     * @return array<array-key, mixed>
+     */
+    private function withObjects(ServerRequestInterface $request, array $fields, array $body, ?string $under = null, array $rowFields = []): array
+    {
+        $values = $under === null ? $body : ($body[$under] ?? null);
+
+        if (!is_array($values)) {
+            return $body;
+        }
+
+        $rowFields = array_intersect_key($rowFields, $values);
+
+        if ($rowFields === [] && !array_any(array_keys($values), static fn (int|string $name): bool => isset($fields[(string) $name]) && ValueConverter::keepsObjects($fields[(string) $name]))) {
+            return $body;
+        }
+
+        try {
+            $tree = json_decode((string) $request->getBody(), false, 64, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return $body; // a key PHP cannot hold as a property: the converter refuses it from the array
+        }
+
+        $tree = $under === null ? $tree : ($tree->{$under} ?? null);
+
+        if (!$tree instanceof \stdClass) {
+            return $body;
+        }
+
+        $values = JsonObjects::keep($fields, get_object_vars($tree), $rowFields);
+
+        if ($under === null) {
+            return $values;
+        }
+
+        $body[$under] = $values;
+
+        return $body;
     }
 
     /**

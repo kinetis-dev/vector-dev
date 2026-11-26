@@ -9,8 +9,10 @@ namespace App\Tests\Vector;
  * Fixtures/describe-7974585.json, recorded at commit 7974585, its answer
  * to an administrator is byte-identical to the recorded one, so the
  * metadata bag of none of those resources or their fields reaches an
- * agent through it. Orders' number has since declared `unique()`, and
- * the fixture holds it.
+ * agent through it. Orders' number has since declared `unique()`, enum
+ * fields have become select fields, JSON fields JSON columns, and
+ * products and tickets have gained a multiple select; the fixture holds
+ * them.
  */
 final class McpDescribeSnapshotTest extends VectorTestCase
 {

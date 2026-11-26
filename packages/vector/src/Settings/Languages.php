@@ -7,7 +7,7 @@ namespace Kinetis\Vector\Settings;
 use Kinetis\Validation\Violation;
 use Kinetis\Vector\Attributes\Settings;
 use Kinetis\Vector\Fields\Boolean;
-use Kinetis\Vector\Fields\Enum;
+use Kinetis\Vector\Fields\Select;
 use Kinetis\Vector\Translation\Locales;
 
 /**
@@ -40,7 +40,7 @@ final class Languages extends SettingsGroup
             $fields[] = Boolean::make($tag, $name)->default(true);
         }
 
-        $fields[] = Enum::make('default', 'Default language')->of(Language::class)->labels(array_intersect_key(Locales::SHIPPED, array_flip(array_column(Language::cases(), 'value'))))
+        $fields[] = Select::make('default', 'Default language')->of(Language::class)->labels(array_intersect_key(Locales::SHIPPED, array_flip(array_column(Language::cases(), 'value'))))
             ->required()->default(Language::English->value)
             ->help('The language for a user who has not chosen one.');
 

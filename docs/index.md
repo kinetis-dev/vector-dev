@@ -41,8 +41,8 @@ html[data-theme="dark"] .bd-article section > p > strong:only-child { color: #F5
 
 - One input per field, with the server's validation rules mirrored in
   the browser and every server violation placed on its field.
-- Conditional fields, dependent choices, repeaters for owned rows,
-  uploads and many-to-many relations.
+- Conditional fields, dependent choices, repeaters for owned rows or
+  JSON lists, tags, uploads and many-to-many relations.
 
 **Operations, audited**
 

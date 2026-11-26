@@ -7,6 +7,202 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-25
+
+### Added
+
+- `Fields\BooleanGroup`: named on/off options as one value, an object
+  of every option key to a bool (a key a write leaves out is false),
+  shown as one cell and edited as one group of checkboxes. In columns
+  mode (the default) each key is a non-null bool property with a column
+  of its own, and each flag also filters (`filter[group.key]=true`) and
+  sorts (`sort=group.key`). With `json()` the group maps one `array`
+  property, a `JSON` or `jsonb` column holding the object, and is not
+  sortable. Both filter with `any` and `all` of a list of keys being on,
+  a bare value being `any`. The build refuses storage that does not
+  match the mode. A key that is no option is `invalid_choice` under that
+  key on write and, in JSON mode, throws `StoredValueException` on read:
+  removing an option needs a data migration first.
+- `Fields\Country`: a `Select` over the assigned ISO 3166-1 alpha-2
+  codes of `Support\Countries`, searchable by default, one code in a
+  string property or several with `multiple()` in an `array` property,
+  with the select's filters and strictness. `only()` narrows the codes;
+  the build refuses one that is not assigned. The server names codes in
+  English; OpenAPI describes the enum of codes.
+- `Database\JsonFilter::keysTrue()`: the SQL of a JSON object whose
+  keys hold true, any or all of them, each key inside a bound
+  `{"key": true}` object matched by containment (`JSON_CONTAINS` on
+  MySQL and MariaDB, `@>` on PostgreSQL).
+- `Fields\Select`: a choice among fixed options, from an array
+  (`value => label`), a closure called once when the resource compiles,
+  or a backed enum (`of()`, or `options(Status::class)`), with
+  `labels()` and `colors()`. The descriptor type is `select`.
+- `Select::multiple()`: several options in an `array` or `?array`
+  property (a `JSON` column on MySQL and MariaDB, `jsonb` on
+  PostgreSQL), stored deduplicated in the order the options are
+  declared. The descriptor publishes `multiple`, OpenAPI an array of the
+  option values with `uniqueItems`, and `vector_describe` `multiple`, a
+  `format` and its filters.
+- `Select::searchable()` gives the input a search box over the options
+  (`autocomplete` in the descriptor); `Select::badge([value => colour])`
+  shows the values as coloured chips in lists and on the record
+  (`badge`).
+- The `any` and `all` filter operators of a multiple select: holding at
+  least one, or every one, of a comma-separated list of option values;
+  a bare `filter[field]=value` is `any`. They work inside `or` and
+  `and` groups, on MySQL, MariaDB and PostgreSQL.
+- `Database\JsonFilter`, the SQL of a filter on a JSON column per
+  dialect, every value bound: one `JSON_CONTAINS` per value (`any`) or
+  of the whole list (`all`) on MySQL and MariaDB; `?|` over a text
+  array (`??|` to the query builder) and `@>` on PostgreSQL. The dialect
+  comes from `Database\Connections`, per connection.
+- `Exception\StoredValueException`, thrown when a stored select value
+  is not one of its options, or a JSON column holds no valid document.
+- `Fields\Repeater` (descriptor type `repeater`): rows edited inside the
+  record's form. In JSON mode, `fields([...])` declares a row's fields
+  and the rows are a JSON list of objects in an `array` or `?array`
+  property, each row converted and checked by its fields, a key no field
+  declares refused, the list kept in the order it is sent. In
+  relationship mode, `relationship('lines')` names an owned `#[HasMany]`
+  and the rows are child records written with the parent in one
+  transaction (diffed by `id`), `fields(['product', ...])` naming the
+  child fields a row edits. `min()` and `max()` bound the rows;
+  `orderBy('position')` names an int property of the child that takes
+  each row's index on save and orders the rows on load. Errors name
+  their row (`specs.2.label`, `lines.1.quantity`), a unique key a child
+  row collides with included. The descriptor publishes `repeater`
+  (`mode`, `fields`, `min`, `max`, `sortable`, `orderBy`, and a JSON
+  repeater's `rowFields`), OpenAPI the rows' schema, and
+  `vector_describe` a `format` and the row fields.
+- `Fields\Tag` (descriptor type `tag`): free-text strings in a JSON list
+  column, stored trimmed, without empty ones, each at most once ignoring
+  case (the first spelling kept), in their order. `suggestions()` only
+  proposes; `maxLength()` (50) and `maxTags()` (20) bound a tag and the
+  list, a refused tag named by its index. It filters by `any` (a bare
+  value) or `all` of a list of tags, on MySQL, MariaDB and PostgreSQL.
+  The descriptor publishes `tags`, OpenAPI an array of strings, and
+  `vector_describe` a `format` and its filters.
+- `Json` and `KeyValue` fields take a `stdClass`, `?stdClass`,
+  `array|stdClass` or `array|stdClass|null` property, which keeps every
+  JSON object an object: `{}` and a nested `{}` are stored and answered
+  as sent through a REST create, update or bulk edit, the MCP
+  `vector_create` and `vector_update` tools, a CSV import and a revert
+  from the audit trail, in a relationship repeater's row as on the
+  record itself, and a list stays a list. The `create()` and
+  `apply()` hooks receive a `stdClass` there.
+- A resource with no fields of its own derives a `Json` field for a
+  `stdClass` or `array|stdClass` property, and none for an `array` one.
+- `Database\JsonDepth`: how deep a JSON value may nest, from what each
+  database stores (100 levels on MySQL, 31 on MariaDB before 12.2, 2499
+  on MariaDB 12.2 and later and on PostgreSQL), and
+  `VectorDatabase::jsonDepth()` for Vector's own connection.
+
+### Changed
+
+- **Breaking:** an action's or a settings group's `Json` input is a
+  `stdClass` tree (a list where JSON sent one) and a `KeyValue` input a
+  `stdClass` of strings, instead of PHP arrays, so `{}` and a nested
+  `{}` stay objects: in `ActionRequest::$fields`, a settings group's
+  `validate()`, `SettingsStore::values()` and the settings API, from a
+  REST run or save, the MCP `vector_run_action` tool and a queued run.
+  Every other input is unchanged. An action or a settings consumer that
+  reads such an input as an array reads it as an object, or converts it.
+- **Breaking:** `RunActionJob::$fields` is the dialog's values as JSON
+  text, since a job's arguments are arrays, which would hold `{}` as
+  `[]`. A queued action job pushed before the upgrade fails to start;
+  let the queue drain first.
+- Requires `kinetis/orm` ^1.15.0 and `kinetis/query-builder` ^1.8.6.
+- Requires `kinetis/framework` ^1.32.0 and `kinetis/mcp` ^1.10.0, whose
+  `#[ObjectMap(keepObjects: true)]` lets the MCP write tools keep JSON
+  objects.
+- **Breaking:** `Json` and `KeyValue` map JSON columns: a `stdClass`,
+  `?stdClass`, `array|stdClass` or `array|stdClass|null` property
+  instead of JSON text in a `?string` one, and the build refuses any
+  other property. `Json` reads as the stored document (an object or an
+  array) instead of its text and writes a JSON object or array; a string
+  is refused. `KeyValue` writes the object itself. To migrate, change
+  the property to `array|stdClass|null` (`?stdClass` for a `KeyValue`;
+  and any code that set it to JSON text to set the document), and the
+  column to `JSON` on MySQL and MariaDB or `jsonb` on PostgreSQL
+  (`ALTER TABLE t ALTER COLUMN c TYPE jsonb USING c::jsonb`). A client
+  that sent JSON text to a `Json` field sends the document. An `array`
+  or `?array` property is refused too, naming the resource, the property
+  and the four accepted types: PHP holds `{}` and `[]` as one array, so
+  an empty object, nested or not, would be stored as `[]`.
+- **Breaking:** select values are strict. A body value outside the
+  options is `invalid_choice` (on its index for a multiple select), and
+  a JSON body must send an option's own type (`2`, not `"2"`, for an int
+  option). A stored value outside the options throws
+  `StoredValueException` on read: before removing an option, migrate the
+  rows that still hold it.
+- **Breaking:** `Computed::as('enum')` is `as('select')`.
+- A form condition's `null` and `nnull` treat an empty list as empty.
+- `GET /vector/r/{resource}/{id}/{field}/rows` serves a relationship
+  repeater's rows, in the order its `orderBy()` property holds.
+- The compiler refuses a relationship repeater whose child lives on
+  another connection than its parent, since the save is one
+  transaction.
+- Requires `kinetis/orm` ^1.16.0, `kinetis/persistence` ^1.5.0 and
+  `kinetis/database-bridge` ^1.4.7, whose links report the JSON depth
+  their server stores.
+
+### Removed
+
+- **Breaking:** `Fields\Enum` and the `enum` descriptor type. Replace
+  `Enum::make('status')->of(Status::class)` with
+  `Select::make('status')->of(Status::class)`; `labels()` and `colors()`
+  carry over, and a derived enum property becomes a `Select`. A client
+  reading the descriptor matches `select` instead of `enum`. A select's
+  `searchable()` no longer makes the list's search match its column.
+- **Breaking:** `HasMany::repeater()`. A has-many edited inside the
+  parent's form is a `Repeater` in relationship mode, whose descriptor
+  type is `repeater` rather than `hasMany`. Replace
+  `HasMany::to('lines', LineResource::class)->repeater(['product', 'quantity'], min: 1, max: 50)`
+  with
+  `Repeater::make('lines')->relationship('lines', LineResource::class)->fields(['product', 'quantity'])->min(1)->max(50)`,
+  and add `->orderBy('position')` over an int child property to let the
+  rows be dragged into order. The request body and the rows endpoint
+  are unchanged. A `hasMany` field no longer publishes `repeater`.
+
+### Fixed
+
+- The audit trail read its recorded values with every JSON object a PHP
+  array, so `GET /vector/r/{resource}/{id}/audit` answered an empty
+  `KeyValue` map, or any recorded `{}`, as `[]`. It now answers a
+  recorded object as an object.
+- Saving a record through a relationship `Repeater` deleted the children
+  the child resource's `scope()` hides from the user, after running the
+  delete policy and hooks and auditing the delete, and a row naming a
+  hidden child's `id` updated it. A save now leaves hidden children as
+  they are, position included, and refuses such a row as `unknown_row`.
+- `required()` on a `KeyValue` field refused every value. Any non-empty
+  object now passes, and an empty one is refused with `not_blank`, as a
+  blank string is.
+- A `KeyValue` key holding a NUL character was stored, a leading or
+  trailing one trimmed away. Such a key is now refused with
+  `invalid_key`.
+- The rows endpoint of a relationship repeater loaded at most `max()`
+  children, so saving the form deleted every child past `max()`. It now
+  loads all of them, and `max()` refuses that save with a 422.
+- Vector wrote and read JSON 512 levels deep, which no database stores:
+  on MySQL an audit row deeper than 100 levels failed the write with
+  `SQLSTATE[22032]` (3157) after the record was saved. A `Json` field's
+  value, or a JSON repeater's rows, now nests at most the least of what
+  the record's connection stores, what Vector's connection stores less
+  the two levels the audit row wraps around it, and 507, the most an
+  answer carries; a deeper one is a `422` on the field, `too_deep`, with
+  the limit as `max`, and nothing is written. The audit trail and a
+  record's JSON columns are read as deep as their connection stores, and
+  an import's `Json` cell 507 levels deep, so one nested deeper is
+  `too_deep`, with the field's own limit as `max`, rather than
+  `type_mismatch`.
+- A record holding a value deeper than the audit row stores, saved
+  before that limit, failed its next update with a `500` after the
+  record was saved. The audit entry now records that earlier value as
+  `AuditStore::TOO_DEEP` (`{"truncated": "too_deep"}`), and reverting
+  the entry is refused with `not_revertable` instead of writing the
+  marker into the record.
+
 ## [0.17.1] - 2026-11-23
 
 ### Changed

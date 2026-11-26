@@ -22,7 +22,9 @@ final readonly class ActionRequest
     /**
      * @param list<object> $entities
      * @param list<array<string, mixed>> $records
-     * @param array<string, mixed> $fields field name => converted value
+     * @param array<string, mixed> $fields field name => converted value: a `Json` input a stdClass
+     *                                   tree (or a list, where JSON sent one) and a `KeyValue` input a
+     *                                   stdClass of strings, so `{}` stays an object
      */
     public function __construct(
         public ResourceDescriptor $resource,

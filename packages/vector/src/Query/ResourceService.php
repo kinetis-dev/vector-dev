@@ -14,11 +14,13 @@ use Kinetis\QueryBuilder\Query;
 use Kinetis\Vector\Actions\VectorAction;
 use Kinetis\Vector\Auth\AllowAllPolicy;
 use Kinetis\Vector\Database\Connections;
+use Kinetis\Vector\Database\JsonFilter;
 use Kinetis\Vector\Database\Sql;
 use Kinetis\Vector\Auth\ResourcePolicyInterface;
 use Kinetis\Vector\Exception\ForbiddenOperationException;
 use Kinetis\Vector\Exception\InvalidListRequestException;
 use Kinetis\Vector\Exception\RecordNotFoundException;
+use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Write\InputViolation;
 use Kinetis\Vector\Write\ValueConverter;
@@ -67,6 +69,34 @@ final readonly class ResourceService
     public function resources(): array
     {
         return array_map($this->visible(...), $this->registry->resources());
+    }
+
+    /**
+     * The fields of each relationship repeater's child whose rows hold a
+     * field that keeps JSON objects, for JsonObjects::keep(): the rows a
+     * body or a tool's values send are kept against them, row by row.
+     * Empty when no repeater row keeps objects.
+     *
+     * @return array<string, array<string, array<string, mixed>>> repeater field => the child's compiled fields
+     */
+    public function repeaterRowFields(ResourceDescriptor $resource): array
+    {
+        $rowFields = [];
+
+        foreach ($resource->fields() as $name => $field) {
+            if (!ResourceCompiler::isChildRepeater($field)) {
+                continue;
+            }
+
+            $childFields = $this->resource($field['relation']['resource'])->fields();
+            $written = array_intersect_key($childFields, array_flip($field['repeater']['fields']));
+
+            if (array_any($written, static fn (array $child): bool => ValueConverter::keepsObjects($child))) {
+                $rowFields[$name] = $childFields;
+            }
+        }
+
+        return $rowFields;
     }
 
     public function visible(ResourceDescriptor $resource): ResourceDescriptor
@@ -586,8 +616,63 @@ final readonly class ResourceService
             'nbetween' => $query->whereGroup(static fn (Conditions $c) => $c->whereNotBetween($column, $bind($value[0]), $bind($value[1]))->orWhere($column, '=', null)),
             'null' => $query->where($column, '=', null),
             'nnull' => $query->where($column, '!=', null),
+            'any', 'all' => self::whereJsonList($query, $dialect, $column, $filter['op'], $value),
+            'keys.any', 'keys.all' => self::whereKeysTrue($query, $dialect, $column, substr($filter['op'], 5), $value),
+            'flags.any', 'flags.all' => self::whereFlags($query, $filter['op'] === 'flags.all', $value),
             default => throw new InvalidListRequestException("Unknown operator {$filter['op']}."),
         };
+    }
+
+    /**
+     * A JSON list (a multiple select's, or tags) holding any, or all, of
+     * the values ListRequest checked.
+     *
+     * @param 'mysql'|'pgsql' $dialect
+     */
+    private static function whereJsonList(Query|Conditions $query, string $dialect, string $column, string $op, mixed $values): Query|Conditions
+    {
+        if (!is_array($values) || $values === [] || !array_is_list($values)) {
+            throw new InvalidListRequestException("filter: \"{$op}\" takes a list of option values.");
+        }
+
+        /** @var list<int|string> $values */
+        $filter = JsonFilter::listContains($dialect, $column, $op, $values);
+        return $query->whereRaw($filter['sql'], $filter['params']);
+    }
+
+    /**
+     * A JSON-mode flag group's object holding true under any, or all, of
+     * the keys ListRequest checked against the options.
+     *
+     * @param 'mysql'|'pgsql' $dialect
+     */
+    private static function whereKeysTrue(Query|Conditions $query, string $dialect, string $column, string $mode, mixed $keys): Query|Conditions
+    {
+        if (!is_array($keys) || $keys === [] || !array_is_list($keys) || !array_all($keys, static fn (mixed $key): bool => is_string($key))) {
+            throw new InvalidListRequestException('filter: a flag group takes a list of option keys.');
+        }
+
+        /** @var list<string> $keys */
+        $filter = JsonFilter::keysTrue($dialect, $column, $mode, $keys);
+
+        return $query->whereRaw($filter['sql'], $filter['params']);
+    }
+
+    /**
+     * A columns-mode flag group with any, or all, of the flags' columns
+     * (from the compiled descriptor) true.
+     */
+    private static function whereFlags(Query|Conditions $query, bool $all, mixed $columns): Query|Conditions
+    {
+        if (!is_array($columns) || $columns === []) {
+            throw new InvalidListRequestException('filter: a flag group takes a list of option keys.');
+        }
+
+        return $query->whereGroup(static function (Conditions $group) use ($all, $columns): void {
+            foreach (array_values($columns) as $column) {
+                $all ? $group->where((string) $column, '=', true) : $group->orWhere((string) $column, '=', true);
+            }
+        });
     }
 
     /**
@@ -1253,29 +1338,38 @@ final readonly class ResourceService
     }
 
     /**
-     * The rows a repeater edits: every child of one record, as the child
-     * resource shows a record, oldest first, up to the repeater's maximum.
+     * The rows a relationship-mode repeater edits: every child of one
+     * record, as the child resource shows a record, in the order its
+     * orderBy() property holds (oldest first without one, and among equal
+     * positions). Every one of them, even past the repeater's max(): the
+     * save writes the list it gets back and deletes a child it leaves out,
+     * so a form holding fewer than are stored would delete the rest; with
+     * all of them, max() refuses that save instead.
      *
      * @return list<array<string, mixed>>
      */
     public function rows(ResourceDescriptor $resource, string $id, string $fieldName): array
     {
         $field = $resource->field($fieldName);
-        $repeater = $field['repeater'] ?? null;
 
-        if ($field === null || $repeater === null) {
-            throw new InvalidListRequestException("\"{$fieldName}\" is not a repeater of {$resource->slug()}.");
+        if ($field === null || !ResourceCompiler::isChildRepeater($field)) {
+            throw new InvalidListRequestException("\"{$fieldName}\" is not a relationship repeater of {$resource->slug()}.");
         }
+
+        $repeater = $field['repeater'];
 
         $this->show($resource, $id); // exists and is viewable
         $child = $this->resource($field['relation']['resource']);
         $this->gate->authorize($this->user, $this->policy($child)->viewAny(...));
-        $keys = array_column($this->baseQuery($child, null)
+        $query = $this->baseQuery($child, null)
             ->select($child->primaryKeyColumn())
-            ->where($field['relation']['foreignKey'], '=', $this->identifier($resource, $id))
-            ->orderBy($child->primaryKeyColumn(), 'ASC')
-            ->limit($repeater['max'])
-            ->get(), $child->primaryKeyColumn());
+            ->where($field['relation']['foreignKey'], '=', $this->identifier($resource, $id));
+
+        if (isset($repeater['orderColumn']) && is_string($repeater['orderColumn'])) {
+            $query->orderBy($repeater['orderColumn'], 'ASC');
+        }
+
+        $keys = array_column($query->orderBy($child->primaryKeyColumn(), 'ASC')->get(), $child->primaryKeyColumn());
         $records = $this->records($child, array_map(strval(...), $keys));
 
         return array_values(array_filter(array_map(static fn (mixed $key): ?array => $records[(string) $key] ?? null, $keys)));
@@ -1292,7 +1386,7 @@ final readonly class ResourceService
         $field = $resource->field($fieldName);
         $relation = $field['relation'] ?? null;
 
-        if ($field === null || $relation === null || !in_array($field['type'], ['hasMany', 'manyToMany'], true)) {
+        if ($field === null || $relation === null || !(in_array($field['type'], ['hasMany', 'manyToMany'], true) || ResourceCompiler::isChildRepeater($field))) {
             throw new InvalidListRequestException("\"{$fieldName}\" is not a collection of {$resource->slug()}.");
         }
 
@@ -1301,7 +1395,7 @@ final readonly class ResourceService
         $key = $this->identifier($resource, $id);
 
         return $this->list($target, $request, function (Query $query) use ($resource, $field, $relation, $target, $key): void {
-            if ($field['type'] === 'hasMany') {
+            if ($field['type'] !== 'manyToMany') {
                 $query->where($relation['foreignKey'], '=', $key);
             } else {
                 $query->whereIn($target->primaryKeyColumn(), $this->query($resource)->table($relation['joinTable'])
@@ -1323,10 +1417,11 @@ final readonly class ResourceService
             $columns = [$resource->primaryKeyColumn()];
 
             foreach ($fields as $name) {
-                $column = $resource->columns()[$name] ?? null;
-
-                if ($column !== null && !in_array($column, $columns, true)) {
-                    $columns[] = $column;
+                // a flag group in columns mode reads each flag's column
+                foreach ([$resource->columns()[$name] ?? null, ...array_values($resource->field($name)['flags'] ?? [])] as $column) {
+                    if (is_string($column) && !in_array($column, $columns, true)) {
+                        $columns[] = $column;
+                    }
                 }
             }
 
@@ -1395,7 +1490,7 @@ final readonly class ResourceService
                     static fn (mixed $v): bool => $v !== null,
                 ))), $relation['carry'] ?? []),
                 'hasOne' => $this->hasOne($target, $relation['foreignKey'], $keys),
-                'hasMany' => $this->counts($target, $relation['targetTable'], $relation['foreignKey'], $keys),
+                'hasMany', 'repeater' => $this->counts($target, $relation['targetTable'], $relation['foreignKey'], $keys),
                 'manyToMany' => $this->counts($target, $relation['joinTable'], $relation['joinColumn'], $keys),
                 default => [],
             };

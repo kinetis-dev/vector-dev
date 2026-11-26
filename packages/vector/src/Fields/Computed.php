@@ -20,7 +20,7 @@ namespace Kinetis\Vector\Fields;
 final class Computed extends Field
 {
     /** The kinds a computed value is shown as. */
-    public const array AS = ['text', 'number', 'money', 'boolean', 'date', 'datetime', 'enum'];
+    public const array AS = ['text', 'number', 'money', 'boolean', 'date', 'datetime', 'select'];
 
     protected array $views = [self::VIEW_INDEX, self::VIEW_SHOW];
 
@@ -48,7 +48,7 @@ final class Computed extends Field
         return false;
     }
 
-    /** How the value is shown: text, number, money, boolean, date, datetime or enum. */
+    /** How the value is shown: text, number, money, boolean, date, datetime or select (one of options()). */
     public function as(string $as): self
     {
         if (!in_array($as, self::AS, true)) {
@@ -95,7 +95,7 @@ final class Computed extends Field
     }
 
     /**
-     * An enum value's choices: value => label, with an optional colour each.
+     * A select value's choices: value => label, with an optional colour each.
      *
      * @param array<string|int, string> $labels
      * @param array<string|int, string> $colors
@@ -116,7 +116,7 @@ final class Computed extends Field
     {
         $array = [...parent::toArray(), 'computed' => ['as' => $this->as, 'from' => $this->from, 'method' => $this->method]];
 
-        if ($this->as === 'enum') {
+        if ($this->as === 'select') {
             $array['options'] = $this->options;
         }
 

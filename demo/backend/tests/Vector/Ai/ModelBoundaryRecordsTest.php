@@ -131,7 +131,7 @@ final class ModelBoundaryRecordsTest extends AiTestCase
 
         // products opt in with name, status, category and stock; an image field is kept though it opts in
         self::assertSame(
-            ['sku', 'slug', 'priceCents', 'currency', 'weightKg', 'isFeatured', 'description', 'attributes', 'imageKey', 'tags', 'releasedAt', 'createdAt', 'updatedAt'],
+            ['sku', 'slug', 'priceCents', 'currency', 'weightKg', 'isFeatured', 'description', 'attributes', 'specs', 'imageKey', 'tags', 'channels', 'keywords', 'releasedAt', 'createdAt', 'updatedAt'],
             $boundary->keptFields($resources->registry()->resource('products')),
         );
         self::assertSameAsSends($boundary, $resources);

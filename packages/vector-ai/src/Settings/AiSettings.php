@@ -10,13 +10,13 @@ use Kinetis\Validation\Constraints\LessThanOrEqual;
 use Kinetis\Validation\Violation;
 use Kinetis\Vector\Attributes\Settings;
 use Kinetis\Vector\Fields\Boolean;
-use Kinetis\Vector\Fields\Enum;
 use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\Settings\SettingsGroup;
 use Kinetis\VectorAi\Auth\AiAccessInterface;
 use Kinetis\VectorAi\Config\AiConfig;
 use Kinetis\VectorAi\Feature;
+use Kinetis\Vector\Fields\Select;
 
 /**
  * The `ai` settings group: which features are on, which configured
@@ -77,7 +77,7 @@ final class AiSettings extends SettingsGroup
                 ->rule(GreaterThanOrEqual::class, 1)->rule(LessThanOrEqual::class, 20),
             Number::make('approvalMinutes', 'Minutes a proposed change waits for approval')->required()->default(15)
                 ->rule(GreaterThanOrEqual::class, 1)->rule(LessThanOrEqual::class, 120),
-            Enum::make('dataDefault', 'Record data sent to the model')->of(DataDefault::class)->required()->default(DataDefault::Send->value)
+            Select::make('dataDefault', 'Record data sent to the model')->of(DataDefault::class)->required()->default(DataDefault::Send->value)
                 ->labels(['send' => 'Every field, except those marked not to send', 'allowlist' => 'Only fields marked to send'])
                 ->help('A resource or field opts out with meta(\'ai.send\', false), or in with meta(\'ai.send\', true).'),
         ];

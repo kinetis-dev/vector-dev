@@ -7,6 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-25
+
+### Added
+
+- `Vx/Cell/BooleanGroup.vue` and `Vx/Input/BooleanGroup.vue` for
+  kinetis/vector's flag group: the labels of the flags that are on as
+  chips, and one group of checkboxes whose value is every option key to
+  true or false. A new record's group starts with every flag off, or
+  as its default turns them on, so a form with no box ticked still
+  sends the group; a nullable JSON-mode group without a default starts
+  as null.
+- `Vx/Cell/Country.vue` and `Vx/Input/Country.vue`: the Select ones with
+  each code named in the UI's language from `utils/countries`, through
+  `useVectorCountryNames()`, falling back to the server's English name.
+  The filter bar and the command palette name countries the same way,
+  and the filter bar offers a flag group's keys and searches a
+  searchable field's choices.
+- `Vx/Cell/Select.vue` and `Vx/Input/Select.vue` for kinetis/vector's
+  `select` field: a multiple select edits as chips and shows its labels,
+  a searchable one (`autocomplete`) is a `v-autocomplete`, and a badge
+  (`badge`) or an option with a colour shows as coloured chips.
+- `Vx/Input/Json.vue`: a JSON field's document edited as text, sent as
+  the document when it is a valid JSON object or array and flagged
+  (`fields.json.invalid`) otherwise.
+- The filter bar offers a multiple select's `any` and `all` operators
+  (`list.filter.operators.any`, `list.filter.operators.all`) with a
+  choice of its options. The new strings are in every shipped locale.
+- `Vx/Input/Repeater.vue` edits kinetis/vector's `repeater` field in
+  both modes: a JSON repeater's rows of its own row fields, or a
+  relationship repeater's child rows. Rows are added and removed within
+  `min` and `max`, and a `sortable` repeater's rows move by dragging
+  their handle or with the arrow keys on it. A row's server errors stay
+  on the row. `Vx/Cell/Repeater.vue` counts the rows in a list and
+  shows them as a table on a record.
+- `Vx/Cell/Tag.vue` and `Vx/Input/Tag.vue` for the `tag` field: chips,
+  and a chips input with the field's suggestions that normalizes as the
+  server stores tags. The filter bar takes tags for `any` and `all`.
+  New strings (`fields.rows.*`, `fields.tags.*`) are in every shipped
+  locale.
+
+### Changed
+
+- `VectorFieldType` adds `booleanGroup` and `country`; `VectorField`
+  publishes a flag group's `storage` and `flagsSortable`.
+- **Breaking:** the `enum` field type is `select` (`VectorFieldType`,
+  the field and input registries, `VectorComputedAs`), and
+  `VectorEnumOption` is `VectorSelectOption`. A select without `badge`
+  and without colours shows its label as text rather than a chip. An
+  app override registered under `enum` in `app.config.vector.fields` or
+  `inputs` registers under `select`.
+- **Breaking:** a `json` field's value is the document (an object or an
+  array), not JSON text: `Vx/Cell/Json.vue` prints it, and the input is
+  `Vx/Input/Json.vue` instead of `Vx/Input/Textarea.vue`.
+- `VectorField` publishes `multiple`, `autocomplete` and `badge`, a
+  `json` value type, and the `any` and `all` operators.
+- A form condition's `null` and `nnull` treat an empty list as empty and
+  a list holding a value as not, as the server does.
+- `VectorField` publishes `repeater` as `VectorRepeater` (`mode`,
+  `sortable`, `orderBy`, `rowFields`) and `tags` as `VectorTags`;
+  `VectorFieldType` adds `repeater` and `tag`.
+
+### Removed
+
+- **Breaking:** `Vx/Cell/Enum.vue` and `Vx/Input/Enum.vue`; use the
+  Select components.
+- **Breaking:** the `hasMany` entry of the input registry. A has-many
+  edited in the form is a `repeater` field; an app override registered
+  under `hasMany` in `app.config.vector.inputs` registers under
+  `repeater`.
+
+### Fixed
+
+- With kinetis/vector loading every child into the rows endpoint, a
+  relationship repeater's form holds every stored row, past `max()`
+  too, so a save can no longer delete the rows past it: the server
+  refuses that save instead.
+- A collapsible form section opens again after it was collapsed: the
+  form recorded every click on its title as a close.
+
 ## [0.14.0] - 2026-11-23
 
 ### Added

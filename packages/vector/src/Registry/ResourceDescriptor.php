@@ -72,11 +72,13 @@ final readonly class ResourceDescriptor
 
         // a computed value computed from a hidden field would show it: it goes too
         $hidden = $this->withComputedFrom($hidden);
+        // and a hidden flag group's flags with it, `group.key` in a sort or a column list
+        $gone = static fn (string $name): bool => in_array(explode('.', $name, 2)[0], $hidden, true);
 
         $keep = static fn (array $names): array => array_values(array_diff($names, $hidden));
         $data = $this->data;
         $data['fields'] = array_values(array_filter($data['fields'], static fn (array $field): bool => !in_array($field['name'], $hidden, true)));
-        $data['columns'] = array_diff_key($data['columns'], array_flip($hidden));
+        $data['columns'] = array_filter($data['columns'], static fn (string $name): bool => !$gone($name), ARRAY_FILTER_USE_KEY);
         $data['searchColumns'] = array_diff_key($data['searchColumns'], array_flip($hidden));
         $data['searchRelations'] = array_diff_key($data['searchRelations'] ?? [], array_flip($hidden));
 
@@ -92,7 +94,7 @@ final readonly class ResourceDescriptor
         $data['table_view']['search'] = $keep($data['table_view']['search']);
         $data['table_view']['groupable'] = $keep($data['table_view']['groupable']);
         $data['table_view']['summaries'] = $keep($data['table_view']['summaries']);
-        $data['table_view']['defaultSort'] = array_values(array_filter($data['table_view']['defaultSort'], static fn (array $sort): bool => !in_array($sort['field'], $hidden, true)));
+        $data['table_view']['defaultSort'] = array_values(array_filter($data['table_view']['defaultSort'], static fn (array $sort): bool => !$gone($sort['field'])));
         $data['show_view']['fields'] = $keep($data['show_view']['fields']);
         $data['show_view']['extra'] = $keep($data['show_view']['extra']);
 
@@ -111,9 +113,26 @@ final readonly class ResourceDescriptor
             $data['titleField'] = $this->primaryKeyField();
         }
 
-        $data['creation'] = self::creationWithout($data, $hidden);
+        $data['creation'] = self::creationWithout($data, [...$hidden, ...$this->flagsOf($hidden)]);
 
         return new self($data);
+    }
+
+    /**
+     * The properties the columns-mode flag groups among $names write.
+     *
+     * @param list<string> $names
+     * @return list<string>
+     */
+    private function flagsOf(array $names): array
+    {
+        $flags = [];
+
+        foreach ($names as $name) {
+            $flags = [...$flags, ...array_map(strval(...), array_keys($this->fields[$name]['flags'] ?? []))];
+        }
+
+        return $flags;
     }
 
     /**
@@ -430,6 +449,17 @@ final readonly class ResourceDescriptor
         return $this->fields[$name] ?? null;
     }
 
+    /**
+     * A flag of a columns-mode flag group, `group.key`, as the boolean
+     * field a filter or a sort reads; null for any other name.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function flag(string $name): ?array
+    {
+        return ResourceCompiler::flagOf($this->fields, $name);
+    }
+
     /** @return array<string, string> field name => column, for every column-mapped field */
     public function columns(): array
     {
@@ -533,14 +563,15 @@ final readonly class ResourceDescriptor
     }
 
     /**
-     * A compiled field without its internals: no column, no enum class.
+     * A compiled field without its internals: no column, no enum class,
+     * no flag columns, no JSON property shape.
      *
      * @param array<string, mixed> $field
      * @return array<string, mixed>
      */
     public static function publicField(array $field): array
     {
-        unset($field['column'], $field['enum']);
+        unset($field['column'], $field['enum'], $field['flags'], $field['jsonObjects']);
 
         if (isset($field['computed'])) {
             unset($field['computed']['method']);
@@ -563,6 +594,16 @@ final readonly class ResourceDescriptor
 
             if (isset($field['relation']['dependsOn'])) {
                 unset($field['relation']['dependsOn']['column']);
+            }
+
+            unset($field['relation']['property']);
+        }
+
+        if (isset($field['repeater'])) {
+            unset($field['repeater']['orderColumn']);
+
+            if (isset($field['repeater']['rowFields'])) {
+                $field['repeater']['rowFields'] = array_map(self::publicField(...), $field['repeater']['rowFields']);
             }
         }
 

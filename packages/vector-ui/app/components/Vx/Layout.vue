@@ -64,7 +64,7 @@ watch(() => props.errors, () => {
             </v-col>
 
             <v-col v-else-if="node.kind === 'section'" cols="12" class="vx-layout-section" :data-layout-section="node.label">
-                <v-expansion-panels v-if="node.collapsible" :model-value="open[key] ? [0] : []" variant="accordion" @update:model-value="(v: unknown) => open[key] = Array.isArray(v) && v.length > 0">
+                <v-expansion-panels v-if="node.collapsible" :model-value="open[key] ? [0] : []" multiple variant="accordion" @update:model-value="(v: unknown) => open[key] = Array.isArray(v) && v.length > 0">
                     <v-expansion-panel :value="0">
                         <v-expansion-panel-title>
                             <span class="font-weight-medium">{{ node.label }}</span>

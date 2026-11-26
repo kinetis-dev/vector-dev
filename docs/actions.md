@@ -33,8 +33,12 @@ final class AdjustStock extends VectorAction
 ```
 
 `fields()` become the action's dialog, validated like a form, with
-conditions and defaults; an action's fields are scalar, enum and
-belongs-to fields. `canRun()` decides whether the action is offered
+conditions and defaults; an action's fields are scalar, select,
+belongs-to, `Json` and `KeyValue` fields. A multiple select hands the action a list of option
+values, never enum cases. A `Json` input hands it a `stdClass` tree (a
+list where JSON sent one, so `{}` stays an object) and a `KeyValue`
+input a `stdClass` of strings, on every path: a REST run, the MCP
+`vector_run_action` tool and a queued run. `canRun()` decides whether the action is offered
 (`$record` is `null`) and whether it may run on a given record. The
 action's URL segment is `name()`: by default the class name without
 `Action`, in kebab-case (`PublishAction` is `publish`). The constructor

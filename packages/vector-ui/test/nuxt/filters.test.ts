@@ -22,7 +22,7 @@ function field(name: string, label: string, type: string, operators: string[], e
 }
 
 function resource(fields = [
-    field('status', 'Status', 'enum', ['eq', 'ne', 'in', 'nin'], { options: [{ value: 'paid', label: 'Paid' }, { value: 'shipped', label: 'Shipped' }] }),
+    field('status', 'Status', 'select', ['eq', 'ne', 'in', 'nin'], { options: [{ value: 'paid', label: 'Paid' }, { value: 'shipped', label: 'Shipped' }] }),
     field('totalCents', 'Total', 'money', ['gt', 'lt']),
     field('customer', 'Customer', 'belongsTo', ['eq'], { relation: { kind: 'belongsTo', resource: 'customers' } }),
 ]): VectorResource {

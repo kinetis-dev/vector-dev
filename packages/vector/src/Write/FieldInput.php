@@ -17,6 +17,11 @@ final readonly class FieldInput
     public function __construct(private ValueConverter $converter) {}
 
     /**
+     * $payload may hold its JSON objects as stdClass: a `Json` or
+     * `KeyValue` input keeps them (a stdClass tree, a list where JSON
+     * sent one; a stdClass of strings), and every other input reads them
+     * as arrays (JsonObjects::keep()).
+     *
      * @param array<string, array<string, mixed>> $fields field name => compiled field
      * @param array<array-key, mixed> $payload
      * @return array<string, mixed> field name => converted value, for every field (absent ones as null or their default)
@@ -24,6 +29,7 @@ final readonly class FieldInput
      */
     public function validate(array $fields, array $payload): array
     {
+        $payload = JsonObjects::keep($fields, $payload);
         $values = [];
         $violations = [];
 
@@ -64,6 +70,7 @@ final readonly class FieldInput
             $values[$name] = match (true) {
                 $default !== null => $this->converter->convert($field, $default),
                 $field['type'] === 'boolean' => false,
+                $field['type'] === 'booleanGroup' => ValueConverter::flags($field, []),
                 default => null,
             };
 
@@ -73,6 +80,13 @@ final readonly class FieldInput
         if ($raw === null || $raw === '') {
             if (($state === null || !$state['required']) && ($field['nullable'] ?? true) === true) {
                 $values[$name] = $field['type'] === 'boolean' ? false : null;
+
+                return [];
+            }
+
+            // a flag group left out is every flag off, unless it is required()
+            if ($field['type'] === 'booleanGroup' && ($state === null || !$state['required']) && !self::isRequired($field)) {
+                $values[$name] = ValueConverter::flags($field, []);
 
                 return [];
             }
@@ -87,6 +101,12 @@ final readonly class FieldInput
         }
 
         return array_map(static fn (Violation $v): Violation => $v->under($name), $this->converter->violationsOfRules($field, $raw));
+    }
+
+    /** @param array<string, mixed> $field */
+    private static function isRequired(array $field): bool
+    {
+        return array_any($field['rules'] ?? [], static fn (array $rule): bool => str_ends_with((string) $rule['constraint'], '\\NotBlank'));
     }
 
     /** @param array<string, mixed> $field */

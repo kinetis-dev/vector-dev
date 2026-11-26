@@ -26,6 +26,7 @@ use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Money;
 use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\Fields\Password;
+use Kinetis\Vector\Fields\Repeater;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\Registry\LayoutCompiler;
 use Kinetis\Vector\Registry\ResourceCompiler;
@@ -173,7 +174,7 @@ final class RegistryRefusalsTest extends TestCase
         $conditional = new #[Resource(Order::class, slug: 'conditional-repeater-orders')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), Text::make('number'), HasMany::to('lines', RefusalOrderLines::class)->repeater()->visibleWhen('number', 'nnull')];
+                return [Id::make(), Text::make('number'), Repeater::make('lines')->relationship('lines', RefusalOrderLines::class)->visibleWhen('number', 'nnull')];
             }
         };
 

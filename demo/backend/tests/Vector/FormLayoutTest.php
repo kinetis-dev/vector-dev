@@ -46,14 +46,14 @@ final class FormLayoutTest extends VectorTestCase
 
         // the field list is untouched: the layout places fields by name
         self::assertSame(
-            ['id', 'sku', 'name', 'slug', 'status', 'category', 'priceCents', 'currency', 'stock', 'weightKg', 'isFeatured', 'description', 'attributes', 'imageKey', 'tags', 'releasedAt', 'createdAt', 'updatedAt'],
+            ['id', 'sku', 'name', 'slug', 'status', 'category', 'priceCents', 'currency', 'stock', 'weightKg', 'isFeatured', 'description', 'attributes', 'specs', 'imageKey', 'tags', 'channels', 'keywords', 'releasedAt', 'createdAt', 'updatedAt'],
             array_column($products['fields'], 'name'),
         );
 
         self::assertSame([
             'section Details: sku name slug status category',
             'section Pricing and stock: priceCents currency stock weightKg',
-            'tabs: [Content: description attributes imageKey] [Publishing: isFeatured releasedAt tags]',
+            'tabs: [Content: description attributes specs imageKey] [Publishing: isFeatured channels keywords releasedAt tags]',
         ], self::outline($products['layout']['form']));
 
         // the show page keeps what the form has not: the key and the timestamps
@@ -61,7 +61,7 @@ final class FormLayoutTest extends VectorTestCase
             'field id',
             'section Details: sku name slug status category',
             'section Pricing and stock: priceCents currency stock weightKg',
-            'tabs: [Content: description attributes imageKey] [Publishing: isFeatured releasedAt tags]',
+            'tabs: [Content: description attributes specs imageKey] [Publishing: isFeatured channels keywords releasedAt tags]',
             'field createdAt',
             'field updatedAt',
         ], self::outline($products['layout']['show']));
@@ -92,14 +92,14 @@ final class FormLayoutTest extends VectorTestCase
 
     public function testAHiddenFieldLeavesTheLayoutAndTakesAnEmptiedSectionOrTabWithIt(): void
     {
-        $this->policy->hidden = ['priceCents', 'currency', 'stock', 'weightKg', 'isFeatured', 'releasedAt', 'tags', 'slug'];
+        $this->policy->hidden = ['priceCents', 'currency', 'stock', 'weightKg', 'isFeatured', 'channels', 'keywords', 'releasedAt', 'tags', 'slug'];
 
         $products = $this->client->get('/vector/schema/products', headers: $this->adminHeaders())->assertOk()->json();
         self::assertIsArray($products);
 
         self::assertSame([
             'section Details: sku name status category',
-            'tabs: [Content: description attributes imageKey]',
+            'tabs: [Content: description attributes specs imageKey]',
         ], self::outline($products['layout']['form']));
     }
 

@@ -13,7 +13,9 @@ use Kinetis\Orm\EntityManagerRegistry;
 use Kinetis\Validation\Constraint;
 use Kinetis\Validation\Violation;
 use Kinetis\Vector\Auth\PasswordHasherInterface;
+use Kinetis\Vector\Database\JsonDepth;
 use Kinetis\Vector\Fields\KeyValue;
+use Kinetis\Vector\Fields\Tag;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Throwable;
@@ -46,6 +48,11 @@ final readonly class ValueConverter
     public function convert(array $field, mixed $raw): mixed
     {
         if ($raw === null || ($raw === '' && ($field['valueType'] ?? 'string') !== 'string')) {
+            // a JSON repeater that must hold rows holds none when cleared: its min() refuses that
+            if (self::needsRows($field)) {
+                throw self::rowCount($field['repeater']);
+            }
+
             if (($field['nullable'] ?? false) === true) {
                 return null;
             }
@@ -57,6 +64,11 @@ final readonly class ValueConverter
             'belongsTo' => $this->related($field, $raw),
             'manyToMany' => $this->relatedList($field, $raw),
             'keyValue' => $this->keyValue($field, $raw),
+            'json' => self::keepsObjects($field) ? self::document($field, $raw) : self::json($raw),
+            'select', 'country' => self::select($field, $raw),
+            'booleanGroup' => self::flags($field, $raw),
+            'tag' => self::tags($field, $raw),
+            'repeater' => $this->rows($field, $raw),
             'currency' => self::currency($field, $raw),
             'password' => $this->password($field, $raw),
             default => $this->scalar($field, $raw),
@@ -97,31 +109,57 @@ final readonly class ValueConverter
 
     /**
      * A query-string value: text, parsed by the field's value type. A
-     * belongsTo or enum resolves to the key or case value, not an entity.
+     * belongsTo or select resolves to the key or option value, not an
+     * entity or an enum case. A multiple select's cell is its list, as
+     * JSON (`["a","b"]`, what an export writes) or separated by `|`.
      *
      * @param array<string, mixed> $field
      * @throws InputViolation
      */
     public function fromQuery(array $field, string $raw): mixed
     {
-        $enum = $field['enum'] ?? null;
+        if ($field['type'] === 'select' || $field['type'] === 'country') {
+            return ($field['multiple'] ?? false) === true ? self::optionList($field, self::cellList($raw)) : self::option($field, $raw);
+        }
 
-        if ($enum !== null) {
-            /** @var class-string<BackedEnum> $enum */
-            $case = self::enumCase($enum, self::intBacked($enum) && preg_match('/^-?\d{1,18}$/D', $raw) === 1 ? (int) $raw : $raw);
-
-            return $case === null ? throw new InputViolation(new Violation([], 'invalid_choice', 'is not one of the allowed values.')) : $case->value;
+        // an imported cell holds the flags as the JSON object an export writes
+        if ($field['type'] === 'booleanGroup') {
+            return self::flags($field, json_decode($raw, true));
         }
 
         if ($field['type'] === 'currency') {
             return self::currency($field, $raw);
         }
 
-        // an imported cell holds the object as JSON text
-        if ($field['type'] === 'keyValue') {
+        // a cell of tags, as JSON or separated by `|`, as a multiple select's
+        if ($field['type'] === 'tag') {
+            return array_map(strval(...), self::cellList($raw));
+        }
+
+        // a JSON repeater's cell holds its rows as JSON text
+        if ($field['type'] === 'repeater') {
             $decoded = json_decode($raw, true);
 
-            return is_array($decoded) ? $decoded : throw self::mismatch('a JSON object of text values');
+            return is_array($decoded) && array_is_list($decoded) ? $decoded : throw self::mismatch('a JSON list of rows');
+        }
+
+        // an imported cell holds the object as JSON text; a property that keeps objects reads {} as one
+        if ($field['type'] === 'keyValue') {
+            $decoded = json_decode($raw, !self::keepsObjects($field));
+
+            return is_array($decoded) || $decoded instanceof \stdClass ? $decoded : throw self::mismatch('a JSON object of text values');
+        }
+
+        // read as deep as any field may nest (JsonDepth::MOST); a deeper cell's refusal names no limit, and the caller
+        // that knows the resource gives it its field's (JsonDepth::limited()), as RecordInput refuses a shallower one
+        if ($field['type'] === 'json') {
+            try {
+                $decoded = json_decode($raw, !self::keepsObjects($field), JsonDepth::MOST + 1, JSON_THROW_ON_ERROR);
+            } catch (\JsonException $e) {
+                throw $e->getCode() === JSON_ERROR_DEPTH ? new InputViolation(JsonDepth::tooDeep(null)) : self::mismatch('a JSON object or array');
+            }
+
+            return is_array($decoded) || $decoded instanceof \stdClass ? $decoded : throw self::mismatch('a JSON object or array');
         }
 
         if ($field['type'] === 'belongsTo') {
@@ -164,7 +202,19 @@ final readonly class ValueConverter
                 continue;
             }
 
-            $violation = (new $class(...$rule['args']))->validate($raw);
+            // and a list or an object (a multiple select, tags, rows, a document) is present when it holds something;
+            // an empty one, {} included, is refused with the very violation NotBlank gives a blank string
+            $checked = $raw;
+
+            if (is_string($class) && str_ends_with($class, '\\NotBlank') && (is_array($raw) || $raw instanceof \stdClass)) {
+                if ((array) $raw !== []) {
+                    continue;
+                }
+
+                $checked = '';
+            }
+
+            $violation = (new $class(...$rule['args']))->validate($checked);
 
             if ($violation !== null) {
                 $violations[] = $violation;
@@ -207,16 +257,424 @@ final readonly class ValueConverter
     }
 
     /**
-     * An object of text values, stored as JSON text: keys trimmed and
-     * non-empty, a number or boolean kept as its text, nothing nested.
-     * An empty object is null where the column allows it.
+     * One option of a select, as the value it is stored as: the option's
+     * own value (a string or an int). A JSON body's value must have the
+     * option's JSON type ($strict); a query string or a CSV cell is text,
+     * matched by its text.
      *
      * @param array<string, mixed> $field
      * @throws InputViolation
      */
-    private function keyValue(array $field, mixed $raw): ?string
+    public static function option(array $field, mixed $raw, bool $strict = false): int|string
+    {
+        if (is_int($raw) || is_string($raw)) {
+            $text = $strict ? $raw : trim((string) $raw);
+
+            foreach ($field['options'] ?? [] as $option) {
+                if ($strict ? $option['value'] === $text : (string) $option['value'] === $text) {
+                    return $option['value'];
+                }
+            }
+        }
+
+        $values = array_column($field['options'] ?? [], 'value');
+
+        throw new InputViolation(new Violation([], 'invalid_choice', 'is not one of the allowed values.', ['choices' => count($values) <= 50 ? $values : []]));
+    }
+
+    /**
+     * Options of a multiple select: each known, deduplicated, and kept in
+     * the order the options are declared, whatever order they came in.
+     *
+     * @param array<string, mixed> $field
+     * @param list<mixed> $raw
+     * @return list<int|string>
+     * @throws InputViolation
+     */
+    public static function optionList(array $field, array $raw, bool $strict = false): array
+    {
+        $chosen = [];
+
+        foreach ($raw as $index => $value) {
+            try {
+                $chosen[(string) self::option($field, $value, $strict)] = true;
+            } catch (InputViolation $e) {
+                throw new InputViolation($e->violation->under((string) $index));
+            }
+        }
+
+        $list = [];
+
+        foreach ($field['options'] as $option) {
+            if (isset($chosen[(string) $option['value']])) {
+                $list[] = $option['value'];
+            }
+        }
+
+        return $list;
+    }
+
+    /**
+     * A select's value: one option, typed as its property stores it (an
+     * enum case for an enum property), or a list of them for a multiple
+     * one. An empty list is null where the column allows it.
+     *
+     * @param array<string, mixed> $field
+     * @throws InputViolation
+     */
+    private static function select(array $field, mixed $raw): mixed
+    {
+        if (($field['multiple'] ?? false) === true) {
+            if (!is_array($raw) || !array_is_list($raw)) {
+                throw self::mismatch('a list of option values');
+            }
+
+            $list = self::optionList($field, $raw, true);
+
+            return $list === [] && ($field['nullable'] ?? false) === true ? null : $list;
+        }
+
+        $value = self::option($field, $raw instanceof BackedEnum ? $raw->value : $raw, true);
+        $enum = $field['enum'] ?? null;
+
+        if ($enum !== null) {
+            /** @var class-string<BackedEnum> $enum */
+            return $enum::from($value);
+        }
+
+        return $value;
+    }
+
+    /**
+     * A flag group's value: an object of its option keys to true or
+     * false, every option present in the result; a key left out is false.
+     * A key that is no option is invalid_choice under that key, a value
+     * that is not a boolean a type_mismatch.
+     *
+     * @param array<string, mixed> $field
+     * @return array<string, bool>
+     * @throws InputViolation
+     */
+    public static function flags(array $field, mixed $raw): array
     {
         if (!is_array($raw) || ($raw !== [] && array_is_list($raw))) {
+            throw self::mismatch('an object of option keys to true or false');
+        }
+
+        $keys = array_column($field['options'] ?? [], 'value');
+        $flags = array_fill_keys($keys, false);
+
+        foreach ($raw as $key => $on) {
+            $key = (string) $key;
+
+            if (!in_array($key, $keys, true)) {
+                throw new InputViolation(new Violation([$key], 'invalid_choice', 'is not one of the options.', ['choices' => $keys]));
+            }
+
+            $flags[$key] = is_bool($on) ? $on : throw new InputViolation(new Violation([$key], 'type_mismatch', 'must be true or false.'));
+        }
+
+        return $flags;
+    }
+
+    /**
+     * Tags as stored: a list of strings, each trimmed, empty ones dropped,
+     * duplicates dropped ignoring case (the first spelling kept), in their
+     * order. A tag that is not text or is too long is refused at its
+     * index, every one of them; so is a list longer than the field allows.
+     * An empty list is null where the column allows it.
+     *
+     * @param array<string, mixed> $field
+     * @return list<string>|null
+     * @throws InputViolation
+     */
+    private static function tags(array $field, mixed $raw): ?array
+    {
+        if (!is_array($raw) || !array_is_list($raw)) {
+            throw self::mismatch('a list of tags');
+        }
+
+        $maxLength = (int) ($field['tags']['maxLength'] ?? Tag::MAX_LENGTH);
+        $maxTags = (int) ($field['tags']['maxTags'] ?? Tag::MAX_TAGS);
+        $violations = [];
+        $texts = [];
+
+        foreach ($raw as $index => $tag) {
+            if (!is_string($tag)) {
+                $violations[] = new Violation([$index], 'type_mismatch', 'must be text.');
+            } elseif (mb_strlen(Tag::trim($tag)) > $maxLength) {
+                $violations[] = new Violation([$index], 'too_long', "may be at most {$maxLength} characters.", ['max' => $maxLength]);
+            } else {
+                $texts[] = $tag;
+            }
+        }
+
+        if ($violations !== []) {
+            throw InputViolation::of($violations);
+        }
+
+        $list = Tag::normalize($texts);
+
+        if (count($list) > $maxTags) {
+            throw new InputViolation(new Violation([], 'too_many_entries', "may hold at most {$maxTags} tags.", ['max' => $maxTags]));
+        }
+
+        return $list === [] && ($field['nullable'] ?? false) === true ? null : $list;
+    }
+
+    /**
+     * A JSON repeater's rows: a list of objects, as many as the field
+     * allows, each holding only the fields the repeater declares. Every
+     * row field is converted and checked by its own rules, and stored as
+     * the plain value a JSON document holds (an option's value, a date's
+     * text). Every problem is reported at its row and field.
+     *
+     * @param array<string, mixed> $field
+     * @return list<array<string, mixed>>
+     * @throws InputViolation
+     */
+    private function rows(array $field, mixed $raw): array
+    {
+        $repeater = $field['repeater'];
+
+        if (!is_array($raw) || !array_is_list($raw)) {
+            throw self::mismatch('a list of rows');
+        }
+
+        if (count($raw) < $repeater['min'] || count($raw) > $repeater['max']) {
+            throw self::rowCount($repeater);
+        }
+
+        $rowFields = array_column($repeater['rowFields'], null, 'name');
+        $rows = [];
+        $violations = [];
+
+        foreach ($raw as $index => $row) {
+            [$rows[], $found] = $this->row($rowFields, $index, $row);
+            array_push($violations, ...$found);
+        }
+
+        if ($violations !== []) {
+            throw InputViolation::of($violations);
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Whether a field is a JSON repeater whose min() asks for rows, so that
+     * no value (null) is too few of them rather than an empty column.
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function needsRows(array $field): bool
+    {
+        return $field['type'] === 'repeater' && ($field['repeater']['mode'] ?? null) === 'json' && ($field['repeater']['min'] ?? 0) > 0;
+    }
+
+    /** @param array<string, mixed> $repeater */
+    private static function rowCount(array $repeater): InputViolation
+    {
+        return new InputViolation(new Violation([], 'count_out_of_range', "must hold {$repeater['min']} to {$repeater['max']} rows.", ['min' => $repeater['min'], 'max' => $repeater['max']]));
+    }
+
+    /**
+     * One row of a JSON repeater: its values in the order the fields are
+     * declared, a field it leaves out as null, or what is wrong with it.
+     *
+     * @param array<string, array<string, mixed>> $rowFields
+     * @return array{0: array<string, mixed>, 1: list<Violation>}
+     */
+    private function row(array $rowFields, int $index, mixed $row): array
+    {
+        if (!is_array($row) || ($row !== [] && array_is_list($row))) {
+            return [[], [new Violation([$index], 'type_mismatch', 'must be an object of field values.')]];
+        }
+
+        $violations = [];
+        $values = [];
+
+        foreach (array_keys($row) as $key) {
+            if (!isset($rowFields[(string) $key])) {
+                $violations[] = new Violation([$index, (string) $key], 'unexpected_field', 'is not a field of this row.');
+            }
+        }
+
+        foreach ($rowFields as $name => $sub) {
+            // a field the row leaves out takes its default, as a new record's would
+            $value = array_key_exists($name, $row) ? $row[$name] : (($sub['hasDefault'] ?? false) === true ? $sub['default'] : null);
+
+            if ($value === null && ($sub['nullable'] ?? true) !== true) {
+                $violations[] = new Violation([$index, $name], 'required', 'is required.');
+
+                continue;
+            }
+
+            try {
+                $values[$name] = self::plain($sub, $this->convert($sub, $value));
+            } catch (InputViolation $e) {
+                array_push($violations, ...array_map(static fn (Violation $v): Violation => $v->under($index, $name), $e->all()));
+
+                continue;
+            }
+
+            foreach ($this->violationsOfRules($sub, $value) as $violation) {
+                $violations[] = $violation->under($index, $name);
+            }
+        }
+
+        return [$values, $violations];
+    }
+
+    /**
+     * A converted value as a JSON document holds it: an option's value, an
+     * instant (or a date field's day) as text.
+     *
+     * @param array<string, mixed> $field
+     */
+    private static function plain(array $field, mixed $value): mixed
+    {
+        return match (true) {
+            $value instanceof BackedEnum => $value->value,
+            $value instanceof DateTimeImmutable && $field['type'] === 'date' => $value->format('Y-m-d'),
+            $value instanceof DateTimeImmutable => $value->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.v\Z'),
+            $value instanceof Date => (string) $value,
+            default => $value,
+        };
+    }
+
+    /**
+     * A cell holding a list: JSON (`["a","b"]`) or text separated by `|`.
+     *
+     * @return list<string|int>
+     */
+    private static function cellList(string $raw): array
+    {
+        $raw = trim($raw);
+
+        if (str_starts_with($raw, '[')) {
+            $decoded = json_decode($raw, true);
+
+            if (is_array($decoded) && array_is_list($decoded)) {
+                return array_values(array_filter($decoded, static fn (mixed $v): bool => is_string($v) || is_int($v)));
+            }
+        }
+
+        return array_values(array_filter(array_map('trim', explode('|', $raw)), static fn (string $v): bool => $v !== ''));
+    }
+
+    /**
+     * Any JSON object or array, for an `array` property; an object
+     * arrives as an associative array. A bare scalar is refused: the
+     * column holds a document.
+     *
+     * @return array<array-key, mixed>
+     * @throws InputViolation
+     */
+    private static function json(mixed $raw): array
+    {
+        if (!is_array($raw)) {
+            throw self::mismatch('a JSON object or array');
+        }
+
+        return $raw;
+    }
+
+    /**
+     * Whether a JSON or key-value field maps a property that keeps JSON
+     * objects (`stdClass`, `array|stdClass`, nullable or not), so its value
+     * is a stdClass rather than an associative array.
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function keepsObjects(array $field): bool
+    {
+        return isset($field['jsonObjects']);
+    }
+
+    /**
+     * Any JSON object or array, for a property that keeps objects: every
+     * object a stdClass and every array a list, at any depth, so `{}`
+     * stays an object. An associative array (a value that came through a
+     * path that decodes objects to arrays) is read as the object it was;
+     * an empty array is a list, except as the whole value of a `stdClass`
+     * property, which holds an object only.
+     *
+     * @param array<string, mixed> $field
+     * @return \stdClass|list<mixed>
+     * @throws InputViolation
+     */
+    private static function document(array $field, mixed $raw): \stdClass|array
+    {
+        $objectOnly = $field['jsonObjects'] === 'object';
+
+        if (!is_array($raw) && !$raw instanceof \stdClass) {
+            throw self::mismatch($objectOnly ? 'a JSON object' : 'a JSON object or array');
+        }
+
+        if ($objectOnly && $raw === []) {
+            return new \stdClass();
+        }
+
+        $tree = self::objectTree($raw);
+
+        return $objectOnly && !$tree instanceof \stdClass ? throw self::mismatch('a JSON object') : $tree;
+    }
+
+    /**
+     * A decoded JSON value with every object a stdClass and every array a
+     * list. A key starting with NUL is refused: PHP cannot hold it as a
+     * property, so it would not be stored.
+     *
+     * @throws InputViolation
+     */
+    private static function objectTree(mixed $value): mixed
+    {
+        if (!is_array($value) && !$value instanceof \stdClass) {
+            return $value;
+        }
+
+        $members = $value instanceof \stdClass ? get_object_vars($value) : $value;
+        $tree = [];
+
+        foreach ($members as $key => $member) {
+            if (str_starts_with((string) $key, "\0")) {
+                throw self::mismatch('a JSON document with no key starting with a NUL character');
+            }
+
+            $tree[$key] = self::objectTree($member);
+        }
+
+        if (is_array($value) && array_is_list($tree)) {
+            return $tree;
+        }
+
+        $object = new \stdClass();
+
+        foreach ($tree as $key => $member) {
+            $object->{(string) $key} = $member;
+        }
+
+        return $object;
+    }
+
+    /**
+     * An object of text values for a JSON column: keys trimmed and
+     * non-empty, a number or boolean kept as its text, nothing nested.
+     * An empty object is null where the column allows it. A property that
+     * keeps objects receives a stdClass, `{}` when empty.
+     *
+     * @param array<string, mixed> $field
+     * @return array<string, string>|\stdClass|null
+     * @throws InputViolation
+     */
+    private function keyValue(array $field, mixed $raw): array|\stdClass|null
+    {
+        // a stdClass is an object even when its keys read as 0, 1, 2
+        $object = $raw instanceof \stdClass;
+        $raw = $object ? get_object_vars($raw) : $raw;
+
+        if (!is_array($raw) || (!$object && $raw !== [] && array_is_list($raw))) {
             throw self::mismatch('an object of text values');
         }
 
@@ -229,10 +687,11 @@ final readonly class ValueConverter
         $map = [];
 
         foreach ($raw as $key => $value) {
-            $key = trim((string) $key);
+            // a NUL is refused before trim(), which would strip it
+            $key = str_contains((string) $key, "\0") ? '' : trim((string) $key);
 
             if ($key === '' || mb_strlen($key) > KeyValue::KEY_LENGTH) {
-                throw new InputViolation(new Violation([], 'invalid_key', 'has a key that is empty or longer than ' . KeyValue::KEY_LENGTH . ' characters.'));
+                throw new InputViolation(new Violation([], 'invalid_key', 'has a key that is empty, holds a NUL character or is longer than ' . KeyValue::KEY_LENGTH . ' characters.'));
             }
 
             if ($value !== null && !is_scalar($value)) {
@@ -250,7 +709,7 @@ final readonly class ValueConverter
             return null;
         }
 
-        return json_encode((object) $map, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        return self::keepsObjects($field) ? (object) $map : $map;
     }
 
     /**
@@ -259,20 +718,6 @@ final readonly class ValueConverter
      */
     private function scalar(array $field, mixed $raw): mixed
     {
-        $enum = $field['enum'] ?? null;
-
-        if ($enum !== null) {
-            /** @var class-string<BackedEnum> $enum */
-            $case = is_int($raw) || is_string($raw) ? self::enumCase($enum, $raw) : null;
-
-            return $case ?? throw new InputViolation(new Violation(
-                [],
-                'invalid_choice',
-                'is not one of the allowed values.',
-                ['choices' => array_map(static fn (BackedEnum $c): int|string => $c->value, $enum::cases())],
-            ));
-        }
-
         return match ($field['valueType']) {
             'int' => is_int($raw) ? $raw : throw self::mismatch('an integer'),
             'float' => is_int($raw) || is_float($raw) ? (float) $raw : throw self::mismatch('a number'),
@@ -281,24 +726,6 @@ final readonly class ValueConverter
             'date' => $this->day($raw),
             default => is_string($raw) ? $raw : throw self::mismatch('a string'),
         };
-    }
-
-    /**
-     * The case whose value is $raw, or null. Under strict types tryFrom()
-     * throws a TypeError for the other scalar (a string for an int-backed
-     * enum, an int for a string-backed one) so that is no case either.
-     *
-     * @param class-string<BackedEnum> $enum
-     */
-    private static function enumCase(string $enum, int|string $raw): ?BackedEnum
-    {
-        return is_int($raw) === self::intBacked($enum) ? $enum::tryFrom($raw) : null;
-    }
-
-    /** @param class-string<BackedEnum> $enum */
-    private static function intBacked(string $enum): bool
-    {
-        return (string) (new \ReflectionEnum($enum))->getBackingType() === 'int';
     }
 
     /**

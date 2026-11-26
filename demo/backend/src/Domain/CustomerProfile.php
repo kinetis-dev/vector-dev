@@ -27,6 +27,10 @@ final class CustomerProfile
 
     private bool $newsletter;
 
+    private bool $acceptsSms = false;
+
+    private bool $acceptsPost = false;
+
     public function __construct(Customer $customer, string $addressLine, string $city, string $postalCode, string $country, bool $newsletter)
     {
         $this->customer = $customer;
@@ -35,5 +39,12 @@ final class CustomerProfile
         $this->postalCode = $postalCode;
         $this->country = $country;
         $this->newsletter = $newsletter;
+    }
+
+    /** Whether the customer may be reached by text message and by post too. */
+    public function reachableBy(bool $sms, bool $post): void
+    {
+        $this->acceptsSms = $sms;
+        $this->acceptsPost = $post;
     }
 }

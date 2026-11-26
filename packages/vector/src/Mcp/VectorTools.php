@@ -23,6 +23,7 @@ use Kinetis\Vector\Query\ListRequest;
 use Kinetis\Vector\Query\ResourceService;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Widgets\WidgetRunner;
+use Kinetis\Vector\Write\JsonObjects;
 use Kinetis\Vector\Write\RecordWriter;
 use Kinetis\Vector\Write\ValueConverter;
 
@@ -157,9 +158,13 @@ final readonly class VectorTools
      * @return array<string, mixed>|ToolResult
      */
     #[McpTool(name: 'vector_create', description: 'Create a record from values {field: value}, validated like the admin form')]
-    public function create(string $resource, #[ObjectMap] array $values): array|ToolResult
+    public function create(string $resource, #[ObjectMap(keepObjects: true)] array $values): array|ToolResult
     {
-        return $this->guarded(fn (): array => ['data' => $this->writer->create($this->reader->resource($resource), $values)]);
+        return $this->guarded(function () use ($resource, $values): array {
+            $descriptor = $this->reader->resource($resource);
+
+            return ['data' => $this->writer->create($descriptor, JsonObjects::keep($descriptor->fields(), $values, $this->reader->repeaterRowFields($descriptor)))];
+        });
     }
 
     /**
@@ -167,9 +172,13 @@ final readonly class VectorTools
      * @return array<string, mixed>|ToolResult
      */
     #[McpTool(name: 'vector_update', description: 'Update the fields in values {field: value} of a record; pass the version you read to refuse a stale write')]
-    public function update(string $resource, string $id, #[ObjectMap] array $values, string $version = ''): array|ToolResult
+    public function update(string $resource, string $id, #[ObjectMap(keepObjects: true)] array $values, string $version = ''): array|ToolResult
     {
-        return $this->guarded(fn (): array => ['data' => $this->writer->update($this->reader->resource($resource), $id, $values, $version === '' ? null : $version)]);
+        return $this->guarded(function () use ($resource, $id, $values, $version): array {
+            $descriptor = $this->reader->resource($resource);
+
+            return ['data' => $this->writer->update($descriptor, $id, JsonObjects::keep($descriptor->fields(), $values, $this->reader->repeaterRowFields($descriptor)), $version === '' ? null : $version)];
+        });
     }
 
     /** @return array<string, mixed>|ToolResult */
@@ -185,11 +194,12 @@ final readonly class VectorTools
 
     /**
      * @param list<string> $ids
-     * @param array<string, mixed> $values the action dialog's field => value
+     * @param array<string, mixed> $values the action dialog's field => value, JSON objects as stdClass;
+     *                                     FieldInput keeps them for a Json or KeyValue input only
      * @return array<string, mixed>|ToolResult
      */
     #[McpTool(name: 'vector_run_action', description: 'Run a resource action on record ids (empty for a standalone action) with its dialog values {field: value}')]
-    public function runAction(string $resource, string $action, #[\Kinetis\Validation\ListOf('string')] array $ids = [], #[ObjectMap] array $values = []): array|ToolResult
+    public function runAction(string $resource, string $action, #[\Kinetis\Validation\ListOf('string')] array $ids = [], #[ObjectMap(keepObjects: true)] array $values = []): array|ToolResult
     {
         return $this->guarded(function () use ($resource, $action, $ids, $values): array {
             $response = $this->actions->run($this->reader->resource($resource), $action, ['ids' => $ids, 'fields' => $values]);

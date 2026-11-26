@@ -6,6 +6,8 @@ namespace Kinetis\Vector\Write;
 
 use Kinetis\Validation\Exception\ValidationException;
 use Kinetis\Validation\Violation;
+use Kinetis\Vector\Database\JsonDepth;
+use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 
 /**
@@ -25,6 +27,7 @@ final readonly class RecordInput
         private \Kinetis\Vector\Files\VectorStorage $storage,
         private \Kinetis\Vector\Query\ResourceService $service,
         private \Kinetis\Vector\RichText\Document $document,
+        private JsonDepth $depth,
     ) {}
 
     /**
@@ -35,6 +38,10 @@ final readonly class RecordInput
      *
      * @param array<array-key, mixed> $payload the decoded JSON object
      * @param array<string, mixed> $current the stored record, serialized, when updating
+     * A columns-mode flag group is returned under its own name, as the
+     * object of every flag, and under each flag's property name, as that
+     * flag's bool: create() and apply() receive both.
+     *
      * @return array<string, mixed> field name => converted value, for every field the payload named
      * @throws ValidationException
      */
@@ -109,7 +116,8 @@ final readonly class RecordInput
     {
         $field = $resource->field($name);
 
-        if ($field === null || !in_array($view, $field['views'], true) || in_array($field['type'], ['hasOne', 'hasMany'], true)) {
+        // a child repeater's rows are written with the record, by RecordWriter, never as a value
+        if ($field === null || !in_array($view, $field['views'], true) || in_array($field['type'], ['hasOne', 'hasMany'], true) || ResourceCompiler::isChildRepeater($field)) {
             return [new Violation([$name], 'unexpected_field', 'is not a field this resource accepts.')];
         }
 
@@ -138,7 +146,20 @@ final readonly class RecordInput
         try {
             $values[$name] = $this->converter->convert($field, $raw);
         } catch (InputViolation $e) {
-            return [$e->violation->under($name)];
+            // a JSON repeater's rows or a list of tags report each part at its own path
+            return array_map(static fn (Violation $v): Violation => $v->under($name), $e->all());
+        }
+
+        // a document (or a JSON repeater's rows) is stored, audited and answered only as deep as JsonDepth allows
+        if (in_array($field['type'], ['json', 'repeater'], true) && JsonDepth::levels($values[$name]) > ($max = $this->depth->forField($resource))) {
+            unset($values[$name]);
+
+            return [JsonDepth::tooDeep($max)->under($name)];
+        }
+
+        // a flag group in columns mode writes each flag's own bool property; the group itself is none
+        foreach (array_keys($field['flags'] ?? []) as $key) {
+            $values[(string) $key] = $values[$name][$key];
         }
 
         return array_map(static fn (Violation $v): Violation => $v->under($name), $this->converter->violationsOfRules($field, $raw));
@@ -354,8 +375,13 @@ final readonly class RecordInput
             return false;
         }
 
-        if (in_array($field['type'], ['hasOne', 'hasMany', 'manyToMany', 'id'], true)) {
+        if (in_array($field['type'], ['hasOne', 'hasMany', 'manyToMany', 'id'], true) || ResourceCompiler::isChildRepeater($field)) {
             return false;
+        }
+
+        // a JSON repeater that must hold rows needs them sent
+        if ($field['type'] === 'repeater' && $field['repeater']['min'] > 0) {
+            return true;
         }
 
         if ($field['nullable'] ?? true) {

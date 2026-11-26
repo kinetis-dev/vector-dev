@@ -85,14 +85,17 @@ final readonly class SettingsController
         $raw = (string) $request->getBody();
 
         try {
-            $body = trim($raw) === '' ? [] : json_decode($raw, true, 16, JSON_THROW_ON_ERROR);
+            // every JSON object a stdClass: a Json or KeyValue input keeps it, FieldInput makes the rest arrays
+            $body = trim($raw) === '' ? new \stdClass() : json_decode($raw, false, 16, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
             throw ValidationException::fromViolations([new Violation([], 'invalid_json', 'The request body is not valid JSON.')]);
         }
 
-        if (!is_array($body) || array_is_list($body) && $body !== []) {
+        if (!$body instanceof \stdClass && $body !== []) {
             throw ValidationException::fromViolations([new Violation([], 'type_mismatch', 'The request body must be a JSON object.')]);
         }
+
+        $body = $body instanceof \stdClass ? get_object_vars($body) : [];
 
         $values = $this->input->validate($descriptor->fields(), $body);
         $stored = [];

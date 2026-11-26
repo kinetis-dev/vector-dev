@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: 'Chargement de {label}',
     },
+    json: {
+        invalid: 'Saisissez un objet ou un tableau JSON valide.',
+    },
     keyValue: {
         key: 'Clé',
         value: 'Valeur',
@@ -73,5 +76,17 @@ export default {
         lessThanOrEqual: 'Doit être au plus {limit}',
         invalidFormat: 'Format non valide',
         notAllowed: 'Valeur non autorisée',
+    },
+    rows: {
+        add: 'Ajouter une ligne',
+        remove: 'Supprimer la ligne {n}',
+        row: 'Ligne {n}',
+        drag: 'Déplacer la ligne {n} : faites-la glisser ou utilisez les flèches',
+        moved: 'Ligne {from} déplacée en position {to}',
+        none: 'Aucune ligne',
+    },
+    tags: {
+        hint: 'Saisissez un mot-clé et appuyez sur Entrée',
+        tooMany: '{max} mots-clés au maximum',
     },
 }

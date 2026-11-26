@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: 'Ładowanie: {label}',
     },
+    json: {
+        invalid: 'Wpisz poprawny obiekt lub tablicę JSON.',
+    },
     keyValue: {
         key: 'Klucz',
         value: 'Wartość',
@@ -73,5 +76,17 @@ export default {
         lessThanOrEqual: 'Musi wynosić co najwyżej {limit}',
         invalidFormat: 'Nieprawidłowy format',
         notAllowed: 'Niedozwolona wartość',
+    },
+    rows: {
+        add: 'Dodaj wiersz',
+        remove: 'Usuń wiersz {n}',
+        row: 'Wiersz {n}',
+        drag: 'Przenieś wiersz {n}: przeciągnij go lub użyj klawiszy strzałek',
+        moved: 'Wiersz {from} przeniesiono na pozycję {to}',
+        none: 'Brak wierszy',
+    },
+    tags: {
+        hint: 'Wpisz tag i naciśnij Enter',
+        tooMany: 'Najwyżej {max} tagów',
     },
 }

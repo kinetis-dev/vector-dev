@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: 'A carregar {label}',
     },
+    json: {
+        invalid: 'Introduza um objeto ou uma matriz JSON válidos.',
+    },
     keyValue: {
         key: 'Chave',
         value: 'Valor',
@@ -73,5 +76,17 @@ export default {
         lessThanOrEqual: 'Tem de ser no máximo {limit}',
         invalidFormat: 'Formato inválido',
         notAllowed: 'Valor não permitido',
+    },
+    rows: {
+        add: 'Adicionar linha',
+        remove: 'Remover a linha {n}',
+        row: 'Linha {n}',
+        drag: 'Mover a linha {n}: arraste-a ou utilize as teclas de seta',
+        moved: 'Linha {from} movida para a posição {to}',
+        none: 'Sem linhas',
+    },
+    tags: {
+        hint: 'Escreva uma etiqueta e prima Enter',
+        tooMany: 'No máximo {max} etiquetas',
     },
 }

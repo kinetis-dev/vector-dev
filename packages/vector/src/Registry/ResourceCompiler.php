@@ -11,20 +11,25 @@ use Kinetis\Vector\Attributes\Resource;
 use Kinetis\Vector\Auth\PasswordHasherInterface;
 use Kinetis\Vector\Exception\ResourceCompileException;
 use Kinetis\Vector\Fields\BelongsTo;
+use Kinetis\Vector\Fields\BooleanGroup;
 use Kinetis\Vector\Fields\Boolean;
 use Kinetis\Vector\Fields\Computed;
 use Kinetis\Vector\Fields\Currency;
 use Kinetis\Vector\Fields\Date;
 use Kinetis\Vector\Fields\DateTime;
-use Kinetis\Vector\Fields\Enum;
 use Kinetis\Vector\Fields\Field;
 use Kinetis\Vector\Fields\HasMany;
 use Kinetis\Vector\Fields\HasOne;
 use Kinetis\Vector\Fields\Id;
+use Kinetis\Vector\Fields\Json;
 use Kinetis\Vector\Fields\ManyToMany;
 use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\Fields\RelationField;
+use Kinetis\Vector\Fields\Repeater;
+use Kinetis\Vector\Fields\Select;
+use Kinetis\Vector\Fields\Tag;
 use Kinetis\Vector\Fields\Text;
+use Kinetis\Vector\Support\Countries;
 use Kinetis\Vector\VectorResource;
 use Kinetis\Vector\Write\RecordInput;
 use ReflectionClass;
@@ -61,6 +66,9 @@ final class ResourceCompiler
         'boolean' => ['eq'],
         'datetime' => ['eq', 'ne', 'lt', 'lte', 'gt', 'gte', 'between'],
         'enum' => ['eq', 'ne', 'in', 'nin'],
+        // a JSON list of values (a multiple select's options, tags): holding any, or all, of the given ones;
+        // a flag group's flags among the given keys any, or all, of which are on
+        'list' => ['any', 'all'],
         'belongsTo' => ['eq', 'ne', 'in', 'nin'],
         'id' => ['eq', 'ne', 'lt', 'lte', 'gt', 'gte', 'between', 'in', 'nin'],
         // a rich-text document is filtered by presence only (null/nnull on a nullable column)
@@ -68,10 +76,10 @@ final class ResourceCompiler
     ];
 
     /** The field types a list cell may edit in place. */
-    private const array INLINE_TYPES = ['string', 'email', 'url', 'slug', 'color', 'number', 'money', 'boolean', 'enum', 'currency', 'date', 'datetime', 'belongsTo'];
+    private const array INLINE_TYPES = ['string', 'email', 'url', 'slug', 'color', 'number', 'money', 'boolean', 'select', 'country', 'currency', 'date', 'datetime', 'belongsTo'];
 
     /** The field types a list may group by: a bounded set of values or a sortable scalar. */
-    private const array GROUPABLE = ['enum', 'currency', 'belongsTo', 'boolean', 'string', 'date', 'slug', 'email'];
+    private const array GROUPABLE = ['select', 'country', 'currency', 'belongsTo', 'boolean', 'string', 'date', 'slug', 'email'];
 
     /**
      * Which OPERATORS row a field type uses, or null for a field that
@@ -84,10 +92,12 @@ final class ResourceCompiler
             'number', 'money' => 'number',
             'boolean' => 'boolean',
             'date', 'datetime' => 'datetime',
-            'enum', 'currency' => 'enum',
+            'select', 'country', 'currency' => 'enum',
+            'booleanGroup' => 'list',
             'belongsTo' => 'belongsTo',
             'richtext' => 'presence',
-            'hasOne', 'hasMany', 'manyToMany' => null,
+            'tag' => 'list',
+            'hasOne', 'hasMany', 'manyToMany', 'repeater' => null,
             default => 'string',
         };
     }
@@ -98,7 +108,7 @@ final class ResourceCompiler
      */
     public static function operatorsFor(array $field): array
     {
-        $shape = self::operatorShape($field['type']);
+        $shape = self::isList($field) ? 'list' : self::operatorShape($field['type']);
 
         if ($shape === null || $field['filterable'] !== true) {
             return [];
@@ -111,6 +121,103 @@ final class ResourceCompiler
         }
 
         return $operators;
+    }
+
+    /**
+     * Whether a compiled field holds a list of option values: a multiple select.
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function isMultiple(array $field): bool
+    {
+        return self::isSelect($field) && ($field['multiple'] ?? false) === true;
+    }
+
+    /**
+     * Whether a compiled field is a select: a Select, or a preset of one (Country).
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function isSelect(array $field): bool
+    {
+        return in_array($field['type'], ['select', 'country'], true);
+    }
+
+    /**
+     * Whether a compiled field is a flag group whose flags live in bool
+     * columns of their own (BooleanGroup in columns mode).
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function isFlagColumns(array $field): bool
+    {
+        return $field['type'] === 'booleanGroup' && isset($field['flags']);
+    }
+
+    /**
+     * One flag of a columns-mode flag group, addressed as `group.key`, as
+     * the boolean field a filter or a sort reads: its own column, `eq`
+     * when the group is filterable, sortable when the group is.
+     *
+     * @param array<string, mixed> $group the compiled group
+     * @return array<string, mixed>|null
+     */
+    public static function flagField(array $group, string $key): ?array
+    {
+        $column = $group['flags'][$key] ?? null;
+
+        if (!is_string($column)) {
+            return null;
+        }
+
+        $label = array_column($group['options'], 'label', 'value')[$key] ?? $key;
+
+        return [
+            'name' => "{$group['name']}.{$key}",
+            'type' => 'boolean',
+            'label' => "{$group['label']}: {$label}",
+            'column' => $column,
+            'valueType' => 'bool',
+            'nullable' => false,
+            'filterable' => $group['filterable'],
+            'sortable' => $group['flagsSortable'] ?? false,
+            'operators' => $group['filterable'] === true ? ['eq'] : [],
+            'views' => [],
+            'rules' => [],
+        ];
+    }
+
+    /**
+     * Whether a compiled field holds a JSON list of plain values, filtered
+     * by `any` (a bare value) or `all` of them: a multiple select, or tags.
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function isList(array $field): bool
+    {
+        return self::isMultiple($field) || $field['type'] === 'tag';
+    }
+
+    /**
+     * Whether a compiled field is a relationship-mode repeater: rows that
+     * are child records, written with the parent rather than as a value.
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function isChildRepeater(array $field): bool
+    {
+        return $field['type'] === 'repeater' && ($field['repeater']['mode'] ?? null) === 'relationship';
+    }
+
+    /**
+     * Whether a compiled field holds a collection rather than one value
+     * of its own: an inverse or join relation, or a repeater's rows.
+     *
+     * @param array<string, mixed> $field
+     */
+    public static function isCollection(array $field): bool
+    {
+        return in_array($field['type'], ['hasOne', 'hasMany', 'manyToMany', 'repeater'], true);
     }
 
     /**
@@ -136,7 +243,7 @@ final class ResourceCompiler
                 throw ResourceCompileException::field($owner, $name, "depends on {$depends['field']}, which is not another field of the form");
             }
 
-            if (in_array($other['type'], ['hasOne', 'hasMany', 'manyToMany', 'json', 'keyValue', 'file', 'image', 'password'], true)) {
+            if (self::isCollection($other) || in_array($other['type'], ['json', 'keyValue', 'booleanGroup', 'file', 'image', 'password'], true) || self::isList($other)) {
                 throw ResourceCompileException::field($owner, $name, "depends on {$depends['field']}, a {$other['type']} field, which holds no single value to match");
             }
 
@@ -148,8 +255,9 @@ final class ResourceCompiler
 
     /**
      * Every condition of every field names another field of the same
-     * form. A collection (hasOne, hasMany, manyToMany) can only be
-     * tested for being empty or not.
+     * form. A collection (hasOne, hasMany, manyToMany, a repeater's rows)
+     * or a list (a multiple select, tags) can only be tested for being
+     * empty or not.
      *
      * @param array<string, array<string, mixed>> $fields field name => compiled field
      */
@@ -180,7 +288,11 @@ final class ResourceCompiler
             throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on itself");
         }
 
-        if (in_array($target['type'], ['hasOne', 'hasMany', 'manyToMany'], true) && !in_array($condition['op'], ['null', 'nnull'], true)) {
+        if ($target['type'] === 'booleanGroup') {
+            throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on the flag group \"{$condition['field']}\", which holds several values a condition cannot compare");
+        }
+
+        if ((self::isCollection($target) || self::isList($target)) && !in_array($condition['op'], ['null', 'nnull'], true)) {
             throw ResourceCompileException::field($owner, $name, "has a {$kind} condition on the collection \"{$condition['field']}\"; only null and nnull apply");
         }
     }
@@ -188,7 +300,9 @@ final class ResourceCompiler
     /**
      * Compiles a field that maps no entity property (an action's or a
      * settings group's input) inferring the value type from the field
-     * type. A belongsTo resolves to a registered resource's slug.
+     * type. A belongsTo resolves to a registered resource's slug. A
+     * `Json` or `KeyValue` input keeps its JSON objects, as one on a
+     * `stdClass` property does.
      *
      * @param array<string, string> $slugByClass resource class => slug
      * @return array<string, mixed>
@@ -198,12 +312,13 @@ final class ResourceCompiler
         $array = $field->toArray();
         $type = $field->type();
 
-        if (in_array($type, ['hasOne', 'hasMany', 'manyToMany', 'id'], true)) {
+        if (in_array($type, ['hasOne', 'hasMany', 'manyToMany', 'id', 'repeater'], true)) {
             throw ResourceCompileException::field($owner, $field->name(), "is a {$type} field, which an action or settings group cannot ask for");
         }
 
         $required = array_any($array['rules'], static fn (array $rule): bool => str_ends_with($rule['constraint'], '\\NotBlank'));
-        $array['nullable'] = !$required;
+        // a flag group is always the object of every key, false where none is ticked, never null
+        $array['nullable'] = !$required && $type !== 'booleanGroup';
         $array['valueType'] = match ($type) {
             'number' => isset($array['props']['decimals']) && $array['props']['decimals'] > 0 ? 'float' : 'int',
             'money' => 'int',
@@ -212,8 +327,23 @@ final class ResourceCompiler
             default => 'string',
         };
 
-        if ($type === 'enum') {
-            $array['enum'] ?? throw ResourceCompileException::field($owner, $field->name(), 'is an enum field naming no backed enum; call of()');
+        if ($type === 'select' || $type === 'country') {
+            $array = self::compileLooseSelect($owner, $array);
+        }
+
+        if ($type === 'booleanGroup') {
+            // an action's or a settings group's flags: the object itself, wherever it is kept
+            $array = self::checkFlagOptions($owner, $array);
+            $array['storage'] = 'json';
+        }
+
+        if ($type === 'json' || $type === 'keyValue' || $type === 'booleanGroup' || $type === 'tag') {
+            $array['valueType'] = 'json';
+        }
+
+        // no property to hold {} as []: a JSON input keeps every object, a key-value input is one
+        if ($type === 'json' || $type === 'keyValue') {
+            $array['jsonObjects'] = $type === 'keyValue' ? 'object' : 'objectOrList';
         }
 
         if ($field instanceof RelationField) {
@@ -224,6 +354,245 @@ final class ResourceCompiler
         }
 
         $array['operators'] = [];
+
+        return $array;
+    }
+
+    /**
+     * A select with no entity property: its value type follows its
+     * options (the enum's backing type, int when every value is an int,
+     * otherwise string), and a multiple one holds a list.
+     *
+     * @param array<string, mixed> $array
+     * @return array<string, mixed>
+     */
+    private static function compileLooseSelect(string $owner, array $array): array
+    {
+        $values = array_column($array['options'], 'value');
+
+        if ($values === []) {
+            throw ResourceCompileException::field($owner, $array['name'], 'is a select with no options; call options()');
+        }
+
+        self::checkCountryCodes($owner, $array);
+
+        if (self::isMultiple($array)) {
+            // a list of backing values: the ORM stores no enum case in JSON
+            $array['enum'] = null;
+            $array['valueType'] = 'json';
+
+            return self::checkSelectDefault($owner, $array);
+        }
+
+        $array['valueType'] = array_all($values, static fn (mixed $v): bool => is_int($v)) ? 'int' : 'string';
+
+        return self::checkSelectDefault($owner, self::typedOptions($array));
+    }
+
+    /**
+     * A country's options must be assigned ISO 3166-1 alpha-2 codes, in
+     * upper case: what only() names is checked here, with the resource.
+     *
+     * @param array<string, mixed> $array
+     */
+    private static function checkCountryCodes(string $owner, array $array): void
+    {
+        if ($array['type'] !== 'country') {
+            return;
+        }
+
+        foreach (array_column($array['options'], 'value') as $code) {
+            if (!is_string($code) || Countries::name($code) === null) {
+                throw ResourceCompileException::field($owner, $array['name'], "offers \"{$code}\", which is not an assigned ISO 3166-1 alpha-2 country code");
+            }
+        }
+    }
+
+    /**
+     * A flag group lists its flags, and its default, if any, is an object
+     * of some of those keys to true or false.
+     *
+     * @param array<string, mixed> $array
+     * @return array<string, mixed>
+     */
+    private static function checkFlagOptions(string $owner, array $array): array
+    {
+        if ($array['options'] === []) {
+            throw ResourceCompileException::field($owner, $array['name'], 'is a flag group with no options; call options()');
+        }
+
+        if (($array['hasDefault'] ?? false) !== true || $array['default'] === null) {
+            return $array;
+        }
+
+        $keys = array_column($array['options'], 'value');
+        $default = $array['default'];
+
+        if (!is_array($default) || ($default !== [] && array_is_list($default))
+            || array_any($default, static fn (mixed $on, int|string $key): bool => !is_bool($on) || !in_array($key, $keys, true))) {
+            throw ResourceCompileException::field($owner, $array['name'], 'is a flag group, whose default is an object of some of its option keys to true or false');
+        }
+
+        return $array;
+    }
+
+    /**
+     * A flag group in columns mode: each option key a non-null bool
+     * property of the entity, its column the flag's; the group's own name
+     * is no property. Its sortable() sorts by each flag (`group.key`), so
+     * the group itself is not sortable.
+     *
+     * @param EntityMapping $entity
+     * @param array<string, mixed> $array
+     * @param array<string, PropertyMapping> $properties
+     * @return array<string, mixed>
+     */
+    private static function compileFlagColumns(string $class, array $entity, array $array, array $properties): array
+    {
+        $name = $array['name'];
+
+        if (isset($properties[$name])) {
+            throw ResourceCompileException::field($class, $name, "is a flag group in columns mode, which maps one bool property per option, but \"{$name}\" is a property itself; call json() to keep the flags in it");
+        }
+
+        $array = self::checkFlagOptions($class, $array);
+        $flags = [];
+        $defaults = [];
+        $reflection = new ReflectionClass($entity['class']);
+
+        foreach (array_column($array['options'], 'value') as $key) {
+            $property = $properties[$key] ?? null;
+
+            if ($property === null || $property['type'] !== 'bool' || $property['target'] !== null || $property['nullable']) {
+                throw ResourceCompileException::field($class, $name, "names the flag \"{$key}\", which is not a bool property of {$entity['class']}; in columns mode every option key is one, or call json()");
+            }
+
+            $flags[$key] = $property['column'];
+            $declared = $reflection->getProperty($key);
+
+            if ($defaults !== null && $declared->hasDefaultValue()) {
+                $defaults[$key] = $declared->getDefaultValue() === true;
+            } else {
+                $defaults = null;
+            }
+        }
+
+        // every flag's property starting with a value: so does the group, and a create may leave it out
+        if (($array['hasDefault'] ?? false) !== true && $defaults !== null) {
+            $array['hasDefault'] = true;
+            $array['default'] = $defaults;
+        }
+
+        $array['flags'] = $flags;
+        $array['nullable'] = false;
+        $array['valueType'] = 'json';
+        $array['flagsSortable'] = $array['sortable'];
+        $array['sortable'] = false;
+
+        return $array;
+    }
+
+    /**
+     * What a flag group needs once the form is compiled: in JSON mode an
+     * `array` property and no sort; in columns mode no flag that is also
+     * a field of its own, since the group writes it.
+     *
+     * @param array<string, mixed> $field
+     * @param array<string, array<string, mixed>> $fields
+     * @return array<string, mixed>
+     */
+    private static function compileBooleanGroup(string $class, array $field, array $fields): array
+    {
+        $name = $field['name'];
+
+        if (self::isFlagColumns($field)) {
+            foreach (array_keys($field['flags']) as $key) {
+                if (isset($fields[$key])) {
+                    throw ResourceCompileException::field($class, $name, "names the flag \"{$key}\", which is also a field of the resource; a flag is written by its group alone");
+                }
+
+                foreach ($fields as $other => $group) {
+                    if ($other !== $name && self::isFlagColumns($group) && isset($group['flags'][$key])) {
+                        throw ResourceCompileException::field($class, $name, "names the flag \"{$key}\", which the flag group \"{$other}\" names too; a flag is written by one group alone");
+                    }
+                }
+            }
+
+            return $field;
+        }
+
+        $valueType = $field['valueType'] ?? null;
+
+        if ($valueType !== 'json') {
+            throw ResourceCompileException::field($class, $name, "is a flag group stored as JSON, which needs an array or ?array property, not {$valueType}");
+        }
+
+        if ($field['sortable']) {
+            throw ResourceCompileException::field($class, $name, 'is a flag group stored as JSON, which cannot be sorted; keep its flags in bool columns to sort by each');
+        }
+
+        return self::checkFlagOptions($class, $field);
+    }
+
+    /**
+     * A single select's option values typed as its property stores them:
+     * text for a string property, so a declared `404 => 'Not found'`
+     * reads and writes as "404".
+     *
+     * @param array<string, mixed> $array
+     * @return array<string, mixed>
+     */
+    private static function typedOptions(array $array): array
+    {
+        if ($array['valueType'] === 'string') {
+            foreach ($array['options'] as $i => $option) {
+                $array['options'][$i]['value'] = (string) $option['value'];
+            }
+        }
+
+        return $array;
+    }
+
+    /**
+     * A select's default must be one of its options (a list of them for a
+     * multiple one), compared by text, and is kept as the matched option's
+     * own typed value: a write converts strictly, so `default(404)` on
+     * options stored as text must be sent as "404", and the other way round.
+     *
+     * @param array<string, mixed> $array
+     * @return array<string, mixed>
+     */
+    private static function checkSelectDefault(string $owner, array $array): array
+    {
+        if (($array['hasDefault'] ?? false) !== true || $array['default'] === null) {
+            return $array;
+        }
+
+        $known = [];
+
+        foreach (array_column($array['options'], 'value') as $option) {
+            $known[(string) $option] ??= $option;
+        }
+
+        $default = $array['default'] instanceof \BackedEnum ? $array['default']->value : $array['default'];
+        $multiple = self::isMultiple($array);
+        $values = $multiple ? $default : [$default];
+
+        if (!is_array($values) || !array_is_list($values)) {
+            throw ResourceCompileException::field($owner, $array['name'], 'is a multiple select, whose default is a list of option values');
+        }
+
+        $typed = [];
+
+        foreach ($values as $value) {
+            if (!is_scalar($value) || !array_key_exists((string) $value, $known)) {
+                throw ResourceCompileException::field($owner, $array['name'], 'defaults to "' . (is_scalar($value) ? (string) $value : get_debug_type($value)) . '", which is not one of its options');
+            }
+
+            $typed[] = $known[(string) $value];
+        }
+
+        $array['default'] = $multiple ? $typed : $typed[0];
 
         return $array;
     }
@@ -385,11 +754,12 @@ final class ResourceCompiler
     }
 
     /**
-     * A repeater's rows are its child resource's fields, known only once
-     * every resource is compiled: the ones a row may write (or those the
-     * repeater names) never the field pointing back at the parent. A
-     * child field required to create a row must be among them, and a
-     * soft-deleting child cannot be one, since leaving a row out deletes it.
+     * A relationship-mode repeater's rows are its child resource's
+     * fields, known only once every resource is compiled: the ones a row
+     * may write (or those the repeater names) never the field pointing
+     * back at the parent nor the one orderBy() fills. A child field
+     * required to create a row must be among them, and a soft-deleting
+     * child cannot be one, since leaving a row out deletes it.
      *
      * @param array<string, array<string, mixed>> $compiled
      * @return array<string, array<string, mixed>>
@@ -398,11 +768,11 @@ final class ResourceCompiler
     {
         foreach ($compiled as $slug => $resource) {
             foreach ($resource['fields'] as $index => $field) {
-                $repeater = $field['repeater'] ?? null;
-
-                if ($repeater === null) {
+                if (!self::isChildRepeater($field)) {
                     continue;
                 }
+
+                $repeater = $field['repeater'];
 
                 $compiled[$slug]['fields'][$index]['repeater'] = self::linkRepeater($resource['class'], $field, $repeater, $compiled[$field['relation']['resource']]);
             }
@@ -415,14 +785,25 @@ final class ResourceCompiler
      * @param array<string, mixed> $field the repeater field
      * @param array<string, mixed> $repeater its declaration
      * @param array<string, mixed> $child the compiled child resource
-     * @return array{fields: list<string>, min: mixed, max: mixed}
+     * @return array<string, mixed>
      */
     private static function linkRepeater(string $owner, array $field, array $repeater, array $child): array
     {
         $inverse = $field['relation']['inverse'];
-        $writable = self::repeaterWritable($child, $inverse);
+        $order = $repeater['orderBy'];
+        $writable = self::repeaterWritable($child, $inverse, $order);
 
         foreach ($repeater['fields'] ?? [] as $name) {
+            $candidate = array_column($child['fields'], null, 'name')[$name] ?? null;
+
+            if ($candidate !== null && $candidate['type'] === 'repeater') {
+                throw ResourceCompileException::field($owner, $field['name'], "names \"{$name}\", a repeater of {$child['labelSingular']}; rows never hold another repeater");
+            }
+
+            if ($name === $order) {
+                throw ResourceCompileException::field($owner, $field['name'], "names \"{$name}\", the property orderBy() fills with each row's position");
+            }
+
             if (!in_array($name, $writable, true)) {
                 throw ResourceCompileException::field($owner, $field['name'], "names \"{$name}\", which is not a writable field of {$child['labelSingular']}");
             }
@@ -431,7 +812,7 @@ final class ResourceCompiler
         $fields = $repeater['fields'] ?? $writable;
 
         foreach ($child['fields'] as $candidate) {
-            if ($candidate['name'] !== $inverse && !in_array($candidate['name'], $fields, true) && RecordInput::requiredOnCreate($candidate)) {
+            if ($candidate['name'] !== $inverse && $candidate['name'] !== $order && !in_array($candidate['name'], $fields, true) && RecordInput::requiredOnCreate($candidate)) {
                 throw ResourceCompileException::field($owner, $field['name'], "leaves out \"{$candidate['name']}\", which a new {$child['labelSingular']} row requires");
             }
         }
@@ -444,24 +825,25 @@ final class ResourceCompiler
             throw ResourceCompileException::field($owner, $field['name'], 'is a repeater, which takes no visibleWhen, requiredWhen or disabledWhen');
         }
 
-        return ['fields' => $fields, 'min' => $repeater['min'], 'max' => $repeater['max']];
+        return ['fields' => $fields] + $repeater;
     }
 
     /**
      * The child fields a repeater row may write: never the field pointing
-     * back at the parent, an identifier or a collection.
+     * back at the parent, the position orderBy() fills, an identifier or
+     * a collection.
      *
      * @param array<string, mixed> $child the compiled child resource
      * @return list<string>
      */
-    private static function repeaterWritable(array $child, string $inverse): array
+    private static function repeaterWritable(array $child, string $inverse, ?string $order): array
     {
         $writable = [];
 
         foreach ($child['fields'] as $candidate) {
-            if ($candidate['name'] !== $inverse && $candidate['readonly'] !== true
+            if ($candidate['name'] !== $inverse && $candidate['name'] !== $order && $candidate['readonly'] !== true
                 && array_intersect(['create', 'update'], $candidate['views']) !== []
-                && !in_array($candidate['type'], ['id', 'hasOne', 'hasMany', 'manyToMany'], true)) {
+                && !in_array($candidate['type'], ['id', 'hasOne', 'hasMany', 'manyToMany', 'repeater'], true)) {
                 $writable[] = $candidate['name'];
             }
         }
@@ -630,6 +1012,11 @@ final class ResourceCompiler
                 $columns[$name] = $array['column'];
             }
 
+            // each flag of a columns-mode group sorts by its own column, named `group.key`
+            foreach ($array['flags'] ?? [] as $key => $column) {
+                $columns["{$name}.{$key}"] = $column;
+            }
+
             $compiledFields[$name] = $array;
         }
 
@@ -660,20 +1047,197 @@ final class ResourceCompiler
             return $this->compileRelation($class, $field, $array, $properties, $inverses, $joins);
         }
 
+        if ($field instanceof BooleanGroup && $array['storage'] === BooleanGroup::COLUMNS) {
+            return self::compileFlagColumns($class, $entity, $array, $properties);
+        }
+
+        if ($field instanceof Repeater && $field->relationName() !== null) {
+            return $this->compileChildRepeater($class, $entity, $field, $array, $inverses);
+        }
+
         $property = $properties[$name] ?? throw ResourceCompileException::field($class, $name, "is not a mapped property of {$entity['class']}");
 
         if ($property['target'] !== null) {
             throw ResourceCompileException::field($class, $name, 'is a #[BelongsTo] property; declare it with BelongsTo::to()');
         }
 
+        // a select on an enum property with no options of its own offers the enum's cases
+        if ($field instanceof Select && !$field->hasOptions() && $property['enum'] !== null) {
+            $array = [...$array, 'options' => (clone $field)->of($property['enum'])->toArray()['options']];
+        }
+
+        $declaredEnum = $array['enum'] ?? null;
         $array['column'] = $property['column'];
         $array['nullable'] = $property['nullable'];
         $array['valueType'] = $property['type'];
         $array['enum'] = $property['enum'];
 
+        // a JSON or key-value field on a stdClass or array|stdClass property: a JSON value that keeps its objects
+        if (in_array($field->type(), ['json', 'keyValue'], true) && in_array($property['type'], ['jsonObject', 'jsonObjectOrList'], true)) {
+            $array['valueType'] = 'json';
+            $array['jsonObjects'] = $property['type'] === 'jsonObject' ? 'object' : 'objectOrList';
+        }
+
+        if ($field instanceof Select && $property['enum'] !== null && $declaredEnum !== null && $declaredEnum !== $property['enum']) {
+            throw ResourceCompileException::field($class, $name, "takes its options from {$declaredEnum}, but the property holds {$property['enum']}");
+        }
+
         if ($field->type() === 'datetime' && $property['type'] === 'date') {
             throw ResourceCompileException::field($class, $name, 'maps a date-only Kinetis\\Orm\\Date property; declare it with Date::make()');
         }
+
+        if ($field instanceof Repeater) {
+            return $this->compileRowFields($class, $field, $array);
+        }
+
+        return $array;
+    }
+
+    /**
+     * A relationship-mode repeater: an owned #[HasMany] of the entity,
+     * whose child resource lives on the same connection, since its rows
+     * are saved with the parent in one transaction. orderBy() names an
+     * int property of the child.
+     *
+     * @param class-string<VectorResource> $class
+     * @param EntityMapping $entity
+     * @param array<string, mixed> $array
+     * @param array<string, array<string, mixed>> $inverses
+     * @return array<string, mixed>
+     */
+    private function compileChildRepeater(string $class, array $entity, Repeater $field, array $array, array $inverses): array
+    {
+        $name = $field->name();
+        $relation = (string) $field->relationName();
+        $inverse = $inverses[$relation] ?? throw ResourceCompileException::field($class, $name, "names the relation \"{$relation}\", which is not a #[HasMany] property of {$entity['class']}");
+
+        if ($inverse['kind'] !== 'hasMany') {
+            throw ResourceCompileException::field($class, $name, "names the relation \"{$relation}\", a #[HasOne]; a repeater edits a #[HasMany]");
+        }
+
+        if (!$inverse['owned']) {
+            throw ResourceCompileException::field($class, $name, 'is a repeater, which needs an owned #[HasMany]: the parent writes and deletes its rows');
+        }
+
+        $slug = $this->childSlug($class, $name, $field->childResource(), $inverse['target']);
+        $target = $this->entities[$inverse['target']];
+
+        if ($target['connection'] !== $entity['connection']) {
+            throw ResourceCompileException::field($class, $name, "edits {$inverse['target']} on the \"{$target['connection']}\" connection, but {$entity['class']} lives on \"{$entity['connection']}\"; a repeater saves its rows with the parent in one transaction, so both must share a connection");
+        }
+
+        foreach ($field->rowFields() as $row) {
+            if (!is_string($row)) {
+                throw ResourceCompileException::field($class, $name, "declares the row field \"{$row->name()}\"; in relationship mode fields() names fields of the child resource");
+            }
+        }
+
+        $order = $array['repeater']['orderBy'];
+
+        if ($order !== null) {
+            $property = array_values(array_filter($target['properties'], static fn (array $p): bool => $p['name'] === $order))[0] ?? null;
+
+            if ($property === null || $property['target'] !== null || $property['type'] !== 'int') {
+                throw ResourceCompileException::field($class, $name, "orders its rows by \"{$order}\", which is not an int property of {$inverse['target']}");
+            }
+
+            $array['repeater']['orderColumn'] = $property['column'];
+        }
+
+        // no fields() call: every child field a row can write, known once the child is compiled
+        $array['repeater']['fields'] = $field->declaresFields() ? $array['repeater']['fields'] : null;
+        $array['nullable'] = $inverse['nullable'];
+        $array['relation'] = [
+            'kind' => 'hasMany',
+            'resource' => $slug,
+            'titleField' => null,
+            'targetTable' => $target['table'],
+            'targetKey' => $this->columnOf($target, $target['id']),
+            'foreignKey' => $this->columnOf($target, $inverse['mappedBy']),
+            'inverse' => $inverse['mappedBy'],
+            'owned' => true,
+            // the entity's property holding the rows, which may differ from the field's name
+            'property' => $relation,
+        ];
+
+        return $array;
+    }
+
+    /**
+     * The child resource a relationship-mode repeater edits: the one it
+     * names, which must administer the child entity, or the one relations
+     * to that entity link to.
+     *
+     * @param class-string<VectorResource> $class
+     * @param class-string<VectorResource>|null $named
+     */
+    private function childSlug(string $class, string $name, ?string $named, string $childEntity): string
+    {
+        if ($named === null) {
+            return $this->slugByEntity[$childEntity] ?? throw ResourceCompileException::field($class, $name, "edits {$childEntity}, which no resource administers");
+        }
+
+        $registered = $this->resources[$named] ?? throw ResourceCompileException::field($class, $name, "{$named} is not a registered resource");
+
+        if ($registered['attribute']->entity !== $childEntity) {
+            throw ResourceCompileException::field($class, $name, "names {$named}, which administers {$registered['attribute']->entity}, not {$childEntity}");
+        }
+
+        return $registered['slug'];
+    }
+
+    /**
+     * A JSON-mode repeater's row fields, compiled as fields of no entity:
+     * plain values only (no relation, file or nested repeater), each named
+     * once, with no conditions. Its list keeps the order it is sent in,
+     * so orderBy() has nothing to name.
+     *
+     * @param class-string<VectorResource> $class
+     * @param array<string, mixed> $array
+     * @return array<string, mixed>
+     */
+    private function compileRowFields(string $class, Repeater $field, array $array): array
+    {
+        $name = $field->name();
+
+        if ($array['repeater']['orderBy'] !== null) {
+            throw ResourceCompileException::field($class, $name, 'is a JSON repeater, whose rows keep the order they are sent in; orderBy() names a child property in relationship mode');
+        }
+
+        if ($field->rowFields() === []) {
+            throw ResourceCompileException::field($class, $name, 'is a repeater with no row fields; call fields(), or relationship() to edit child records');
+        }
+
+        $slugByClass = array_map(static fn (array $r): string => $r['slug'], $this->resources);
+        $compiled = [];
+
+        foreach ($field->rowFields() as $row) {
+            if (is_string($row)) {
+                throw ResourceCompileException::field($class, $name, "names \"{$row}\"; a JSON repeater's fields() takes field definitions, and naming a child resource's fields needs relationship()");
+            }
+
+            if ($row instanceof Repeater) {
+                throw ResourceCompileException::field($class, $name, "holds the repeater \"{$row->name()}\"; rows never hold another repeater");
+            }
+
+            if (!in_array($row->type(), Repeater::ROW_TYPES, true)) {
+                throw ResourceCompileException::field($class, $name, "holds \"{$row->name()}\", a {$row->type()} field, which a JSON row cannot hold");
+            }
+
+            if (isset($compiled[$row->name()])) {
+                throw ResourceCompileException::field($class, $name, "declares the row field \"{$row->name()}\" twice");
+            }
+
+            $sub = self::compileLoose($row, $slugByClass, $class);
+
+            if (array_merge(...array_values($sub['conditions'])) !== []) {
+                throw ResourceCompileException::field($class, $name, "gives the row field \"{$row->name()}\" a condition, which a row field does not take");
+            }
+
+            $compiled[$row->name()] = $sub;
+        }
+
+        $array['repeater']['rowFields'] = array_values($compiled);
 
         return $array;
     }
@@ -686,12 +1250,13 @@ final class ResourceCompiler
      */
     private static function checkCapabilities(string $class, string $name, array $array): void
     {
-        if ($array['sortable'] === true && !isset($array['column'])) {
+        if ($array['sortable'] === true && !isset($array['column']) && !self::isFlagColumns($array)) {
             throw ResourceCompileException::field($class, $name, 'maps no column and cannot be sortable');
         }
 
         // a searchable belongsTo matches the related record's title (linkSearchRelations)
-        if ($array['searchable'] === true && $array['type'] !== 'belongsTo' && ($array['valueType'] ?? null) !== 'string') {
+        // a JSON column's own check (checkJsonColumn) names what it refuses
+        if ($array['searchable'] === true && !in_array($array['type'], ['belongsTo', 'json', 'keyValue'], true) && ($array['valueType'] ?? null) !== 'string') {
             throw ResourceCompileException::field($class, $name, 'is not a string column and cannot be searchable');
         }
 
@@ -716,7 +1281,7 @@ final class ResourceCompiler
             $direction = str_starts_with($sort, '-') ? 'desc' : 'asc';
             $name = ltrim($sort, '-');
 
-            if (($fields[$name]['sortable'] ?? false) !== true) {
+            if (($fields[$name]['sortable'] ?? false) !== true && (self::flagOf($fields, $name)['sortable'] ?? false) !== true) {
                 throw ResourceCompileException::resource($class, "default sort names \"{$name}\", which is not a sortable field");
             }
 
@@ -728,6 +1293,20 @@ final class ResourceCompiler
         }
 
         return $defaultSort;
+    }
+
+    /**
+     * The flag `group.key` names among the fields, or null.
+     *
+     * @param array<string, array<string, mixed>> $fields
+     * @return array<string, mixed>|null
+     */
+    public static function flagOf(array $fields, string $name): ?array
+    {
+        [$group, $key] = str_contains($name, '.') ? explode('.', $name, 2) : [$name, ''];
+        $field = $fields[$group] ?? null;
+
+        return $field !== null && self::isFlagColumns($field) ? self::flagField($field, $key) : null;
     }
 
     /**
@@ -883,8 +1462,24 @@ final class ResourceCompiler
                 $compiledFields[$name] = self::compileRichText($class, $field, $compiledFields, $properties);
             }
 
-            if ($field['type'] === 'keyValue') {
-                self::checkKeyValue($class, $name, $field);
+            if ($field['type'] === 'keyValue' || $field['type'] === 'json') {
+                self::checkJsonColumn($class, $name, $field);
+            }
+
+            if (self::isSelect($field)) {
+                $compiledFields[$name] = self::compileSelect($class, $field);
+            }
+
+            if ($field['type'] === 'booleanGroup') {
+                $compiledFields[$name] = self::compileBooleanGroup($class, $field, $compiledFields);
+            }
+
+            if ($field['type'] === 'tag') {
+                self::checkTag($class, $name, $field);
+            }
+
+            if ($field['type'] === 'repeater') {
+                self::checkRepeater($class, $name, $field);
             }
 
             self::checkInline($class, $name, $field);
@@ -925,15 +1520,139 @@ final class ResourceCompiler
         }
     }
 
-    /** @param array<string, mixed> $field */
-    private static function checkKeyValue(string $class, string $name, array $field): void
+    /**
+     * A key-value or JSON field lives in a JSON column, which the database
+     * neither sorts, filters, searches nor sums for Vector, on a
+     * `stdClass`, `?stdClass`, `array|stdClass` or `array|stdClass|null`
+     * property, which keeps every object an object (compiled with
+     * `jsonObjects`). An `array` or `?array` property is refused: PHP
+     * holds `{}` and `[]` as one array, so an empty object, nested or
+     * not, would be stored as `[]`.
+     *
+     * @param array<string, mixed> $field
+     */
+    private static function checkJsonColumn(string $class, string $name, array $field): void
     {
-        if (($field['valueType'] ?? null) !== 'string') {
-            throw ResourceCompileException::field($class, $name, 'is a key-value field, which stores its JSON in a string property');
+        $kind = $field['type'] === 'json' ? 'a JSON' : 'a key-value';
+        $accepted = 'declare the property stdClass, ?stdClass, array|stdClass or array|stdClass|null';
+
+        if (($field['valueType'] ?? null) !== 'json') {
+            throw ResourceCompileException::field($class, $name, "is {$kind} field, which stores its value in a JSON column: {$accepted}");
+        }
+
+        if (!isset($field['jsonObjects'])) {
+            throw ResourceCompileException::field($class, $name, "is {$kind} field on the array property \"{$name}\", which would store {} as []: {$accepted}");
         }
 
         if ($field['sortable'] || $field['filterable'] || $field['searchable'] || ($field['summary'] ?? null) !== null) {
-            throw ResourceCompileException::field($class, $name, 'is a key-value field, which cannot be sorted, filtered, searched or summarized');
+            throw ResourceCompileException::field($class, $name, "is {$kind} field, which cannot be sorted, filtered, searched or summarized");
+        }
+    }
+
+    /**
+     * A select's storage must match its mode: one value in a string, int
+     * or backed enum property; several in an `array` property (a JSON
+     * column). Nothing is coerced either way. A multiple select is never
+     * sorted, grouped, summarized or edited in a list cell.
+     *
+     * @param array<string, mixed> $field
+     * @return array<string, mixed>
+     */
+    private static function compileSelect(string $class, array $field): array
+    {
+        $name = $field['name'];
+        $valueType = $field['valueType'] ?? null;
+        $values = array_column($field['options'], 'value');
+
+        if ($values === []) {
+            throw ResourceCompileException::field($class, $name, 'is a select with no options; call options(), or map it to a backed enum property');
+        }
+
+        self::checkCountryCodes($class, $field);
+
+        if (self::isMultiple($field)) {
+            if ($valueType !== 'json') {
+                throw ResourceCompileException::field($class, $name, "is a multiple select, which stores a JSON list: declare the property array or ?array, not {$valueType}");
+            }
+
+            if ($field['sortable'] || ($field['summary'] ?? null) !== null || ($field['inline'] ?? false) === true) {
+                throw ResourceCompileException::field($class, $name, 'is a multiple select, which cannot be sorted, grouped, summarized or edited inline');
+            }
+
+            $field['enum'] = null;
+
+            return self::checkSelectDefault($class, $field);
+        }
+
+        if ($valueType === 'json') {
+            throw ResourceCompileException::field($class, $name, 'is a single select on an array property; call multiple() to store a list, or declare a string, int or backed enum property');
+        }
+
+        if (!in_array($valueType, ['string', 'int'], true)) {
+            throw ResourceCompileException::field($class, $name, "is a select, which stores its value in a string, int or backed enum property, not {$valueType}");
+        }
+
+        if ($field['enum'] === null && $valueType === 'int' && !array_all($values, static fn (mixed $v): bool => is_int($v))) {
+            throw ResourceCompileException::field($class, $name, 'stores an int, but not every option value is an integer');
+        }
+
+        if ($field['enum'] !== null) {
+            $cases = array_map(static fn (\BackedEnum $case): string => (string) $case->value, $field['enum']::cases());
+
+            foreach ($values as $value) {
+                if (!in_array((string) $value, $cases, true)) {
+                    throw ResourceCompileException::field($class, $name, "offers \"{$value}\", which is not a case of {$field['enum']}");
+                }
+            }
+        }
+
+        return self::checkSelectDefault($class, self::typedOptions($field));
+    }
+
+    /**
+     * Tags live in a JSON column: an `array` or `?array` property, never
+     * sorted, grouped, summarized, searched or edited in a list cell.
+     *
+     * @param array<string, mixed> $field
+     */
+    private static function checkTag(string $class, string $name, array $field): void
+    {
+        $valueType = $field['valueType'] ?? null;
+
+        if ($valueType !== 'json') {
+            throw ResourceCompileException::field($class, $name, "is a tag field, which stores a JSON list of strings: declare the property array or ?array, not {$valueType}");
+        }
+
+        if ($field['sortable'] || $field['searchable'] || ($field['summary'] ?? null) !== null || ($field['inline'] ?? false) === true) {
+            throw ResourceCompileException::field($class, $name, 'is a tag field, which cannot be sorted, grouped, searched, summarized or edited inline');
+        }
+
+        $default = ($field['hasDefault'] ?? false) === true ? $field['default'] : null;
+
+        if ($default !== null && (!is_array($default) || !array_is_list($default) || !array_all($default, static fn (mixed $v): bool => is_string($v)))) {
+            throw ResourceCompileException::field($class, $name, 'is a tag field, whose default is a list of strings');
+        }
+    }
+
+    /**
+     * A repeater's rows are never sorted, grouped, filtered, searched,
+     * summarized or edited in a list cell; a JSON-mode one lives in an
+     * `array` or `?array` property.
+     *
+     * @param array<string, mixed> $field
+     */
+    private static function checkRepeater(string $class, string $name, array $field): void
+    {
+        if ($field['repeater']['mode'] === 'json' && ($field['valueType'] ?? null) !== 'json') {
+            throw ResourceCompileException::field($class, $name, "is a JSON repeater, which stores its rows in a JSON column: declare the property array or ?array, not {$field['valueType']}");
+        }
+
+        if ($field['sortable'] || $field['filterable'] || $field['searchable'] || ($field['summary'] ?? null) !== null || ($field['inline'] ?? false) === true) {
+            throw ResourceCompileException::field($class, $name, 'is a repeater, which cannot be sorted, grouped, filtered, searched, summarized or edited inline');
+        }
+
+        if ($field['repeater']['min'] > $field['repeater']['max']) {
+            throw ResourceCompileException::field($class, $name, "is a repeater whose min() ({$field['repeater']['min']}) exceeds its max() ({$field['repeater']['max']})");
         }
     }
 
@@ -966,10 +1685,18 @@ final class ResourceCompiler
      */
     private static function creation(array $entity, array $entityProperties, array $fields, array $timestamps): array
     {
+        $creates = static fn (array $field): bool => $field['readonly'] !== true && in_array(Field::VIEW_CREATE, $field['views'], true);
+        // a flag group in columns mode writes each flag's property
+        $flags = [];
+
+        foreach ($fields as $field) {
+            if (self::isFlagColumns($field) && $creates($field)) {
+                $flags = [...$flags, ...array_keys($field['flags'])];
+            }
+        }
+
         foreach ($entityProperties as $name => $property) {
-            $writable = isset($fields[$name])
-                && $fields[$name]['readonly'] !== true
-                && in_array(Field::VIEW_CREATE, $fields[$name]['views'], true);
+            $writable = (isset($fields[$name]) && $creates($fields[$name])) || in_array($name, $flags, true);
             $supplied = $writable || $property['nullable'] || $property['hasDefault'] || in_array($name, $timestamps, true)
                 || $name === $entity['id'] || in_array($property['kind'], ['hasOne', 'hasMany', 'manyToMany'], true);
 
@@ -1169,7 +1896,7 @@ final class ResourceCompiler
     }
 
     /** How a computed value is typed on the wire, by what it is shown as. */
-    private const array COMPUTED_VALUE_TYPES = ['text' => 'string', 'number' => 'float', 'money' => 'int', 'boolean' => 'bool', 'date' => 'string', 'datetime' => 'string', 'enum' => 'string'];
+    private const array COMPUTED_VALUE_TYPES = ['text' => 'string', 'number' => 'float', 'money' => 'int', 'boolean' => 'bool', 'date' => 'string', 'datetime' => 'string', 'select' => 'string'];
 
     /**
      * A computed field: a public instance method of the resource, shown
@@ -1203,8 +1930,8 @@ final class ResourceCompiler
             throw ResourceCompileException::field($class, $name, 'is computed per record in PHP; a summary needs a column the database can aggregate');
         }
 
-        if ($array['computed']['as'] === 'enum' && ($array['options'] ?? []) === []) {
-            throw ResourceCompileException::field($class, $name, 'is computed as an enum but lists no options; call options()');
+        if ($array['computed']['as'] === 'select' && ($array['options'] ?? []) === []) {
+            throw ResourceCompileException::field($class, $name, 'is computed as a select but lists no options; call options()');
         }
 
         $array['readonly'] = true;
@@ -1226,7 +1953,7 @@ final class ResourceCompiler
             foreach ($field['computed']['from'] ?? [] as $source) {
                 $type = $fields[$source]['type'] ?? null;
 
-                if ($type === null || in_array($type, ['computed', 'hasOne', 'hasMany', 'manyToMany'], true)) {
+                if ($type === null || in_array($type, ['computed', 'hasOne', 'hasMany', 'manyToMany', 'repeater'], true)) {
                     throw ResourceCompileException::field($class, $name, "is computed from \"{$source}\", which is not a field of the resource holding a value of its own");
                 }
             }
@@ -1306,7 +2033,7 @@ final class ResourceCompiler
     }
 
     /** The types a search subtitle shows as they are stored. */
-    private const array SUBTITLE_TYPES = ['string', 'email', 'url', 'slug', 'text', 'number', 'enum'];
+    private const array SUBTITLE_TYPES = ['string', 'email', 'url', 'slug', 'text', 'number', 'select', 'country'];
 
     /**
      * What a global search result shows besides its title: a subtitle
@@ -1320,8 +2047,8 @@ final class ResourceCompiler
         $subtitle = $instance->searchSubtitle();
         $image = $instance->searchImage();
 
-        if ($subtitle !== null && !in_array($fields[$subtitle]['type'] ?? null, self::SUBTITLE_TYPES, true)) {
-            throw new ResourceCompileException("{$class}::searchSubtitle() names \"{$subtitle}\", which is not a text, number or enum field of the resource.");
+        if ($subtitle !== null && (!in_array($fields[$subtitle]['type'] ?? null, self::SUBTITLE_TYPES, true) || self::isMultiple($fields[$subtitle]))) {
+            throw new ResourceCompileException("{$class}::searchSubtitle() names \"{$subtitle}\", which is not a text, number or single select field of the resource.");
         }
 
         if ($image !== null && ($fields[$image]['type'] ?? null) !== 'image') {
@@ -1436,9 +2163,6 @@ final class ResourceCompiler
                 $relation['owned'] = $inverse['owned'];
                 $array['nullable'] = $inverse['nullable'];
 
-                if (($array['repeater'] ?? null) !== null && !$inverse['owned']) {
-                    throw ResourceCompileException::field($class, $name, 'is a repeater, which needs an owned #[HasMany]: the parent writes and deletes its rows');
-                }
                 break;
 
             case 'manyToMany':
@@ -1507,7 +2231,8 @@ final class ResourceCompiler
 
     /**
      * The field a mapped property implies, or null for the version
-     * property and a relationship whose target has no resource.
+     * property, a relationship whose target has no resource, and an
+     * `array` property, which a `Json` field cannot map (checkJsonColumn()).
      *
      * @param EntityMapping $entity
      * @param PropertyMapping $property
@@ -1520,6 +2245,7 @@ final class ResourceCompiler
             $name === $entity['version'] => null,
             $name === $entity['id'] => Id::make($name),
             $property['target'] !== null => $this->deriveBelongsTo($name, $property['target']),
+            $property['type'] === 'json' => null,
             default => self::deriveColumn($name, $property),
         };
     }
@@ -1535,7 +2261,8 @@ final class ResourceCompiler
     private static function deriveColumn(string $name, array $property): Field
     {
         $field = match (true) {
-            $property['enum'] !== null => Enum::make($name)->of($property['enum'])->filterable(),
+            $property['enum'] !== null => Select::make($name)->of($property['enum'])->filterable(),
+            in_array($property['type'], ['jsonObject', 'jsonObjectOrList'], true) => Json::make($name)->hideFromIndex(),
             $property['type'] === 'string' => Text::make($name)->searchable(),
             $property['type'] === 'int' => Number::make($name),
             $property['type'] === 'float' => Number::make($name)->decimals(2),
@@ -1544,7 +2271,9 @@ final class ResourceCompiler
             default => DateTime::make($name)->filterable(),
         };
 
-        $field->sortable();
+        if (!in_array($property['type'], ['jsonObject', 'jsonObjectOrList'], true)) {
+            $field->sortable();
+        }
 
         if (in_array($property['column'], ['created_at', 'updated_at', 'deleted_at'], true)) {
             $field->readonly()->hideFromForms();
@@ -1581,7 +2310,7 @@ final class ResourceCompiler
     private function firstStringField(array $fields): ?string
     {
         foreach ($fields as $name => $field) {
-            if (($field['valueType'] ?? null) === 'string' && ($field['enum'] ?? null) === null && !in_array($field['type'], ['password', 'json', 'keyValue', 'file', 'image', 'color', 'richtext', 'markdown', 'text'], true)) {
+            if (($field['valueType'] ?? null) === 'string' && ($field['enum'] ?? null) === null && !in_array($field['type'], ['password', 'json', 'keyValue', 'select', 'country', 'booleanGroup', 'file', 'image', 'color', 'richtext', 'markdown', 'text'], true)) {
                 return $name;
             }
         }

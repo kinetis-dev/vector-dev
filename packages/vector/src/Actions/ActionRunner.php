@@ -52,7 +52,7 @@ final readonly class ActionRunner
      * Runs an action from a request body: synchronously, or, for a
      * queued action, as a background job the response names.
      *
-     * @param array<array-key, mixed> $body `{ids: [...]} | {all: {filter, q}}`, plus `fields: {...}`
+     * @param array<array-key, mixed> $body `{ids: [...]} | {all: {filter, q}}`, plus `fields: {...}`, whose JSON objects may be stdClass (FieldInput::validate())
      */
     public function run(ResourceDescriptor $resource, string $name, array $body): ActionResponse
     {
@@ -64,7 +64,7 @@ final readonly class ActionRunner
         }
 
         if ($compiled['queued']) {
-            $fields = $this->fieldsOf($compiled);
+            $fields = self::fieldsOf($compiled);
             $this->input->validate($fields, $rawFields); // refuse a bad dialog now, not in the worker
 
             $reason = $this->queue->unavailableReason();
@@ -75,8 +75,8 @@ final readonly class ActionRunner
 
             $selection = $compiled['standalone'] ? [] : $this->selectionBody($resource, $body);
             $jobId = $this->jobs->create('action', $resource->slug(), $name, (string) $this->user->id(), impersonatorId: $this->actor->impersonatorId);
-            /** @var array<string, mixed> $rawFields */
-            $this->queue->enqueue($this->jobs, $jobId, new RunActionJob($jobId, $resource->slug(), $name, $selection, $rawFields, (string) $this->user->id()));
+            // JSON text: a job's arguments are arrays, which would hold {} as []
+            $this->queue->enqueue($this->jobs, $jobId, new RunActionJob($jobId, $resource->slug(), $name, $selection, json_encode((object) $rawFields, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION), (string) $this->user->id()));
 
             return ActionResponse::queued($jobId, "{$compiled['label']} was queued.");
         }
@@ -103,7 +103,7 @@ final readonly class ActionRunner
             throw new \LogicException("{$compiled['class']} is not a VectorAction.");
         }
 
-        $values = $this->input->validate($this->fieldsOf($compiled), $rawFields);
+        $values = $this->input->validate(self::fieldsOf($compiled), $rawFields);
         $records = [];
         $entities = [];
 
@@ -173,7 +173,7 @@ final readonly class ActionRunner
             throw new \LogicException("{$compiled['class']} is not a VectorAction.");
         }
 
-        $values = $this->input->validate($this->fieldsOf($compiled), $rawFields);
+        $values = $this->input->validate(self::fieldsOf($compiled), $rawFields);
 
         return $instance->finish(new ActionRequest($resource, $this->user, $this->managers->managerFor($resource->entityClass()), [], [], $values, $jobId));
     }
@@ -217,14 +217,16 @@ final readonly class ActionRunner
     }
 
     /**
-     * @param array<string, mixed> $compiled
+     * An action's dialog fields by name; none for no action.
+     *
+     * @param array<string, mixed>|null $compiled the compiled action
      * @return array<string, array<string, mixed>>
      */
-    private function fieldsOf(array $compiled): array
+    public static function fieldsOf(?array $compiled): array
     {
         $fields = [];
 
-        foreach ($compiled['fields'] as $field) {
+        foreach ($compiled['fields'] ?? [] as $field) {
             $fields[$field['name']] = $field;
         }
 

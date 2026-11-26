@@ -6,6 +6,8 @@ namespace Kinetis\Vector\Import;
 
 use Kinetis\Validation\Exception\ValidationException;
 use Kinetis\Validation\Violation;
+use Kinetis\Vector\Database\JsonDepth;
+use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Write\InputViolation;
 use Kinetis\Vector\Write\ValueConverter;
@@ -25,7 +27,10 @@ final readonly class RowMapper
 {
     public const array MODES = ['create', 'update', 'upsert'];
 
-    public function __construct(private ValueConverter $converter) {}
+    public function __construct(
+        private ValueConverter $converter,
+        private JsonDepth $depth,
+    ) {}
 
     /**
      * The mapping's fields must exist, be written by the mode's view
@@ -61,7 +66,7 @@ final readonly class RowMapper
 
             $compiled = $resource->field($field);
             $writable = $compiled !== null && $compiled['readonly'] !== true && array_intersect($views, $compiled['views']) !== []
-                && !in_array($compiled['type'], ['id', 'hasOne', 'hasMany', 'computed'], true);
+                && !in_array($compiled['type'], ['id', 'hasOne', 'hasMany', 'computed'], true) && !ResourceCompiler::isChildRepeater($compiled);
 
             if (!$writable && !($field === $key && $mode !== 'create')) {
                 $violations[] = new Violation(['mapping', (string) $header], 'invalid_choice', "\"{$field}\" is not a field this resource accepts on {$on}.");
@@ -137,7 +142,7 @@ final readonly class RowMapper
         foreach ($resource->fields() as $name => $field) {
             // anything an import may write, and the key an update matches by
             $importable = $field['readonly'] !== true && array_intersect(['create', 'update'], $field['views']) !== []
-                && !in_array($field['type'], ['id', 'hasOne', 'hasMany', 'computed'], true);
+                && !in_array($field['type'], ['id', 'hasOne', 'hasMany', 'computed'], true) && !ResourceCompiler::isChildRepeater($field);
 
             if (!$importable && $name !== $resource->primaryKeyField()) {
                 continue;
@@ -184,7 +189,7 @@ final readonly class RowMapper
                 ? $this->converter->identifier($resource->primaryKeyType(), $raw)
                 : $this->converter->fromQuery($field, $raw);
         } catch (InputViolation $e) {
-            throw ValidationException::fromViolations([$e->violation->under($key)]);
+            throw ValidationException::fromViolations([$this->depth->limited($resource, $e->violation)->under($key)]);
         }
     }
 
@@ -224,7 +229,8 @@ final readonly class RowMapper
             try {
                 $payload[$name] = $this->cell($field, $raw);
             } catch (InputViolation $e) {
-                $violations[] = $e->violation->under($name);
+                // a Json cell deeper than any field holds is refused at this field's own limit
+                $violations[] = $this->depth->limited($resource, $e->violation)->under($name);
             }
         }
 

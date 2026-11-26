@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: 'Caricamento di {label}',
     },
+    json: {
+        invalid: 'Inserisci un oggetto o un array JSON valido.',
+    },
     keyValue: {
         key: 'Chiave',
         value: 'Valore',
@@ -73,5 +76,17 @@ export default {
         lessThanOrEqual: 'Deve essere al massimo {limit}',
         invalidFormat: 'Formato non valido',
         notAllowed: 'Valore non consentito',
+    },
+    rows: {
+        add: 'Aggiungi riga',
+        remove: 'Rimuovi la riga {n}',
+        row: 'Riga {n}',
+        drag: 'Sposta la riga {n}: trascinala o usa i tasti freccia',
+        moved: 'Riga {from} spostata in posizione {to}',
+        none: 'Nessuna riga',
+    },
+    tags: {
+        hint: 'Digita un tag e premi Invio',
+        tooMany: 'Al massimo {max} tag',
     },
 }

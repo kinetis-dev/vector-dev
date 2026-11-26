@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: '{label} yükleniyor',
     },
+    json: {
+        invalid: 'Geçerli bir JSON nesnesi veya dizisi girin.',
+    },
     keyValue: {
         key: 'Anahtar',
         value: 'Değer',
@@ -73,5 +76,17 @@ export default {
         lessThanOrEqual: 'En fazla {limit} olmalı',
         invalidFormat: 'Geçersiz biçim',
         notAllowed: 'İzin verilen bir değer değil',
+    },
+    rows: {
+        add: 'Satır ekle',
+        remove: '{n}. satırı kaldır',
+        row: '{n}. satır',
+        drag: '{n}. satırı taşı: sürükleyin ya da ok tuşlarını kullanın',
+        moved: '{from}. satır {to}. sıraya taşındı',
+        none: 'Satır yok',
+    },
+    tags: {
+        hint: 'Bir etiket yazıp Enter tuşuna basın',
+        tooMany: 'En fazla {max} etiket',
     },
 }

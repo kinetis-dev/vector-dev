@@ -12,9 +12,15 @@ use App\Domain\Order;
 use App\Domain\OrderLine;
 use App\Domain\OrderStatus;
 use App\Domain\Product;
+use App\Domain\ProductStatus;
 use App\Domain\Tag;
 use App\Domain\User;
+use App\Tests\Vector\Fixtures\Level;
 use App\Vector\TagResource;
+use Kinetis\Orm\Attributes\BelongsTo as OrmBelongsTo;
+use Kinetis\Orm\Attributes\Entity;
+use Kinetis\Orm\Attributes\HasMany as OrmHasMany;
+use Kinetis\Orm\Attributes\Id as EntityId;
 use Kinetis\Orm\Metadata\MetadataRegistry;
 use Kinetis\Vector\Actions\ActionRequest;
 use Kinetis\Vector\Actions\ActionResponse;
@@ -25,22 +31,27 @@ use Kinetis\Vector\Badge;
 use Kinetis\Vector\Exception\ResourceCompileException;
 use Kinetis\Vector\Fields\BelongsTo;
 use Kinetis\Vector\Fields\Boolean;
+use Kinetis\Vector\Fields\BooleanGroup;
 use Kinetis\Vector\Fields\Color;
 use Kinetis\Vector\Fields\Computed;
+use Kinetis\Vector\Fields\Country;
 use Kinetis\Vector\Fields\Currency;
 use Kinetis\Vector\Fields\Date;
 use Kinetis\Vector\Fields\DateTime;
 use Kinetis\Vector\Fields\Email;
-use Kinetis\Vector\Fields\Enum;
 use Kinetis\Vector\Fields\HasMany;
 use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Image;
+use Kinetis\Vector\Fields\Json;
 use Kinetis\Vector\Fields\KeyValue;
 use Kinetis\Vector\Fields\ManyToMany;
 use Kinetis\Vector\Fields\Money;
 use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\Fields\Password;
+use Kinetis\Vector\Fields\Repeater;
 use Kinetis\Vector\Fields\RichText;
+use Kinetis\Vector\Fields\Select;
+use Kinetis\Vector\Fields\Tag as TagField;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\Fields\Textarea;
 use Kinetis\Vector\FullText;
@@ -58,14 +69,14 @@ final class ResourceCompilerTest extends TestCase
     /** Compiled with every resource under test: the relation targets the fixtures name. */
     private const array FIXTURES = [CompilerCustomers::class, CompilerOrders::class, CompilerOrderLines::class, CompilerProducts::class, CompilerCategories::class];
 
-    /** The shop's entities, every relationship target among them. */
-    private const array ENTITIES = [Category::class, Customer::class, CustomerProfile::class, Order::class, OrderLine::class, Product::class, Tag::class, User::class];
+    /** The shop's entities, every relationship target among them, and the board fixtures at the end of this file. */
+    private const array ENTITIES = [Category::class, Customer::class, CustomerProfile::class, Order::class, OrderLine::class, Product::class, Tag::class, User::class, CompilerBoard::class, CompilerCard::class, CompilerNote::class];
 
     public function testEachFieldTypeFiltersWithTheOperatorsOfItsShape(): void
     {
         $shapes = [];
 
-        foreach (['id', 'number', 'money', 'boolean', 'date', 'datetime', 'enum', 'currency', 'belongsTo', 'richtext', 'hasOne', 'hasMany', 'manyToMany', 'string', 'email'] as $type) {
+        foreach (['id', 'number', 'money', 'boolean', 'date', 'datetime', 'select', 'country', 'currency', 'booleanGroup', 'tag', 'belongsTo', 'richtext', 'hasOne', 'hasMany', 'manyToMany', 'repeater', 'string', 'email'] as $type) {
             $shapes[$type] = ResourceCompiler::operatorShape($type);
         }
 
@@ -76,13 +87,17 @@ final class ResourceCompilerTest extends TestCase
             'boolean' => 'boolean',
             'date' => 'datetime',
             'datetime' => 'datetime',
-            'enum' => 'enum',
+            'select' => 'enum',
+            'country' => 'enum',
             'currency' => 'enum',
+            'booleanGroup' => 'list',
+            'tag' => 'list',
             'belongsTo' => 'belongsTo',
             'richtext' => 'presence',
             'hasOne' => null,
             'hasMany' => null,
             'manyToMany' => null,
+            'repeater' => null,
             'string' => 'string',
             'email' => 'string',
         ], $shapes);
@@ -129,8 +144,8 @@ final class ResourceCompilerTest extends TestCase
         self::assertFalse(ResourceCompiler::compileLoose(Text::make('note')->required(), [], 'Owner')['nullable']);
 
         $this->expectException(ResourceCompileException::class);
-        $this->expectExceptionMessage('Resource Owner, field "kind": is an enum field naming no backed enum; call of()');
-        ResourceCompiler::compileLoose(Enum::make('kind'), [], 'Owner');
+        $this->expectExceptionMessage('Resource Owner, field "kind": is a select with no options; call options()');
+        ResourceCompiler::compileLoose(Select::make('kind'), [], 'Owner');
     }
 
     public function testALooseRelationLinksToARegisteredResource(): void
@@ -141,6 +156,80 @@ final class ResourceCompilerTest extends TestCase
 
         self::assertSame('Resource Owner, field "customer": names no target resource', self::refusal(static fn () => ResourceCompiler::compileLoose(BelongsTo::make('customer'), $slugs, 'Owner')));
         self::assertSame('Resource Owner, field "order": ' . CompilerOrders::class . ' is not a registered resource', self::refusal(static fn () => ResourceCompiler::compileLoose(BelongsTo::to('order', CompilerOrders::class), $slugs, 'Owner')));
+    }
+
+    public function testTheFieldPredicatesReadTheCompiledType(): void
+    {
+        self::assertTrue(ResourceCompiler::isSelect(['type' => 'country']));
+        self::assertFalse(ResourceCompiler::isSelect(['type' => 'currency']));
+        self::assertFalse(ResourceCompiler::isMultiple(['type' => 'select']), 'a select that states no mode holds one value');
+        self::assertTrue(ResourceCompiler::isMultiple(['type' => 'country', 'multiple' => true]));
+        self::assertTrue(ResourceCompiler::isList(['type' => 'tag']));
+        self::assertTrue(ResourceCompiler::isList(['type' => 'select', 'multiple' => true]));
+        self::assertFalse(ResourceCompiler::isList(['type' => 'select', 'multiple' => false]));
+        self::assertTrue(ResourceCompiler::isFlagColumns(['type' => 'booleanGroup', 'flags' => ['vip' => 'is_vip']]));
+        self::assertFalse(ResourceCompiler::isFlagColumns(['type' => 'booleanGroup']), 'a JSON-mode group maps no flag columns');
+        self::assertFalse(ResourceCompiler::isFlagColumns(['type' => 'select', 'flags' => ['vip' => 'is_vip']]));
+        self::assertTrue(ResourceCompiler::isCollection(['type' => 'repeater']));
+        self::assertFalse(ResourceCompiler::isCollection(['type' => 'tag']));
+        self::assertSame(['any', 'all'], ResourceCompiler::operatorsFor(['type' => 'tag', 'filterable' => true]));
+    }
+
+    public function testADependentChoiceListNeverMatchesAFlagGroupOrAList(): void
+    {
+        $others = [
+            'booleanGroup' => ['type' => 'booleanGroup', 'label' => 'Flags'],
+            'tag' => ['type' => 'tag', 'label' => 'Keywords'],
+            'select' => ['type' => 'select', 'multiple' => true, 'label' => 'Platforms'],
+        ];
+
+        foreach ($others as $type => $other) {
+            $fields = ['other' => $other, 'assignee' => ['type' => 'belongsTo', 'label' => 'Assignee', 'relation' => ['dependsOn' => ['field' => 'other', 'on' => 'team']]]];
+            self::assertSame("Resource Owner, field \"assignee\": depends on other, a {$type} field, which holds no single value to match", self::refusal(static fn () => ResourceCompiler::checkDependencies($fields, 'Owner')));
+        }
+    }
+
+    public function testALooseSelectTakesTheValueTypeOfItsOptions(): void
+    {
+        $int = ResourceCompiler::compileLoose(Select::make('code')->options([404 => 'Not found', 500 => 'Error']), [], 'Owner');
+        self::assertSame(['int', [404, 500]], [$int['valueType'], array_column($int['options'], 'value')], 'a select of integers holds an int');
+
+        $text = ResourceCompiler::compileLoose(Select::make('code')->options([404 => 'Not found', 'gone' => 'Gone']), [], 'Owner');
+        self::assertSame(['string', ['404', 'gone']], [$text['valueType'], array_column($text['options'], 'value')], 'one text value makes every value text');
+
+        $many = ResourceCompiler::compileLoose(Select::make('codes')->options(['a' => 'A', 'b' => 'B'])->multiple()->default(['b']), [], 'Owner');
+        self::assertSame(['json', null, ['b']], [$many['valueType'], $many['enum'], $many['default']], 'a multiple select holds a list');
+        self::assertNull(ResourceCompiler::compileLoose(Select::make('code')->options(['a' => 'A'])->default(null), [], 'Owner')['default'], 'a null default is no default to check');
+        self::assertNull(ResourceCompiler::compileLoose(Select::make('codes')->options(['a' => 'A'])->multiple()->default(null), [], 'Owner')['default']);
+
+        $country = ResourceCompiler::compileLoose(Country::make('country')->only(['FR', 'DE']), [], 'Owner');
+        self::assertSame(['string', ['FR', 'DE']], [$country['valueType'], array_column($country['options'], 'value')]);
+        self::assertSame(
+            'Resource Owner, field "country": offers "XX", which is not an assigned ISO 3166-1 alpha-2 country code',
+            self::refusal(static fn () => ResourceCompiler::compileLoose(Country::make('country')->only(['FR', 'XX']), [], 'Owner')),
+        );
+    }
+
+    public function testALooseFlagGroupTagOrJsonInputHoldsJson(): void
+    {
+        $flags = ResourceCompiler::compileLoose(BooleanGroup::make('notify')->options(['email' => 'Email', 'sms' => 'SMS'])->default(['sms' => true]), [], 'Owner');
+        self::assertSame(['json', 'json', false, ['sms' => true]], [$flags['valueType'], $flags['storage'], $flags['nullable'], $flags['default']]);
+        self::assertNull(ResourceCompiler::compileLoose(BooleanGroup::make('notify')->options(['email' => 'Email'])->default(null), [], 'Owner')['default'], 'a null default is no default to check');
+        self::assertSame([], ResourceCompiler::compileLoose(BooleanGroup::make('notify')->options(['email' => 'Email'])->default([]), [], 'Owner')['default'], 'an empty object ticks no flag');
+
+        foreach ([['push' => true], ['email'], ['email' => 'yes'], 'email'] as $default) {
+            self::assertSame(
+                'Resource Owner, field "notify": is a flag group, whose default is an object of some of its option keys to true or false',
+                self::refusal(static fn () => ResourceCompiler::compileLoose(BooleanGroup::make('notify')->options(['email' => 'Email'])->default($default), [], 'Owner')),
+            );
+        }
+
+        self::assertSame('json', ResourceCompiler::compileLoose(TagField::make('keywords'), [], 'Owner')['valueType']);
+
+        $json = ResourceCompiler::compileLoose(Json::make('doc'), [], 'Owner');
+        $keyValue = ResourceCompiler::compileLoose(KeyValue::make('pairs'), [], 'Owner');
+        self::assertSame([['json', 'objectOrList'], ['json', 'object']], [[$json['valueType'], $json['jsonObjects']], [$keyValue['valueType'], $keyValue['jsonObjects']]]);
+        self::assertArrayNotHasKey('jsonObjects', ResourceCompiler::compileLoose(Text::make('note'), [], 'Owner'), 'only a JSON or key-value input keeps its objects');
     }
 
     public function testTheDescriptorOfAResource(): void
@@ -172,7 +261,7 @@ final class ResourceCompilerTest extends TestCase
         self::assertSame(['number' => 'number'], $orders['searchColumns']);
         self::assertTrue($orders['globallySearchable']);
         self::assertFalse($compiled['compiler-customers']['globallySearchable'], 'a resource with nothing to search is not globally searchable');
-        self::assertSame(['fields' => ['quantity', 'unitPriceCents'], 'min' => 0, 'max' => 100], self::field($orders, 'lines')['repeater'], 'a row writes every field but the parent, the hidden product and the identifier');
+        self::assertSame(['fields' => ['quantity', 'unitPriceCents'], 'mode' => 'relationship', 'min' => 0, 'max' => 100, 'sortable' => false, 'orderBy' => null], self::field($orders, 'lines')['repeater'], 'a row writes every field but the parent, the hidden product and the identifier');
         self::assertSame(['currency' => 'currency'], self::field($compiled['compiler-order-lines'], 'order')['relation']['carry'], 'a price in the order\'s currency has the order carry it');
         self::assertSame(['readonly' => true, 'nullable' => true, 'valueType' => 'string'], array_intersect_key(self::field($orders, 'reference'), ['readonly' => 0, 'nullable' => 0, 'valueType' => 0]));
     }
@@ -292,12 +381,12 @@ final class ResourceCompilerTest extends TestCase
         self::assertSame('sku', $compiled['titleField']);
     }
 
-    public function testTheTitleSkipsEnumAndLongTextFields(): void
+    public function testTheTitleSkipsSelectAndLongTextFields(): void
     {
         $orders = new #[Resource(Order::class, slug: 'titled-orders')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), Enum::make('status')->of(OrderStatus::class), Textarea::make('notes'), Text::make('number')];
+                return [Id::make(), Select::make('status')->of(OrderStatus::class), Textarea::make('notes'), Text::make('number')];
             }
         };
 
@@ -420,7 +509,7 @@ final class ResourceCompilerTest extends TestCase
         $valid = new #[Resource(Category::class, slug: 'categories')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), Text::make('name'), Computed::make('tier')->as('enum')->options(['top' => 'Top'])->from(['name'])->method('tier'), Computed::make('trashed')->method('tier')];
+                return [Id::make(), Text::make('name'), Computed::make('tier')->as('select')->options(['top' => 'Top'])->from(['name'])->method('tier'), Computed::make('trashed')->method('tier')];
             }
 
             /** @param array<string, mixed> $category */
@@ -482,13 +571,13 @@ final class ResourceCompilerTest extends TestCase
         };
         $this->assertRefused(self::fieldRefusal($searchable, 'tier', 'is computed per record in PHP, so it cannot be searchable'), $searchable);
 
-        $enum = new #[Resource(Category::class, slug: 'categories')] class extends VectorResource {
+        $select = new #[Resource(Category::class, slug: 'categories')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), Text::make('name'), Computed::make('tier')->as('enum')->method('fields')];
+                return [Id::make(), Text::make('name'), Computed::make('tier')->as('select')->method('fields')];
             }
         };
-        $this->assertRefused(self::fieldRefusal($enum, 'tier', 'is computed as an enum but lists no options; call options()'), $enum);
+        $this->assertRefused(self::fieldRefusal($select, 'tier', 'is computed as a select but lists no options; call options()'), $select);
 
         $collection = new #[Resource(Category::class, slug: 'categories')] class extends VectorResource {
             public function fields(): array
@@ -574,7 +663,7 @@ final class ResourceCompilerTest extends TestCase
                 return 'id';
             }
         };
-        $this->assertRefused($subtitle::class . '::searchSubtitle() names "id", which is not a text, number or enum field of the resource.', $subtitle);
+        $this->assertRefused($subtitle::class . '::searchSubtitle() names "id", which is not a text, number or single select field of the resource.', $subtitle);
 
         $image = new #[Resource(Tag::class, slug: 'tags')] class extends VectorResource {
             public function searchImage(): string
@@ -891,15 +980,15 @@ final class ResourceCompilerTest extends TestCase
         $ordered = new #[Resource(Order::class, slug: 'orders')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), HasMany::to('lines', CompilerOrderLines::class)->repeater(['unitPriceCents', 'quantity'], min: 1, max: 5)];
+                return [Id::make(), Repeater::make('lines')->relationship('lines', CompilerOrderLines::class)->fields(['unitPriceCents', 'quantity'])->min(1)->max(5)];
             }
         };
-        self::assertSame(['fields' => ['unitPriceCents', 'quantity'], 'min' => 1, 'max' => 5], self::field($this->compile($ordered)['orders'], 'lines')['repeater']);
+        self::assertSame(['fields' => ['unitPriceCents', 'quantity'], 'mode' => 'relationship', 'min' => 1, 'max' => 5, 'sortable' => false, 'orderBy' => null], self::field($this->compile($ordered)['orders'], 'lines')['repeater']);
 
         $parent = new #[Resource(Order::class, slug: 'orders')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), HasMany::to('lines', CompilerOrderLines::class)->repeater(['order', 'quantity', 'unitPriceCents'])];
+                return [Id::make(), Repeater::make('lines')->relationship('lines', CompilerOrderLines::class)->fields(['order', 'quantity', 'unitPriceCents'])];
             }
         };
         $this->assertRefused(self::fieldRefusal($parent, 'lines', 'names "order", which is not a writable field of Order line'), $parent);
@@ -907,7 +996,7 @@ final class ResourceCompilerTest extends TestCase
         $partial = new #[Resource(Order::class, slug: 'orders')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), HasMany::to('lines', CompilerOrderLines::class)->repeater(['quantity'])];
+                return [Id::make(), Repeater::make('lines')->relationship('lines', CompilerOrderLines::class)->fields(['quantity'])];
             }
         };
         $this->assertRefused(self::fieldRefusal($partial, 'lines', 'leaves out "unitPriceCents", which a new Order line row requires'), $partial);
@@ -991,6 +1080,469 @@ final class ResourceCompilerTest extends TestCase
         $this->assertRefused('Resource ' . CompilerConditionAction::class . ', field "note": has a visible condition on "missing", which is not a field of the same form', $condition);
     }
 
+    public function testAFlagGroupInColumnsModeWritesEachFlagsBoolColumn(): void
+    {
+        $board = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [
+                    Id::make(),
+                    Text::make('title'),
+                    // a flag with a default, one without, then one with again: the group starts with no value
+                    BooleanGroup::make('state')->options(['isMuted' => 'Muted', 'isActive' => 'Active', 'isPinned' => 'Pinned'])->sortable()->filterable(),
+                    // every flag with a default: so has the group
+                    BooleanGroup::make('lock')->options(['isLocked' => 'Locked']),
+                    // a default of its own wins over the properties'
+                    BooleanGroup::make('star')->options(['isStarred' => 'Starred'])->default(['isStarred' => true]),
+                ];
+            }
+
+            public function defaultSort(): array
+            {
+                return ['-state.isActive', 'id'];
+            }
+        };
+        $compiled = $this->compile($board)['boards'];
+        $state = self::field($compiled, 'state');
+
+        self::assertSame(['isMuted' => 'is_muted', 'isActive' => 'is_active', 'isPinned' => 'is_pinned'], $state['flags']);
+        self::assertSame([false, 'json', false, true], [$state['nullable'], $state['valueType'], $state['sortable'], $state['flagsSortable']], 'the group sorts by each flag, never as a whole');
+        self::assertSame([false, null], [$state['hasDefault'], $state['default']]);
+        self::assertSame([true, ['isLocked' => true]], [self::field($compiled, 'lock')['hasDefault'], self::field($compiled, 'lock')['default']]);
+        self::assertSame(['isStarred' => true], self::field($compiled, 'star')['default']);
+        self::assertSame('is_active', $compiled['columns']['state.isActive']);
+        self::assertSame([
+            'name' => 'state.isActive',
+            'type' => 'boolean',
+            'label' => 'State: Active',
+            'column' => 'is_active',
+            'valueType' => 'bool',
+            'nullable' => false,
+            'filterable' => true,
+            'sortable' => true,
+            'operators' => ['eq'],
+            'views' => [],
+            'rules' => [],
+        ], ResourceCompiler::flagField($state, 'isActive'), 'one flag reads as the boolean field of its column');
+        $locked = ResourceCompiler::flagField(self::field($compiled, 'lock'), 'isLocked');
+        self::assertNotNull($locked);
+        self::assertSame([false, false, []], [$locked['filterable'], $locked['sortable'], $locked['operators']], 'a flag of a group neither filterable nor sortable');
+        self::assertNull(ResourceCompiler::flagField($state, 'nope'));
+        self::assertSame([['field' => 'state.isActive', 'order' => 'desc'], ['field' => 'id', 'order' => 'asc']], $compiled['table_view']['defaultSort']);
+        self::assertSame(['possible' => true, 'reason' => null], $compiled['creation'], 'the group writes the required isActive');
+        self::assertSame(['notes'], $compiled['ownedRelations'], 'the owned relations are a list');
+
+        $deeper = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), BooleanGroup::make('state')->options(['isActive' => 'Active'])->sortable()];
+            }
+
+            public function defaultSort(): array
+            {
+                return ['state.isActive.x'];
+            }
+        };
+        $this->assertRefused('Resource ' . $deeper::class . ': default sort names "state.isActive.x", which is not a sortable field', $deeper);
+    }
+
+    public function testAFlagIsABoolPropertyWrittenByOneGroupAlone(): void
+    {
+        $notBool = [
+            'nope' => new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), BooleanGroup::make('state')->options(['nope' => 'Unmapped'])];
+                }
+            },
+            'title' => new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), BooleanGroup::make('state')->options(['title' => 'A string'])];
+                }
+            },
+            'isArchived' => new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), BooleanGroup::make('state')->options(['isArchived' => 'A nullable bool'])];
+                }
+            },
+        ];
+
+        foreach ($notBool as $flag => $resource) {
+            $this->assertRefused(self::fieldRefusal($resource, 'state', "names the flag \"{$flag}\", which is not a bool property of " . CompilerBoard::class . '; in columns mode every option key is one, or call json()'), $resource);
+        }
+
+        $field = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Boolean::make('isPinned'), BooleanGroup::make('state')->options(['isActive' => 'Active', 'isPinned' => 'Pinned'])];
+            }
+        };
+        $this->assertRefused(self::fieldRefusal($field, 'state', 'names the flag "isPinned", which is also a field of the resource; a flag is written by its group alone'), $field);
+
+        $twice = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), BooleanGroup::make('state')->options(['isActive' => 'Active']), BooleanGroup::make('quiet')->options(['isMuted' => 'Muted', 'isActive' => 'Active'])];
+            }
+        };
+        $this->assertRefused(self::fieldRefusal($twice, 'state', 'names the flag "isActive", which the flag group "quiet" names too; a flag is written by one group alone'), $twice);
+    }
+
+    public function testCreationCountsTheFlagsOfEveryGroupOnTheForm(): void
+    {
+        // isActive, which a new board requires, is neither the first flag of its group nor in the last group
+        $board = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), BooleanGroup::make('state')->options(['isMuted' => 'Muted', 'isActive' => 'Active']), BooleanGroup::make('lock')->options(['isLocked' => 'Locked'])];
+            }
+        };
+        self::assertSame(['possible' => true, 'reason' => null], $this->compile($board)['boards']['creation']);
+
+        $hidden = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), BooleanGroup::make('state')->options(['isActive' => 'Active'])->hideFromForms()];
+            }
+        };
+        self::assertFalse($this->compile($hidden)['boards']['creation']['possible'], 'a group off the form writes nothing');
+    }
+
+    public function testAFieldWithNoColumnCannotBeSortable(): void
+    {
+        $orders = new #[Resource(Order::class, slug: 'orders')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), HasMany::to('lines', CompilerOrderLines::class)->sortable()];
+            }
+        };
+        $this->assertRefused(self::fieldRefusal($orders, 'lines', 'maps no column and cannot be sortable'), $orders);
+    }
+
+    public function testASelectTypesItsOptionsAndDefaultAsItsPropertyStoresThem(): void
+    {
+        $products = new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [
+                    Id::make(),
+                    // a string property: 404 reads and writes as "404"
+                    Select::make('currency')->options([404 => 'Not found', 'EUR' => 'Euro'])->default(404),
+                    Select::make('stock')->options([1 => 'One', 2 => 'Two']),
+                    Select::make('channels')->options(['web' => 'Web', 'retail' => 'Retail'])->multiple()->filterable()->default(['retail']),
+                    // an enum property and no options: the enum's cases
+                    Select::make('status'),
+                ];
+            }
+        };
+        $compiled = $this->compile($products)['products'];
+        $currency = self::field($compiled, 'currency');
+        $channels = self::field($compiled, 'channels');
+
+        self::assertSame([['404', 'EUR'], '404'], [array_column($currency['options'], 'value'), $currency['default']]);
+        self::assertSame([1, 2], array_column(self::field($compiled, 'stock')['options'], 'value'));
+        self::assertSame([null, ['retail'], ['any', 'all', 'null', 'nnull']], [$channels['enum'], $channels['default'], $channels['operators']]);
+        self::assertSame(['draft', 'active', 'archived'], array_column(self::field($compiled, 'status')['options'], 'value'));
+
+        $orders = new #[Resource(Order::class, slug: 'orders')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [
+                    Id::make(),
+                    // options of its own on an enum property are kept
+                    Select::make('status')->options(['pending' => 'Waiting', 'paid' => 'Paid']),
+                    // an enum's cases offered over a string property
+                    Select::make('currency')->of(OrderStatus::class),
+                ];
+            }
+        };
+        $compiled = $this->compile($orders)['orders'];
+        self::assertSame(['Waiting', 'Paid'], array_column(self::field($compiled, 'status')['options'], 'label'));
+        self::assertSame([null, ['pending', 'paid', 'shipped', 'cancelled']], [self::field($compiled, 'currency')['enum'], array_column(self::field($compiled, 'currency')['options'], 'value')]);
+
+        $boards = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Select::make('level')->of(Level::class)];
+            }
+        };
+        self::assertSame([Level::class, [1, 2]], [self::field($this->compile($boards)['boards'], 'level')['enum'], array_column(self::field($this->compile($boards)['boards'], 'level')['options'], 'value')], 'an int-backed enum');
+    }
+
+    public function testASelectIsRefusedOptionsOrADefaultItsPropertyCannotHold(): void
+    {
+        $refusals = [
+            ['stock', 'stores an int, but not every option value is an integer', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Select::make('stock')->options(['a' => 'A'])];
+                }
+            }],
+            ['status', 'offers "bogus", which is not a case of ' . OrderStatus::class, new #[Resource(Order::class, slug: 'orders')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Select::make('status')->options(['pending' => 'Pending', 'bogus' => 'Bogus'])];
+                }
+            }],
+            ['status', 'takes its options from ' . ProductStatus::class . ', but the property holds ' . OrderStatus::class, new #[Resource(Order::class, slug: 'orders')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Select::make('status')->of(ProductStatus::class)];
+                }
+            }],
+            ['currency', 'defaults to "USD", which is not one of its options', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Select::make('currency')->options(['EUR' => 'Euro'])->default('USD')];
+                }
+            }],
+            ['channels', 'is a multiple select, which cannot be sorted, grouped, summarized or edited inline', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Select::make('channels')->options(['web' => 'Web'])->multiple()->sortable()];
+                }
+            }],
+            ['channels', 'is a multiple select, which cannot be sorted, grouped, summarized or edited inline', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Select::make('channels')->options(['web' => 'Web'])->multiple()->inlineEditable()];
+                }
+            }],
+            ['channels', 'is a multiple select, whose default is a list of option values', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Select::make('channels')->options(['web' => 'Web'])->multiple()->default(['first' => 'web'])];
+                }
+            }],
+            ['country', 'offers "XX", which is not an assigned ISO 3166-1 alpha-2 country code', new #[Resource(CustomerProfile::class, slug: 'profiles')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Country::make('country')->only(['FR', 'XX'])];
+                }
+            }],
+        ];
+
+        foreach ($refusals as [$field, $reason, $resource]) {
+            $this->assertRefused(self::fieldRefusal($resource, $field, $reason), $resource);
+        }
+    }
+
+    public function testTagsJsonAndRowsLiveInAJsonColumn(): void
+    {
+        $products = new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [
+                    Id::make(),
+                    TagField::make('keywords')->filterable()->default([]),
+                    KeyValue::make('attributes'),
+                    Repeater::make('specs')->fields([Text::make('label')->required(), Number::make('value')])->min(2)->max(2),
+                ];
+            }
+        };
+        $compiled = $this->compile($products)['products'];
+        $keywords = self::field($compiled, 'keywords');
+        $specs = self::field($compiled, 'specs');
+
+        self::assertSame([[], ['any', 'all', 'null', 'nnull']], [$keywords['default'], $keywords['operators']], 'an empty list is a list of strings');
+        self::assertSame(['json', 'object'], [self::field($compiled, 'attributes')['valueType'], self::field($compiled, 'attributes')['jsonObjects']], 'a ?stdClass property holds one object');
+        self::assertSame([['label', 'value'], ['string', 'int'], 2, 2], [array_column($specs['repeater']['rowFields'], 'name'), array_column($specs['repeater']['rowFields'], 'valueType'), $specs['repeater']['min'], $specs['repeater']['max']], 'as few rows as it allows at most');
+
+        $tagged = new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), TagField::make('keywords')->default(['sale', 'new'])];
+            }
+        };
+        self::assertSame(['sale', 'new'], self::field($this->compile($tagged)['products'], 'keywords')['default'], 'a list of strings is a tag default');
+
+        $json = new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Json::make('attributes')];
+            }
+        };
+        self::assertSame('object', self::field($this->compile($json)['products'], 'attributes')['jsonObjects']);
+    }
+
+    public function testATagFieldIsAListOfStringsNeitherSortedNorEditedInline(): void
+    {
+        $refusals = [
+            ['name', 'is a tag field, which stores a JSON list of strings: declare the property array or ?array, not string', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), TagField::make('name')];
+                }
+            }],
+            ['keywords', 'is a tag field, which cannot be sorted, grouped, searched, summarized or edited inline', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), TagField::make('keywords')->sortable()];
+                }
+            }],
+            ['keywords', 'is a tag field, which cannot be sorted, grouped, searched, summarized or edited inline', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), TagField::make('keywords')->inlineEditable()];
+                }
+            }],
+            ['keywords', 'is a tag field, whose default is a list of strings', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), TagField::make('keywords')->default('sale')];
+                }
+            }],
+            ['keywords', 'is a tag field, whose default is a list of strings', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), TagField::make('keywords')->default(['first' => 'sale'])];
+                }
+            }],
+            ['keywords', 'is a tag field, whose default is a list of strings', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), TagField::make('keywords')->default(['sale', 1])];
+                }
+            }],
+        ];
+
+        foreach ($refusals as [$field, $reason, $resource]) {
+            $this->assertRefused(self::fieldRefusal($resource, $field, $reason), $resource);
+        }
+    }
+
+    public function testAJsonColumnNeedsAnObjectPropertyAndAJsonRepeaterAnArrayOne(): void
+    {
+        $refusals = [
+            ['specs', 'is a JSON field on the array property "specs", which would store {} as []: declare the property stdClass, ?stdClass, array|stdClass or array|stdClass|null', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Json::make('specs')];
+                }
+            }],
+            ['name', 'is a JSON repeater, which stores its rows in a JSON column: declare the property array or ?array, not string', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('name')->fields([Text::make('label')])];
+                }
+            }],
+            ['specs', 'is a repeater, which cannot be sorted, grouped, filtered, searched, summarized or edited inline', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('specs')->fields([Text::make('label')])->sortable()];
+                }
+            }],
+            ['specs', 'is a repeater, which cannot be sorted, grouped, filtered, searched, summarized or edited inline', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('specs')->fields([Text::make('label')])->inlineEditable()];
+                }
+            }],
+            ['nope', 'is not a mapped property of ' . Product::class, new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Text::make('nope')];
+                }
+            }],
+        ];
+
+        foreach ($refusals as [$field, $reason, $resource]) {
+            $this->assertRefused(self::fieldRefusal($resource, $field, $reason), $resource);
+        }
+    }
+
+    public function testDerivationLeavesOutAnArrayPropertyAndMapsAnObjectOneToJson(): void
+    {
+        $derived = new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+        };
+        $fields = array_column($this->compile($derived)['products']['fields'], null, 'name');
+
+        self::assertSame([false, false, false], [isset($fields['channels']), isset($fields['specs']), isset($fields['keywords'])], 'a Json field cannot map an array property');
+        self::assertSame(['json', 'object'], [$fields['attributes']['type'], $fields['attributes']['jsonObjects']]);
+    }
+
+    public function testAChildRepeaterEditsTheOwnedRowsOfARegisteredResource(): void
+    {
+        $board = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Repeater::make('notes')->relationship('notes', CompilerNotes::class)->fields(['text'])->orderBy('position')];
+            }
+        };
+        $notes = self::field($this->compile($board, new CompilerNotes())['boards'], 'notes');
+
+        self::assertSame(['text'], $notes['repeater']['fields']);
+        self::assertSame('position', $notes['repeater']['orderColumn']);
+        self::assertSame(['compiler-notes', 'board', true], [$notes['relation']['resource'], $notes['relation']['inverse'], $notes['relation']['owned']]);
+
+        $orphan = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Repeater::make('notes')->relationship('notes')];
+            }
+        };
+        $this->assertRefused(self::fieldRefusal($orphan, 'notes', 'edits ' . CompilerNote::class . ', which no resource administers'), $orphan);
+    }
+
+    public function testAChildRepeaterNamesWritableFieldsOfItsChild(): void
+    {
+        $refusals = [
+            ['names "steps", a repeater of Note; rows never hold another repeater', new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('notes')->relationship('notes', CompilerNotes::class)->fields(['text', 'steps'])];
+                }
+            }],
+            ['names "nope", which is not a writable field of Note', new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('notes')->relationship('notes', CompilerNotes::class)->fields(['text', 'nope'])];
+                }
+            }],
+            ['orders its rows by "board", which is not an int property of ' . CompilerNote::class, new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('notes')->relationship('notes', CompilerNotes::class)->orderBy('board')];
+                }
+            }],
+            ['names the relation "nope", which is not a #[HasMany] property of ' . CompilerBoard::class, new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('notes')->relationship('nope', CompilerNotes::class)];
+                }
+            }],
+            [TagResource::class . ' is not a registered resource', new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('notes')->relationship('notes', TagResource::class)];
+                }
+            }],
+            ['declares the row field "text"; in relationship mode fields() names fields of the child resource', new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('notes')->relationship('notes', CompilerNotes::class)->fields([Text::make('text')])];
+                }
+            }],
+        ];
+
+        foreach ($refusals as [$reason, $resource]) {
+            $this->assertRefused(self::fieldRefusal($resource, 'notes', $reason), $resource, new CompilerNotes());
+        }
+    }
+
+    public function testTheResourceMetaIsCheckedAndKept(): void
+    {
+        $kept = new #[Resource(Tag::class, slug: 'tags', meta: ['acme.pinned' => true])] class extends VectorResource {
+        };
+        self::assertSame(['acme.pinned' => true], $this->compile($kept)['tags']['meta']);
+
+        $bad = new #[Resource(Tag::class, slug: 'tags', meta: ['not a key' => true])] class extends VectorResource {
+        };
+        $this->assertRefused('Resource ' . $bad::class . ': #[Resource]: a meta key is a dotted name such as "vendor.key".', $bad);
+    }
+
     private function assertRefused(string $message, VectorResource ...$resources): void
     {
         try {
@@ -1063,11 +1615,11 @@ final class CompilerOrders extends VectorResource
             Id::make(),
             Text::make('number')->sortable()->searchable(),
             BelongsTo::to('customer', CompilerCustomers::class)->sortable(),
-            Enum::make('status')->of(OrderStatus::class)->filterable(),
+            Select::make('status')->of(OrderStatus::class)->filterable(),
             Text::make('currency')->hideFromIndex(),
             Money::make('totalCents')->currencyField('currency')->readonly(),
             DateTime::make('placedAt')->sortable(),
-            HasMany::to('lines', CompilerOrderLines::class)->repeater(),
+            Repeater::make('lines')->relationship('lines', CompilerOrderLines::class),
             Computed::make('reference')->method('reference'),
         ];
     }
@@ -1213,5 +1765,95 @@ final class UntitledOrders extends VectorResource
     public function fields(): array
     {
         return [Id::make(), Number::make('totalCents')];
+    }
+}
+
+/**
+ * A board: bool flags with and without a default (isActive, required,
+ * maps the column is_active), a nullable one, an int-backed enum, its
+ * cards in a relation it does not own and its notes in one it does.
+ */
+#[Entity(table: 'compiler_boards')]
+final class CompilerBoard
+{
+    #[EntityId(generated: true)]
+    public ?int $id = null;
+
+    public string $title = '';
+
+    public bool $isActive;
+
+    public bool $isMuted = false;
+
+    public bool $isPinned = true;
+
+    public bool $isLocked = true;
+
+    public bool $isStarred = false;
+
+    public ?bool $isArchived = null;
+
+    public Level $level = Level::Low;
+
+    /** @var list<CompilerCard> */
+    #[OrmHasMany(target: CompilerCard::class, mappedBy: 'board')]
+    public array $cards;
+
+    /** @var list<CompilerNote> */
+    #[OrmHasMany(target: CompilerNote::class, mappedBy: 'board', owned: true)]
+    public array $notes;
+
+    public function __construct(bool $isActive)
+    {
+        $this->isActive = $isActive;
+    }
+}
+
+#[Entity(table: 'compiler_cards')]
+final class CompilerCard
+{
+    #[EntityId(generated: true)]
+    public ?int $id = null;
+
+    #[OrmBelongsTo]
+    public CompilerBoard $board;
+
+    public function __construct(CompilerBoard $board)
+    {
+        $this->board = $board;
+    }
+}
+
+/** A board's note: a required text, a position and a JSON list of steps. */
+#[Entity(table: 'compiler_notes')]
+final class CompilerNote
+{
+    #[EntityId(generated: true)]
+    public ?int $id = null;
+
+    #[OrmBelongsTo]
+    public CompilerBoard $board;
+
+    public string $text;
+
+    public int $position = 0;
+
+    /** @var list<mixed>|null */
+    public ?array $steps = null;
+
+    public function __construct(CompilerBoard $board, string $text)
+    {
+        $this->board = $board;
+        $this->text = $text;
+    }
+}
+
+/** The notes a board's repeater edits; a note's steps are a repeater of their own. */
+#[Resource(CompilerNote::class, slug: 'compiler-notes', labelSingular: 'Note')]
+final class CompilerNotes extends VectorResource
+{
+    public function fields(): array
+    {
+        return [Id::make(), Text::make('text')->required(), Number::make('position'), Repeater::make('steps')->fields([Text::make('step')])];
     }
 }

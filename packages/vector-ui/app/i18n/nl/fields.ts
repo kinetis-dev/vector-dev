@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: '{label} laden',
     },
+    json: {
+        invalid: 'Voer een geldig JSON-object of -array in.',
+    },
     keyValue: {
         key: 'Sleutel',
         value: 'Waarde',
@@ -73,5 +76,17 @@ export default {
         lessThanOrEqual: 'Moet maximaal {limit} zijn',
         invalidFormat: 'Ongeldige notatie',
         notAllowed: 'Geen toegestane waarde',
+    },
+    rows: {
+        add: 'Rij toevoegen',
+        remove: 'Rij {n} verwijderen',
+        row: 'Rij {n}',
+        drag: 'Rij {n} verplaatsen: sleep de rij of gebruik de pijltjestoetsen',
+        moved: 'Rij {from} verplaatst naar positie {to}',
+        none: 'Geen rijen',
+    },
+    tags: {
+        hint: 'Typ een tag en druk op Enter',
+        tooMany: 'Hoogstens {max} tags',
     },
 }

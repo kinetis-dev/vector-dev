@@ -24,15 +24,18 @@ final class Conditions
     public static function hold(array $conditions, array $values): bool
     {
         foreach ($conditions as $condition) {
-            $actual = self::normalize($values[$condition['field']] ?? null);
+            $raw = $values[$condition['field']] ?? null;
+            $actual = self::normalize($raw);
             $expected = $condition['value'];
+            // a list (a multiple select's values, a collection's ids) is null when it is empty
+            $empty = is_array($raw) && array_is_list($raw) ? $raw === [] : $actual === null;
             $holds = match ($condition['op']) {
                 'eq' => $actual === self::normalize($expected),
                 'ne' => $actual !== self::normalize($expected),
                 'in' => in_array($actual, array_map(self::normalize(...), is_array($expected) ? $expected : [$expected]), true),
                 'nin' => !in_array($actual, array_map(self::normalize(...), is_array($expected) ? $expected : [$expected]), true),
-                'null' => $actual === null,
-                'nnull' => $actual !== null,
+                'null' => $empty,
+                'nnull' => !$empty,
                 default => false,
             };
 
@@ -74,10 +77,10 @@ final class Conditions
         return $states;
     }
 
-    /** An empty value for a required check: null, an empty string, an empty list. */
+    /** An empty value for a required check: null, an empty string, an empty list, an empty object. */
     public static function isEmpty(mixed $value): bool
     {
-        return $value === null || $value === '' || $value === [];
+        return $value === null || $value === '' || $value === [] || ($value instanceof \stdClass && get_object_vars($value) === []);
     }
 
     private static function normalize(mixed $value): ?string

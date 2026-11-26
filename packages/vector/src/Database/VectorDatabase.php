@@ -9,6 +9,7 @@ use Kinetis\Container\AppScope;
 use Kinetis\DatabaseBridge\ConnectionFactory;
 use Kinetis\Persistence\Contract\MysqlLink;
 use Kinetis\Persistence\Contract\PostgresLink;
+use Kinetis\Persistence\Contract\ReportsJsonDepth;
 use Kinetis\Persistence\Contract\SqlLink;
 use Kinetis\QueryBuilder\Query;
 
@@ -81,6 +82,21 @@ final class VectorDatabase
     public function isPostgres(): bool
     {
         return $this->link() instanceof PostgresLink;
+    }
+
+    /**
+     * The levels of nested arrays and objects a JSON column of Vector's
+     * connection stores, as its link reports them.
+     *
+     * @return positive-int
+     */
+    public function jsonDepth(): int
+    {
+        $link = $this->link();
+
+        return $link instanceof ReportsJsonDepth
+            ? $link->jsonDepth()
+            : throw new \LogicException('Vector\'s link (' . $link::class . ') does not report the JSON depth its server stores; pass a client that implements ' . ReportsJsonDepth::class . ', as every Kinetis\\Persistence\\Driver client does.');
     }
 
     private function resolve(): MysqlLink|PostgresLink

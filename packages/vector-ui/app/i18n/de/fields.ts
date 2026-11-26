@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: '{label} wird geladen',
     },
+    json: {
+        invalid: 'Geben Sie ein gültiges JSON-Objekt oder -Array ein.',
+    },
     keyValue: {
         key: 'Schlüssel',
         value: 'Wert',
@@ -73,5 +76,17 @@ export default {
         lessThanOrEqual: 'Muss höchstens {limit} sein',
         invalidFormat: 'Ungültiges Format',
         notAllowed: 'Kein zulässiger Wert',
+    },
+    rows: {
+        add: 'Zeile hinzufügen',
+        remove: 'Zeile {n} entfernen',
+        row: 'Zeile {n}',
+        drag: 'Zeile {n} verschieben: ziehen oder die Pfeiltasten verwenden',
+        moved: 'Zeile {from} an Position {to} verschoben',
+        none: 'Keine Zeilen',
+    },
+    tags: {
+        hint: 'Schlagwort eingeben und Enter drücken',
+        tooMany: 'Höchstens {max} Schlagwörter',
     },
 }

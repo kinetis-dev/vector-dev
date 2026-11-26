@@ -52,8 +52,8 @@ the change:
 docker compose exec app composer update kinetis/vector kinetis/vector-ai
 ```
 
-`kinetis/vector-ai` requires `kinetis/vector` `^0.17`; the demo requires
-the path-installed `kinetis/vector` as `dev-main as 0.17.0` so it
+`kinetis/vector-ai` requires `kinetis/vector` `^0.18`; the demo requires
+the path-installed `kinetis/vector` as `dev-main as 0.18.0` so it
 satisfies that.
 
 ## Tests

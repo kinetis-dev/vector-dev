@@ -33,7 +33,7 @@ which renders the descriptor and contains no application knowledge.
 
 ```php
 use Kinetis\Vector\Attributes\Resource;
-use Kinetis\Vector\Fields\{BelongsTo, Enum, Id, Money, Text};
+use Kinetis\Vector\Fields\{BelongsTo, Id, Money, Select, Text};
 use Kinetis\Vector\VectorResource;
 
 #[Resource(entity: Product::class, group: 'Catalog', icon: 'mdi-package-variant', title: 'name')]
@@ -44,7 +44,7 @@ final class ProductResource extends VectorResource
         return [
             Id::make(),
             Text::make('name')->required()->max(200)->sortable()->searchable()->filterable(),
-            Enum::make('status')->of(ProductStatus::class)->filterable(),
+            Select::make('status')->of(ProductStatus::class)->filterable(),
             BelongsTo::to('category', CategoryResource::class)->sortable()->filterable(),
             Money::make('priceCents', 'Price')->currencyField('currency')->summarize('avg'),
         ];
@@ -121,7 +121,7 @@ vendor/bin/kinetis vector:install-ui    # the hosted admin UI, then restart the 
 ```
 
 Requires PHP 8.4 or 8.5 with `ext-zlib` and `ext-openssl`, and
-[`kinetis/framework`](https://github.com/kinetis-dev/framework) 1.30.0
+[`kinetis/framework`](https://github.com/kinetis-dev/framework) 1.32.0
 or later.
 `vector:install-ui` downloads the `@kinetis/vector-ui` release this
 package pins (`resources/ui.json`) from the npm registry and checks it

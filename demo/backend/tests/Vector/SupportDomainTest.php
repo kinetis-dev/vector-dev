@@ -30,7 +30,7 @@ final class SupportDomainTest extends VectorTestCase
         $schema = $this->client->get('/vector/schema/tickets', headers: $this->adminHeaders())->assertOk()->json();
         self::assertIsArray($schema);
         self::assertArrayNotHasKey('connection', $schema);
-        self::assertSame(['eq', 'ne', 'in', 'nin', 'null', 'nnull'], $schema['fields'][10]['operators'], 'a nullable belongsTo admits null');
+        self::assertSame(['eq', 'ne', 'in', 'nin', 'null', 'nnull'], array_column($schema['fields'], null, 'name')['assignee']['operators'], 'a nullable belongsTo admits null');
     }
 
     public function testListsFilterSearchAndAggregateOnPostgres(): void
@@ -117,7 +117,7 @@ final class SupportDomainTest extends VectorTestCase
         $created = $this->client->post('/vector/r/tickets', body: [
             'number' => $number, 'subject' => 'Parcel lost', 'body' => json_encode(['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'It never arrived.']]]]], JSON_THROW_ON_ERROR), 'status' => 'open', 'priority' => 'high',
             'channel' => 'email', 'customerEmail' => 'lost@example.com', 'team' => $teamId, 'assignee' => $agentId, 'labels' => $labelIds,
-            'compensationCents' => 1500, 'currency' => 'EUR', 'isEscalated' => true, 'metadata' => '{"carrier": "DHL"}',
+            'compensationCents' => 1500, 'currency' => 'EUR', 'isEscalated' => true, 'metadata' => ['carrier' => 'DHL'],
             'dueAt' => '2026-10-01T09:00:00Z',
         ], headers: $h)
             ->assertCreated()

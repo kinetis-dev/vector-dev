@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { childRepeater } from '#vector/app/utils/internal/repeater'
 import type { VectorAuditEntry, VectorResource } from '#vector/app/types/vector'
 
 // The audit trail of one record: who changed what, when, as whom. An
@@ -27,7 +28,7 @@ function revertableFields(entry: VectorAuditEntry): string[] {
     if (!props.canUpdate || !['update', 'revert'].includes(entry.event)) return []
     return Object.keys(entry.changes).filter((name) => {
         const field = props.resource.fields.find(f => f.name === name)
-        return field !== undefined && !field.readonly && field.views.includes('update') && !['id', 'hasOne', 'hasMany', 'manyToMany', 'password'].includes(field.type)
+        return field !== undefined && !field.readonly && field.views.includes('update') && !['id', 'hasOne', 'hasMany', 'manyToMany', 'password'].includes(field.type) && !childRepeater(field)
     })
 }
 

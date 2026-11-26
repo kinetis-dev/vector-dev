@@ -6,6 +6,7 @@ namespace Kinetis\Vector\Query;
 
 use DateTimeImmutable;
 use Kinetis\Vector\Exception\InvalidListRequestException;
+use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Write\InputViolation;
 use Kinetis\Vector\Write\ValueConverter;
@@ -140,7 +141,7 @@ final readonly class ListRequest
         foreach (array_filter(array_map('trim', explode(',', $raw))) as $entry) {
             $order = str_starts_with($entry, '-') ? 'desc' : 'asc';
             $name = ltrim($entry, '-');
-            $field = $resource->field($name);
+            $field = $resource->field($name) ?? $resource->flag($name);
 
             if ($field === null || $field['sortable'] !== true) {
                 throw new InvalidListRequestException("\"{$name}\" is not a sortable field of {$resource->slug()}.");
@@ -357,20 +358,24 @@ final readonly class ListRequest
     }
 
     /**
-     * One field's conditions (`filter[f][op]=v`, or `filter[f]=v` for
-     * equality) as predicates, counted against MAX_CONDITIONS.
+     * One field's conditions (`filter[f][op]=v`, or `filter[f]=v`: `eq`,
+     * or `any` for a list (a multiple select or tags) or a flag group;
+     * any other field without `eq` refuses a bare value) as predicates,
+     * counted against MAX_CONDITIONS. A flag of a columns-mode flag group
+     * is a boolean field of its own, `filter[group.key]=true`.
      *
      * @return list<Predicate>
      */
     private static function conditions(string $name, mixed $spec, ResourceDescriptor $resource, ValueConverter $converter, int &$conditions): array
     {
-        $field = $resource->field($name);
+        $field = $resource->field($name) ?? $resource->flag($name);
 
         if ($field === null || $field['operators'] === []) {
             throw new InvalidListRequestException("\"{$name}\" is not a filterable field of {$resource->slug()}.");
         }
 
-        $operators = is_array($spec) ? $spec : ['eq' => $spec];
+        // a bare value is equality, or "any" for a list (a multiple select's, or tags) or a flag group's keys
+        $operators = is_array($spec) ? $spec : [self::takesKeys($field) || $field['type'] === 'tag' ? 'any' : 'eq' => $spec];
         $filters = [];
 
         foreach ($operators as $op => $value) {
@@ -395,6 +400,17 @@ final readonly class ListRequest
     }
 
     /**
+     * Whether the field filters by a list of its option values or keys: a
+     * multiple select, or a flag group.
+     *
+     * @param array<string, mixed> $field
+     */
+    private static function takesKeys(array $field): bool
+    {
+        return ResourceCompiler::isMultiple($field) || $field['type'] === 'booleanGroup';
+    }
+
+    /**
      * One operator becomes one or two predicates on the field's column.
      * A date-only value against a datetime column spans the whole day,
      * so `eq` becomes a range and the bounds land on the day's edges.
@@ -405,10 +421,16 @@ final readonly class ListRequest
      */
     private static function predicate(array $field, string $op, string|array $value, ValueConverter $converter, string $name): array
     {
-        $column = $field['column'];
+        // a flag group in columns mode has a column per flag, and none of its own
+        $column = $field['column'] ?? '';
         $convert = static function (string $raw) use ($field, $converter, $name): mixed {
             try {
-                return $converter->fromQuery($field, trim($raw));
+                // a list is filtered by its values one at a time: a multiple select's options or a flag group's keys, tags as their text
+                return match (true) {
+                    $field['type'] === 'tag' => trim($raw),
+                    self::takesKeys($field) => ValueConverter::option($field, trim($raw)),
+                    default => $converter->fromQuery($field, trim($raw)),
+                };
             } catch (InputViolation $e) {
                 throw new InvalidListRequestException("filter[{$name}]: {$e->violation->message}");
             }
@@ -433,6 +455,19 @@ final readonly class ListRequest
             case 'in':
             case 'nin':
                 return [['column' => $column, 'op' => $op, 'value' => $list($value)]];
+            case 'any':
+            case 'all':
+                // the JSON list holds any, or all, of these values; duplicates add nothing
+                $values = array_values(array_unique($list($value), SORT_REGULAR));
+
+                if ($field['type'] !== 'booleanGroup') {
+                    return [['column' => $column, 'op' => $op, 'value' => $values]];
+                }
+
+                // a flag group: any or all of these keys on, in the JSON object or in each flag's column
+                return ResourceCompiler::isFlagColumns($field)
+                    ? [['column' => $column, 'op' => "flags.{$op}", 'value' => array_map(static fn (int|string $key): string => $field['flags'][$key], $values)]]
+                    : [['column' => $column, 'op' => "keys.{$op}", 'value' => $values]];
             case 'between':
                 return [['column' => $column, 'op' => 'between', 'value' => self::between($list($value), $value, $timestamp, $name)]];
             case 'like':

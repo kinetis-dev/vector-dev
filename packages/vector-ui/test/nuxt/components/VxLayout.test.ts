@@ -61,6 +61,18 @@ describe('VxLayout', () => {
         expect(panelOpen(w, 'Pricing')).toBe(false)
     })
 
+    it('opens and closes a collapsible section on each click', async () => {
+        const w = await layout()
+        const title = w.find('[data-layout-section="Pricing"] .v-expansion-panel-title')
+
+        await title.trigger('click')
+        expect(panelOpen(w, 'Pricing')).toBe(true)
+        await title.trigger('click')
+        expect(panelOpen(w, 'Pricing')).toBe(false)
+        await title.trigger('click')
+        expect(panelOpen(w, 'Pricing')).toBe(true)
+    })
+
     it('does not draw a section or tab none of whose fields is shown', async () => {
         const hidden = new Set(['price', 'currency', 'releasedAt'])
         const w = await layout({ shown: name => !hidden.has(name) })

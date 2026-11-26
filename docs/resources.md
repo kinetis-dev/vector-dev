@@ -6,7 +6,7 @@ discovered anywhere under your application namespace.
 
 ```php
 use Kinetis\Vector\Attributes\Resource;
-use Kinetis\Vector\Fields\{BelongsTo, Boolean, Enum, Id, ManyToMany, Money, Number, Text};
+use Kinetis\Vector\Fields\{BelongsTo, Boolean, Id, ManyToMany, Money, Number, Select, Text};
 use Kinetis\Vector\VectorResource;
 
 #[Resource(entity: Product::class, group: 'Catalog', icon: 'mdi-package-variant', title: 'name')]
@@ -18,7 +18,8 @@ final class ProductResource extends VectorResource
             Id::make(),
             Text::make('sku', 'SKU')->required()->max(40)->sortable()->searchable()->filterable(),
             Text::make('name')->required()->max(200)->sortable()->searchable()->filterable(),
-            Enum::make('status')->of(ProductStatus::class)->sortable()->filterable(),
+            Select::make('status')->of(ProductStatus::class)->badge(['active' => 'success'])->sortable()->filterable(),
+            Select::make('channels')->options(['web' => 'Web shop', 'retail' => 'Retail'])->multiple()->filterable(),
             BelongsTo::to('category', CategoryResource::class)->sortable()->filterable(),
             Money::make('priceCents', 'Price')->currencyField('currency')->summarize('avg'),
             Number::make('stock')->sortable()->filterable()->summarize('sum'),
@@ -148,9 +149,13 @@ create and delete in its policy instead.
 
 An empty resource derives every field from the entity's mapping: a
 string column becomes a searchable `Text`, a backed enum a filterable
-`Enum`, a `#[BelongsTo]` a relation when its target has a resource, and
-so on. Declaring `fields()` replaces derivation entirely. See
-{doc}`fields`.
+`Select`, a `stdClass` or `array|stdClass` property (a JSON column) a
+`Json` (an `array` property derives nothing), a `#[BelongsTo]`
+a relation when its target has a resource, and so on. An owned
+`#[HasMany]` derives a `HasMany` shown as a count and a panel; editing
+its rows inside the parent's form is a `Repeater` in relationship mode,
+declared, and a JSON list of strings a `Tag`. Declaring `fields()`
+replaces derivation entirely. See {doc}`fields`.
 
 ## Definition methods
 
@@ -184,7 +189,9 @@ inject anything a controller may:
   user sees everywhere: lists, counts, exports, badges, search.
 - `create()` builds a new entity from the validated values, and
   `apply()` writes them to a loaded one. Returning `null` or `false`
-  leaves it to Vector's default writer.
+  leaves it to Vector's default writer. A columns-mode `BooleanGroup`
+  appears in the values twice: under its own name, as the object of every
+  flag, and under each flag's property name, as that flag's bool.
 - `beforeCreate()`, `beforeUpdate()` and `beforeDelete()` run after
   validation and before the flush; `afterCreate()`, `afterUpdate()` and
   `afterDelete()` run after the flush committed. Each receives the
@@ -324,5 +331,5 @@ A resource in no navigation group shows `—` in the Group column.
 ## See also
 
 - {doc}`fields`: the field catalog.
-- {doc}`forms`: conditions, dependent choices and repeaters.
+- {doc}`forms`: conditions, dependent choices and repeaters (both modes on {doc}`fields`).
 - {doc}`authorization`: who may do what.

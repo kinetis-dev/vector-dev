@@ -11,10 +11,10 @@ use Kinetis\Vector\Attributes\Resource;
 use Kinetis\Vector\Fields\BelongsTo;
 use Kinetis\Vector\Fields\Currency;
 use Kinetis\Vector\Fields\DateTime;
-use Kinetis\Vector\Fields\Enum;
-use Kinetis\Vector\Fields\HasMany;
 use Kinetis\Vector\Fields\Id;
 use Kinetis\Vector\Fields\Money;
+use Kinetis\Vector\Fields\Repeater;
+use Kinetis\Vector\Fields\Select;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\Fields\Textarea;
 use Kinetis\Vector\VectorResource;
@@ -22,7 +22,8 @@ use Kinetis\Vector\Write\WriteContext;
 
 /**
  * An order is written with its lines: the lines repeater sends the whole
- * list with the order, and the total is what the lines add up to.
+ * list with the order, in the order the lines were dragged into, and the
+ * total is what the lines add up to.
  */
 #[Resource(entity: Order::class, group: 'Sales', icon: 'mdi-cart-outline', title: 'number')]
 final class OrderResource extends VectorResource
@@ -34,7 +35,7 @@ final class OrderResource extends VectorResource
             Id::make(),
             Text::make('number')->required()->max(30)->unique()->sortable()->searchable()->filterable(), // orders.number is VARCHAR(30), UNIQUE (orders_number_unique)
             BelongsTo::to('customer', CustomerResource::class)->sortable()->filterable(),
-            Enum::make('status')->of(OrderStatus::class)
+            Select::make('status')->of(OrderStatus::class)
                 ->colors(['pending' => 'warning', 'paid' => 'info', 'shipped' => 'success', 'cancelled' => 'grey'])
                 ->sortable()->filterable(),
             Money::make('totalCents', 'Total')->currencyField('currency')->readonly()->sortable()->filterable()->summarize('sum'),
@@ -42,7 +43,7 @@ final class OrderResource extends VectorResource
             DateTime::make('placedAt')->required()->sortable()->filterable(),
             DateTime::make('shippedAt')->sortable()->filterable()->hideFromIndex(),
             Textarea::make('notes')->hideFromIndex(),
-            HasMany::to('lines', OrderLineResource::class)->repeater(['product', 'quantity', 'unitPriceCents'], min: 1, max: 50),
+            Repeater::make('lines')->relationship('lines')->fields(['product', 'quantity', 'unitPriceCents'])->min(1)->max(50)->orderBy('position'),
             DateTime::make('createdAt')->readonly()->hideFromForms()->hideFromIndex(),
             DateTime::make('updatedAt')->readonly()->hideFromForms()->hideFromIndex(),
         ];

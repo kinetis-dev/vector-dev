@@ -192,10 +192,10 @@ final class ComputedFieldTest extends VectorTestCase
 
     public function testAnEnumNeedsOptions(): void
     {
-        $this->expectCompileError('is computed as an enum but lists no options', new #[Resource(OrderLine::class, slug: 'computed-lines')] class extends VectorResource {
+        $this->expectCompileError('is computed as a select but lists no options', new #[Resource(OrderLine::class, slug: 'computed-lines')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), Computed::make('size')->as('enum')->method('size')];
+                return [Id::make(), Computed::make('size')->as('select')->method('size')];
             }
 
             /** @param array<string, mixed> $row */
@@ -248,10 +248,14 @@ final class ComputedFieldTest extends VectorTestCase
             }
         };
         $descriptor = new ResourceDescriptor(self::compile($resource)['computed-lines']);
-        $serialize = static function (mixed $value) use ($resource, $descriptor): array {
+        $scope = $this->app->createRequestScope();
+        $serializer = $scope->get(RowSerializer::class);
+        $scope->dispose(); // the record has no JSON column, so the serializer never reads a connection
+        self::assertInstanceOf(RowSerializer::class, $serializer);
+        $serialize = static function (mixed $value) use ($resource, $descriptor, $serializer): array {
             $resource->value = $value;
 
-            return new RowSerializer()->serialize($descriptor, [], ['asNumber', 'asDate', 'asDatetime'], [], $resource);
+            return $serializer->serialize($descriptor, [], ['asNumber', 'asDate', 'asDatetime'], [], $resource);
         };
 
         $instant = new \DateTimeImmutable('2026-10-21 23:30:00', new \DateTimeZone('+02:00'));

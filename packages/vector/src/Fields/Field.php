@@ -139,8 +139,9 @@ abstract class Field
     /**
      * Editable in place in the list: a click on the cell edits it, and
      * the list saves every changed cell together (POST …/changes). For
-     * simple values only (text-like, number, money, boolean, enum, date,
-     * date-time and belongsTo fields) and never a read-only one.
+     * simple values only (text-like, number, money, boolean, single
+     * select, date, date-time and belongsTo fields) and never a read-only
+     * one.
      */
     public function inlineEditable(bool $inline = true): static
     {

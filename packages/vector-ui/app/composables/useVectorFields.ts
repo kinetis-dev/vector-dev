@@ -20,7 +20,9 @@ const cells: Record<string, Component> = {
     number: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Number.vue')),
     money: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Money.vue')),
     boolean: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Boolean.vue')),
-    enum: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Enum.vue')),
+    select: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Select.vue')),
+    country: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Country.vue')),
+    booleanGroup: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/BooleanGroup.vue')),
     date: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Date.vue')),
     datetime: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/DateTime.vue')),
     email: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Email.vue')),
@@ -36,6 +38,8 @@ const cells: Record<string, Component> = {
     hasOne: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Relation.vue')),
     hasMany: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Count.vue')),
     manyToMany: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Count.vue')),
+    repeater: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Repeater.vue')),
+    tag: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Tag.vue')),
 }
 
 /** The cell type a computed field is shown as: what it is computed as, text as a string. */

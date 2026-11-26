@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: 'Loading {label}',
     },
+    json: {
+        invalid: 'Enter a valid JSON object or array.',
+    },
     keyValue: {
         key: 'Key',
         value: 'Value',
@@ -73,5 +76,17 @@ export default {
         lessThanOrEqual: 'Must be at most {limit}',
         invalidFormat: 'Invalid format',
         notAllowed: 'Not an allowed value',
+    },
+    rows: {
+        add: 'Add row',
+        remove: 'Remove row {n}',
+        row: 'Row {n}',
+        drag: 'Move row {n}: drag it, or use the arrow keys',
+        moved: 'Row {from} moved to position {to}',
+        none: 'No rows',
+    },
+    tags: {
+        hint: 'Type a tag and press Enter',
+        tooMany: 'At most {max} tags',
     },
 }

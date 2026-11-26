@@ -5,9 +5,34 @@
 
 export type VectorFieldType =
     | 'id' | 'string' | 'text' | 'markdown' | 'number' | 'money' | 'boolean'
-    | 'enum' | 'date' | 'datetime' | 'email' | 'url' | 'password' | 'slug'
+    | 'select' | 'country' | 'booleanGroup' | 'date' | 'datetime' | 'email' | 'url' | 'password' | 'slug'
     | 'color' | 'json' | 'keyValue' | 'currency' | 'file' | 'image'
     | 'belongsTo' | 'hasOne' | 'hasMany' | 'manyToMany' | 'computed' | 'richtext'
+    | 'repeater' | 'tag'
+
+/**
+ * A repeater's rows. `json`: a JSON list of objects of `rowFields`.
+ * `relationship`: child records of `relation.resource`, `fields` naming
+ * the child fields a row writes. `sortable`: rows reorder by dragging
+ * (always for `json`; for `relationship` when `orderBy` names the child
+ * property that takes each row's index).
+ */
+export interface VectorRepeater {
+    mode: 'json' | 'relationship'
+    fields: string[]
+    min: number
+    max: number
+    sortable: boolean
+    orderBy: string | null
+    rowFields?: VectorField[]
+}
+
+/** A tag field's suggestions (any other text is a tag too) and limits. */
+export interface VectorTags {
+    suggestions: string[]
+    maxLength: number
+    maxTags: number
+}
 
 /** A rich-text feature: a node or mark type the field's schema allows (or one a runtime extension added). */
 export type VectorRichTextFeature = 'bold' | 'italic' | 'underline' | 'strike' | 'code' | 'heading' | 'list' | 'blockquote' | 'codeBlock' | 'horizontalRule' | 'link' | 'table' | 'image' | 'mention' | (string & {})
@@ -25,11 +50,12 @@ export interface VectorRichText {
 }
 
 /** What a computed field is shown as. */
-export type VectorComputedAs = 'text' | 'number' | 'money' | 'boolean' | 'date' | 'datetime' | 'enum'
+export type VectorComputedAs = 'text' | 'number' | 'money' | 'boolean' | 'date' | 'datetime' | 'select'
 
 export type VectorView = 'index' | 'show' | 'create' | 'update'
 
-export interface VectorEnumOption {
+/** One choice of a select (or a currency): its stored value, label and chip colour. */
+export interface VectorSelectOption {
     value: string | number
     label: string
     color: string | null
@@ -50,7 +76,8 @@ export interface VectorRelation {
     dependsOn?: { field: string, on: string, label: string } | null
 }
 
-export type VectorOperator = 'eq' | 'ne' | 'lt' | 'lte' | 'gt' | 'gte' | 'in' | 'nin' | 'like' | 'nlike' | 'between' | 'null' | 'nnull'
+/** `any` and `all` filter a list (a multiple select's options, tags) by a comma-separated list of values. */
+export type VectorOperator = 'eq' | 'ne' | 'lt' | 'lte' | 'gt' | 'gte' | 'in' | 'nin' | 'like' | 'nlike' | 'between' | 'any' | 'all' | 'null' | 'nnull'
 
 /**
  * A resource's or field's metadata bag, as `#[Resource(meta: ...)]` and
@@ -72,8 +99,10 @@ export interface VectorField {
     inline?: boolean
     /** Unique among the resource's records: a duplicate starts without it; an import may match by it. */
     unique?: boolean
-    /** hasMany: the owned rows edited inside the parent's form */
-    repeater?: { fields: string[], min: number, max: number } | null
+    /** A repeater: the rows edited inside the record's form. */
+    repeater?: VectorRepeater | null
+    /** A tag field: free-text strings shown as chips. */
+    tags?: VectorTags
     help: string | null
     component: string | null
     views: VectorView[]
@@ -84,8 +113,18 @@ export interface VectorField {
     hasDefault: boolean
     operators: VectorOperator[]
     nullable?: boolean
-    valueType?: 'string' | 'int' | 'float' | 'bool' | 'timestamp' | 'date'
-    options?: VectorEnumOption[]
+    valueType?: 'string' | 'int' | 'float' | 'bool' | 'timestamp' | 'date' | 'json'
+    options?: VectorSelectOption[]
+    /** A select holding several options: a list, in the order the options are declared. */
+    multiple?: boolean
+    /** A select whose input searches its options (searchable()). */
+    autocomplete?: boolean
+    /** A select shown as coloured chips (badge()). */
+    badge?: boolean
+    /** A flag group's storage: a bool column per option (each also filtered and sorted as `group.key`), or one JSON object. */
+    storage?: 'columns' | 'json'
+    /** A columns-mode flag group whose flags sort as `group.key`. */
+    flagsSortable?: boolean
     relation?: VectorRelation
     conditions?: VectorFieldConditions
     /** A computed field: shown as `as`, computed on the server from the `from` fields. */

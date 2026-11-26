@@ -1,13 +1,7 @@
 <script setup lang="ts">
+// A JSON column's document: indented on a record, on one line in a list.
 const props = defineProps<{ value: unknown, context: 'index' | 'show' }>()
-const pretty = computed(() => {
-    if (typeof props.value !== 'string' || props.value === '') return ''
-    try {
-        return JSON.stringify(JSON.parse(props.value), null, props.context === 'show' ? 2 : 0)
-    } catch {
-        return props.value
-    }
-})
+const pretty = computed(() => (props.value === null || props.value === undefined ? '' : JSON.stringify(props.value, null, props.context === 'show' ? 2 : 0)))
 const { t } = useVectorT()
 </script>
 

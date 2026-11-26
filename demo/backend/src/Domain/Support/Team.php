@@ -27,6 +27,9 @@ final class Team
 
     private ?string $email = null;
 
+    /** @var list<string>|null the ISO 3166-1 alpha-2 codes of the countries the team serves */
+    private ?array $countries = null;
+
     /** @var list<Agent> */
     #[HasMany(target: Agent::class, mappedBy: 'team')]
     private array $agents; // @phpstan-ignore property.onlyRead (inverse side, loaded by the ORM)
@@ -48,5 +51,11 @@ final class Team
     public function name(): string
     {
         return $this->name;
+    }
+
+    /** @param list<string>|null $countries */
+    public function serve(?array $countries): void
+    {
+        $this->countries = $countries;
     }
 }

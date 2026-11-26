@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: 'Загрузка: {label}',
     },
+    json: {
+        invalid: 'Введите корректный объект или массив JSON.',
+    },
     keyValue: {
         key: 'Ключ',
         value: 'Значение',
@@ -73,5 +76,17 @@ export default {
         lessThanOrEqual: 'Должно быть не больше {limit}',
         invalidFormat: 'Неверный формат',
         notAllowed: 'Недопустимое значение',
+    },
+    rows: {
+        add: 'Добавить строку',
+        remove: 'Удалить строку {n}',
+        row: 'Строка {n}',
+        drag: 'Переместить строку {n}: перетащите её или используйте клавиши со стрелками',
+        moved: 'Строка {from} перемещена на позицию {to}',
+        none: 'Нет строк',
+    },
+    tags: {
+        hint: 'Введите тег и нажмите Enter',
+        tooMany: 'Не более {max} тегов',
     },
 }

@@ -18,6 +18,7 @@ use Kinetis\Vector\Fields\Number;
 use Kinetis\Vector\Fields\Text;
 use Kinetis\Vector\Registry\ResourceCompiler;
 use Kinetis\Vector\VectorResource;
+use Kinetis\Vector\Write\Conditions;
 use Kinetis\Vector\Write\FieldInput;
 
 /**
@@ -109,6 +110,19 @@ final class FieldConditionsTest extends VectorTestCase
         } catch (\Kinetis\Validation\Exception\ValidationException $e) {
             self::assertSame([['email']], array_map(static fn ($v): array => $v->path, $e->violations));
         }
+    }
+
+    /** A list, a multiple select's values, is empty only when it holds nothing; the UI decides the same. */
+    public function testNullAndNnullTreatAListAsEmptyOnlyWhenItHoldsNothing(): void
+    {
+        $nnull = [['field' => 'channels', 'op' => 'nnull', 'value' => null]];
+        $null = [['field' => 'channels', 'op' => 'null', 'value' => null]];
+
+        self::assertTrue(Conditions::hold($nnull, ['channels' => ['web']]));
+        self::assertFalse(Conditions::hold($null, ['channels' => ['web']]));
+        self::assertTrue(Conditions::hold($null, ['channels' => []]));
+        self::assertFalse(Conditions::hold($nnull, ['channels' => []]));
+        self::assertTrue(Conditions::hold($null, []));
     }
 
     public function testAConditionOnAFieldTheFormDoesNotHaveFailsTheBuild(): void

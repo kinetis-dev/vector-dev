@@ -3,6 +3,9 @@ export default {
     cell: {
         loading: '{label} 불러오는 중',
     },
+    json: {
+        invalid: '올바른 JSON 객체 또는 배열을 입력하세요.',
+    },
     keyValue: {
         key: '키',
         value: '값',
@@ -73,5 +76,17 @@ export default {
         lessThanOrEqual: '{limit} 이하여야 합니다',
         invalidFormat: '잘못된 형식',
         notAllowed: '허용되지 않는 값',
+    },
+    rows: {
+        add: '행 추가',
+        remove: '{n}행 제거',
+        row: '{n}행',
+        drag: '{n}행 이동: 끌어 놓거나 화살표 키를 사용하세요',
+        moved: '{from}행을 {to}번째 위치로 옮겼습니다',
+        none: '행이 없습니다',
+    },
+    tags: {
+        hint: '태그를 입력하고 Enter 키를 누르세요',
+        tooMany: '태그는 최대 {max}개',
     },
 }

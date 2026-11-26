@@ -84,7 +84,7 @@ final class VectorRedisQueueTest extends VectorTestCase
             $own->clear(self::QUEUE);
             $appQueue->clear(self::QUEUE);
 
-            $queue->push(new RunActionJob(0, 'products', 'reprice-products', [], [], '1'));
+            $queue->push(new RunActionJob(0, 'products', 'reprice-products', [], '{}', '1'));
 
             self::assertSame(1, $own->size(self::QUEUE), 'the job is on Redis database 1, where REDIS_VECTORJOBS_DATABASE points');
             self::assertSame(0, $appQueue->size(self::QUEUE), "nothing reached the application's queue on database 0");

@@ -27,7 +27,10 @@ final class StoreSettings extends SettingsGroup
 The fields are the same as a resource's, with validation, defaults and
 conditions. `name()`, `label()` and `icon()` override how the group is
 named and shown. Saving validates the group like a form and replaces its
-values, in Vector's `vector_settings` table.
+values, in Vector's `vector_settings` table. A `Json` setting keeps its
+JSON objects and a `KeyValue` setting is one: `validate()`,
+`SettingsStore::values()` and the API see a `stdClass` (a list stays a
+list), so `{}` is stored and read back as `{}`.
 
 A rule that spans several fields goes in `validate()`, which runs when
 the group is saved, after each field passed its own rules. Like
