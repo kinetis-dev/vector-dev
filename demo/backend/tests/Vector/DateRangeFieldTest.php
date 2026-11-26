@@ -189,6 +189,33 @@ final class DateRangeFieldTest extends VectorTestCase
         }
     }
 
+    public function testARevertPutsBothEndsBack(): void
+    {
+        $products = $this->vector($this->realAdminHeaders())->resource('products');
+        [$id, $stored] = $this->product();
+
+        try {
+            $products->update($id, ['promotion' => ['from' => '2027-04-01', 'to' => '2027-04-30']])->assertOk();
+            $products->update($id, ['promotion' => ['from' => '2027-05-10', 'to' => '2027-05-20']])->assertOk();
+            $entry = $products->audit($id)->records()[0];
+            self::assertSame('update', $entry['event']);
+
+            // reverting the second change puts back the first range, both of its ends
+            $reverted = $products->revert($id, $entry['id'])->assertOk()->json()['data'];
+            self::assertSame(['from' => '2027-04-01', 'to' => '2027-04-30'], $reverted['promotion']);
+            self::assertSame(['2027-04-01', '2027-04-30'], $this->stored($id));
+
+            // and reverting a range set from none clears both ends
+            $products->update($id, ['promotion' => null])->assertOk();
+            $products->update($id, ['promotion' => ['from' => '2027-06-01', 'to' => '2027-06-02']])->assertOk();
+            $products->revert($id, $products->audit($id)->records()[0]['id'])->assertOk();
+            self::assertSame([null, null], $this->stored($id));
+            self::assertSame('revert', $products->audit($id)->records()[0]['event']);
+        } finally {
+            $this->shop()->table('products')->where('id', '=', $id)->update(['promotion_starts_on' => $stored[0], 'promotion_ends_on' => $stored[1]]);
+        }
+    }
+
     public function testAOneSidedReversedOrMalformedRangeIsRefusedAtItsEnd(): void
     {
         $products = $this->vector($this->realAdminHeaders())->resource('products');
