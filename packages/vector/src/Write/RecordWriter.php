@@ -133,6 +133,7 @@ final readonly class RecordWriter
 
         $payload = [];
         $changedSince = [];
+        $truncated = null;
         $depth = $this->depth->stored($resource);
 
         foreach ($entry['changes'] as $name => $change) {
@@ -151,7 +152,9 @@ final readonly class RecordWriter
 
             // the earlier value was too deep to record: there is nothing to put back, and the marker is no value
             if (AuditStore::truncated($change['from'] ?? null)) {
-                throw ValidationException::fromViolations([new Violation(['entry'], 'not_revertable', "recorded no earlier value of {$field['label']}: it nested too deeply to store.")]);
+                $truncated ??= $field['label'];
+
+                continue;
             }
 
             // the stored value as a REST body hands it over: objects kept only where the field keeps them
@@ -162,6 +165,10 @@ final readonly class RecordWriter
 
         if ($changedSince !== []) {
             throw ConflictException::changedSince($resource->slug(), $changedSince);
+        }
+
+        if ($truncated !== null) {
+            throw ValidationException::fromViolations([new Violation(['entry'], 'not_revertable', "recorded no earlier value of {$truncated}: it nested too deeply to store.")]);
         }
 
         if ($payload === []) {
