@@ -153,8 +153,8 @@ final readonly class DateBounds implements Constraint
             return null;
         }
 
-        $min = $this->min === null ? null : ($this->min === self::NOW ? $now : self::instant($this->min));
-        $max = $this->max === null ? null : ($this->max === self::NOW ? $now : self::instant($this->max));
+        $min = self::instantBound($this->min, $now);
+        $max = self::instantBound($this->max, $now);
 
         if ($min !== null && $instant < $min) {
             return new Violation([], 'date_too_early', "must be at or after {$this->min}.", ['min' => $this->min]);
@@ -165,6 +165,16 @@ final readonly class DateBounds implements Constraint
         }
 
         return null;
+    }
+
+    /** An instant bound as of `$now`: `now` is that instant, anything else the instant it names. */
+    private static function instantBound(?string $bound, DateTimeImmutable $now): ?DateTimeImmutable
+    {
+        if ($bound === null) {
+            return null;
+        }
+
+        return $bound === self::NOW ? $now : self::instant($bound);
     }
 
     private static function isDay(string $value): bool

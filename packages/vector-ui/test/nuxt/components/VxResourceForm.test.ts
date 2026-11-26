@@ -34,10 +34,13 @@ async function mountForm(props: InstanceType<typeof VxResourceForm>['$props']) {
     return wrapper
 }
 
+// a field's visible label: a control's label, or a code editor's caption
+const LABEL = 'label, .vx-code-frame > div[id]'
+
 /** The input a field renders, found by its visible label. */
 function input(wrapper: VueWrapper, label: string) {
-    const control = wrapper.findAll('.v-input').find(i => i.find('label').exists() && i.find('label').text() === label)
-    if (!control) throw new Error(`No input labelled ${label}; have: ${wrapper.findAll('.v-input label').map(l => l.text()).join(', ')}`)
+    const control = wrapper.findAll('.v-input').find(i => i.find(LABEL).exists() && i.find(LABEL).text() === label)
+    if (!control) throw new Error(`No input labelled ${label}; have: ${wrapper.findAll('.v-input').map(i => i.find(LABEL)).filter(l => l.exists()).map(l => l.text()).join(', ')}`)
     return control
 }
 

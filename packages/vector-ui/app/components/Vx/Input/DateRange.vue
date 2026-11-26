@@ -27,7 +27,8 @@ const from = computed(() => shown(model.value?.from))
 const to = computed(() => shown(model.value?.to))
 
 function set(end: 'from' | 'to', typed: string | null) {
-    const value = !typed ? null : days.value ? typed : new Date(typed).toISOString()
+    let value: string | null = null
+    if (typed) value = days.value ? typed : new Date(typed).toISOString()
     model.value = { from: model.value?.from ?? null, to: model.value?.to ?? null, [end]: value }
 }
 </script>

@@ -487,15 +487,7 @@ final readonly class ValueConverter
      */
     private function range(array $field, mixed $raw): ?array
     {
-        if (!is_array($raw) || ($raw !== [] && array_is_list($raw))) {
-            throw self::mismatch('an object of from and to');
-        }
-
-        $unexpected = array_diff(array_map(strval(...), array_keys($raw)), ['from', 'to']);
-
-        if ($unexpected !== []) {
-            throw new InputViolation(new Violation([reset($unexpected)], 'unexpected_field', 'is not an end of a date range; send from and to.'));
-        }
+        self::rangeShape($raw);
 
         $from = $raw['from'] ?? null;
         $to = $raw['to'] ?? null;
@@ -527,6 +519,26 @@ final readonly class ValueConverter
         }
 
         return ['from' => $start, 'to' => $end];
+    }
+
+    /**
+     * A date range is sent as an object whose keys are only `from` and `to`.
+     *
+     * @phpstan-assert array<array-key, mixed> $raw
+     * @psalm-assert array<array-key, mixed> $raw
+     * @throws InputViolation
+     */
+    private static function rangeShape(mixed $raw): void
+    {
+        if (!is_array($raw) || ($raw !== [] && array_is_list($raw))) {
+            throw self::mismatch('an object of from and to');
+        }
+
+        $unexpected = array_diff(array_map(strval(...), array_keys($raw)), ['from', 'to']);
+
+        if ($unexpected !== []) {
+            throw new InputViolation(new Violation([reset($unexpected)], 'unexpected_field', 'is not an end of a date range; send from and to.'));
+        }
     }
 
     /**

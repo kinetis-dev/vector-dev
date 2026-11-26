@@ -28,21 +28,28 @@ export function violationsOf(errors: unknown): Violation[] {
     return Array.isArray(errors) ? errors.filter(isViolation) : []
 }
 
+/** The bound a date violation's code names. */
+const BOUND_SIDES: Record<string, 'min' | 'max'> = { date_too_early: 'min', date_too_late: 'max' }
+
+/** A date bound the server names, as the user's date: `today`, `now`, a day or an instant. */
+function boundText(bound: string): string {
+    if (bound === 'today') return formatDate(localDay(new Date()))
+    if (bound === 'now') return formatDateTime(new Date().toISOString())
+
+    return /^\d{4}-\d{2}-\d{2}$/.test(bound) ? formatDate(bound) : formatDateTime(bound)
+}
+
 /**
  * A violation's message in the UI's language where the layer knows its
  * code, else the server's own sentence. A date bound the server names
  * (`today`, `now` or a day or an instant) is shown as the user's date.
  */
 export function violationText(violation: Violation): string {
-    const side = violation.code === 'date_too_early' ? 'min' : violation.code === 'date_too_late' ? 'max' : null
+    const side = violation.code ? BOUND_SIDES[violation.code] : undefined
     const bound = side ? violation.parameters?.[side] : undefined
 
     if (side && typeof bound === 'string') {
-        const limit = bound === 'today' ? formatDate(localDay(new Date()))
-            : bound === 'now' ? formatDateTime(new Date().toISOString())
-                : /^\d{4}-\d{2}-\d{2}$/.test(bound) ? formatDate(bound) : formatDateTime(bound)
-
-        return vt(side === 'min' ? 'fields.rules.minDate' : 'fields.rules.maxDate', { limit })
+        return vt(side === 'min' ? 'fields.rules.minDate' : 'fields.rules.maxDate', { limit: boundText(bound) })
     }
 
     if (violation.code === 'range_incomplete') return vt('fields.dateRange.incomplete')

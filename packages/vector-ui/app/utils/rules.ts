@@ -110,7 +110,9 @@ function rangeRule(kind: 'date' | 'datetime'): Rule {
         const range = rangeOf(value)
         if (!range || (blank(range.from) && blank(range.to))) return true
         if (blank(range.from) || blank(range.to)) return vt('fields.dateRange.incomplete')
-        const [from, to] = [String(range.from), String(range.to)]
+        const { from, to } = range
+        // the controls send text; anything else is the server's to reject
+        if (typeof from !== 'string' || typeof to !== 'string') return true
         const reversed = kind === 'date' ? to.slice(0, 10) < from.slice(0, 10) : new Date(to).getTime() < new Date(from).getTime()
         return !reversed || vt('fields.dateRange.reversed')
     }

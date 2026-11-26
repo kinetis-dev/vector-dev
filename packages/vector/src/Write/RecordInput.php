@@ -159,19 +159,31 @@ final readonly class RecordInput
             return [JsonDepth::tooDeep($max)->under($name)];
         }
 
-        // a flag group in columns mode writes each flag's own bool property; the group itself is none
+        self::spread($field, $name, $values);
+
+        return array_map(static fn (Violation $v): Violation => $v->under($name), $this->converter->violationsOfRules($field, $raw));
+    }
+
+    /**
+     * The properties a field's converted value writes besides its own:
+     * a flag group in columns mode writes each flag's bool property, a
+     * date range its two ends' properties.
+     *
+     * @param array<string, mixed> $field
+     * @param array<string, mixed> $values
+     * @param-out array<string, mixed> $values
+     */
+    private static function spread(array $field, string $name, array &$values): void
+    {
         foreach (array_keys($field['flags'] ?? []) as $key) {
             $values[(string) $key] = $values[$name][$key];
         }
 
-        // a date range writes its two ends' properties; the range itself is none
         if (ResourceCompiler::isDateRange($field)) {
-            $range = $values[$name];
-            $values[(string) $field['range']['from']] = is_array($range) ? $range['from'] : null;
-            $values[(string) $field['range']['to']] = is_array($range) ? $range['to'] : null;
+            $range = is_array($values[$name]) ? $values[$name] : ['from' => null, 'to' => null];
+            $values[(string) $field['range']['from']] = $range['from'];
+            $values[(string) $field['range']['to']] = $range['to'];
         }
-
-        return array_map(static fn (Violation $v): Violation => $v->under($name), $this->converter->violationsOfRules($field, $raw));
     }
 
     /**
