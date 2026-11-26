@@ -30,6 +30,9 @@ final class Team
     /** @var list<string>|null the ISO 3166-1 alpha-2 codes of the countries the team serves */
     private ?array $countries = null;
 
+    /** YAML: which tickets the team picks up first, and when they escalate */
+    private ?string $routingRules = null;
+
     /** @var list<Agent> */
     #[HasMany(target: Agent::class, mappedBy: 'team')]
     private array $agents; // @phpstan-ignore property.onlyRead (inverse side, loaded by the ORM)
@@ -51,6 +54,11 @@ final class Team
     public function name(): string
     {
         return $this->name;
+    }
+
+    public function route(?string $rules): void
+    {
+        $this->routingRules = $rules;
     }
 
     /** @param list<string>|null $countries */

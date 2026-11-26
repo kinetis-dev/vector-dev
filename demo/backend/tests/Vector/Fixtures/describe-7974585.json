@@ -2022,6 +2022,20 @@
                 "choices": "249 values, such as AD, AE, AF, AG, AI"
             },
             {
+                "name": "routingRules",
+                "label": "Routing rules",
+                "type": "code",
+                "valueType": "string",
+                "format": "source text in yaml",
+                "help": "Which tickets the team picks up first, and when they escalate.",
+                "writable": [
+                    "create",
+                    "update"
+                ],
+                "required": false,
+                "nullable": true
+            },
+            {
                 "name": "createdAt",
                 "label": "Created at",
                 "type": "datetime",

@@ -8353,6 +8353,45 @@
                 ]
             },
             {
+                "name": "routingRules",
+                "type": "code",
+                "label": "Routing rules",
+                "sortable": false,
+                "searchable": false,
+                "filterable": false,
+                "readonly": false,
+                "inline": false,
+                "unique": false,
+                "help": "Which tickets the team picks up first, and when they escalate.",
+                "component": null,
+                "views": [
+                    "index",
+                    "show",
+                    "create",
+                    "update"
+                ],
+                "rules": [],
+                "props": [],
+                "summary": null,
+                "default": null,
+                "hasDefault": false,
+                "conditions": {
+                    "visible": [],
+                    "required": [],
+                    "disabled": []
+                },
+                "code": {
+                    "language": "yaml",
+                    "lineNumbers": true,
+                    "rows": 8
+                },
+                "column": "routing_rules",
+                "nullable": true,
+                "valueType": "string",
+                "enum": null,
+                "operators": []
+            },
+            {
                 "name": "createdAt",
                 "type": "datetime",
                 "label": "Created at",
@@ -8479,6 +8518,7 @@
             "slug": "slug",
             "email": "email",
             "countries": "countries",
+            "routingRules": "routing_rules",
             "createdAt": "created_at",
             "updatedAt": "updated_at"
         },
@@ -8489,6 +8529,7 @@
                 "slug",
                 "email",
                 "countries",
+                "routingRules",
                 "createdAt",
                 "updatedAt",
                 "agents"
@@ -8530,6 +8571,7 @@
                 "slug",
                 "email",
                 "countries",
+                "routingRules",
                 "createdAt",
                 "updatedAt",
                 "agents"
@@ -8567,6 +8609,12 @@
                 "nullable": true,
                 "hasDefault": true,
                 "type": "json"
+            },
+            "routingRules": {
+                "kind": "column",
+                "nullable": true,
+                "hasDefault": true,
+                "type": "string"
             },
             "createdAt": {
                 "kind": "column",

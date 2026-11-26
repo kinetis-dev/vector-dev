@@ -19,6 +19,7 @@ const inputs: Record<string, Component> = {
     markdown: defineAsyncComponent(() => import('#vector/app/components/Vx/Input/Markdown.vue')),
     richtext: defineAsyncComponent(() => import('#vector/app/components/Vx/Input/RichText.vue')),
     json: defineAsyncComponent(() => import('#vector/app/components/Vx/Input/Json.vue')),
+    code: defineAsyncComponent(() => import('#vector/app/components/Vx/Input/Code.vue')),
     keyValue: defineAsyncComponent(() => import('#vector/app/components/Vx/Input/KeyValue.vue')),
     number: defineAsyncComponent(() => import('#vector/app/components/Vx/Input/Number.vue')),
     money: defineAsyncComponent(() => import('#vector/app/components/Vx/Input/Money.vue')),

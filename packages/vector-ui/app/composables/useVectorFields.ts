@@ -31,6 +31,7 @@ const cells: Record<string, Component> = {
     slug: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Text.vue')),
     color: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Color.vue')),
     json: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Json.vue')),
+    code: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Code.vue')),
     keyValue: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/KeyValue.vue')),
     file: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/File.vue')),
     image: defineAsyncComponent(() => import('#vector/app/components/Vx/Cell/Image.vue')),

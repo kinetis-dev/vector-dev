@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
-import { flushPromises, type VueWrapper } from '@vue/test-utils'
+import { flushPromises, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
+import { EditorView } from '@codemirror/view'
 import VxResourceForm from '#vector/app/components/Vx/Resource/Form.vue'
 import { endpoint, standaloneApi } from '../endpoints'
 import { field, resource, rule } from '../fixtures'
@@ -38,6 +39,12 @@ function input(wrapper: VueWrapper, label: string) {
     const control = wrapper.findAll('.v-input').find(i => i.find('label').exists() && i.find('label').text() === label)
     if (!control) throw new Error(`No input labelled ${label}; have: ${wrapper.findAll('.v-input label').map(l => l.text()).join(', ')}`)
     return control
+}
+
+/** The code editor inside an input, once it has loaded, to type into as a user would. */
+async function editorIn(control: DOMWrapper<Element>): Promise<EditorView> {
+    await vi.waitFor(() => expect(control.find('.cm-editor').exists()).toBe(true))
+    return EditorView.findFromDOM(control.find('.cm-editor').element as HTMLElement)!
 }
 
 /** The label of every input shown, once each (an outlined field renders its label twice: resting and floating). */
@@ -300,7 +307,7 @@ describe('VxResourceForm: selects and JSON documents', () => {
         expect(input(form, 'Channels').findAll('.v-chip').map(c => c.text())).toEqual(['Web shop', 'Retail'])
         expect(input(form, 'Platform').classes()).toContain('v-autocomplete')
         expect(input(form, 'Channels').classes()).toContain('v-select')
-        expect(JSON.parse(input(form, 'Metadata').find('textarea').element.value)).toEqual({ carrier: 'DHL' })
+        expect(JSON.parse((await editorIn(input(form, 'Metadata'))).state.doc.toString())).toEqual({ carrier: 'DHL' })
     })
 
     it('sends the list and the parsed document, and flags text that is no JSON document', async () => {
@@ -312,9 +319,12 @@ describe('VxResourceForm: selects and JSON documents', () => {
         const form = await mountForm({ resource: withDefaults, operation: 'create' })
 
         await input(form, 'Name').find('input').setValue('Mug')
-        await input(form, 'Metadata').find('textarea').setValue('not json')
+        const metadata = await editorIn(input(form, 'Metadata'))
+        const type = (text: string) => metadata.dispatch({ changes: { from: 0, to: metadata.state.doc.length, insert: text } })
+        type('not json')
         await vi.waitFor(() => expect(input(form, 'Metadata').text()).toContain('Enter a valid JSON object or array.'))
-        await input(form, 'Metadata').find('textarea').setValue('{"carrier": "UPS", "parcels": [1]}')
+        type('{"carrier": "UPS", "parcels": [1]}')
+        await flushPromises()
         expect(input(form, 'Metadata').text()).not.toContain('Enter a valid JSON object or array.')
 
         await submit(form)

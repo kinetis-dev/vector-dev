@@ -143,7 +143,7 @@ async function allRelatedIds(id: string | number, field: VectorField): Promise<u
     }
 }
 
-const wide = (field: VectorField) => ['markdown', 'richtext', 'text', 'json', 'keyValue', 'repeater'].includes(field.type)
+const wide = (field: VectorField) => ['markdown', 'richtext', 'text', 'json', 'code', 'keyValue', 'repeater'].includes(field.type)
 
 /** Fields the browser's own rules refused on the last submit, by the input id each carries. */
 const clientErrors = ref<string[]>([])

@@ -26,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   day anywhere on Earth (UTC-12 for a minimum, UTC+14 for a maximum). A
   bound the field does not take, or a minimum after the maximum, is
   refused where it is declared.
+- `Fields\Code`: source text in a string property, edited in a code
+  editor. `language()` picks the highlighting from `Code::LANGUAGES`
+  (`plain`, `json`, `html`, `css`, `javascript`, `typescript`, `sql`,
+  `php`, `yaml`, `markdown`, `xml`) and refuses any other name;
+  `lineNumbers()` and `rows()` (2 to 40) shape the editor. The
+  descriptor carries them as the field's `code`; the value is the text
+  as typed, and `vector_describe` names its language.
 
 ### Changed
 

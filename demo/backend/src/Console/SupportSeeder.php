@@ -31,6 +31,38 @@ final readonly class SupportSeeder
     /** @var array<string, list<string>> team => the ISO 3166-1 alpha-2 codes it serves; Technical serves everywhere */
     private const array SERVES = ['Billing' => ['NL', 'DE', 'AT'], 'Shipping' => ['NL', 'DE', 'PT', 'IE'], 'Returns' => ['IL', 'CZ', 'NO']];
 
+    /** @var array<string, string> team => its routing rules, as the YAML its code field edits; Technical has none */
+    private const array ROUTING = [
+        'Billing' => <<<'YAML'
+            # Billing picks up money questions first
+            match:
+              labels: [refund, invoice]
+              channels: [email, web]
+            assign: round-robin
+            escalate:
+              after: 4h
+              to: lead
+            YAML,
+        'Shipping' => <<<'YAML'
+            match:
+              labels: [late-delivery, damaged]
+            assign: least-busy
+            escalate:
+              after: 24h
+              to: manager
+            YAML,
+        'Returns' => <<<'YAML'
+            match:
+              labels: [refund, warranty]
+              priority: [high, urgent]
+            assign: round-robin
+            # a returns ticket never waits over the weekend
+            escalate:
+              after: 2h
+              to: lead
+            YAML,
+    ];
+
     private const array LABELS = ['refund' => '#E53935', 'damaged' => '#FB8C00', 'late-delivery' => '#FDD835', 'invoice' => '#43A047', 'warranty' => '#1E88E5', 'vip' => '#8E24AA', 'bug' => '#6D4C41', 'feedback' => '#00ACC1', 'duplicate' => '#757575', 'follow-up' => '#3949AB'];
 
     private const array SUBJECTS = ['Where is my order', 'Refund not received', 'Item arrived damaged', 'Wrong size delivered', 'Invoice needs a VAT number', 'Cannot log in', 'Warranty claim', 'Change delivery address', 'Discount code rejected', 'Product stopped working'];
@@ -65,6 +97,8 @@ final readonly class SupportSeeder
             $team = new Team($name, strtolower($name), $email);
             // a multiple country field: the countries each team serves
             $team->serve(self::SERVES[$name] ?? null);
+            // a code field: the team's routing rules, in YAML
+            $team->route(self::ROUTING[$name] ?? null);
             $entities->persist($team);
             $teams[] = $team;
         }

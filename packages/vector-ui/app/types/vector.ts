@@ -8,7 +8,7 @@ export type VectorFieldType =
     | 'select' | 'country' | 'booleanGroup' | 'date' | 'datetime' | 'email' | 'url' | 'password' | 'slug'
     | 'color' | 'json' | 'keyValue' | 'currency' | 'file' | 'image'
     | 'belongsTo' | 'hasOne' | 'hasMany' | 'manyToMany' | 'computed' | 'richtext'
-    | 'repeater' | 'tag'
+    | 'repeater' | 'tag' | 'code'
 
 /**
  * A repeater's rows. `json`: a JSON list of objects of `rowFields`.
@@ -47,6 +47,16 @@ export interface VectorRichText {
     /** The stored value is HTML rendered through the schema, not the document. */
     storesHtml: boolean
     maxBytes: number
+}
+
+/** A language a code field highlights: one of Fields\Code::LANGUAGES; `plain` highlights nothing. */
+export type VectorCodeLanguage = 'plain' | 'json' | 'html' | 'css' | 'javascript' | 'typescript' | 'sql' | 'php' | 'yaml' | 'markdown' | 'xml'
+
+/** A code field's editor. */
+export interface VectorCode {
+    language: VectorCodeLanguage
+    lineNumbers: boolean
+    rows: number
 }
 
 /** What a computed field is shown as. */
@@ -135,6 +145,8 @@ export interface VectorField {
     richtext?: VectorRichText
     /** A Markdown field's toolbar. */
     markdown?: { toolbar: string[] }
+    /** A code field's editor: the language it highlights, its line numbers, and how many lines it shows. */
+    code?: VectorCode
 }
 
 /** One comparison against another field of the same form. */

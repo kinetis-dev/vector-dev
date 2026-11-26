@@ -15,8 +15,9 @@ second column.
 | `Id` | `id` | The identifier. Read-only, sortable, never on a form. |
 | `Text`, `Email`, `Url`, `Password`, `Slug`, `Color` | `string`, `email`, `url`, `password`, `slug`, `color` | String columns; `searchable()` allowed. `Slug::from('name')` derives a slug. `Email` must be an address and `Url` an absolute http(s) URL (the admin shows it as a link), unless the field declares an e-mail, URL or pattern rule of its own. `Password`: see [Passwords](#passwords). |
 | `Textarea` | `text` | Long text, edited in a wide input. |
-| `Json` | `json` | A JSON object or array in a JSON column, on a `stdClass`, `?stdClass`, `array\|stdClass` or `array\|stdClass\|null` property (an `array` one is refused); see [JSON columns](#json-columns). Edited as JSON text; on the wire it is the document itself. Never sorted, filtered, searched or summarized. |
+| `Json` | `json` | A JSON object or array in a JSON column, on a `stdClass`, `?stdClass`, `array\|stdClass` or `array\|stdClass\|null` property (an `array` one is refused); see [JSON columns](#json-columns). Edited as JSON text in the [code editor](#code), highlighted as JSON and flagged while it is not a valid object or array; on the wire it is the document itself. Never sorted, filtered, searched or summarized. |
 | `RichText` | `richtext` | Formatted content (headings, lists, links, tables, images) stored as a structured document; see below. |
+| `Code` | `code` | Source text (a snippet of HTML or CSS, a query, a configuration) in a string column, edited in a code editor that highlights its `language()`; see [Code](#code). |
 | `Markdown` | `markdown` | Markdown text for technical content, edited visually or as source; `toolbar([...])`. |
 | `Number` | `number` | Numbers; `decimals(n)`, `step()`. |
 | `Money` | `money` | An amount in the currency's minor units (cents, whole yen); see [Money and currencies](#money-and-currencies). |
@@ -40,7 +41,7 @@ Every field takes:
 | Modifier | Effect |
 |---|---|
 | `label()`, `help()` | Its label, and a hint under the input. |
-| `placeholder('Such as KB-0042')` | A hint inside the input's empty text box, translated like the label. Only a field whose input has a text box takes one: text, e-mail, URL, slug, password and colour fields, `Textarea`, `Number`, `Money`, `Json`, `Markdown`, `RichText`, `Currency`, `Tag`, a searchable `Select` or `Country`, `BelongsTo` and `ManyToMany` (whose input otherwise says "Type to search"). Any other field refuses it with a `LogicException` when it is defined, so a placeholder never goes unseen. `vector_describe` carries it beside `help`. |
+| `placeholder('Such as KB-0042')` | A hint inside the input's empty text box, translated like the label. Only a field whose input has a text box takes one: text, e-mail, URL, slug, password and colour fields, `Textarea`, `Number`, `Money`, `Json`, `Code`, `Markdown`, `RichText`, `Currency`, `Tag`, a searchable `Select` or `Country`, `BelongsTo` and `ManyToMany` (whose input otherwise says "Type to search"). Any other field refuses it with a `LogicException` when it is defined, so a placeholder never goes unseen. `vector_describe` carries it beside `help`. |
 | `required()`, `min()`, `max()`, `rule(Constraint::class, ...)` | Validation, checked by the server and mirrored by the form. Any framework constraint may be used. |
 | `default()` | The value a new record starts with: the create form shows it pre-filled, and a create that leaves the field out takes it, validated like a value that was sent. Action dialogs and settings pages start from defaults too. |
 | `readonly()` | Shown, never written. |
@@ -318,6 +319,36 @@ names each code in English (in `vector_describe`, OpenAPI and exports);
 the admin shows the name in the UI's language, for each shipped locale,
 from data generated with `scripts/generate-countries.mjs`. The codes
 and names live in `Kinetis\Vector\Support\Countries`.
+
+## Code
+
+`Code` keeps source text in a string property (a `TEXT` column, as a
+`Text` field would) and edits it in a code editor:
+
+```php
+Code::make('routingRules', 'Routing rules')->language('yaml')->rows(8),
+```
+
+| Option | Effect |
+|---|---|
+| `language()` | The highlighting: `plain` (the default, none), `json`, `html`, `css`, `javascript`, `typescript`, `sql`, `php`, `yaml`, `markdown` or `xml`. Any other name is refused when the field is defined. |
+| `lineNumbers(false)` | Turns the gutter's line numbers off, for a short snippet. They are on by default. |
+| `rows(n)` | How many lines the editor shows before it scrolls, 2 to 40 (10 by default). |
+
+None of them changes what is stored: on the wire the value is the text
+as typed, whitespace included, and the server validates it as text
+(`required()`, `max()`, `rule()`), never as the language. It sorts,
+filters and searches as a text column does, and is not edited inline. A
+list shows its first line in monospace, shortened; the record page shows
+it highlighted in a read-only editor.
+
+The editor follows the light and dark theme, is read-only for a
+`readonly()` field and in a disabled form, and shows a violation on its
+frame like any input. Tab moves to the next field, as it does everywhere
+else in the form, and the editor is labelled by the field's label. Code
+reads left to right in a right-to-left layout too. The editor and each
+language's highlighting load only when a form or a record first shows
+one, so pages without a code or JSON field never download them.
 
 ## JSON columns
 

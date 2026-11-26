@@ -1478,6 +1478,10 @@ final class ResourceCompiler
                 self::checkTag($class, $name, $field);
             }
 
+            if ($field['type'] === 'code' && ($field['valueType'] ?? null) !== 'string') {
+                throw ResourceCompileException::field($class, $name, 'is a code field, which stores its text in a string property, not ' . ($field['valueType'] ?? 'none'));
+            }
+
             if ($field['type'] === 'repeater') {
                 self::checkRepeater($class, $name, $field);
             }
@@ -2310,7 +2314,7 @@ final class ResourceCompiler
     private function firstStringField(array $fields): ?string
     {
         foreach ($fields as $name => $field) {
-            if (($field['valueType'] ?? null) === 'string' && ($field['enum'] ?? null) === null && !in_array($field['type'], ['password', 'json', 'keyValue', 'select', 'country', 'booleanGroup', 'file', 'image', 'color', 'richtext', 'markdown', 'text'], true)) {
+            if (($field['valueType'] ?? null) === 'string' && ($field['enum'] ?? null) === null && !in_array($field['type'], ['password', 'json', 'keyValue', 'select', 'country', 'booleanGroup', 'file', 'image', 'color', 'richtext', 'markdown', 'text', 'code'], true)) {
                 return $name;
             }
         }

@@ -19,9 +19,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   own day and instant each time. The server's `date_too_early` and
   `date_too_late` violations are shown in the UI's language, naming the
   bound as the user's date.
+- `Vx/Input/Code.vue` and `Vx/Cell/Code.vue` for kinetis/vector's code
+  field, on a CodeMirror 6 editor loaded on demand, with each
+  language's highlighting loaded the first time it is shown. The editor
+  follows the light and dark theme, is read-only for a read-only field
+  and in a disabled form, is labelled by the field, keeps Tab for the
+  page and reads left to right in a right-to-left layout. A list shows
+  the first line in monospace; the record page a read-only highlighted
+  editor.
 
 ### Changed
 
+- `Vx/Input/Json.vue` edits the document in the code editor, highlighted
+  as JSON, instead of a plain textarea. It still sends the parsed
+  document, and the text with its invalid-JSON message while it is not
+  an object or an array.
 - The rich-text editor's empty-state hint is the field's `placeholder`,
   no longer its help text, which stays under the input.
 

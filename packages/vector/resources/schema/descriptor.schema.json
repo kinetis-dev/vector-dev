@@ -284,7 +284,8 @@
                         "computed",
                         "richtext",
                         "repeater",
-                        "tag"
+                        "tag",
+                        "code"
                     ]
                 },
                 "label": {
@@ -695,6 +696,41 @@
                                     "link"
                                 ]
                             }
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "code": {
+                    "description": "A code field's editor: the language it highlights (`plain` highlights nothing), whether it numbers its lines, and how many lines it shows before it scrolls. The value is the text itself.",
+                    "type": "object",
+                    "required": [
+                        "language",
+                        "lineNumbers",
+                        "rows"
+                    ],
+                    "properties": {
+                        "language": {
+                            "enum": [
+                                "plain",
+                                "json",
+                                "html",
+                                "css",
+                                "javascript",
+                                "typescript",
+                                "sql",
+                                "php",
+                                "yaml",
+                                "markdown",
+                                "xml"
+                            ]
+                        },
+                        "lineNumbers": {
+                            "type": "boolean"
+                        },
+                        "rows": {
+                            "type": "integer",
+                            "minimum": 2,
+                            "maximum": 40
                         }
                     },
                     "additionalProperties": false
