@@ -70,6 +70,19 @@ describe('VxInputCode', () => {
         expect(view.state.doc.toString()).toBe('match: {}')
     })
 
+    it('applies text typed over a selection itself, leaving no line behind', async () => {
+        const wrapper = await mountInput(routing, 'match:\n  labels: [refund]\nassign: round-robin')
+        const view = editorOf(wrapper)
+        view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } })
+
+        const typed = new InputEvent('beforeinput', { inputType: 'insertText', data: 'x', bubbles: true, cancelable: true })
+        view.contentDOM.dispatchEvent(typed)
+
+        expect(typed.defaultPrevented).toBe(true)
+        expect(view.state.doc.toString()).toBe('x')
+        expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual(['x'])
+    })
+
     it('is read-only for a read-only field and when disabled', async () => {
         const readonly = await mountInput(field({ ...routing, readonly: true }), 'a: 1')
         expect(editorOf(readonly).state.readOnly).toBe(true)

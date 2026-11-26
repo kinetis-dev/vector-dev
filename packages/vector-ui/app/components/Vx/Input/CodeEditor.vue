@@ -34,6 +34,8 @@ const editable = new Compartment()
 
 const editableState = () => [EditorView.editable.of(!props.disabled), EditorState.readOnly.of(props.readonly || props.disabled)]
 
+const nonce = import.meta.client ? (window.__VECTOR__?.cspNonce ?? undefined) : undefined
+
 onMounted(async () => {
     const attributes: Record<string, string> = { 'aria-multiline': 'true', 'spellcheck': 'false' }
     if (props.labelledBy) attributes['aria-labelledby'] = props.labelledBy
@@ -54,6 +56,18 @@ onMounted(async () => {
                 keymap.of([...defaultKeymap, ...historyKeymap]),
                 ...(props.placeholder ? [hint(props.placeholder)] : []),
                 EditorView.contentAttributes.of(attributes),
+                // text typed over a selection is applied by the editor itself: Chromium's own edit of a
+                // selection that spans lines leaves an empty line behind, and sets a style attribute a strict CSP refuses
+                EditorView.domEventHandlers({
+                    beforeinput(event, current) {
+                        if (event.inputType !== 'insertText' || !event.data || current.state.selection.main.empty || current.state.readOnly) return false
+                        current.dispatch({ ...current.state.replaceSelection(event.data), scrollIntoView: true, userEvent: 'input.type' })
+                        event.preventDefault()
+                        return true
+                    },
+                }),
+                // the editor's own style element carries the hosted shell's nonce, so a strict style-src admits it
+                ...(nonce ? [EditorView.cspNonce.of(nonce)] : []),
                 EditorView.theme({ '.cm-scroller': { minHeight: `${props.rows * 1.45}em`, maxHeight: `${props.rows * 1.45}em` } }),
                 highlighting.of([]),
                 editable.of(editableState()),
