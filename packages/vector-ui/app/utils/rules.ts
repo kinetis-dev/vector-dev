@@ -11,8 +11,13 @@ function rangeOf(value: unknown): { from: unknown, to: unknown } | null {
     return value !== null && typeof value === 'object' && !Array.isArray(value) && ('from' in value || 'to' in value) ? value as { from: unknown, to: unknown } : null
 }
 
-// a date range with neither end set is no value, as the server reads it
-const empty = (value: unknown) => blank(value) || (Array.isArray(value) && value.length === 0) || (rangeOf(value) !== null && blank(rangeOf(value)!.from) && blank(rangeOf(value)!.to))
+const empty = (value: unknown) => blank(value) || (Array.isArray(value) && value.length === 0)
+
+/** A date range's value as its rules read it: with neither end set it is no value, as the server reads it. */
+const rangeValue = (value: unknown) => {
+    const range = rangeOf(value)
+    return range !== null && blank(range.from) && blank(range.to) ? null : value
+}
 
 /**
  * The descriptor's rules, compiled to Vuetify rule functions. Each
@@ -40,7 +45,8 @@ export function rulesFor(field: VectorField, operation: 'create' | 'update', sta
         }
     }
 
-    return rules
+    // only a date range reads an object of two empty ends as no value
+    return field.type === 'dateRange' ? rules.map(rule => (value: unknown) => rule(rangeValue(value))) : rules
 }
 
 function compile(rule: VectorRule): Rule | null {

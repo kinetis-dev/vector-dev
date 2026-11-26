@@ -325,6 +325,23 @@ describe('rulesFor: dateRange', () => {
         expect(check(required, { from: '2026-12-01', to: '2026-12-02' })).toBe(true)
     })
 
+    it('still refuses a required range with one end or both blank', () => {
+        const required = rulesFor(promotion({ nullable: false }), 'create')
+
+        expect(check(required, { from: '', to: null })).toBe('Required')
+        expect(check(required, { from: '2026-12-01', to: null })).toBe('Set both ends of the range, or neither')
+        expect(check(required, { from: null, to: '2026-12-01' })).toBe('Set both ends of the range, or neither')
+    })
+
+    it('leaves an object with blank from or to alone on any other field', () => {
+        const json = field({ name: 'metadata', type: 'json', nullable: false, rules: [rule('NotBlank')] })
+
+        expect(check(rulesFor(json, 'create'), { from: null })).toBe(true)
+        expect(check(rulesFor(json, 'create'), { to: '' })).toBe(true)
+        expect(check(rulesFor(json, 'create'), { from: null, to: null })).toBe(true)
+        expect(check(rulesFor(field({ name: 'attributes', type: 'keyValue', nullable: false }), 'create'), { from: '', to: '' })).toBe(true)
+    })
+
     it('bounds both ends with minDate() and maxDate()', () => {
         const rules = rulesFor(promotion({ rules: [{ constraint: 'Kinetis\\Vector\\Validation\\DateBounds', args: ['date', '2020-01-01', '2026-12-31'] }] }), 'update')
 

@@ -100,7 +100,7 @@ final class ProductResource extends VectorResource
                 ->requiredWhen('status', 'eq', 'active'),
             // two DATE columns edited as one period: both ends set or neither, the end never before the start
             DateRange::make('promotion', from: 'promotionStartsOn', to: 'promotionEndsOn')->minDate('2020-01-01')->hideFromIndex(),
-                        DateTime::make('createdAt')->readonly()->sortable()->hideFromForms(),
+            DateTime::make('createdAt')->readonly()->sortable()->hideFromForms(),
             DateTime::make('updatedAt')->readonly()->hideFromForms()->hideFromIndex(),
         ];
     }
