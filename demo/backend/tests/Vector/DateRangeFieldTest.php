@@ -38,61 +38,61 @@ final class DateRangeFieldTest extends VectorTestCase
             'a day and an instant' => [new #[Resource(Product::class, slug: 'range-products')] class extends VectorResource {
                 public function fields(): array
                 {
-                    return [Id::make(), DateRange::make('window', from: 'promotionStartsOn', to: 'releasedAt')];
+                    return [Id::make(), DateRange::between('window', 'promotionStartsOn', 'releasedAt')];
                 }
             }, 'from "promotionStartsOn", a date, to "releasedAt", a timestamp; both ends are Kinetis\\Orm\\Date or both DateTimeImmutable'],
             'one end nullable' => [new #[Resource(Product::class, slug: 'range-products')] class extends VectorResource {
                 public function fields(): array
                 {
-                    return [Id::make(), DateRange::make('window', from: 'createdAt', to: 'releasedAt')];
+                    return [Id::make(), DateRange::between('window', 'createdAt', 'releasedAt')];
                 }
             }, 'of which only one is nullable'],
             'an end that is no date' => [new #[Resource(Product::class, slug: 'range-products')] class extends VectorResource {
                 public function fields(): array
                 {
-                    return [Id::make(), DateRange::make('window', from: 'promotionStartsOn', to: 'name')];
+                    return [Id::make(), DateRange::between('window', 'promotionStartsOn', 'name')];
                 }
             }, 'whose to is "name", which is not a Kinetis\\Orm\\Date or DateTimeImmutable property'],
             'an end that is no property' => [new #[Resource(Product::class, slug: 'range-products')] class extends VectorResource {
                 public function fields(): array
                 {
-                    return [Id::make(), DateRange::make('window', from: 'promotionStartsOn', to: 'nowhere')];
+                    return [Id::make(), DateRange::between('window', 'promotionStartsOn', 'nowhere')];
                 }
             }, 'whose to is "nowhere"'],
             'the same property twice' => [new #[Resource(Product::class, slug: 'range-products')] class extends VectorResource {
                 public function fields(): array
                 {
-                    return [Id::make(), DateRange::make('window', from: 'promotionStartsOn', to: 'promotionStartsOn')];
+                    return [Id::make(), DateRange::between('window', 'promotionStartsOn', 'promotionStartsOn')];
                 }
             }, 'from and to the same property "promotionStartsOn"'],
             'a name that is a property' => [new #[Resource(Product::class, slug: 'range-products')] class extends VectorResource {
                 public function fields(): array
                 {
-                    return [Id::make(), DateRange::make('promotionStartsOn', from: 'promotionStartsOn', to: 'promotionEndsOn')];
+                    return [Id::make(), DateRange::between('promotionStartsOn', 'promotionStartsOn', 'promotionEndsOn')];
                 }
             }, 'is a property itself'],
             'an end that is a field too' => [new #[Resource(Product::class, slug: 'range-products')] class extends VectorResource {
                 public function fields(): array
                 {
-                    return [Id::make(), DateRange::make('promotion', from: 'promotionStartsOn', to: 'promotionEndsOn'), Date::make('promotionEndsOn')];
+                    return [Id::make(), DateRange::between('promotion', 'promotionStartsOn', 'promotionEndsOn'), Date::make('promotionEndsOn')];
                 }
             }, 'maps "promotionEndsOn", which is also a field of the resource'],
             'an end two ranges write' => [new #[Resource(Product::class, slug: 'range-products')] class extends VectorResource {
                 public function fields(): array
                 {
-                    return [Id::make(), DateRange::make('promotion', from: 'promotionStartsOn', to: 'promotionEndsOn'), DateRange::make('again', from: 'promotionStartsOn', to: 'promotionEndsOn')];
+                    return [Id::make(), DateRange::between('promotion', 'promotionStartsOn', 'promotionEndsOn'), DateRange::between('again', 'promotionStartsOn', 'promotionEndsOn')];
                 }
             }, 'maps "promotionStartsOn", which the field "again" writes too'],
             'a condition on it' => [new #[Resource(Product::class, slug: 'range-products')] class extends VectorResource {
                 public function fields(): array
                 {
-                    return [Id::make(), DateRange::make('promotion', from: 'promotionStartsOn', to: 'promotionEndsOn'), Text::make('slug')->visibleWhen('promotion', 'nnull')];
+                    return [Id::make(), DateRange::between('promotion', 'promotionStartsOn', 'promotionEndsOn'), Text::make('slug')->visibleWhen('promotion', 'nnull')];
                 }
             }, 'a visible condition on the date range "promotion"'],
             'a bound of the other kind' => [new #[Resource(Product::class, slug: 'range-products')] class extends VectorResource {
                 public function fields(): array
                 {
-                    return [Id::make(), DateRange::make('promotion', from: 'promotionStartsOn', to: 'promotionEndsOn')->maxDate('now')];
+                    return [Id::make(), DateRange::between('promotion', 'promotionStartsOn', 'promotionEndsOn')->maxDate('now')];
                 }
             }, 'a date is bounded by a day'],
         ];
@@ -107,7 +107,7 @@ final class DateRangeFieldTest extends VectorTestCase
         }
 
         try {
-            ResourceCompiler::compileLoose(DateRange::make('window', from: 'a', to: 'b'), [], 'an action');
+            ResourceCompiler::compileLoose(DateRange::between('window', 'a', 'b'), [], 'an action');
             self::fail('an action asked for a date range');
         } catch (ResourceCompileException $e) {
             self::assertStringContainsString('is a dateRange field, which an action or settings group cannot ask for', $e->getMessage());
@@ -140,12 +140,12 @@ final class DateRangeFieldTest extends VectorTestCase
     {
         $refusals = [
             'no ends' => static fn () => DateRange::make('promotion'),
-            'sortable' => static fn () => DateRange::make('promotion', from: 'a', to: 'b')->sortable(),
-            'filterable' => static fn () => DateRange::make('promotion', from: 'a', to: 'b')->filterable(),
-            'a summary' => static fn () => DateRange::make('promotion', from: 'a', to: 'b')->summarize('count'),
-            'unique' => static fn () => DateRange::make('promotion', from: 'a', to: 'b')->unique(),
-            'a length' => static fn () => DateRange::make('promotion', from: 'a', to: 'b')->max(10),
-            'a placeholder' => static fn () => DateRange::make('promotion', from: 'a', to: 'b')->placeholder('When'),
+            'sortable' => static fn () => DateRange::between('promotion', 'a', 'b')->sortable(),
+            'filterable' => static fn () => DateRange::between('promotion', 'a', 'b')->filterable(),
+            'a summary' => static fn () => DateRange::between('promotion', 'a', 'b')->summarize('count'),
+            'unique' => static fn () => DateRange::between('promotion', 'a', 'b')->unique(),
+            'a length' => static fn () => DateRange::between('promotion', 'a', 'b')->max(10),
+            'a placeholder' => static fn () => DateRange::between('promotion', 'a', 'b')->placeholder('When'),
         ];
 
         foreach ($refusals as $case => $declare) {
@@ -158,7 +158,7 @@ final class DateRangeFieldTest extends VectorTestCase
         }
 
         // turning them off is no refusal
-        self::assertFalse(DateRange::make('promotion', from: 'a', to: 'b')->sortable(false)->filterable(false)->unique(false)->toArray()['sortable']);
+        self::assertFalse(DateRange::between('promotion', 'a', 'b')->sortable(false)->filterable(false)->unique(false)->toArray()['sortable']);
     }
 
     public function testTheCompiledRangeKnowsItsKindAndColumns(): void
@@ -290,7 +290,7 @@ final class DateRangeFieldTest extends VectorTestCase
         $compiled = $this->compiled(new #[Resource(Product::class, slug: 'range-products')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), Text::make('sku'), Text::make('name'), DateRange::make('promotion', from: 'promotionStartsOn', to: 'promotionEndsOn')->required()];
+                return [Id::make(), Text::make('sku'), Text::make('name'), DateRange::between('promotion', 'promotionStartsOn', 'promotionEndsOn')->required()];
             }
         }, 'range-products');
         $promotion = array_column($compiled['fields'], null, 'name')['promotion'];
@@ -360,7 +360,7 @@ final class DateRangeFieldTest extends VectorTestCase
         return new #[Resource(Product::class, slug: 'range-products')] class extends VectorResource {
             public function fields(): array
             {
-                return [Id::make(), Text::make('sku'), DateRange::make('lifetime', from: 'createdAt', to: 'updatedAt')];
+                return [Id::make(), Text::make('sku'), DateRange::between('lifetime', 'createdAt', 'updatedAt')];
             }
         };
     }

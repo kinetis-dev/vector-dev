@@ -8,8 +8,8 @@ use LogicException;
 
 /**
  * A period between two days or two instants, kept in two properties of
- * the entity: `DateRange::make('promotion', from: 'promotionStartsOn',
- * to: 'promotionEndsOn')`. The field's own name is no property. Both
+ * the entity: `DateRange::between('promotion', 'promotionStartsOn',
+ * 'promotionEndsOn')`. The field's own name is no property. Both
  * bounds are `Kinetis\Orm\Date` properties (a range of days) or both
  * `DateTimeImmutable` ones (a range of instants), which the compiler
  * reads from the entity; a range is nullable only when both are.
@@ -34,22 +34,25 @@ final class DateRange extends Field
     private ?string $to = null;
 
     /**
-     * @param string|null $from the property holding the first day or instant
-     * @param string|null $to the property holding the last
-     * @throws LogicException a range that names neither property
+     * A range and the two properties it keeps.
+     *
+     * @param string $from the property holding the first day or instant
+     * @param string $to the property holding the last
      */
-    #[\Override]
-    public static function make(string $name, ?string $label = null, ?string $from = null, ?string $to = null): static
+    public static function between(string $name, string $from, string $to, ?string $label = null): static
     {
-        if ($from === null || $to === null) {
-            throw new LogicException("\"{$name}\": a date range maps two properties; name them, as in DateRange::make('{$name}', from: 'startsOn', to: 'endsOn').");
-        }
-
-        $field = parent::make($name, $label);
+        $field = new static($name, $label);
         $field->from = $from;
         $field->to = $to;
 
         return $field;
+    }
+
+    /** @throws LogicException always: a range is declared with the two properties it keeps */
+    #[\Override]
+    public static function make(string $name, ?string $label = null): static
+    {
+        throw new LogicException("\"{$name}\": a date range maps two properties; declare it with them, as in DateRange::between('{$name}', 'startsOn', 'endsOn').");
     }
 
     #[\Override]

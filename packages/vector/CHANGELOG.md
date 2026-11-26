@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   descriptor carries them as the field's `code`; the value is the text
   as typed, and `vector_describe` names its language.
 - `Fields\DateRange`: a period kept in two properties,
-  `DateRange::make('promotion', from: 'promotionStartsOn', to:
+  `DateRange::between('promotion', 'promotionStartsOn',
   'promotionEndsOn')`, both `Kinetis\Orm\Date` or both
   `DateTimeImmutable` as the build reads them from the entity, nullable
   only when both are. Its value is `{from, to}` or null: one end alone

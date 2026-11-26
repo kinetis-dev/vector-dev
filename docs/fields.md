@@ -142,17 +142,18 @@ and `vector_describe` lists it among the field's rules.
 `DateRange` edits two properties of the entity as one period:
 
 ```php
-DateRange::make('promotion', from: 'promotionStartsOn', to: 'promotionEndsOn')->minDate('2020-01-01'),
+DateRange::between('promotion', 'promotionStartsOn', 'promotionEndsOn')->minDate('2020-01-01'),
 ```
 
-`from:` and `to:` name the properties holding the first and the last
-day (or instant); the field's own name is not a property, and `make()`
-without both throws. The build reads their types from the entity: both
-`Kinetis\Orm\Date` (a range of days, `YYYY-MM-DD`) or both
-`DateTimeImmutable` (a range of instants, ISO 8601 in UTC). It refuses
-an end that is neither, two ends of different types, one nullable end
-beside one that is not, an end that is another field of the resource,
-and an end another range or flag group writes too.
+The second and third arguments name the properties holding the first
+and the last day (or instant); the field's own name is not a property,
+and `make()` throws, since a range needs both. The build reads their
+types from the entity: both `Kinetis\Orm\Date` (a range of days,
+`YYYY-MM-DD`) or both `DateTimeImmutable` (a range of instants,
+ISO 8601 in UTC). It refuses an end that is neither, two ends of
+different types, one nullable end beside one that is not, an end that
+is another field of the resource, and an end another range or flag
+group writes too.
 
 | Value | Meaning |
 |---|---|
