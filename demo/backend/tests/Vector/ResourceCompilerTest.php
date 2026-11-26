@@ -1429,6 +1429,86 @@ final class ResourceCompilerTest extends TestCase
         self::assertSame(['json', 'object'], [$fields['attributes']['type'], $fields['attributes']['jsonObjects']]);
     }
 
+    public function testAChildRepeaterEditsTheOwnedRowsOfARegisteredResource(): void
+    {
+        $board = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Repeater::make('notes')->relationship('notes', CompilerNotes::class)->fields(['text'])->orderBy('position')];
+            }
+        };
+        $notes = self::field($this->compile($board, new CompilerNotes())['boards'], 'notes');
+
+        self::assertSame(['text'], $notes['repeater']['fields']);
+        self::assertSame('position', $notes['repeater']['orderColumn']);
+        self::assertSame(['compiler-notes', 'board', true], [$notes['relation']['resource'], $notes['relation']['inverse'], $notes['relation']['owned']]);
+
+        $orphan = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Repeater::make('notes')->relationship('notes')];
+            }
+        };
+        $this->assertRefused(self::fieldRefusal($orphan, 'notes', 'edits ' . CompilerNote::class . ', which no resource administers'), $orphan);
+    }
+
+    public function testAChildRepeaterNamesWritableFieldsOfItsChild(): void
+    {
+        $refusals = [
+            ['names "steps", a repeater of Note; rows never hold another repeater', new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('notes')->relationship('notes', CompilerNotes::class)->fields(['text', 'steps'])];
+                }
+            }],
+            ['names "nope", which is not a writable field of Note', new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('notes')->relationship('notes', CompilerNotes::class)->fields(['text', 'nope'])];
+                }
+            }],
+            ['orders its rows by "board", which is not an int property of ' . CompilerNote::class, new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('notes')->relationship('notes', CompilerNotes::class)->orderBy('board')];
+                }
+            }],
+            ['names the relation "nope", which is not a #[HasMany] property of ' . CompilerBoard::class, new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('notes')->relationship('nope', CompilerNotes::class)];
+                }
+            }],
+            [TagResource::class . ' is not a registered resource', new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('notes')->relationship('notes', TagResource::class)];
+                }
+            }],
+            ['declares the row field "text"; in relationship mode fields() names fields of the child resource', new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('notes')->relationship('notes', CompilerNotes::class)->fields([Text::make('text')])];
+                }
+            }],
+        ];
+
+        foreach ($refusals as [$reason, $resource]) {
+            $this->assertRefused(self::fieldRefusal($resource, 'notes', $reason), $resource, new CompilerNotes());
+        }
+    }
+
+    public function testTheResourceMetaIsCheckedAndKept(): void
+    {
+        $kept = new #[Resource(Tag::class, slug: 'tags', meta: ['acme.pinned' => true])] class extends VectorResource {
+        };
+        self::assertSame(['acme.pinned' => true], $this->compile($kept)['tags']['meta']);
+
+        $bad = new #[Resource(Tag::class, slug: 'tags', meta: ['not a key' => true])] class extends VectorResource {
+        };
+        $this->assertRefused('Resource ' . $bad::class . ': #[Resource]: a meta key is a dotted name such as "vendor.key".', $bad);
+    }
+
     private function assertRefused(string $message, VectorResource ...$resources): void
     {
         try {
