@@ -334,6 +334,31 @@ describe('VxResourceForm: selects and JSON documents', () => {
     })
 })
 
+describe('VxResourceForm: date ranges', () => {
+    const products = resource({
+        slug: 'products',
+        label: 'Products',
+        labelSingular: 'Product',
+        fields: [
+            field({ name: 'name', nullable: false }),
+            field({ name: 'promotion', type: 'dateRange', range: { kind: 'date', from: 'promotionStartsOn', to: 'promotionEndsOn' } }),
+        ],
+    })
+
+    it('starts a new record\'s range as both ends empty, and sends it so when untouched', async () => {
+        const create = mock('/vector/r/products', { status: 201, body: { data: { id: 6 }, permissions: {} } }, 'POST')
+        const form = await mountForm({ resource: products, operation: 'create' })
+
+        expect(form.find('[data-date-range="promotion"]').findAll('input').map(i => (i.element as HTMLInputElement).value)).toEqual(['', ''])
+        await input(form, 'Name').find('input').setValue('Lamp')
+        await submit(form)
+
+        await vi.waitFor(() => expect(create.requests).toHaveLength(1))
+        // the range's own empty value, never a bare null: the same object a cleared range sends
+        expect(create.requests[0]!.body).toEqual({ name: 'Lamp', promotion: { from: null, to: null } })
+    })
+})
+
 describe('VxResourceForm: flag groups and countries', () => {
     const profiles = resource({
         slug: 'customer-profiles',
