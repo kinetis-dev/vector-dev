@@ -8,7 +8,9 @@ const props = defineProps<{ field: VectorField, value: unknown }>()
 const { t } = useVectorT()
 
 const chosen = computed<VectorSelectOption[]>(() => {
-    const values = Array.isArray(props.value) ? props.value : props.value === null || props.value === undefined ? [] : [props.value]
+    if (props.value === null || props.value === undefined) return []
+
+    const values = Array.isArray(props.value) ? props.value : [props.value]
 
     return values.map(value => props.field.options?.find(o => String(o.value) === String(value)) ?? { value: String(value), label: String(value), color: null })
 })

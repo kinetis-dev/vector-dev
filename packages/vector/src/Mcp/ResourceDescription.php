@@ -136,10 +136,14 @@ final class ResourceDescription
             $repeater = $field['repeater'];
             $count = "{$repeater['min']} to {$repeater['max']} rows";
 
-            return ($repeater['mode'] ?? 'json') === 'relationship'
-                ? "a list of {$count}, each an object of the fields in `rows` plus the `id` of an existing row to keep; a row with an id updates that row, one without creates it, and a row left out is deleted, all saved with the record"
-                    . (($repeater['sortable'] ?? false) === true ? '; the list order is the rows\' order' : '')
-                : "a list of {$count}, each an object of the fields in `rows` and no others; stored in the order sent";
+            if (($repeater['mode'] ?? 'json') !== 'relationship') {
+                return "a list of {$count}, each an object of the fields in `rows` and no others; stored in the order sent";
+            }
+
+            $order = ($repeater['sortable'] ?? false) === true ? '; the list order is the rows\' order' : '';
+
+            return "a list of {$count}, each an object of the fields in `rows` plus the `id` of an existing row to keep; a row with an id updates that row, one without creates it, and a row left out is deleted, all saved with the record"
+                . $order;
         }
 
         return match (true) {

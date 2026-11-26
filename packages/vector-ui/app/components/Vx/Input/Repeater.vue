@@ -118,8 +118,11 @@ function move(from: number, to: number) {
 
 /** The arrow keys on a row's handle move the row, the handle keeping focus. */
 async function onHandleKey(event: KeyboardEvent, index: number) {
-    const to = event.key === 'ArrowUp' ? index - 1 : event.key === 'ArrowDown' ? index + 1 : null
-    if (to === null || to < 0 || to >= rows.value.length) return
+    let to: number
+    if (event.key === 'ArrowUp') to = index - 1
+    else if (event.key === 'ArrowDown') to = index + 1
+    else return
+    if (to < 0 || to >= rows.value.length) return
 
     event.preventDefault()
     move(index, to)

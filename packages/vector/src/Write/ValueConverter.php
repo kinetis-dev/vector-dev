@@ -34,6 +34,8 @@ use Throwable;
  */
 final readonly class ValueConverter
 {
+    private const JSON_DOCUMENT = 'a JSON object or array';
+
     public function __construct(
         private VectorRegistry $registry,
         private EntityManagerRegistry $managers,
@@ -145,30 +147,9 @@ final readonly class ValueConverter
             return array_map(strval(...), self::cellList($raw));
         }
 
-        // a JSON repeater's cell holds its rows as JSON text
-        if ($field['type'] === 'repeater') {
-            $decoded = json_decode($raw, true);
-
-            return is_array($decoded) && array_is_list($decoded) ? $decoded : throw self::mismatch('a JSON list of rows');
-        }
-
-        // an imported cell holds the object as JSON text; a property that keeps objects reads {} as one
-        if ($field['type'] === 'keyValue') {
-            $decoded = json_decode($raw, !self::keepsObjects($field));
-
-            return is_array($decoded) || $decoded instanceof \stdClass ? $decoded : throw self::mismatch('a JSON object of text values');
-        }
-
-        // read as deep as any field may nest (JsonDepth::MOST); a deeper cell's refusal names no limit, and the caller
-        // that knows the resource gives it its field's (JsonDepth::limited()), as RecordInput refuses a shallower one
-        if ($field['type'] === 'json') {
-            try {
-                $decoded = json_decode($raw, !self::keepsObjects($field), JsonDepth::MOST + 1, JSON_THROW_ON_ERROR);
-            } catch (\JsonException $e) {
-                throw $e->getCode() === JSON_ERROR_DEPTH ? new InputViolation(JsonDepth::tooDeep(null)) : self::mismatch('a JSON object or array');
-            }
-
-            return is_array($decoded) || $decoded instanceof \stdClass ? $decoded : throw self::mismatch('a JSON object or array');
+        // a JSON repeater's rows, a key-value object and a JSON document arrive as JSON text
+        if (in_array($field['type'], ['repeater', 'keyValue', 'json'], true)) {
+            return self::jsonCell($field, $raw);
         }
 
         if ($field['type'] === 'belongsTo') {
@@ -189,6 +170,40 @@ final readonly class ValueConverter
             'date' => $this->day($raw),
             default => $raw,
         };
+    }
+
+    /**
+     * A query-string cell that holds its value as JSON text: a JSON
+     * repeater's rows, a key-value object or a JSON document.
+     *
+     * @param array<string, mixed> $field
+     * @return array<array-key, mixed>|\stdClass
+     * @throws InputViolation
+     */
+    private static function jsonCell(array $field, string $raw): array|\stdClass
+    {
+        if ($field['type'] === 'repeater') {
+            $decoded = json_decode($raw, true);
+
+            return is_array($decoded) && array_is_list($decoded) ? $decoded : throw self::mismatch('a JSON list of rows');
+        }
+
+        // an imported cell holds the object as JSON text; a property that keeps objects reads {} as one
+        if ($field['type'] === 'keyValue') {
+            $decoded = json_decode($raw, !self::keepsObjects($field));
+
+            return is_array($decoded) || $decoded instanceof \stdClass ? $decoded : throw self::mismatch('a JSON object of text values');
+        }
+
+        // read as deep as any field may nest (JsonDepth::MOST); a deeper cell's refusal names no limit, and the caller
+        // that knows the resource gives it its field's (JsonDepth::limited()), as RecordInput refuses a shallower one
+        try {
+            $decoded = json_decode($raw, !self::keepsObjects($field), JsonDepth::MOST + 1, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            throw $e->getCode() === JSON_ERROR_DEPTH ? new InputViolation(JsonDepth::tooDeep(null)) : self::mismatch(self::JSON_DOCUMENT);
+        }
+
+        return is_array($decoded) || $decoded instanceof \stdClass ? $decoded : throw self::mismatch(self::JSON_DOCUMENT);
     }
 
     /**
@@ -607,7 +622,8 @@ final readonly class ValueConverter
 
         foreach ($rowFields as $name => $sub) {
             // a field the row leaves out takes its default, as a new record's would
-            $value = array_key_exists($name, $row) ? $row[$name] : (($sub['hasDefault'] ?? false) === true ? $sub['default'] : null);
+            $default = ($sub['hasDefault'] ?? false) === true ? $sub['default'] : null;
+            $value = array_key_exists($name, $row) ? $row[$name] : $default;
 
             if ($value === null && ($sub['nullable'] ?? true) !== true) {
                 $violations[] = new Violation([$index, $name], 'required', 'is required.');
@@ -679,7 +695,7 @@ final readonly class ValueConverter
     private static function json(mixed $raw): array
     {
         if (!is_array($raw)) {
-            throw self::mismatch('a JSON object or array');
+            throw self::mismatch(self::JSON_DOCUMENT);
         }
 
         return $raw;
@@ -714,7 +730,7 @@ final readonly class ValueConverter
         $objectOnly = $field['jsonObjects'] === 'object';
 
         if (!is_array($raw) && !$raw instanceof \stdClass) {
-            throw self::mismatch($objectOnly ? 'a JSON object' : 'a JSON object or array');
+            throw self::mismatch($objectOnly ? 'a JSON object' : self::JSON_DOCUMENT);
         }
 
         if ($objectOnly && $raw === []) {

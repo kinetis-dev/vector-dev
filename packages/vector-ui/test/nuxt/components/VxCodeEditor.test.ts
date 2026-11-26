@@ -113,6 +113,12 @@ describe('VxInputCode', () => {
 })
 
 describe('VxInputJson on the code editor', () => {
+    it('starts from text as it is, and from no value as empty', async () => {
+        expect(editorOf(await mountInput(metadata, '{"channel": ')).state.doc.toString()).toBe('{"channel": ')
+        expect(editorOf(await mountInput(metadata, null)).state.doc.toString()).toBe('')
+        expect(editorOf(await mountInput(metadata, undefined)).state.doc.toString()).toBe('')
+    })
+
     it('round-trips a document and keeps the invalid-JSON message', async () => {
         const wrapper = await mountInput(metadata, { channel: 'email', tries: 2 })
         const view = editorOf(wrapper)

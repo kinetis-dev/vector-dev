@@ -98,6 +98,14 @@ describe('VxCell', () => {
         expect((await cell(field({ name: 'metadata', type: 'json' }), null)).text()).toBe('—')
     })
 
+    it('renders a JSON document indented on a record', async () => {
+        const value = { carrier: 'DHL', parcels: [1, 2] }
+        const wrapper = await mountSuspended(VxCell, { props: { field: field({ name: 'metadata', type: 'json' }), value, record: {}, resource: resource(), context: 'show' } })
+        await flushPromises()
+        await vi.waitFor(() => expect(wrapper.find('pre').exists()).toBe(true))
+        expect(wrapper.find('pre').text()).toBe(JSON.stringify(value, null, 2))
+    })
+
     it('renders a computed value with the cell of what it is shown as', async () => {
         const total = field({ name: 'lineTotal', type: 'computed', readonly: true, props: { currencyField: 'order.currency' }, computed: { as: 'money', from: ['quantity', 'unitPriceCents'] } })
         expect((await cell(total, 8396, { order: { id: 1, label: 'ORD-1', currency: 'EUR' } })).text()).toBe(formatMoney(8396, 'EUR'))

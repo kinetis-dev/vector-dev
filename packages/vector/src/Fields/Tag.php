@@ -144,6 +144,6 @@ final class Tag extends Field
     /** One tag as it is stored: without the whitespace around it, Unicode spaces included. */
     public static function trim(string $tag): string
     {
-        return preg_replace('/(?:^\s+)|(?:\s+$)/u', '', $tag) ?? trim($tag);
+        return preg_replace(['/^\s+/u', '/\s+$/u'], '', $tag) ?? trim($tag);
     }
 }

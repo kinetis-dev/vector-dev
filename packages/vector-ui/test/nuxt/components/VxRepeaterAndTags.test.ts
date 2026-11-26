@@ -113,6 +113,12 @@ describe('a JSON repeater in a form', () => {
         await rows()[1]!.find('.vx-repeater-handle').trigger('keydown', { key: 'ArrowDown' })
         expect(rowValues(form).map(r => r[0])).toEqual(['Battery', 'Made in', 'Warranty'])
 
+        // no row above the first, none below the last, and any other key moves nothing
+        await rows()[0]!.find('.vx-repeater-handle').trigger('keydown', { key: 'ArrowUp' })
+        await rows()[2]!.find('.vx-repeater-handle').trigger('keydown', { key: 'ArrowDown' })
+        await rows()[1]!.find('.vx-repeater-handle').trigger('keydown', { key: 'ArrowLeft' })
+        expect(rowValues(form).map(r => r[0])).toEqual(['Battery', 'Made in', 'Warranty'])
+
         await submit(form)
 
         await vi.waitFor(() => expect(update.requests).toHaveLength(1))
@@ -168,6 +174,15 @@ describe('a relationship repeater in a form', () => {
 
     beforeEach(() => {
         useVectorSchema().schema.value = schema([orders, lines])
+    })
+
+    it('shows the loaded rows as a table on a record', async () => {
+        mock('/vector/r/orders/9/lines/rows', { body: { data: [{ id: 21, sku: 'A', quantity: 1 }, { id: 22, sku: 'B', quantity: 2 }] } })
+        const wrapper = await mountSuspended(VxCell, { props: { field: orders.fields[2]!, value: { count: 2 }, record: { id: 9 }, resource: orders, context: 'show' } })
+        mounted.push(wrapper)
+        await flushPromises()
+
+        await vi.waitFor(() => expect(wrapper.findAll('tbody tr').map(tr => tr.findAll('td').map(td => td.text()))).toEqual([['A', '1'], ['B', '2']]))
     })
 
     it('loads the rows in their order, and sends them reordered with their ids', async () => {

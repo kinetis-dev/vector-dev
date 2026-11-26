@@ -26,7 +26,10 @@ const count = computed<number | null>(() => {
 const client = useVectorResource(() => props.resource.slug)
 const loaded = ref<VectorRecord[] | null>(null)
 const failed = ref(false)
-const rows = computed<Record<string, unknown>[]>(() => json.value ? (Array.isArray(props.value) ? props.value as Record<string, unknown>[] : []) : loaded.value ?? [])
+const rows = computed<Record<string, unknown>[]>(() => {
+    if (!json.value) return loaded.value ?? []
+    return Array.isArray(props.value) ? props.value as Record<string, unknown>[] : []
+})
 
 onMounted(async () => {
     if (props.context !== 'show' || json.value || !child.value || props.record.id === undefined || count.value === 0) return
