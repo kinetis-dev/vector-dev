@@ -121,6 +121,7 @@ final class DateRangeFieldTest extends VectorTestCase
             'sortable' => static fn () => DateRange::make('promotion', from: 'a', to: 'b')->sortable(),
             'filterable' => static fn () => DateRange::make('promotion', from: 'a', to: 'b')->filterable(),
             'a summary' => static fn () => DateRange::make('promotion', from: 'a', to: 'b')->summarize('count'),
+            'unique' => static fn () => DateRange::make('promotion', from: 'a', to: 'b')->unique(),
             'a length' => static fn () => DateRange::make('promotion', from: 'a', to: 'b')->max(10),
             'a placeholder' => static fn () => DateRange::make('promotion', from: 'a', to: 'b')->placeholder('When'),
         ];
@@ -135,7 +136,7 @@ final class DateRangeFieldTest extends VectorTestCase
         }
 
         // turning them off is no refusal
-        self::assertFalse(DateRange::make('promotion', from: 'a', to: 'b')->sortable(false)->filterable(false)->toArray()['sortable']);
+        self::assertFalse(DateRange::make('promotion', from: 'a', to: 'b')->sortable(false)->filterable(false)->unique(false)->toArray()['sortable']);
     }
 
     public function testTheCompiledRangeKnowsItsKindAndColumns(): void

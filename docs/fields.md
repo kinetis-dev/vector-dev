@@ -177,7 +177,8 @@ it has no entity to keep the two ends in.
 
 A range is never sorted, filtered or summarized as one value:
 `sortable()`, `filterable()` and `summarize()` throw a `LogicException`
-when the field is defined. It is not edited inline, cannot be grouped
+when the field is defined, and so does `unique()`, since a range has no
+column of its own for an import to match rows by. It is not edited inline, cannot be grouped
 by, and no condition (`visibleWhen()` and the others) may test it. To
 sort or filter by one end, declare a `Date` or `DateTime` field for that
 property on a resource of its own.

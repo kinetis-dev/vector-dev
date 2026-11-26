@@ -47,7 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   format. The build refuses an end that is another field or that
   another range or flag group writes, a condition on a range, and a
   range in an action dialog or settings group; `sortable()`,
-  `filterable()` and `summarize()` throw.
+  `filterable()`, `summarize()` and `unique()` throw, the last because
+  a range has no column of its own to match an import's rows by.
 
 ### Changed
 

@@ -78,6 +78,13 @@ final class DateRange extends Field
         return $filterable ? throw new LogicException("\"{$this->name}\": a date range is not filtered as one value; declare a Date or DateTime field for one of its properties on another resource to filter by it.") : $this;
     }
 
+    /** @throws LogicException a range has no column to be a unique key in */
+    #[\Override]
+    public function unique(bool $unique = true): static
+    {
+        return $unique ? throw new LogicException("\"{$this->name}\": a date range is not unique as one value; it has no column of its own to match records by.") : $this;
+    }
+
     /** @throws LogicException a range is never summarized */
     #[\Override]
     public function summarize(string $function): static
