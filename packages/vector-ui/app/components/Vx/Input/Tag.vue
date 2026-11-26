@@ -36,6 +36,7 @@ function update(value: unknown) {
         :error-messages="errorMessages"
         :disabled="disabled"
         :hint="field.help ?? t('fields.tags.hint')"
+        :placeholder="field.placeholder ?? undefined"
         :delimiters="[',']"
         multiple
         chips

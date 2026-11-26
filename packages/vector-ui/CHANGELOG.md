@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A field's `placeholder` shows inside the empty text box of the text,
+  textarea, number, money, JSON, Markdown, rich-text, currency, tag,
+  searchable select and relation inputs. A relation without one keeps
+  its own "Type to search".
+
+### Changed
+
+- The rich-text editor's empty-state hint is the field's `placeholder`,
+  no longer its help text, which stays under the input.
+
 ## [0.15.0] - 2026-11-25
 
 ### Added

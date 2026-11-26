@@ -364,6 +364,10 @@
                         "null"
                     ]
                 },
+                "placeholder": {
+                    "description": "The hint the input shows inside its empty text box (placeholder()). Absent when the field declares none.",
+                    "type": "string"
+                },
                 "component": {
                     "type": [
                         "string",

@@ -8,6 +8,7 @@ return [
     '30 days' => '30 днів',
     '7 days' => '7 днів',
     '90 days' => '90 днів',
+    'A unique stock code, such as KB-0042' => 'Унікальний складський код, наприклад KB-0042',
     'Access' => 'Доступ',
     'Active' => 'Активний',
     'Address line' => 'Рядок адреси',

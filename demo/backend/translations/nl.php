@@ -8,6 +8,7 @@ return [
     '30 days' => '30 dagen',
     '7 days' => '7 dagen',
     '90 days' => '90 dagen',
+    'A unique stock code, such as KB-0042' => 'Een unieke voorraadcode, zoals KB-0042',
     'Access' => 'Toegang',
     'Active' => 'Actief',
     'Address line' => 'Adresregel',

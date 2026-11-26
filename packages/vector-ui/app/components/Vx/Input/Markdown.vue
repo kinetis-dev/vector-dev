@@ -3,6 +3,7 @@ import { EditorContent, useEditor } from '@tiptap/vue-3'
 import type { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
+import Placeholder from '@tiptap/extension-placeholder'
 import type { VectorField } from '#vector/app/types/vector'
 
 // A Markdown field, for technical content: edited WYSIWYG, stored as the
@@ -25,6 +26,8 @@ const editor = useEditor({
             heading: { levels: [1, 2, 3, 4] },
         }),
         Markdown,
+        // the field's placeholder() shows in the empty editor
+        ...(props.field.placeholder ? [Placeholder.configure({ placeholder: props.field.placeholder })] : []),
     ],
     injectNonce: import.meta.client ? (window.__VECTOR__?.cspNonce ?? undefined) : undefined,
     editorProps: { attributes: { 'class': 'vx-richtext-content', 'aria-label': props.field.label, 'role': 'textbox', 'aria-multiline': 'true' } },
@@ -124,3 +127,7 @@ function applyLink() {
         </div>
     </v-input>
 </template>
+
+<style>
+.vx-richtext-content p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: inline-start; height: 0; pointer-events: none; opacity: 0.5; }
+</style>

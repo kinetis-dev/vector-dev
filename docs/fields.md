@@ -40,6 +40,7 @@ Every field takes:
 | Modifier | Effect |
 |---|---|
 | `label()`, `help()` | Its label, and a hint under the input. |
+| `placeholder('Such as KB-0042')` | A hint inside the input's empty text box, translated like the label. Only a field whose input has a text box takes one: text, e-mail, URL, slug, password and colour fields, `Textarea`, `Number`, `Money`, `Json`, `Markdown`, `RichText`, `Currency`, `Tag`, a searchable `Select` or `Country`, `BelongsTo` and `ManyToMany` (whose input otherwise says "Type to search"). Any other field refuses it with a `LogicException` when it is defined, so a placeholder never goes unseen. `vector_describe` carries it beside `help`. |
 | `required()`, `min()`, `max()`, `rule(Constraint::class, ...)` | Validation, checked by the server and mirrored by the form. Any framework constraint may be used. |
 | `default()` | The value a new record starts with: the create form shows it pre-filled, and a create that leaves the field out takes it, validated like a value that was sent. Action dialogs and settings pages start from defaults too. |
 | `readonly()` | Shown, never written. |

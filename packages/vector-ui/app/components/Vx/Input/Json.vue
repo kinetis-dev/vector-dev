@@ -52,6 +52,7 @@ const messages = computed(() => [...(invalid.value ? [t('fields.json.invalid')] 
         :rules="rules"
         :error-messages="messages"
         :hint="field.help ?? undefined"
+        :placeholder="field.placeholder ?? undefined"
         :persistent-hint="!!field.help"
         :disabled="props.disabled"
         class="font-monospace"

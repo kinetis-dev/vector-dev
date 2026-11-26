@@ -11,4 +11,10 @@ final class Text extends Field
     {
         return 'string';
     }
+
+    #[\Override]
+    protected function hasTextBox(): bool
+    {
+        return true;
+    }
 }

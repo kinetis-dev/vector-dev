@@ -15,6 +15,12 @@ final class BelongsTo extends RelationField
         return 'belongsTo';
     }
 
+    #[\Override]
+    protected function hasTextBox(): bool
+    {
+        return true;
+    }
+
     /**
      * Narrows the choices to the target records whose `$on` (by default
      * the same name) equals this form's `$field`: a ticket's assignee

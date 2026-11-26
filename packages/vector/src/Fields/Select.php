@@ -46,6 +46,12 @@ class Select extends Field
         return 'select';
     }
 
+    #[\Override]
+    protected function hasTextBox(): bool
+    {
+        return true;
+    }
+
     /**
      * The choices: an array of value => label, a closure returning one,
      * or a backed enum class.

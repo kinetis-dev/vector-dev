@@ -28,6 +28,12 @@ final class Password extends Field
         return 'password';
     }
 
+    #[\Override]
+    protected function hasTextBox(): bool
+    {
+        return true;
+    }
+
     /**
      * Hash what is typed before storing it, through the application's
      * bound PasswordHasherInterface, or through $hasher (a class

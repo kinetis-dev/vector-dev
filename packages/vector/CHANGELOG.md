@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Field::placeholder()`: a hint inside the input's empty text box,
+  published as the field's `placeholder` (absent when none is set),
+  translated like its label and carried by `vector_describe`. A field
+  whose input has no text box (`Boolean`, `BooleanGroup`, `Date`,
+  `DateTime`, `File`, `Image`, `KeyValue`, `Repeater`, `Computed`,
+  `Id`, `HasOne`, `HasMany`) refuses it with a `LogicException` when
+  it is defined.
+
 ## [0.18.0] - 2026-11-25
 
 ### Added

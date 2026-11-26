@@ -104,6 +104,8 @@ export interface VectorField {
     /** A tag field: free-text strings shown as chips. */
     tags?: VectorTags
     help: string | null
+    /** The hint the input shows inside its empty text box (placeholder()); absent when none. */
+    placeholder?: string
     component: string | null
     views: VectorView[]
     rules: VectorRule[]

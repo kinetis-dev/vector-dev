@@ -8,6 +8,7 @@ return [
     '30 days' => '30 gün',
     '7 days' => '7 gün',
     '90 days' => '90 gün',
+    'A unique stock code, such as KB-0042' => 'Benzersiz bir stok kodu, örneğin KB-0042',
     'Access' => 'Erişim',
     'Active' => 'Etkin',
     'Address line' => 'Adres satırı',

@@ -12,6 +12,12 @@ final class Money extends Field
         return 'money';
     }
 
+    #[\Override]
+    protected function hasTextBox(): bool
+    {
+        return true;
+    }
+
     /** The value is stored in minor units (cents) of this currency, or of the named currency field. */
     public function currency(string $currency): static
     {

@@ -1282,6 +1282,7 @@
                 "label": "SKU",
                 "type": "string",
                 "valueType": "string",
+                "placeholder": "A unique stock code, such as KB-0042",
                 "writable": [
                     "create",
                     "update"
@@ -2970,6 +2971,7 @@
                 "label": "Email",
                 "type": "email",
                 "valueType": "string",
+                "placeholder": "name@example.com",
                 "writable": [
                     "create",
                     "update"

@@ -4747,6 +4747,7 @@
                     "required": [],
                     "disabled": []
                 },
+                "placeholder": "A unique stock code, such as KB-0042",
                 "column": "sku",
                 "nullable": false,
                 "valueType": "string",
@@ -12597,6 +12598,7 @@
                     "required": [],
                     "disabled": []
                 },
+                "placeholder": "name@example.com",
                 "meta": {
                     "ai.send": false
                 },

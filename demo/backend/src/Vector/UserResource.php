@@ -43,7 +43,7 @@ final class UserResource extends VectorResource
             Id::make(),
             Text::make('name')->required()->max(120)->sortable()->searchable(),
             // kept from AI models (docs/ai.md): no model is told of it
-            Email::make('email')->required()->max(255)->unique()->sortable()->searchable()->meta('ai.send', false),
+            Email::make('email')->placeholder('name@example.com')->required()->max(255)->unique()->sortable()->searchable()->meta('ai.send', false),
             Boolean::make('isAdmin', 'Admin')->sortable()->filterable(),
             Password::make('passwordHash', 'New password')->hashed()->min(8)
                 ->help('Leave empty to keep the current password.'),

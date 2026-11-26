@@ -11,4 +11,10 @@ final class Textarea extends Field
     {
         return 'text';
     }
+
+    #[\Override]
+    protected function hasTextBox(): bool
+    {
+        return true;
+    }
 }

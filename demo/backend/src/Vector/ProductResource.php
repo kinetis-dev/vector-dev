@@ -65,7 +65,7 @@ final class ProductResource extends VectorResource
             Tabs::make()
                 ->tab('Content', ['description', 'attributes', 'specs', 'imageKey'])
                 ->tab('Publishing', ['isFeatured', 'channels', 'keywords', 'releasedAt', 'tags']),
-            Text::make('sku', 'SKU')->required()->max(40)->unique()->sortable()->searchable()->filterable(),
+            Text::make('sku', 'SKU')->placeholder('A unique stock code, such as KB-0042')->required()->max(40)->unique()->sortable()->searchable()->filterable(),
             Text::make('name')->required()->max(200)->sortable()->searchable()->filterable()->meta('ai.send', true),
             Slug::make('slug')->from('name')->required()->max(220)->unique()->hideFromIndex(),
             // shown as a coloured chip in the list and on the record

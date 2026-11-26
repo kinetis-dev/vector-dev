@@ -89,6 +89,7 @@ final class ResourceDescription
             'format' => self::format($field),
             'multiple' => ($field['multiple'] ?? false) === true ? true : null,
             'help' => $field['help'] ?? null,
+            'placeholder' => $field['placeholder'] ?? null,
             'writable' => $writable,
             // what the writer itself demands of a create; only a field a call writes has any of these
             'required' => $written ? self::required($field, $compiled, $writable) : null,
@@ -266,6 +267,7 @@ final class ResourceDescription
                 'type' => $field['type'],
                 'format' => self::format($field),
                 'help' => $field['help'] ?? null,
+                'placeholder' => $field['placeholder'] ?? null,
                 // a dialog's field is required unless it may be empty or has a default
                 'required' => ($field['nullable'] ?? true) !== true && ($field['hasDefault'] ?? false) !== true,
                 'default' => ($field['hasDefault'] ?? false) === true ? $field['default'] : null,

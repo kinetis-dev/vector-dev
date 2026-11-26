@@ -17,6 +17,7 @@ const innerAddons = useVectorInputAddons(() => props.field.type, () => 'inner')
         :rules="rules"
         :error-messages="errorMessages"
         :hint="field.help ?? undefined"
+        :placeholder="field.placeholder ?? undefined"
         :persistent-hint="!!field.help"
         :clearable="field.nullable === true"
         :disabled="props.disabled"

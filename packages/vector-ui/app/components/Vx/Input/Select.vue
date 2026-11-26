@@ -20,6 +20,7 @@ const shared = computed(() => ({
     errorMessages: props.errorMessages,
     clearable: props.field.nullable === true,
     hint: props.field.help ?? undefined,
+    placeholder: props.field.placeholder ?? undefined,
     persistentHint: !!props.field.help,
     disabled: props.disabled,
 }))
