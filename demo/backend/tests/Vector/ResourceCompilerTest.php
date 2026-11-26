@@ -1350,6 +1350,14 @@ final class ResourceCompilerTest extends TestCase
         self::assertSame(['json', 'object'], [self::field($compiled, 'attributes')['valueType'], self::field($compiled, 'attributes')['jsonObjects']], 'a ?stdClass property holds one object');
         self::assertSame([['label', 'value'], ['string', 'int'], 2, 2], [array_column($specs['repeater']['rowFields'], 'name'), array_column($specs['repeater']['rowFields'], 'valueType'), $specs['repeater']['min'], $specs['repeater']['max']], 'as few rows as it allows at most');
 
+        $tagged = new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), TagField::make('keywords')->default(['sale', 'new'])];
+            }
+        };
+        self::assertSame(['sale', 'new'], self::field($this->compile($tagged)['products'], 'keywords')['default'], 'a list of strings is a tag default');
+
         $json = new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
             public function fields(): array
             {
@@ -1390,6 +1398,12 @@ final class ResourceCompilerTest extends TestCase
                 public function fields(): array
                 {
                     return [Id::make(), TagField::make('keywords')->default(['first' => 'sale'])];
+                }
+            }],
+            ['keywords', 'is a tag field, whose default is a list of strings', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), TagField::make('keywords')->default(['sale', 1])];
                 }
             }],
         ];

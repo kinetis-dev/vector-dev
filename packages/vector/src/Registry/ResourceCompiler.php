@@ -1629,7 +1629,7 @@ final class ResourceCompiler
 
         $default = ($field['hasDefault'] ?? false) === true ? $field['default'] : null;
 
-        if ($default !== null && (!is_array($default) || !array_is_list($default) || !array_all($default, is_string(...)))) {
+        if ($default !== null && (!is_array($default) || !array_is_list($default) || !array_all($default, static fn (mixed $v): bool => is_string($v)))) {
             throw ResourceCompileException::field($class, $name, 'is a tag field, whose default is a list of strings');
         }
     }
