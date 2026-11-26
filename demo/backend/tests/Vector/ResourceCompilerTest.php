@@ -199,6 +199,8 @@ final class ResourceCompilerTest extends TestCase
 
         $many = ResourceCompiler::compileLoose(Select::make('codes')->options(['a' => 'A', 'b' => 'B'])->multiple()->default(['b']), [], 'Owner');
         self::assertSame(['json', null, ['b']], [$many['valueType'], $many['enum'], $many['default']], 'a multiple select holds a list');
+        self::assertNull(ResourceCompiler::compileLoose(Select::make('code')->options(['a' => 'A'])->default(null), [], 'Owner')['default'], 'a null default is no default to check');
+        self::assertNull(ResourceCompiler::compileLoose(Select::make('codes')->options(['a' => 'A'])->multiple()->default(null), [], 'Owner')['default']);
 
         $country = ResourceCompiler::compileLoose(Country::make('country')->only(['FR', 'DE']), [], 'Owner');
         self::assertSame(['string', ['FR', 'DE']], [$country['valueType'], array_column($country['options'], 'value')]);
@@ -213,6 +215,7 @@ final class ResourceCompilerTest extends TestCase
         $flags = ResourceCompiler::compileLoose(BooleanGroup::make('notify')->options(['email' => 'Email', 'sms' => 'SMS'])->default(['sms' => true]), [], 'Owner');
         self::assertSame(['json', 'json', false, ['sms' => true]], [$flags['valueType'], $flags['storage'], $flags['nullable'], $flags['default']]);
         self::assertNull(ResourceCompiler::compileLoose(BooleanGroup::make('notify')->options(['email' => 'Email'])->default(null), [], 'Owner')['default'], 'a null default is no default to check');
+        self::assertSame([], ResourceCompiler::compileLoose(BooleanGroup::make('notify')->options(['email' => 'Email'])->default([]), [], 'Owner')['default'], 'an empty object ticks no flag');
 
         foreach ([['push' => true], ['email'], ['email' => 'yes'], 'email'] as $default) {
             self::assertSame(
@@ -1108,6 +1111,23 @@ final class ResourceCompilerTest extends TestCase
         self::assertSame([true, ['isLocked' => true]], [self::field($compiled, 'lock')['hasDefault'], self::field($compiled, 'lock')['default']]);
         self::assertSame(['isStarred' => true], self::field($compiled, 'star')['default']);
         self::assertSame('is_active', $compiled['columns']['state.isActive']);
+        self::assertSame([
+            'name' => 'state.isActive',
+            'type' => 'boolean',
+            'label' => 'State: Active',
+            'column' => 'is_active',
+            'valueType' => 'bool',
+            'nullable' => false,
+            'filterable' => true,
+            'sortable' => true,
+            'operators' => ['eq'],
+            'views' => [],
+            'rules' => [],
+        ], ResourceCompiler::flagField($state, 'isActive'), 'one flag reads as the boolean field of its column');
+        $locked = ResourceCompiler::flagField(self::field($compiled, 'lock'), 'isLocked');
+        self::assertNotNull($locked);
+        self::assertSame([false, false, []], [$locked['filterable'], $locked['sortable'], $locked['operators']], 'a flag of a group neither filterable nor sortable');
+        self::assertNull(ResourceCompiler::flagField($state, 'nope'));
         self::assertSame([['field' => 'state.isActive', 'order' => 'desc'], ['field' => 'id', 'order' => 'asc']], $compiled['table_view']['defaultSort']);
         self::assertSame(['possible' => true, 'reason' => null], $compiled['creation'], 'the group writes the required isActive');
         self::assertSame(['notes'], $compiled['ownedRelations'], 'the owned relations are a list');
