@@ -76,6 +76,8 @@ export default {
         lessThanOrEqual: 'Має бути не більше {limit}',
         invalidFormat: 'Неправильний формат',
         notAllowed: 'Недопустиме значення',
+        minDate: 'Має бути не раніше {limit}',
+        maxDate: 'Має бути не пізніше {limit}',
     },
     rows: {
         add: 'Додати рядок',

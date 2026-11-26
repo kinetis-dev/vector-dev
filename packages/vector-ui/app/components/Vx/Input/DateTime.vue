@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import type { VectorField } from '#vector/app/types/vector'
+import { controlLimits, dateBoundsOf } from '#vector/app/utils/internal/dateBounds'
 
 // A native date/datetime control: the wire value is ISO 8601 in UTC, the
 // control edits local time, and the conversion lives here.
 const props = defineProps<{ field: VectorField, rules: ((v: unknown) => true | string)[], errorMessages: string[], record?: Record<string, unknown>, resource?: string }>()
 const model = defineModel<string | null>()
 const dateOnly = computed(() => props.field.type === 'date')
+
+// minDate() and maxDate() as the control's own limits; `today` and `now` are read again whenever it gains focus
+const now = ref(new Date())
+const limits = computed(() => controlLimits(dateBoundsOf(props.field), now.value))
 
 function pad(n: number) { return String(n).padStart(2, '0') }
 
@@ -34,5 +39,8 @@ const local = computed({
         :clearable="field.nullable === true"
         :hint="field.help ?? undefined"
         :persistent-hint="!!field.help"
+        :min="limits.min"
+        :max="limits.max"
+        @focus="now = new Date()"
     />
 </template>

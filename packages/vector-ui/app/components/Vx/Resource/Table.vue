@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { fieldProps, type VectorAction, type VectorExportFormat, type VectorField, type VectorFilterGroup, type VectorFilterQuery, type VectorFilters, type VectorListState, type VectorPage, type VectorRecord, type VectorResource, type VectorSelection, type VectorSort, type VectorSavedView } from '#vector/app/types/vector'
 import type { VectorPageStep } from '#vector/app/composables/useVectorCursorPager'
-import { type Violation, violationsOf } from '#vector/app/utils/internal/violations'
+import { type Violation, violationsOf, violationText } from '#vector/app/utils/internal/violations'
 
 // The list view: a server-driven table whose every option (page, size,
 // sort, filters, search, grouping, columns) becomes one list request,
@@ -460,8 +460,9 @@ function showChangesFailure(error: unknown, list: { id: string | number, values:
 function showChangeViolation(violation: Violation, list: { id: string | number, values: Record<string, unknown> }[]) {
     const [, index, field] = violation.path
     const change = typeof index === 'number' ? list[index] : undefined
-    if (change && typeof field === 'string' && field in change.values) cellErrors[cellKey(change.id, field)] = violation.message
-    else notifications.error(field ? `${String(field)}: ${violation.message}` : violation.message)
+    const message = violationText(violation)
+    if (change && typeof field === 'string' && field in change.values) cellErrors[cellKey(change.id, field)] = message
+    else notifications.error(field ? `${String(field)}: ${message}` : message)
 }
 
 async function mayLeave(): Promise<boolean> {

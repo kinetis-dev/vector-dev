@@ -76,6 +76,8 @@ export default {
         lessThanOrEqual: 'הערך חייב להיות לכל היותר {limit}',
         invalidFormat: 'תבנית לא תקינה',
         notAllowed: 'ערך לא מותר',
+        minDate: 'חייב להיות ב־{limit} או אחריו',
+        maxDate: 'חייב להיות ב־{limit} או לפניו',
     },
     rows: {
         add: 'הוספת שורה',

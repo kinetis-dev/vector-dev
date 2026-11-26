@@ -76,6 +76,8 @@ export default {
         lessThanOrEqual: 'يجب ألا تزيد القيمة على {limit}',
         invalidFormat: 'تنسيق غير صالح',
         notAllowed: 'قيمة غير مسموح بها',
+        minDate: 'يجب أن يكون في {limit} أو بعده',
+        maxDate: 'يجب أن يكون في {limit} أو قبله',
     },
     rows: {
         add: 'إضافة صف',

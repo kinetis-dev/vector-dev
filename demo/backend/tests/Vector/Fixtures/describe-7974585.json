@@ -167,6 +167,9 @@
                 ],
                 "required": false,
                 "nullable": true,
+                "rules": [
+                    "DateBounds(\"date\", \"2010-01-01\", \"today\")"
+                ],
                 "filter": [
                     "eq",
                     "ne",

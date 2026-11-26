@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   textarea, number, money, JSON, Markdown, rich-text, currency, tag,
   searchable select and relation inputs. A relation without one keeps
   its own "Type to search".
+- A date or date-time field's `DateBounds` rule: the native control's
+  `min` and `max`, and a form rule that compares days as days and
+  instants as instants, with `today` and `now` resolved to the user's
+  own day and instant each time. The server's `date_too_early` and
+  `date_too_late` violations are shown in the UI's language, naming the
+  bound as the user's date.
 
 ### Changed
 

@@ -76,6 +76,8 @@ export default {
         lessThanOrEqual: 'En fazla {limit} olmalı',
         invalidFormat: 'Geçersiz biçim',
         notAllowed: 'İzin verilen bir değer değil',
+        minDate: '{limit} veya sonrası olmalıdır',
+        maxDate: '{limit} veya öncesi olmalıdır',
     },
     rows: {
         add: 'Satır ekle',

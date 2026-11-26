@@ -310,7 +310,16 @@
                     "create",
                     "update"
                 ],
-                "rules": [],
+                "rules": [
+                    {
+                        "constraint": "Kinetis\\Vector\\Validation\\DateBounds",
+                        "args": [
+                            "date",
+                            "2010-01-01",
+                            "today"
+                        ]
+                    }
+                ],
                 "props": [],
                 "summary": null,
                 "default": null,

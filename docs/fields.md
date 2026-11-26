@@ -22,7 +22,7 @@ second column.
 | `Money` | `money` | An amount in the currency's minor units (cents, whole yen); see [Money and currencies](#money-and-currencies). |
 | `Currency` | `currency` | An ISO 4217 code in a string column, chosen from a searchable list that names each code in the UI's language (`EUR · Euro`). The list holds every code, or `allowed(['EUR', 'USD'])`. Codes are stored upper-case, anything else is refused, and it filters like a single select. It starts from `default('EUR')`, else `VECTOR_CURRENCY`. |
 | `Boolean` | `boolean` | True or false. |
-| `Date`, `DateTime` | `date`, `datetime` | A calendar day, `YYYY-MM-DD` on the wire with no time or zone; or an instant, ISO 8601 on the wire in UTC. See {doc}`databases` for `DATE` columns. |
+| `Date`, `DateTime` | `date`, `datetime` | A calendar day, `YYYY-MM-DD` on the wire with no time or zone; or an instant, ISO 8601 on the wire in UTC. `minDate()` and `maxDate()` bound it; see [Date bounds](#date-bounds). See {doc}`databases` for `DATE` columns. |
 | `Select` | `select` | A choice among fixed options, one value or several with `multiple()`; see [Select](#select). |
 | `BooleanGroup` | `booleanGroup` | Named on/off options shown as one cell and edited as one group of checkboxes, in a bool column each or in one JSON column; see [BooleanGroup](#booleangroup). |
 | `Country` | `country` | An ISO 3166-1 alpha-2 country code, or several: a select over every assigned code; see [Country](#country). |
@@ -95,6 +95,45 @@ A filterable field offers the operators its value admits:
 
 A nullable column adds `null` and `nnull`. Collections are never
 filterable. The list grammar and "any of" groups are on {doc}`rest-api`.
+
+## Date bounds
+
+`minDate()` and `maxDate()` give a `Date` or `DateTime` field its earliest
+and latest value, the bound itself included:
+
+```php
+Date::make('joinedOn', 'Joined')->minDate('2010-01-01')->maxDate('today'),
+DateTime::make('publishAt')->minDate('now'),
+```
+
+A bound is a `Kinetis\Orm\Date` (for a date) or a `DateTimeInterface`, a
+string in the field's own format (`YYYY-MM-DD` for a date, ISO 8601 with
+its zone for a date-time, stored as its UTC instant), or a relative
+keyword: `today` for a date, `now` for a date-time. A bound the field does
+not take, and a minimum after the maximum, are refused when the field is
+defined. `min()` and `max()` bound a text's length, so a date field
+refuses them with a `LogicException` that points to `minDate()` and
+`maxDate()`.
+
+The server checks the bounds on every write: create, update, inline and
+bulk edits, action inputs and imports. A value outside them is refused
+with `date_too_early` (its `min` parameter naming the bound as declared,
+`today` included) or `date_too_late` (`max`). A relative bound is
+resolved each time a value is checked, never when the resource compiles,
+so a worker that runs for days still compares with the current day.
+
+`now` is the current instant. `today` is the current calendar day, which
+depends on where one is: the server takes it as the current day anywhere
+on Earth, so a minimum of `today` admits the earliest current day (that
+of UTC-12) and a maximum the latest (that of UTC+14). The form resolves
+`today` to the user's own day in the browser's time zone, which always
+lies within, and uses it for the native control's `min` and `max` and for
+its own check. A date-time's control edits local time and converts it to
+the UTC instant the server compares.
+
+The descriptor carries the bounds as the field's `DateBounds` rule
+(`args`: the kind, the minimum and the maximum, each `null` when not set),
+and `vector_describe` lists it among the field's rules.
 
 ## Select
 

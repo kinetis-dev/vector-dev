@@ -76,6 +76,8 @@ export default {
         lessThanOrEqual: '必须最多为 {limit}',
         invalidFormat: '格式无效',
         notAllowed: '不是允许的值',
+        minDate: '必须不早于 {limit}',
+        maxDate: '必须不晚于 {limit}',
     },
     rows: {
         add: '添加行',

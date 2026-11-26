@@ -76,6 +76,8 @@ export default {
         lessThanOrEqual: 'Должно быть не больше {limit}',
         invalidFormat: 'Неверный формат',
         notAllowed: 'Недопустимое значение',
+        minDate: 'Должно быть не раньше {limit}',
+        maxDate: 'Должно быть не позже {limit}',
     },
     rows: {
         add: 'Добавить строку',

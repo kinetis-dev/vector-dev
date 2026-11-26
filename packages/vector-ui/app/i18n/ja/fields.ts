@@ -76,6 +76,8 @@ export default {
         lessThanOrEqual: '{limit} 以下にしてください',
         invalidFormat: '形式が正しくありません',
         notAllowed: '許可されていない値です',
+        minDate: '{limit} 以降にしてください',
+        maxDate: '{limit} 以前にしてください',
     },
     rows: {
         add: '行を追加',

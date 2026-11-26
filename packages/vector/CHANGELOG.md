@@ -16,6 +16,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DateTime`, `File`, `Image`, `KeyValue`, `Repeater`, `Computed`,
   `Id`, `HasOne`, `HasMany`) refuses it with a `LogicException` when
   it is defined.
+- `minDate()` and `maxDate()` on `Date` and `DateTime`: the earliest and
+  latest value, as a `Kinetis\Orm\Date` or `DateTimeInterface`, a
+  string in the field's own format, or the relative `today` (a date)
+  and `now` (a date-time). `Validation\DateBounds` checks them on every
+  write path and refuses a value with `date_too_early` or
+  `date_too_late`, naming the bound as declared. A relative bound is
+  resolved at each check, never at compile time; `today` is the current
+  day anywhere on Earth (UTC-12 for a minimum, UTC+14 for a maximum). A
+  bound the field does not take, or a minimum after the maximum, is
+  refused where it is declared.
+
+### Changed
+
+- `min()` and `max()` on `Date` and `DateTime` throw a `LogicException`
+  pointing to `minDate()` and `maxDate()`: they bound a text's length.
 
 ## [0.18.0] - 2026-11-25
 

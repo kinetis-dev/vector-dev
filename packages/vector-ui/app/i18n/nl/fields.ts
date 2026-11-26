@@ -76,6 +76,8 @@ export default {
         lessThanOrEqual: 'Moet maximaal {limit} zijn',
         invalidFormat: 'Ongeldige notatie',
         notAllowed: 'Geen toegestane waarde',
+        minDate: 'Moet op of na {limit} zijn',
+        maxDate: 'Moet op of voor {limit} zijn',
     },
     rows: {
         add: 'Rij toevoegen',

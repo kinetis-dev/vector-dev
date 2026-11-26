@@ -1,5 +1,5 @@
 import type { VectorField } from '#vector/app/types/vector'
-import { violationsOf } from '#vector/app/utils/internal/violations'
+import { violationsOf, violationText } from '#vector/app/utils/internal/violations'
 
 /** The value a fresh input holds: the field's default, or the type's empty value. */
 export function initialValue(field: VectorField): unknown {
@@ -53,11 +53,13 @@ export function applyViolations(error: unknown, values: Record<string, unknown>,
     for (const violation of violationsOf(violations)) {
         const key = String(violation.path[0] ?? '')
 
+        const message = violationText(violation)
+
         if (key && key in values) {
             serverErrors[key] ??= []
-            serverErrors[key].push(`${violation.message.charAt(0).toUpperCase()}${violation.message.slice(1)}`)
+            serverErrors[key].push(`${message.charAt(0).toUpperCase()}${message.slice(1)}`)
         } else {
-            general = violation.message
+            general = message
         }
     }
 

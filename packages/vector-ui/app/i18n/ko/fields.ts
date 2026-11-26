@@ -76,6 +76,8 @@ export default {
         lessThanOrEqual: '{limit} 이하여야 합니다',
         invalidFormat: '잘못된 형식',
         notAllowed: '허용되지 않는 값',
+        minDate: '{limit} 이후여야 합니다',
+        maxDate: '{limit} 이전이어야 합니다',
     },
     rows: {
         add: '행 추가',

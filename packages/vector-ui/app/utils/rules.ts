@@ -1,5 +1,6 @@
 import type { VectorCondition, VectorField, VectorFieldState, VectorRule } from '#vector/app/types/vector'
 import { isEmailAddress, phpRegex } from '#vector/app/utils/internal/patterns'
+import { boundsOfRule, boundViolation, type DateBounds } from '#vector/app/utils/internal/dateBounds'
 
 type Rule = (value: unknown) => true | string
 
@@ -58,8 +59,24 @@ function compile(rule: VectorRule): Rule | null {
             return value => empty(value) || typeof value !== 'string' || phpRegex(String(a)).test(value) || (typeof b === 'string' ? b : vt('fields.rules.invalidFormat'))
         case 'In':
             return value => empty(value) || (Array.isArray(a) && a.includes(value)) || vt('fields.rules.notAllowed')
+        case 'DateBounds':
+            return dateRule(boundsOfRule(rule))
         default:
             return null
+    }
+}
+
+/**
+ * minDate() and maxDate(): days compared as days, instants as instants,
+ * `today` and `now` resolved each time the rule runs, in the user's own
+ * time zone.
+ */
+function dateRule(bounds: DateBounds): Rule {
+    return (value) => {
+        const broken = boundViolation(bounds, value, new Date())
+        if (!broken) return true
+        const limit = typeof broken.bound === 'string' ? formatDate(broken.bound) : formatDateTime(broken.bound.toISOString())
+        return vt(broken.side === 'min' ? 'fields.rules.minDate' : 'fields.rules.maxDate', { limit })
     }
 }
 

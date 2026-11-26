@@ -76,6 +76,8 @@ export default {
         lessThanOrEqual: 'Must be at most {limit}',
         invalidFormat: 'Invalid format',
         notAllowed: 'Not an allowed value',
+        minDate: 'Must be on or after {limit}',
+        maxDate: 'Must be on or before {limit}',
     },
     rows: {
         add: 'Add row',
