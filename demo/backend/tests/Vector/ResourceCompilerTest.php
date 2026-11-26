@@ -1309,6 +1309,126 @@ final class ResourceCompilerTest extends TestCase
         }
     }
 
+    public function testTagsJsonAndRowsLiveInAJsonColumn(): void
+    {
+        $products = new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [
+                    Id::make(),
+                    TagField::make('keywords')->filterable()->default([]),
+                    KeyValue::make('attributes'),
+                    Repeater::make('specs')->fields([Text::make('label')->required(), Number::make('value')])->min(2)->max(2),
+                ];
+            }
+        };
+        $compiled = $this->compile($products)['products'];
+        $keywords = self::field($compiled, 'keywords');
+        $specs = self::field($compiled, 'specs');
+
+        self::assertSame([[], ['any', 'all', 'null', 'nnull']], [$keywords['default'], $keywords['operators']], 'an empty list is a list of strings');
+        self::assertSame(['json', 'object'], [self::field($compiled, 'attributes')['valueType'], self::field($compiled, 'attributes')['jsonObjects']], 'a ?stdClass property holds one object');
+        self::assertSame([['label', 'value'], ['string', 'int'], 2, 2], [array_column($specs['repeater']['rowFields'], 'name'), array_column($specs['repeater']['rowFields'], 'valueType'), $specs['repeater']['min'], $specs['repeater']['max']], 'as few rows as it allows at most');
+
+        $json = new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Json::make('attributes')];
+            }
+        };
+        self::assertSame('object', self::field($this->compile($json)['products'], 'attributes')['jsonObjects']);
+    }
+
+    public function testATagFieldIsAListOfStringsNeitherSortedNorEditedInline(): void
+    {
+        $refusals = [
+            ['name', 'is a tag field, which stores a JSON list of strings: declare the property array or ?array, not string', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), TagField::make('name')];
+                }
+            }],
+            ['keywords', 'is a tag field, which cannot be sorted, grouped, searched, summarized or edited inline', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), TagField::make('keywords')->sortable()];
+                }
+            }],
+            ['keywords', 'is a tag field, which cannot be sorted, grouped, searched, summarized or edited inline', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), TagField::make('keywords')->inlineEditable()];
+                }
+            }],
+            ['keywords', 'is a tag field, whose default is a list of strings', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), TagField::make('keywords')->default('sale')];
+                }
+            }],
+            ['keywords', 'is a tag field, whose default is a list of strings', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), TagField::make('keywords')->default(['first' => 'sale'])];
+                }
+            }],
+        ];
+
+        foreach ($refusals as [$field, $reason, $resource]) {
+            $this->assertRefused(self::fieldRefusal($resource, $field, $reason), $resource);
+        }
+    }
+
+    public function testAJsonColumnNeedsAnObjectPropertyAndAJsonRepeaterAnArrayOne(): void
+    {
+        $refusals = [
+            ['specs', 'is a JSON field on the array property "specs", which would store {} as []: declare the property stdClass, ?stdClass, array|stdClass or array|stdClass|null', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Json::make('specs')];
+                }
+            }],
+            ['name', 'is a JSON repeater, which stores its rows in a JSON column: declare the property array or ?array, not string', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('name')->fields([Text::make('label')])];
+                }
+            }],
+            ['specs', 'is a repeater, which cannot be sorted, grouped, filtered, searched, summarized or edited inline', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('specs')->fields([Text::make('label')])->sortable()];
+                }
+            }],
+            ['specs', 'is a repeater, which cannot be sorted, grouped, filtered, searched, summarized or edited inline', new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Repeater::make('specs')->fields([Text::make('label')])->inlineEditable()];
+                }
+            }],
+            ['nope', 'is not a mapped property of ' . Product::class, new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), Text::make('nope')];
+                }
+            }],
+        ];
+
+        foreach ($refusals as [$field, $reason, $resource]) {
+            $this->assertRefused(self::fieldRefusal($resource, $field, $reason), $resource);
+        }
+    }
+
+    public function testDerivationLeavesOutAnArrayPropertyAndMapsAnObjectOneToJson(): void
+    {
+        $derived = new #[Resource(Product::class, slug: 'products')] class extends VectorResource {
+        };
+        $fields = array_column($this->compile($derived)['products']['fields'], null, 'name');
+
+        self::assertSame([false, false, false], [isset($fields['channels']), isset($fields['specs']), isset($fields['keywords'])], 'a Json field cannot map an array property');
+        self::assertSame(['json', 'object'], [$fields['attributes']['type'], $fields['attributes']['jsonObjects']]);
+    }
+
     private function assertRefused(string $message, VectorResource ...$resources): void
     {
         try {
