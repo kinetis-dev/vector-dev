@@ -375,7 +375,8 @@ final readonly class ListRequest
         }
 
         // a bare value is equality, or "any" for a list (a multiple select's, or tags) or a flag group's keys
-        $operators = is_array($spec) ? $spec : [self::takesKeys($field) || $field['type'] === 'tag' ? 'any' : 'eq' => $spec];
+        $bare = self::takesKeys($field) || $field['type'] === 'tag' ? 'any' : 'eq';
+        $operators = is_array($spec) ? $spec : [$bare => $spec];
         $filters = [];
 
         foreach ($operators as $op => $value) {

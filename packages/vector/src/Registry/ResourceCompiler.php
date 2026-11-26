@@ -1574,20 +1574,8 @@ final class ResourceCompiler
                 throw ResourceCompileException::field($class, $name, 'is a word the filter grammar reserves, so it cannot be filterable');
             }
 
-            if ($field['type'] === 'currency') {
-                self::checkCurrency($class, $name, $field);
-            }
-
-            if ($field['type'] === 'password' && isset($field['props']['hasher'])) {
-                self::checkHasher($class, $name, $field);
-            }
-
             if ($field['type'] === 'richtext') {
                 $compiledFields[$name] = self::compileRichText($class, $field, $compiledFields, $properties);
-            }
-
-            if ($field['type'] === 'keyValue' || $field['type'] === 'json') {
-                self::checkJsonColumn($class, $name, $field);
             }
 
             if (self::isSelect($field)) {
@@ -1598,26 +1586,48 @@ final class ResourceCompiler
                 $compiledFields[$name] = self::compileBooleanGroup($class, $field, $compiledFields);
             }
 
-            if (self::isDateRange($field)) {
-                self::checkDateRange($class, $field, $compiledFields);
-            }
-
-            if ($field['type'] === 'tag') {
-                self::checkTag($class, $name, $field);
-            }
-
-            if ($field['type'] === 'code' && ($field['valueType'] ?? null) !== 'string') {
-                throw ResourceCompileException::field($class, $name, 'is a code field, which stores its text in a string property, not ' . ($field['valueType'] ?? 'none'));
-            }
-
-            if ($field['type'] === 'repeater') {
-                self::checkRepeater($class, $name, $field);
-            }
-
+            self::checkFieldType($class, $name, $field, $compiledFields);
             self::checkInline($class, $name, $field);
         }
 
         return $compiledFields;
+    }
+
+    /**
+     * What a field type requires of one field it does not compile.
+     *
+     * @param array<string, mixed> $field
+     * @param array<string, array<string, mixed>> $compiledFields
+     */
+    private static function checkFieldType(string $class, string $name, array $field, array $compiledFields): void
+    {
+        if ($field['type'] === 'currency') {
+            self::checkCurrency($class, $name, $field);
+        }
+
+        if ($field['type'] === 'password' && isset($field['props']['hasher'])) {
+            self::checkHasher($class, $name, $field);
+        }
+
+        if ($field['type'] === 'keyValue' || $field['type'] === 'json') {
+            self::checkJsonColumn($class, $name, $field);
+        }
+
+        if (self::isDateRange($field)) {
+            self::checkDateRange($class, $field, $compiledFields);
+        }
+
+        if ($field['type'] === 'tag') {
+            self::checkTag($class, $name, $field);
+        }
+
+        if ($field['type'] === 'code' && ($field['valueType'] ?? null) !== 'string') {
+            throw ResourceCompileException::field($class, $name, 'is a code field, which stores its text in a string property, not ' . ($field['valueType'] ?? 'none'));
+        }
+
+        if ($field['type'] === 'repeater') {
+            self::checkRepeater($class, $name, $field);
+        }
     }
 
     /** @param array<string, mixed> $field */

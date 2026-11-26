@@ -12,6 +12,7 @@ use Kinetis\Container\RequestScope;
 use Kinetis\Orm\EntityManagerRegistry;
 use Kinetis\Orm\Metadata\MetadataRegistry;
 use Kinetis\Orm\OrmFactoryRegistry;
+use Kinetis\Vector\Fields\Tag;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Write\InputViolation;
 use Kinetis\Vector\Write\ValueConverter;
@@ -161,6 +162,46 @@ final class ValueConverterTest extends TestCase
         }
 
         self::assertSame('must be a JSON object or array.', $this->mismatch(fn () => $this->converter()->fromQuery($json, '"text"')));
+    }
+
+    /**
+     * A JSON repeater's, a key-value's and a JSON field's cell is JSON
+     * text: decoded when it holds what the field stores, refused by what
+     * it should be otherwise, and a document deeper than any field may
+     * nest is refused as too deep.
+     */
+    public function testAJsonTextCellIsDecodedOrRefused(): void
+    {
+        $repeater = ['type' => 'repeater', 'valueType' => 'json'];
+        $keyValue = ['type' => 'keyValue', 'valueType' => 'json', 'props' => []];
+        $json = ['type' => 'json', 'valueType' => 'json'];
+
+        self::assertSame([['label' => 'x']], $this->converter()->fromQuery($repeater, '[{"label": "x"}]'));
+        self::assertSame([], $this->converter()->fromQuery($repeater, '[]'));
+
+        foreach (['{"label": "x"}', 'not json', '"text"'] as $raw) {
+            self::assertSame('must be a JSON list of rows.', $this->mismatch(fn () => $this->converter()->fromQuery($repeater, $raw)), $raw);
+        }
+
+        self::assertSame(['size' => 'M'], $this->converter()->fromQuery($keyValue, '{"size": "M"}'));
+
+        foreach (['not json', '7'] as $raw) {
+            self::assertSame('must be a JSON object of text values.', $this->mismatch(fn () => $this->converter()->fromQuery($keyValue, $raw)), $raw);
+        }
+
+        self::assertSame([1, 2], $this->converter()->fromQuery($json, '[1, 2]'));
+        self::assertSame('must be a JSON object or array.', $this->mismatch(fn () => $this->converter()->fromQuery($json, '{"a":')));
+        self::assertSame('nests too deeply.', $this->mismatch(fn () => $this->converter()->fromQuery($json, str_repeat('[', 1000) . str_repeat(']', 1000))));
+    }
+
+    /** Tags are stored without the whitespace around them, Unicode spaces included, and keep the spaces inside. */
+    public function testATagIsTrimmedAtBothEndsOnly(): void
+    {
+        self::assertSame('a b', Tag::trim("\u{00A0} a b\t"));
+        self::assertSame('a b', Tag::trim('a b '));
+        self::assertSame('a b', Tag::trim("\u{3000}a b"));
+        self::assertSame('', Tag::trim(" \u{2003} "));
+        self::assertSame("a\nb", Tag::trim("a\nb\n"));
     }
 
     /**

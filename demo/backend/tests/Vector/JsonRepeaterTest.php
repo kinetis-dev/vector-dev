@@ -27,7 +27,9 @@ use Kinetis\Vector\Fields\Repeater;
 use Kinetis\Vector\Fields\Select;
 use Kinetis\Vector\Fields\Tag;
 use Kinetis\Vector\Fields\Text;
+use Kinetis\Vector\Mcp\ResourceDescription;
 use Kinetis\Vector\Registry\ResourceCompiler;
+use Kinetis\Vector\Registry\ResourceDescriptor;
 use Kinetis\Vector\Registry\VectorRegistry;
 use Kinetis\Vector\Testing\InteractsWithVector;
 use Kinetis\Vector\VectorResource;
@@ -169,6 +171,26 @@ final class JsonRepeaterTest extends VectorTestCase
         }
     }
 
+    /** A field a row leaves out takes its default, as a new record's would, or null without one. */
+    public function testARowFieldLeftOutTakesItsDefault(): void
+    {
+        $compiled = $this->compileProducts(new #[Resource(Product::class, slug: 'json-repeater-products')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Repeater::make('specs')->fields([Text::make('unit')->default('pcs'), Text::make('note')])];
+            }
+        });
+        $field = array_column($compiled['fields'], null, 'name')['specs'];
+        $converter = new ValueConverter(
+            VectorRegistry::fromArray(['version' => VectorRegistry::VERSION, 'resources' => [], 'settings' => [], 'dashboards' => []]),
+            EntityManagerRegistry::create(OrmFactoryRegistry::create([], MetadataRegistry::fromClasses([]))),
+            new RequestScope(new AppScope()),
+        );
+
+        self::assertSame([['unit' => 'pcs', 'note' => null]], $converter->convert($field, [[]]));
+        self::assertSame([['unit' => 'kg', 'note' => 'x']], $converter->convert($field, [['unit' => 'kg', 'note' => 'x']]));
+    }
+
     public function testTheCompilerRefusesWhatAJsonRepeaterCannotHold(): void
     {
         $cases = [
@@ -299,6 +321,20 @@ final class JsonRepeaterTest extends VectorTestCase
         self::assertStringContainsString('a list of 1 to 50 rows', $orders['lines']['format']);
         self::assertStringContainsString('a row left out is deleted, all saved with the record; the list order is the rows\' order', $orders['lines']['format']);
         self::assertSame([['name' => 'product'], ['name' => 'quantity'], ['name' => 'unitPriceCents']], $orders['lines']['rows']);
+
+        // a relationship repeater that is not sortable says nothing of the order
+        $registry = $this->app->get(VectorRegistry::class);
+        self::assertInstanceOf(VectorRegistry::class, $registry);
+        $data = $registry->toArray()['resources']['orders'];
+
+        foreach ($data['fields'] as $i => $field) {
+            if ($field['name'] === 'lines') {
+                $data['fields'][$i]['repeater']['sortable'] = false;
+            }
+        }
+
+        $unsorted = array_column(ResourceDescription::of(new ResourceDescriptor($data), [])['fields'], null, 'name');
+        self::assertStringEndsWith('a row left out is deleted, all saved with the record', $unsorted['lines']['format']);
     }
 
     /** @return array<string, mixed> */
