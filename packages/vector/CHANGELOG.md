@@ -14,8 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   translated like its label and carried by `vector_describe`. A field
   whose input has no text box (`Boolean`, `BooleanGroup`, `Date`,
   `DateTime`, `File`, `Image`, `KeyValue`, `Repeater`, `Computed`,
-  `Id`, `HasOne`, `HasMany`) refuses it with a `LogicException` when
-  it is defined.
+  `Id`, `HasOne`, `HasMany`, `DateRange`) refuses it with a
+  `LogicException` when it is defined.
 - `minDate()` and `maxDate()` on `Date` and `DateTime`: the earliest and
   latest value, as a `Kinetis\Orm\Date` or `DateTimeInterface`, a
   string in the field's own format, or the relative `today` (a date)

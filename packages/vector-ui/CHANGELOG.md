@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A field's `placeholder` shows inside the empty text box of the text,
   textarea, number, money, JSON, Markdown, rich-text, currency, tag,
-  searchable select and relation inputs. A relation without one keeps
+  select (searchable or not) and relation inputs. A relation without one keeps
   its own "Type to search".
 - A date or date-time field's `DateBounds` rule: the native control's
   `min` and `max`, and a form rule that compares days as days and
@@ -30,8 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Vx/Input/DateRange.vue` and `Vx/Cell/DateRange.vue` for kinetis/vector's
   date range: two native date or date-time controls side by side, the
   filter bar's, the end's starting no earlier than the start, and a cell
-  reading "from to to" in the UI's language. A new form, bulk edit and an
-  action dialog start it as `{from: null, to: null}`. The form refuses
+  reading "from to to" in the UI's language. A new form and bulk edit
+  start it as `{from: null, to: null}` (an action dialog cannot ask for
+  a range). The form refuses
   one end alone and an end before the start, applies the field's date
   bounds to both ends, and shows the server's `range_incomplete` and
   `range_reversed` in the UI's language.
