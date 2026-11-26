@@ -217,6 +217,24 @@ final class DateRangeFieldTest extends VectorTestCase
         }
     }
 
+    public function testARangeChangedSinceMakesTheRevertAConflict(): void
+    {
+        $products = $this->vector($this->realAdminHeaders())->resource('products');
+        [$id, $stored] = $this->product();
+
+        try {
+            $products->update($id, ['promotion' => ['from' => '2027-07-01', 'to' => '2027-07-31']])->assertOk();
+            $first = $products->audit($id)->records()[0]['id'];
+            $products->update($id, ['promotion' => ['from' => '2027-08-01', 'to' => '2027-08-31']])->assertOk();
+
+            // the range is not what the entry wrote any more: the revert is refused and writes nothing
+            $products->revert($id, $first)->assertStatus(409);
+            self::assertSame(['2027-08-01', '2027-08-31'], $this->stored($id));
+        } finally {
+            $this->shop()->table('products')->where('id', '=', $id)->update(['promotion_starts_on' => $stored[0], 'promotion_ends_on' => $stored[1]]);
+        }
+    }
+
     public function testAOneSidedReversedOrMalformedRangeIsRefusedAtItsEnd(): void
     {
         $products = $this->vector($this->realAdminHeaders())->resource('products');
