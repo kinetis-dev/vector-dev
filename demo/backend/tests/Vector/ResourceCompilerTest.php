@@ -14,7 +14,12 @@ use App\Domain\OrderStatus;
 use App\Domain\Product;
 use App\Domain\Tag;
 use App\Domain\User;
+use App\Tests\Vector\Fixtures\Level;
 use App\Vector\TagResource;
+use Kinetis\Orm\Attributes\BelongsTo as OrmBelongsTo;
+use Kinetis\Orm\Attributes\Entity;
+use Kinetis\Orm\Attributes\HasMany as OrmHasMany;
+use Kinetis\Orm\Attributes\Id as EntityId;
 use Kinetis\Orm\Metadata\MetadataRegistry;
 use Kinetis\Vector\Actions\ActionRequest;
 use Kinetis\Vector\Actions\ActionResponse;
@@ -63,8 +68,8 @@ final class ResourceCompilerTest extends TestCase
     /** Compiled with every resource under test: the relation targets the fixtures name. */
     private const array FIXTURES = [CompilerCustomers::class, CompilerOrders::class, CompilerOrderLines::class, CompilerProducts::class, CompilerCategories::class];
 
-    /** The shop's entities, every relationship target among them. */
-    private const array ENTITIES = [Category::class, Customer::class, CustomerProfile::class, Order::class, OrderLine::class, Product::class, Tag::class, User::class];
+    /** The shop's entities, every relationship target among them, and the board fixtures at the end of this file. */
+    private const array ENTITIES = [Category::class, Customer::class, CustomerProfile::class, Order::class, OrderLine::class, Product::class, Tag::class, User::class, CompilerBoard::class, CompilerCard::class, CompilerNote::class];
 
     public function testEachFieldTypeFiltersWithTheOperatorsOfItsShape(): void
     {
@@ -1071,6 +1076,130 @@ final class ResourceCompilerTest extends TestCase
         $this->assertRefused('Resource ' . CompilerConditionAction::class . ', field "note": has a visible condition on "missing", which is not a field of the same form', $condition);
     }
 
+    public function testAFlagGroupInColumnsModeWritesEachFlagsBoolColumn(): void
+    {
+        $board = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [
+                    Id::make(),
+                    Text::make('title'),
+                    // a flag with a default, one without, then one with again: the group starts with no value
+                    BooleanGroup::make('state')->options(['isMuted' => 'Muted', 'isActive' => 'Active', 'isPinned' => 'Pinned'])->sortable()->filterable(),
+                    // every flag with a default: so has the group
+                    BooleanGroup::make('lock')->options(['isLocked' => 'Locked']),
+                    // a default of its own wins over the properties'
+                    BooleanGroup::make('star')->options(['isStarred' => 'Starred'])->default(['isStarred' => true]),
+                ];
+            }
+
+            public function defaultSort(): array
+            {
+                return ['-state.isActive', 'id'];
+            }
+        };
+        $compiled = $this->compile($board)['boards'];
+        $state = self::field($compiled, 'state');
+
+        self::assertSame(['isMuted' => 'is_muted', 'isActive' => 'is_active', 'isPinned' => 'is_pinned'], $state['flags']);
+        self::assertSame([false, 'json', false, true], [$state['nullable'], $state['valueType'], $state['sortable'], $state['flagsSortable']], 'the group sorts by each flag, never as a whole');
+        self::assertSame([false, null], [$state['hasDefault'], $state['default']]);
+        self::assertSame([true, ['isLocked' => true]], [self::field($compiled, 'lock')['hasDefault'], self::field($compiled, 'lock')['default']]);
+        self::assertSame(['isStarred' => true], self::field($compiled, 'star')['default']);
+        self::assertSame('is_active', $compiled['columns']['state.isActive']);
+        self::assertSame([['field' => 'state.isActive', 'order' => 'desc'], ['field' => 'id', 'order' => 'asc']], $compiled['table_view']['defaultSort']);
+        self::assertSame(['possible' => true, 'reason' => null], $compiled['creation'], 'the group writes the required isActive');
+        self::assertSame(['notes'], $compiled['ownedRelations'], 'the owned relations are a list');
+
+        $deeper = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), BooleanGroup::make('state')->options(['isActive' => 'Active'])->sortable()];
+            }
+
+            public function defaultSort(): array
+            {
+                return ['state.isActive.x'];
+            }
+        };
+        $this->assertRefused('Resource ' . $deeper::class . ': default sort names "state.isActive.x", which is not a sortable field', $deeper);
+    }
+
+    public function testAFlagIsABoolPropertyWrittenByOneGroupAlone(): void
+    {
+        $notBool = [
+            'nope' => new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), BooleanGroup::make('state')->options(['nope' => 'Unmapped'])];
+                }
+            },
+            'title' => new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), BooleanGroup::make('state')->options(['title' => 'A string'])];
+                }
+            },
+            'isArchived' => new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+                public function fields(): array
+                {
+                    return [Id::make(), BooleanGroup::make('state')->options(['isArchived' => 'A nullable bool'])];
+                }
+            },
+        ];
+
+        foreach ($notBool as $flag => $resource) {
+            $this->assertRefused(self::fieldRefusal($resource, 'state', "names the flag \"{$flag}\", which is not a bool property of " . CompilerBoard::class . '; in columns mode every option key is one, or call json()'), $resource);
+        }
+
+        $field = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), Boolean::make('isPinned'), BooleanGroup::make('state')->options(['isActive' => 'Active', 'isPinned' => 'Pinned'])];
+            }
+        };
+        $this->assertRefused(self::fieldRefusal($field, 'state', 'names the flag "isPinned", which is also a field of the resource; a flag is written by its group alone'), $field);
+
+        $twice = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), BooleanGroup::make('state')->options(['isActive' => 'Active']), BooleanGroup::make('quiet')->options(['isMuted' => 'Muted', 'isActive' => 'Active'])];
+            }
+        };
+        $this->assertRefused(self::fieldRefusal($twice, 'state', 'names the flag "isActive", which the flag group "quiet" names too; a flag is written by one group alone'), $twice);
+    }
+
+    public function testCreationCountsTheFlagsOfEveryGroupOnTheForm(): void
+    {
+        // isActive, which a new board requires, is neither the first flag of its group nor in the last group
+        $board = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), BooleanGroup::make('state')->options(['isMuted' => 'Muted', 'isActive' => 'Active']), BooleanGroup::make('lock')->options(['isLocked' => 'Locked'])];
+            }
+        };
+        self::assertSame(['possible' => true, 'reason' => null], $this->compile($board)['boards']['creation']);
+
+        $hidden = new #[Resource(CompilerBoard::class, slug: 'boards')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), BooleanGroup::make('state')->options(['isActive' => 'Active'])->hideFromForms()];
+            }
+        };
+        self::assertFalse($this->compile($hidden)['boards']['creation']['possible'], 'a group off the form writes nothing');
+    }
+
+    public function testAFieldWithNoColumnCannotBeSortable(): void
+    {
+        $orders = new #[Resource(Order::class, slug: 'orders')] class extends VectorResource {
+            public function fields(): array
+            {
+                return [Id::make(), HasMany::to('lines', CompilerOrderLines::class)->sortable()];
+            }
+        };
+        $this->assertRefused(self::fieldRefusal($orders, 'lines', 'maps no column and cannot be sortable'), $orders);
+    }
+
     private function assertRefused(string $message, VectorResource ...$resources): void
     {
         try {
@@ -1293,5 +1422,95 @@ final class UntitledOrders extends VectorResource
     public function fields(): array
     {
         return [Id::make(), Number::make('totalCents')];
+    }
+}
+
+/**
+ * A board: bool flags with and without a default (isActive, required,
+ * maps the column is_active), a nullable one, an int-backed enum, its
+ * cards in a relation it does not own and its notes in one it does.
+ */
+#[Entity(table: 'compiler_boards')]
+final class CompilerBoard
+{
+    #[EntityId(generated: true)]
+    public ?int $id = null;
+
+    public string $title = '';
+
+    public bool $isActive;
+
+    public bool $isMuted = false;
+
+    public bool $isPinned = true;
+
+    public bool $isLocked = true;
+
+    public bool $isStarred = false;
+
+    public ?bool $isArchived = null;
+
+    public Level $level = Level::Low;
+
+    /** @var list<CompilerCard> */
+    #[OrmHasMany(target: CompilerCard::class, mappedBy: 'board')]
+    public array $cards;
+
+    /** @var list<CompilerNote> */
+    #[OrmHasMany(target: CompilerNote::class, mappedBy: 'board', owned: true)]
+    public array $notes;
+
+    public function __construct(bool $isActive)
+    {
+        $this->isActive = $isActive;
+    }
+}
+
+#[Entity(table: 'compiler_cards')]
+final class CompilerCard
+{
+    #[EntityId(generated: true)]
+    public ?int $id = null;
+
+    #[OrmBelongsTo]
+    public CompilerBoard $board;
+
+    public function __construct(CompilerBoard $board)
+    {
+        $this->board = $board;
+    }
+}
+
+/** A board's note: a required text, a position and a JSON list of steps. */
+#[Entity(table: 'compiler_notes')]
+final class CompilerNote
+{
+    #[EntityId(generated: true)]
+    public ?int $id = null;
+
+    #[OrmBelongsTo]
+    public CompilerBoard $board;
+
+    public string $text;
+
+    public int $position = 0;
+
+    /** @var list<mixed>|null */
+    public ?array $steps = null;
+
+    public function __construct(CompilerBoard $board, string $text)
+    {
+        $this->board = $board;
+        $this->text = $text;
+    }
+}
+
+/** The notes a board's repeater edits; a note's steps are a repeater of their own. */
+#[Resource(CompilerNote::class, slug: 'compiler-notes', labelSingular: 'Note')]
+final class CompilerNotes extends VectorResource
+{
+    public function fields(): array
+    {
+        return [Id::make(), Text::make('text')->required(), Number::make('position'), Repeater::make('steps')->fields([Text::make('step')])];
     }
 }
